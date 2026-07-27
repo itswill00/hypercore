@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Tanzanite HyperFlow</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      padding: 16px;
+      line-height: 1.4;
+    }
+
+    .wrap {
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .header {
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    .title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #888888;
+      margin-top: 2px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #888888;
+      margin: 16px 0 8px 0;
+    }
+
+    .list {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #282828;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #aaaaaa;
+      font-size: 13px;
+    }
+
+    .val {
+      font-weight: 500;
+      color: #ffffff;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .val.green { color: #4caf50; }
+    .val.orange { color: #ff9800; }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      flex: 1;
+      background: #262626;
+      border: 1px solid #333333;
+      color: #e0e0e0;
+      padding: 9px 0;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:active {
+      background: #333333;
+    }
+
+    button.primary {
+      background: #3f51b5;
+      border-color: #3f51b5;
+      color: #ffffff;
+    }
+
+    .feedback-banner {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #4caf50;
+      margin-top: 8px;
+      display: none;
+      white-space: pre-wrap;
+    }
+
+    .feedback-banner.active {
+      display: block;
+    }
+
+    .console {
+      background: #0a0a0a;
+      border: 1px solid #222222;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #b0b0b0;
+      height: 280px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">Tanzanite HyperFlow v2.5</div>
+      <div class="subtitle">Helio G99 Ultra System & Kernel Monitor</div>
+    </div>
+
+    <div class="section-title">Device Status</div>
+    <div class="list">
+      <div class="row">
+        <span class="label">Daemon Service</span>
+        <span class="val green" id="daemon_txt">Running</span>
+      </div>
+      <div class="row">
+        <span class="label">Active Profile</span>
+        <span class="val" id="profile_val">Interactive</span>
+      </div>
+      <div class="row">
+        <span class="label">Governor Mode</span>
+        <span class="val" id="lock_val">Auto (Dynamic)</span>
+      </div>
+      <div class="row">
+        <span class="label">CPU / Battery Temp</span>
+        <span class="val" id="temp_val">--°C / --°C</span>
+      </div>
+      <div class="row">
+        <span class="label">Little Cores Frequency (0-5)</span>
+        <span class="val" id="little_val">-- MHz</span>
+      </div>
+      <div class="row">
+        <span class="label">Big Cores Frequency (6-7)</span>
+        <span class="val" id="big_val">-- MHz</span>
+      </div>
+      <div class="row">
+        <span class="label">GPU / System Load</span>
+        <span class="val" id="load_val">--% / --</span>
+      </div>
+    </div>
+
+    <div class="section-title">Kernel & Network Configuration</div>
+    <div class="list">
+      <div class="row">
+        <span class="label">Storage Scheduler</span>
+        <span class="val" id="sched_txt">none (UFS) | 128 KB</span>
+      </div>
+      <div class="row">
+        <span class="label">TCP Congestion / Wi-Fi</span>
+        <span class="val" id="net_txt">cubic / Low Latency</span>
+      </div>
+    </div>
+
+    <div class="section-title">Control Panel</div>
+    <div class="actions">
+      <button id="btn_game" class="primary" onclick="runAction('game')">Lock Gaming</button>
+      <button id="btn_auto" onclick="runAction('auto')">Auto Mode</button>
+      <button id="btn_flush" onclick="runAction('flush')">Flush RAM</button>
+      <button id="btn_restart" onclick="runAction('restart')">Restart Engine</button>
+    </div>
+    <div id="action_feedback" class="feedback-banner"></div>
+
+    <div class="section-title" style="display:flex; justify-content:space-between;">
+      <span>Terminal Log</span>
+      <span style="cursor:pointer; color:#7986cb;" onclick="updateData()">Refresh</span>
+    </div>
+    <div class="console" id="log_text">Loading system logs...</div>
+  </div>
+
+  <script>
+    let cbCounter = 0;
+
+    function ksuExec(command) {
+      return new Promise((resolve, reject) => {
+        if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
+          const fnName = "ksu_cb_" + Date.now() + "_" + (cbCounter++);
+          window[fnName] = function(errno, stdout, stderr) {
+            delete window[fnName];
+            resolve(stdout || stderr || "");
+          };
+          try {
+            ksu.exec(command, "{}", fnName);
+          } catch(err) {
+            delete window[fnName];
+            reject(err);
+          }
+          return;
+        }
+
+        if (typeof exec === "function") {
+          try {
+            exec(command).then(res => {
+              if (typeof res === "object") resolve(res.stdout || res.stderr || JSON.stringify(res));
+              else resolve(String(res));
+            }).catch(reject);
+            return;
+          } catch(e) {}
+        }
+
+        reject("KernelSU WebUI Manager required");
+      });
+    }
+
+    function showFeedback(msg, isError) {
+      const fb = document.getElementById('action_feedback');
+      if (!fb) return;
+      fb.innerText = msg;
+      fb.style.color = isError ? '#ff9800' : '#4caf50';
+      fb.className = 'feedback-banner active';
+      setTimeout(() => {
+        fb.className = 'feedback-banner';
+      }, 4000);
+    }
+
+    function runAction(act) {
+      const btnId = 'btn_' + act;
+      const btn = document.getElementById(btnId);
+      const origText = btn ? btn.innerText : '';
+      if (btn) btn.innerText = 'Executing...';
+
+      const paths = {
+        "game": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -g",
+        "auto": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -u",
+        "flush": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -f",
+        "restart": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -r"
+      };
+
+      ksuExec(paths[act]).then(outText => {
+        if (btn) btn.innerText = origText;
+        showFeedback(outText || ("Action executed: " + act), false);
+        updateData();
+      }).catch(err => {
+        if (btn) btn.innerText = origText;
+        showFeedback("Error: " + String(err), true);
+      });
+    }
+
+    function parseStatus(outStr) {
+      if (!outStr) return;
+      const lines = String(outStr).split('\n');
+      lines.forEach(l => {
+        if (l.includes('Daemon')) {
+          const val = l.split(':')[1].trim();
+          document.getElementById('daemon_txt').innerText = val;
+          document.getElementById('daemon_txt').className = val.includes('Running') ? 'val green' : 'val orange';
+        }
+        if (l.includes('Profile')) {
+          const p = l.split(':')[1].trim();
+          document.getElementById('profile_val').innerText = p.split(' ')[0];
+          if (p.includes('LOCKED')) {
+            document.getElementById('lock_val').innerText = 'Gaming Lock';
+            document.getElementById('lock_val').className = 'val orange';
+          } else {
+            document.getElementById('lock_val').innerText = 'Auto (Dynamic)';
+            document.getElementById('lock_val').className = 'val';
+          }
+        }
+        if (l.includes('Temp')) {
+          const parts = l.split('|');
+          if (parts.length >= 2) {
+            const cpu = parts[0].replace('Temp', '').replace('CPU', '').replace(':', '').trim();
+            const bat = parts[1].replace('Battery', '').trim();
+            document.getElementById('temp_val').innerText = cpu + ' / ' + bat;
+          }
+        }
+        if (l.includes('Little Core')) {
+          document.getElementById('little_val').innerText = l.split(':')[1].trim();
+        }
+        if (l.includes('Big Core')) {
+          document.getElementById('big_val').innerText = l.split(':')[1].trim();
+        }
+        if (l.includes('GPU / Load')) {
+          const parts = l.split('|');
+          if (parts.length >= 2) {
+            const gpu = parts[0].replace('GPU / Load', '').replace(':', '').trim();
+            const sys = parts[1].replace('sys load', '').trim();
+            document.getElementById('load_val').innerText = gpu + ' (Load ' + sys + ')';
+          }
+        }
+      });
+    }
+
+    function parseStats(statsStr) {
+      if (!statsStr) return;
+      const lines = String(statsStr).split('\n');
+      let ra = "", tcp = "", wifi = "";
+      lines.forEach(l => {
+        if (l.includes('Storage Read-Ahead')) ra = l.split(':')[1].trim();
+        if (l.includes('TCP Congestion')) tcp = l.split(':')[1].trim();
+        if (l.includes('Wi-Fi Low Latency')) wifi = l.split(':')[1].trim() === "1" ? "Low Latency" : "Normal";
+      });
+      document.getElementById('sched_txt').innerText = "none (UFS) | " + (ra || "128 KB");
+      document.getElementById('net_txt').innerText = (tcp || "cubic") + " / " + (wifi || "Low Latency");
+    }
+
+    function updateData() {
+      const bin = "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite";
+      
+      ksuExec(bin).then(parseStatus).catch(e => console.log(e));
+      ksuExec(bin + " -s").then(parseStats).catch(e => console.log(e));
+      ksuExec(bin + " -l").then(log => {
+        if (log) document.getElementById('log_text').innerText = log;
+      }).catch(e => console.log(e));
+    }
+
+    setInterval(updateData, 2000);
+    updateData();
+  </script>
+</body>
+</html>

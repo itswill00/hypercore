@@ -1,0 +1,38 @@
+# HyperFlow System Properties (Optimized for MIUI / HyperOS / Helio G99 Ultra)
+
+# Dalvik / Dex2oat optimization
+dalvik.vm.dex2oat-threads=6
+dalvik.vm.image-dex2oat-threads=6
+dalvik.vm.boot-dex2oat-threads=6
+
+# Smartpower & Joyose tweaks
+persist.sys.smartpower.display_camera_fps_enable=false
+persist.sys.smartpower.display.enable=false
+persist.sys.powerkeeper.fps_limit=0
+persist.sys.joyose.fps_boost=true
+persist.sys.smartpower.game.enable=true
+
+# Wi-Fi & Network latency
+wifi.supplicant_scan_interval=180
+persist.sys.wifi.low_latency=1
+
+# SurfaceFlinger & Ultra Low Latency Rendering
+debug.sf.early.app.sf.offset=0
+debug.sf.early.sf.offset=0
+debug.sf.early_app_phase_offset_ns=5000000
+debug.sf.early_sf_phase_offset_ns=5000000
+debug.sf.high_fps_early_phase_offset_ns=6100000
+debug.sf.high_fps_early_gl_phase_offset_ns=9000000
+debug.sf.disable_backpressure=1
+
+# Touch & HW Acceleration
+touch.pressure.scale=0.001
+video.accelerate.hw=1
+debug.performance.tuning=1
+
+# Deactivate HyperOS & MIUI Telemetry / Debug Logging Overhead
+persist.sys.miui.sf.cpu_perf_mode=1
+persist.sys.job_delay=true
+profiler.force_disable_err_rpt=1
+profiler.force_disable_ulog=1
+logcat.live=disable

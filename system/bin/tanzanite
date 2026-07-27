@@ -1,0 +1,180 @@
+#!/system/bin/sh
+
+LOG="/sdcard/Android/tanzanite_hyperflow.log"
+MOD_DIR="/data/adb/modules/tanzanite_hyperflow"
+LOCK_FILE="$MOD_DIR/.hyperflow_lock"
+[ ! -d "$MOD_DIR" ] && LOCK_FILE="/sdcard/Android/.hyperflow_lock"
+
+read_node() {
+    [ -f "$1" ] && cat "$1" 2>/dev/null || echo "0"
+}
+
+get_cpu_temp() {
+    t=0
+    for tz in /sys/class/thermal/thermal_zone*; do
+        if [ -f "$tz/type" ]; then
+            tz_type=$(cat "$tz/type" 2>/dev/null)
+            case "$tz_type" in
+                *"cpu"*|*"mtktscpu"*|*"soc"*|*"tzts"*|*"cpu_0"*)
+                    t=$(read_node "$tz/temp")
+                    [ "$t" -gt 0 ] && break
+                    ;;
+            esac
+        fi
+    done
+    [ "$t" -eq 0 ] && t=$(read_node /sys/class/thermal/thermal_zone16/temp)
+    [ "$t" -eq 0 ] && t=$(read_node /sys/class/thermal/thermal_zone0/temp)
+
+    if [ "$t" -gt 0 ]; then
+        echo "$((t / 1000))°C"
+    else
+        echo "N/A"
+    fi
+}
+
+get_bat_temp() {
+    t=0
+    for tz in /sys/class/thermal/thermal_zone*; do
+        if [ -f "$tz/type" ]; then
+            tz_type=$(cat "$tz/type" 2>/dev/null)
+            case "$tz_type" in
+                *"bat"*|*"battery"*)
+                    t=$(read_node "$tz/temp")
+                    [ "$t" -gt 0 ] && break
+                    ;;
+            esac
+        fi
+    done
+    [ "$t" -eq 0 ] && t=$(read_node /sys/class/thermal/thermal_zone25/temp)
+
+    if [ "$t" -gt 0 ]; then
+        c=$((t / 1000))
+        [ "$c" -gt 100 ] && c=$((t / 100))
+        echo "${c}°C"
+    else
+        echo "N/A"
+    fi
+}
+
+get_storage_info() {
+    ra="128"
+    sched="none"
+    for b in /sys/block/sd*/queue /sys/block/mmcblk*/queue; do
+        if [ -f "$b/read_ahead_kb" ]; then
+            ra=$(cat "$b/read_ahead_kb" 2>/dev/null)
+        fi
+        if [ -f "$b/scheduler" ]; then
+            sched=$(cat "$b/scheduler" 2>/dev/null)
+            sched=$(echo "$sched" | grep -o '\[.*\]' | tr -d '[]')
+        fi
+        [ -n "$ra" ] && break
+    done
+    echo "${sched:-none} | ${ra:-128} KB"
+}
+
+case "$1" in
+    "-f"|"--flush")
+        echo "Flushing page cache & compacting memory..."
+        echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
+        echo 1 > /proc/sys/vm/compact_memory 2>/dev/null
+        echo "Done! Memory flushed & ZRAM compacted."
+        ;;
+    "-g"|"--game")
+        echo "GAMING" > "$LOCK_FILE" 2>/dev/null
+        echo "Gaming mode locked! CPU/GPU set to peak performance."
+        ;;
+    "-u"|"--auto"|"--unlock")
+        rm -f "$LOCK_FILE" 2>/dev/null
+        echo "Unlocked! Dynamic profile auto-governor restored."
+        ;;
+    "-r"|"--restart")
+        echo "Restarting Tanzanite HyperFlow daemon..."
+        pkill -f "hyperflow_engine.sh" 2>/dev/null
+        sleep 1
+        if [ -f "$MOD_DIR/hyperflow_engine.sh" ]; then
+            nohup "$MOD_DIR/hyperflow_engine.sh" >/dev/null 2>&1 &
+            echo "Daemon restarted successfully!"
+        elif [ -f "./hyperflow_engine.sh" ]; then
+            nohup ./hyperflow_engine.sh >/dev/null 2>&1 &
+            echo "Daemon restarted successfully!"
+        else
+            echo "Error: Could not locate hyperflow_engine.sh"
+        fi
+        ;;
+    "-s"|"--stats")
+        tcp_cc=$(sysctl net.ipv4.tcp_congestion_control 2>/dev/null)
+        tcp_cc=${tcp_cc##* }
+        echo "Tanzanite HyperFlow v2.5 Tunable Parameters"
+        echo "--------------------------------------"
+        echo "Storage Queue / RA : $(get_storage_info)"
+        echo "Sched Latency      : $(( $(read_node /proc/sys/kernel/sched_latency_ns) / 1000000 )) ms"
+        echo "GED DVFS Threshold : $(read_node /sys/module/ged/parameters/g_fb_dvfs_threshold)"
+        echo "GED DVFS Margin    : $(read_node /sys/module/ged/parameters/gx_fb_dvfs_margin)"
+        echo "GPU Bottom Freq    : $(( $(read_node /sys/module/ged/parameters/gpu_bottom_freq) / 1000 )) MHz"
+        echo "VM Swappiness      : $(read_node /proc/sys/vm/swappiness)"
+        echo "VM Dirty Ratio     : $(read_node /proc/sys/vm/dirty_ratio)%"
+        echo "VM Page Cluster    : $(read_node /proc/sys/vm/page-cluster)"
+        echo "TCP Congestion     : ${tcp_cc:-cubic}"
+        echo "Wi-Fi Low Latency  : $(getprop persist.sys.wifi.low_latency)"
+        echo "--------------------------------------"
+        ;;
+    "-l"|"--log")
+        if [ -f "$LOG" ]; then
+            tail -n 50 "$LOG"
+        else
+            echo "No log found at $LOG"
+        fi
+        ;;
+    "-h"|"--help")
+        echo "Tanzanite HyperFlow CLI v2.5 (by @itswill00)"
+        echo "Usage: tanzanite [options]"
+        echo "  (none)       Display live status"
+        echo "  -g, --game   Lock peak Gaming performance mode"
+        echo "  -u, --auto   Restore automatic dynamic governor"
+        echo "  -r, --restart Restart HyperFlow engine background daemon"
+        echo "  -f, --flush  Trim RAM cache & compact ZRAM"
+        echo "  -s, --stats  Show detailed sysfs & network parameters"
+        echo "  -l, --log    Show recent engine log"
+        echo "  -h, --help   Show this help message"
+        ;;
+    *)
+        PID=$(pgrep -f "hyperflow_engine.sh" | head -n 1)
+        STATUS="Stopped"
+        [ -n "$PID" ] && STATUS="Running (pid $PID)"
+
+        L_CUR=$(( $(read_node /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq) / 1000 ))
+        L_MIN=$(( $(read_node /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq) / 1000 ))
+        L_MAX=$(( $(read_node /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq) / 1000 ))
+
+        B_CUR=$(( $(read_node /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq) / 1000 ))
+        B_MIN=$(( $(read_node /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq) / 1000 ))
+        B_MAX=$(( $(read_node /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq) / 1000 ))
+
+        GPU_LOAD=$(read_node /sys/module/ged/parameters/gpu_loading)
+        READ_LOAD="0"
+        read -r READ_LOAD _ < /proc/loadavg 2>/dev/null
+
+        PROFILE="Interactive"
+        if [ -f "$LOG" ]; then
+            LAST_LOG=$(grep "Profile" "$LOG" | tail -n 1)
+            if [ -n "$LAST_LOG" ]; then
+                prof_part=${LAST_LOG#*Profile: }
+                PROFILE=${prof_part%% *}
+            fi
+        fi
+
+        LOCK_STATE="AUTO"
+        [ -f "$LOCK_FILE" ] && LOCK_STATE="LOCKED (GAMING)"
+
+        echo "tanzanite v2.5 by @itswill00 (Enhanced Engine)"
+        echo "---------------------------------"
+        echo "Daemon      : $STATUS"
+        echo "Profile     : ${PROFILE:-Interactive} [$LOCK_STATE]"
+        echo "Temp        : CPU $(get_cpu_temp) | Battery $(get_bat_temp)"
+        echo "Little Core : ${L_CUR} MHz [min ${L_MIN} | max ${L_MAX}]"
+        echo "Big Core    : ${B_CUR} MHz [min ${B_MIN} | max ${B_MAX}]"
+        echo "GPU / Load  : ${GPU_LOAD}% load | sys load ${READ_LOAD}"
+        echo "Storage     : $(get_storage_info)"
+        echo "---------------------------------"
+        ;;
+esac
