@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 void scan_thermal_zones(void);
+int check_charging_status(void);
 int calculate_thermal_tier(int cpu_temp, int bat_temp);
 
 #ifdef __cplusplus

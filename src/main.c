@@ -103,11 +103,14 @@ int main(void) {
     g_state.thermal_hold_ticks = 0;
     g_state.touch_boost_ticks = 0;
     g_state.prev_load = 0;
+    g_state.is_charging = 0;
 
     int iteration = 0;
 
     while (g_running) {
         iteration++;
+
+        g_state.is_charging = check_charging_status();
 
         int screen_on = 1;
         if (g_nodes.backlight[0] != '\0') {
@@ -174,8 +177,9 @@ int main(void) {
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
-            log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C, GPU: %d%%, Load: %d)",
-                      prev_name, g_profile_names[next_profile], cpu_temp, bat_temp, gpu_load, load_val);
+            log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                      prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
+                      g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
             apply_profile(next_profile, thermal_tier);
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;
@@ -185,6 +189,7 @@ int main(void) {
             apply_cpuset();
             rotate_log();
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "40");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
         }
 
         sleep(2);

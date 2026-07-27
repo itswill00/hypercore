@@ -38,6 +38,7 @@ struct hw_nodes {
     char lock_file[256];
     char cpu_temp[256];
     char bat_temp[256];
+    char bat_status[256];
     char backlight[256];
     int  has_sugov_ext;
     int  has_schedutil;
@@ -49,6 +50,7 @@ struct core_state {
     int thermal_hold_ticks;
     int touch_boost_ticks;
     int prev_load;
+    int is_charging;
 };
 
 extern volatile sig_atomic_t g_running;
