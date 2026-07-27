@@ -37,6 +37,25 @@ esac
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 
+ui_print "- Verifying SHA-256 file integrity..."
+if [ -f "$MODPATH/checksums.sha256" ]; then
+    cd "$MODPATH"
+    if sha256sum -c checksums.sha256 >/dev/null 2>&1; then
+        ui_print "- File integrity check passed (SHA-256 OK)."
+    else
+        ui_print "--------------------------------------"
+        ui_print "! ERROR: File integrity check failed!"
+        ui_print "! Checksum mismatch detected. Files may be corrupted or tampered with."
+        ui_print "! Installation aborted for safety."
+        ui_print "--------------------------------------"
+        rm -rf "$MODPATH"
+        abort "! SHA-256 Checksum mismatch"
+        exit 1
+    fi
+else
+    ui_print "! WARNING: Missing checksums.sha256 manifest."
+fi
+
 ui_print "- Setting permissions..."
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755

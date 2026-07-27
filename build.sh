@@ -16,6 +16,9 @@ clang -O3 -flto -s -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJ
 echo "-> Setting executable bits..."
 chmod +x hypercore customize.sh post-fs-data.sh service.sh uninstall.sh
 
+echo "-> Generating SHA-256 integrity checksums..."
+sha256sum hypercore customize.sh post-fs-data.sh service.sh system.prop module.prop uninstall.sh webroot/index.html > checksums.sha256
+
 echo "-> Packaging module zip..."
 rm -f "$RELEASE_DIR/$ZIP_OUT"
 zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
@@ -27,6 +30,7 @@ zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     service.sh \
     system.prop \
     uninstall.sh \
+    checksums.sha256 \
     hypercore >/dev/null
 
 cp "$RELEASE_DIR/$ZIP_OUT" "/data/data/com.termux/files/home/$ZIP_OUT"
