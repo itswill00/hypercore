@@ -5,108 +5,182 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Tanzanite HyperCore</title>
   <style>
+    :root {
+      --bg: #0b0c10;
+      --card-bg: #13151c;
+      --border: #1e2230;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     body {
-      background-color: #121212;
-      color: #e0e0e0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
+      background-color: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
       padding: 16px;
-      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .wrap {
-      max-width: 460px;
+    .container {
+      max-width: 480px;
       margin: 0 auto;
     }
 
-    .header {
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #2a2a2a;
-    }
-
-    .title {
-      font-size: 17px;
-      font-weight: 600;
-      color: #ffffff;
-    }
-
-    .subtitle {
-      font-size: 12px;
-      color: #888888;
-      margin-top: 2px;
-    }
-
-    .section-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #888888;
-      margin: 16px 0 8px 0;
-    }
-
-    .list {
-      background: #1e1e1e;
-      border: 1px solid #2a2a2a;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .row {
+    header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 14px;
-      border-bottom: 1px solid #282828;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .row:last-child {
-      border-bottom: none;
-    }
-
-    .label {
-      color: #aaaaaa;
-      font-size: 13px;
-    }
-
-    .val {
-      font-weight: 500;
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
       color: #ffffff;
-      font-size: 13px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: var(--success);
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-pill.offline {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .card.full {
+      grid-column: span 2;
+    }
+
+    .card-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .card-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
       font-variant-numeric: tabular-nums;
     }
 
-    .val.green { color: #4caf50; }
-    .val.orange { color: #ff9800; }
+    .card-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
 
-    .actions {
-      display: flex;
+    .profile-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--accent-glow);
+      color: var(--accent);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .profile-tag.Gaming {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .profile-tag.Thermal {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
-      margin-top: 12px;
+      margin-bottom: 16px;
     }
 
     button {
-      flex: 1;
-      background: #262626;
-      border: 1px solid #333333;
-      color: #e0e0e0;
-      padding: 10px 0;
-      border-radius: 6px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 8px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       touch-action: manipulation;
-      transition: all 0.15s ease;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover {
+      border-color: #2e3448;
     }
 
     button:active {
-      background: #383838;
-      transform: scale(0.98);
+      background: #1c202d;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
     }
 
     button:disabled {
@@ -114,283 +188,232 @@
       cursor: not-allowed;
     }
 
-    button.primary {
-      background: #3f51b5;
-      border-color: #3f51b5;
-      color: #ffffff;
-      font-weight: 600;
-    }
-
-    .feedback-banner {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 6px;
+    .feedback {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
       padding: 8px 12px;
-      font-size: 12px;
-      color: #4caf50;
-      margin-top: 8px;
+      font-size: 11px;
+      color: var(--success);
+      margin-bottom: 16px;
       display: none;
-      white-space: pre-wrap;
     }
 
-    .feedback-banner.active {
+    .feedback.active {
       display: block;
     }
 
-    .console {
-      background: #0a0a0a;
-      border: 1px solid #222222;
-      border-radius: 6px;
-      padding: 10px;
-      font-family: monospace;
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .terminal-title {
       font-size: 11px;
-      color: #b0b0b0;
-      height: 220px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .refresh-link {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .terminal {
+      background: #07080a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      height: 200px;
       overflow-y: auto;
       white-space: pre-wrap;
-      margin-top: 8px;
+      word-break: break-all;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <div class="title">Tanzanite HyperCore v3.0</div>
-      <div class="subtitle">MediaTek Helio G99 Ultra System Monitor</div>
-    </div>
+  <div class="container">
+    <header>
+      <div>
+        <div class="brand-title">HyperCore v3.0</div>
+        <div class="brand-sub">Helio G99 Ultra System Tuner</div>
+      </div>
+      <div id="status_pill" class="status-pill">
+        <div class="dot"></div>
+        <span id="status_txt">Active</span>
+      </div>
+    </header>
 
-    <div class="section-title">Status</div>
-    <div class="list">
-      <div class="row">
-        <span class="label">HyperCore Daemon</span>
-        <span class="val green" id="daemon_txt">Running</span>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Active Profile</div>
+        <div id="profile_val" class="profile-tag">Interactive</div>
+        <div id="lock_val" class="card-sub">Mode: Auto</div>
       </div>
-      <div class="row">
-        <span class="label">Active Profile</span>
-        <span class="val" id="profile_val">Interactive</span>
-      </div>
-      <div class="row">
-        <span class="label">Governor Mode</span>
-        <span class="val primary" id="lock_val">Auto</span>
-      </div>
-      <div class="row">
-        <span class="label">CPU / Battery Temp</span>
-        <span class="val" id="temp_val">--°C / --°C</span>
-      </div>
-      <div class="row">
-        <span class="label">Little Cores (0-5)</span>
-        <span class="val" id="little_val">-- MHz</span>
-      </div>
-      <div class="row">
-        <span class="label">Big Cores (6-7)</span>
-        <span class="val" id="big_val">-- MHz</span>
-      </div>
-      <div class="row">
-        <span class="label">GPU / System Load</span>
-        <span class="val" id="load_val">--% / --</span>
-      </div>
-    </div>
 
-    <div class="section-title">Tunables</div>
-    <div class="list">
-      <div class="row">
-        <span class="label">Storage Scheduler / Read-Ahead</span>
-        <span class="val" id="sched_txt">none | 128 KB</span>
+      <div class="card">
+        <div class="card-label">GPU Load</div>
+        <div id="gpu_val" class="card-val">0%</div>
+        <div id="load_val" class="card-sub">Sys Load: --</div>
       </div>
-      <div class="row">
-        <span class="label">TCP Congestion / Low Latency</span>
-        <span class="val" id="net_txt">cubic / 1</span>
+
+      <div class="card">
+        <div class="card-label">CPU (0-5 / 6-7)</div>
+        <div id="cpu_val" class="card-val">-- / --</div>
+        <div id="cpu_sub" class="card-sub">MHz</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Temperatures</div>
+        <div id="temp_val" class="card-val">--°C / --°C</div>
+        <div id="chg_val" class="card-sub">CPU / Battery</div>
       </div>
     </div>
 
-    <div class="section-title">Control Panel</div>
-    <div class="actions">
-      <button id="btn_game" onclick="runAction('game')">Lock Gaming</button>
-      <button id="btn_auto" class="primary" onclick="runAction('auto')">Auto Mode</button>
-      <button id="btn_flush" onclick="runAction('flush')">Flush RAM</button>
-      <button id="btn_restart" onclick="runAction('restart')">Restart Service</button>
+    <div class="controls">
+      <button id="btn_lock" onclick="toggleLock()">Lock Gaming</button>
+      <button id="btn_flush" onclick="runCmd('flush')">Flush ZRAM</button>
+      <button id="btn_restart" onclick="runCmd('restart')" style="grid-column: span 2;">Restart Service</button>
     </div>
-    <div id="action_feedback" class="feedback-banner"></div>
 
-    <div class="section-title" style="display:flex; justify-content:space-between;">
-      <span>Recent Logs</span>
-      <span style="cursor:pointer; color:#7986cb;" onclick="updateData()">Refresh</span>
+    <div id="feedback_box" class="feedback"></div>
+
+    <div class="terminal-header">
+      <span class="terminal-title">System Log Stream</span>
+      <span class="refresh-link" onclick="fetchMetrics()">Refresh</span>
     </div>
-    <div class="console" id="log_text">Loading logs...</div>
+    <div id="log_terminal" class="terminal">Initializing...</div>
   </div>
 
   <script>
-    var cbCounter = 0;
-    var isBusy = false;
+    var isGamingLocked = false;
 
-    function ksuExec(command) {
+    function execShell(cmd) {
       return new Promise(function(resolve, reject) {
         if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
-          var fnName = "ksu_cb_" + Date.now() + "_" + (cbCounter++);
-          window[fnName] = function(errno, stdout, stderr) {
-            delete window[fnName];
-            resolve(stdout || stderr || "");
+          var cb = "ksu_cb_" + Date.now();
+          window[cb] = function(code, out, err) {
+            delete window[cb];
+            resolve(out || err || "");
           };
-          try {
-            ksu.exec(command, "{}", fnName);
-          } catch(err) {
-            delete window[fnName];
-            reject(err);
-          }
+          ksu.exec(cmd, "{}", cb);
           return;
         }
-
         if (typeof exec === "function") {
-          try {
-            exec(command).then(function(res) {
-              if (typeof res === "object") resolve(res.stdout || res.stderr || JSON.stringify(res));
-              else resolve(String(res));
-            }).catch(reject);
-            return;
-          } catch(e) {}
+          exec(cmd).then(function(res) {
+            resolve(typeof res === "object" ? (res.stdout || res.stderr || "") : String(res));
+          }).catch(reject);
+          return;
         }
-
-        reject("KernelSU / APatch / MMRL Manager required");
+        reject("Root manager interface unavailable");
       });
     }
 
-    function showFeedback(msg, isError) {
-      var fb = document.getElementById('action_feedback');
-      if (!fb) return;
-      fb.innerText = msg;
-      fb.style.color = isError ? '#ff9800' : '#4caf50';
-      fb.className = 'feedback-banner active';
-      setTimeout(function() {
-        fb.className = 'feedback-banner';
-      }, 3500);
+    function showToast(msg) {
+      var box = document.getElementById('feedback_box');
+      box.innerText = msg;
+      box.className = 'feedback active';
+      setTimeout(function() { box.className = 'feedback'; }, 3000);
     }
 
-    function setButtonsDisabled(disabled) {
-      var btnIds = ['btn_game', 'btn_auto', 'btn_flush', 'btn_restart'];
-      btnIds.forEach(function(id) {
-        var b = document.getElementById(id);
-        if (b) b.disabled = disabled;
-      });
+    function toggleLock() {
+      var cmd = isGamingLocked
+        ? "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Auto Mode Restored'"
+        : "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Gaming Mode Locked'";
+
+      execShell(cmd).then(function(res) {
+        showToast(res.trim());
+        setTimeout(fetchMetrics, 300);
+      }).catch(function(e) { showToast(String(e)); });
     }
 
-    function updateModeButtonUI(isGamingLocked) {
-      var btnGame = document.getElementById('btn_game');
-      var btnAuto = document.getElementById('btn_auto');
-      var lockVal = document.getElementById('lock_val');
-
-      if (isGamingLocked) {
-        if (btnGame) btnGame.className = 'primary';
-        if (btnAuto) btnAuto.className = '';
-        if (lockVal) {
-          lockVal.innerText = 'Gaming Lock';
-          lockVal.className = 'val orange';
-        }
-      } else {
-        if (btnGame) btnGame.className = '';
-        if (btnAuto) btnAuto.className = 'primary';
-        if (lockVal) {
-          lockVal.innerText = 'Auto';
-          lockVal.className = 'val';
-        }
-      }
-    }
-
-    function runAction(act) {
-      if (isBusy) return;
-      isBusy = true;
-
-      var btn = document.getElementById('btn_' + act);
-      var origText = btn ? btn.innerText : '';
-      if (btn) btn.innerText = 'Wait...';
-      setButtonsDisabled(true);
-
-      if (act === 'game') updateModeButtonUI(true);
-      if (act === 'auto') updateModeButtonUI(false);
-
+    function runCmd(type) {
       var cmd = "";
-      if (act === 'game') {
-        cmd = "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Gaming Mode locked.'";
-      } else if (act === 'auto') {
-        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /data/adb/modules/tanzanite_hyperflow/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Auto Governor mode restored.'";
-      } else if (act === 'flush') {
-        cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM flushed & ZRAM compacted.'";
-      } else if (act === 'restart') {
-        cmd = "pkill -9 -x hypercore 2>/dev/null; sleep 1; ([ -f /data/adb/modules/tanzanite_hypercore/hypercore ] && /data/adb/modules/tanzanite_hypercore/hypercore || /data/adb/modules/tanzanite_hyperflow/hypercore); echo 'HyperCore Daemon restarted.'";
+      if (type === 'flush') {
+        cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'Memory & ZRAM Flushed'";
+      } else if (type === 'restart') {
+        cmd = "pkill -9 -x hypercore 2>/dev/null; sleep 1; /data/adb/modules/tanzanite_hypercore/hypercore; echo 'HyperCore Restarted'";
       }
 
-      ksuExec(cmd).then(function(outText) {
-        if (btn) btn.innerText = origText;
-        setButtonsDisabled(false);
-        isBusy = false;
-        showFeedback(outText ? outText.trim() : ("Executed: " + act), false);
-        setTimeout(updateData, 400);
-      }).catch(function(err) {
-        if (btn) btn.innerText = origText;
-        setButtonsDisabled(false);
-        isBusy = false;
-        showFeedback("Error: " + String(err), true);
-      });
+      execShell(cmd).then(function(res) {
+        showToast(res.trim());
+        setTimeout(fetchMetrics, 400);
+      }).catch(function(e) { showToast(String(e)); });
     }
 
-    function updateData() {
-      if (isBusy) return;
-
-      var cmdStatus = [
-        'pid=$(pgrep -x "hypercore" 2>/dev/null | head -n 1)',
-        '[ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"',
-        'l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"',
-        'b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"',
+    function fetchMetrics() {
+      var statusCmd = [
+        'pgrep -x "hypercore" >/dev/null && echo "STATUS:ONLINE" || echo "STATUS:OFFLINE"',
+        'c0=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'c6=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "FREQ:${c0}/${c6}"',
         'gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
-        'read load_avg _ < /proc/loadavg 2>/dev/null',
-        'echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"',
-        'c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
-        'b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)',
-        'echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"',
-        'lock="AUTO"',
-        '([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /data/adb/modules/tanzanite_hyperflow/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ]) && lock="GAMING LOCK"',
-        'echo "LOCK: $lock"'
+        'read avg _ < /proc/loadavg 2>/dev/null',
+        'echo "LOAD:${gpu}:${avg}"',
+        'ctemp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
+        'btemp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)',
+        'bstat=$(cat /sys/class/power_supply/battery/status 2>/dev/null || echo "N/A")',
+        'echo "TEMP:$((ctemp / 1000)):$((btemp / 10)):${bstat}"',
+        '[ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo "LOCK:GAMING" || echo "LOCK:AUTO"'
       ].join('; ');
 
-      ksuExec(cmdStatus).then(function(out) {
+      execShell(statusCmd).then(function(out) {
         var lines = (out || "").split('\n');
         lines.forEach(function(l) {
-          if (l.indexOf('DAEMON:') !== -1) {
-            var val = l.replace('DAEMON:', '').trim();
-            document.getElementById('daemon_txt').innerText = val;
-            document.getElementById('daemon_txt').className = val.indexOf('Running') !== -1 ? 'val green' : 'val orange';
+          if (l.indexOf('STATUS:') === 0) {
+            var online = l.split(':')[1] === 'ONLINE';
+            document.getElementById('status_pill').className = online ? 'status-pill' : 'status-pill offline';
+            document.getElementById('status_txt').innerText = online ? 'Active' : 'Stopped';
           }
-          if (l.indexOf('LITTLE:') !== -1) document.getElementById('little_val').innerText = l.replace('LITTLE:', '').trim();
-          if (l.indexOf('BIG:') !== -1) document.getElementById('big_val').innerText = l.replace('BIG:', '').trim();
-          if (l.indexOf('LOAD:') !== -1) document.getElementById('load_val').innerText = l.replace('LOAD:', '').trim();
-          if (l.indexOf('TEMP:') !== -1) document.getElementById('temp_val').innerText = l.replace('TEMP:', '').trim();
-          if (l.indexOf('LOCK:') !== -1) {
-            var lockState = l.replace('LOCK:', '').trim();
-            updateModeButtonUI(lockState.indexOf('GAMING') !== -1);
+          if (l.indexOf('FREQ:') === 0) {
+            var parts = l.split(':')[1].split('/');
+            document.getElementById('cpu_val').innerText = parts[0] + ' / ' + parts[1];
+          }
+          if (l.indexOf('LOAD:') === 0) {
+            var parts = l.split(':')[1].split(':');
+            document.getElementById('gpu_val').innerText = parts[0] + '%';
+            document.getElementById('load_val').innerText = 'Sys Load: ' + parts[1];
+          }
+          if (l.indexOf('TEMP:') === 0) {
+            var parts = l.split(':')[1].split(':');
+            document.getElementById('temp_val').innerText = parts[0] + '°C / ' + parts[1] + '°C';
+            document.getElementById('chg_val').innerText = parts[2] === 'Charging' ? 'Bat: Charging ⚡' : 'Bat: Discharging';
+          }
+          if (l.indexOf('LOCK:') === 0) {
+            isGamingLocked = (l.split(':')[1] === 'GAMING');
+            document.getElementById('btn_lock').innerText = isGamingLocked ? 'Unlock Auto' : 'Lock Gaming';
+            document.getElementById('btn_lock').className = isGamingLocked ? 'primary' : '';
+            document.getElementById('lock_val').innerText = 'Mode: ' + (isGamingLocked ? 'Gaming Lock' : 'Auto');
           }
         });
       }).catch(console.log);
 
-      ksuExec("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
+      execShell("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
         if (log) {
-          document.getElementById('log_text').innerText = log.trim();
+          document.getElementById('log_terminal').innerText = log.trim();
           var lines = log.trim().split('\n');
-          var lastLog = lines[lines.length - 1];
-          if (lastLog && lastLog.indexOf('Profile:') !== -1) {
-            var p = lastLog.split('Profile:')[1].trim().split(' ')[0];
-            document.getElementById('profile_val').innerText = p;
+          var last = lines[lines.length - 1];
+          if (last && last.indexOf('Profile:') !== -1) {
+            var prof = last.split('Profile:')[1].trim().split(' ')[0];
+            var el = document.getElementById('profile_val');
+            el.innerText = prof;
+            el.className = 'profile-tag ' + prof;
           }
         }
       }).catch(console.log);
     }
 
-    setInterval(updateData, 3000);
-    updateData();
+    setInterval(fetchMetrics, 2500);
+    fetchMetrics();
   </script>
 </body>
 </html>
