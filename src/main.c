@@ -78,6 +78,19 @@ static void apply_base_tuning(void) {
     system("setprop persist.sys.wifi.low_latency 1 2>/dev/null");
 }
 
+static int read_initial_load(void) {
+    int load_val = 0;
+    FILE *favg = fopen("/proc/loadavg", "r");
+    if (favg) {
+        float l1 = 0;
+        if (fscanf(favg, "%f", &l1) == 1) {
+            load_val = (int)(l1 * 100.0f);
+        }
+        fclose(favg);
+    }
+    return load_val;
+}
+
 int main(void) {
     setsid();
     daemon(0, 0);
@@ -102,7 +115,7 @@ int main(void) {
     g_state.thermal_tier = 0;
     g_state.thermal_hold_ticks = 0;
     g_state.touch_boost_ticks = 0;
-    g_state.prev_load = 0;
+    g_state.prev_load = read_initial_load();
     g_state.is_charging = 0;
 
     int iteration = 0;
@@ -130,15 +143,7 @@ int main(void) {
         int thermal_tier = calculate_thermal_tier(cpu_temp, bat_temp);
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
 
-        int load_val = 0;
-        FILE *favg = fopen("/proc/loadavg", "r");
-        if (favg) {
-            float l1 = 0;
-            if (fscanf(favg, "%f", &l1) == 1) {
-                load_val = (int)(l1 * 100.0f);
-            }
-            fclose(favg);
-        }
+        int load_val = read_initial_load();
 
         char manual_lock[32] = "";
         FILE *flock = fopen(g_nodes.lock_file, "r");
@@ -177,9 +182,15 @@ int main(void) {
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
-            log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
-                      prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
-                      g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+            if (next_profile != g_state.current_profile) {
+                log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                          prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
+                          g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+            } else {
+                log_write("Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
+                          g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
+                          g_state.is_charging ? "[CHG]" : "");
+            }
             apply_profile(next_profile, thermal_tier);
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;

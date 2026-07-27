@@ -6,14 +6,14 @@
 #include "sysfs.hpp"
 
 void sysfs_write(const char *path, const char *val) {
-    int fd = open(path, O_WRONLY);
+    int fd = open(path, O_WRONLY | O_CLOEXEC);
     if (fd < 0) return;
     write(fd, val, strlen(val));
     close(fd);
 }
 
 int sysfs_read_int(const char *path) {
-    int fd = open(path, O_RDONLY);
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return 0;
     char buf[32];
     ssize_t n = read(fd, buf, sizeof(buf) - 1);

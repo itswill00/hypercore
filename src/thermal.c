@@ -4,6 +4,7 @@
  */
 
 #include "thermal.hpp"
+#include "sysfs.hpp"
 
 void scan_thermal_zones(void) {
     DIR *d = opendir("/sys/class/thermal");
@@ -14,7 +15,7 @@ void scan_thermal_zones(void) {
 
             char path[256];
             snprintf(path, sizeof(path), "/sys/class/thermal/%s/type", ent->d_name);
-            int fd = open(path, O_RDONLY);
+            int fd = open(path, O_RDONLY | O_CLOEXEC);
             if (fd < 0) continue;
 
             char type[64];
@@ -24,11 +25,17 @@ void scan_thermal_zones(void) {
             if (n <= 0) continue;
             type[n] = '\0';
 
-            if (g_nodes.cpu_temp[0] == '\0' && (strstr(type, "cpu") || strstr(type, "soc") || strstr(type, "CPU"))) {
-                snprintf(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "/sys/class/thermal/%s/temp", ent->d_name);
-            }
-            if (g_nodes.bat_temp[0] == '\0' && (strstr(type, "bat") || strstr(type, "battery"))) {
-                snprintf(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "/sys/class/thermal/%s/temp", ent->d_name);
+            char temp_path[256];
+            snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", ent->d_name);
+            int val = sysfs_read_int(temp_path);
+
+            if (val > 0) {
+                if (g_nodes.cpu_temp[0] == '\0' && (strstr(type, "cpu") || strstr(type, "soc") || strstr(type, "CPU"))) {
+                    snprintf(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "%s", temp_path);
+                }
+                if (g_nodes.bat_temp[0] == '\0' && (strstr(type, "bat") || strstr(type, "battery"))) {
+                    snprintf(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "%s", temp_path);
+                }
             }
         }
         closedir(d);
@@ -50,7 +57,7 @@ void scan_thermal_zones(void) {
 
 int check_charging_status(void) {
     if (g_nodes.bat_status[0] == '\0') return 0;
-    int fd = open(g_nodes.bat_status, O_RDONLY);
+    int fd = open(g_nodes.bat_status, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return 0;
     char buf[32];
     ssize_t n = read(fd, buf, sizeof(buf) - 1);
