@@ -1,6 +1,12 @@
 # Tanzanite HyperCore v3.0
 
-Lightweight C-native kernel tuner and dynamic performance optimizer tailored for **MediaTek Helio G99 Ultra** devices.
+Lightweight C-native kernel tuner and dynamic performance optimizer tailored for **MediaTek Helio G99 Ultra** devices running **Linux Kernel 5.10.x**.
+
+## System Requirements
+
+- **Processor**: MediaTek Helio G99 Ultra (MT6789/MT6877 architecture)
+- **Kernel Version**: **Linux 5.10.x** *(Installation will automatically abort on Kernel 6.12 or other incompatible versions)*
+- **Root Solution**: Magisk / KernelSU / APatch
 
 ## Features
 
