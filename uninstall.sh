@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-pkill -f "hypercore_engine" >/dev/null 2>&1
+pkill -f "hypercore" >/dev/null 2>&1
 pkill -f "hypercore.sh" >/dev/null 2>&1
 
 for i in 0 1 2 3 4 5; do
@@ -11,6 +11,7 @@ for i in 6 7; do
 done
 
 rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock 2>/dev/null
+rm -f /data/adb/modules/tanzanite_hyperflow/.hypercore_lock 2>/dev/null
 rm -f /data/local/tmp/.hypercore_lock 2>/dev/null
 rm -f /sdcard/Android/.hypercore_lock 2>/dev/null
 rm -f /sdcard/Android/hypercore.log 2>/dev/null

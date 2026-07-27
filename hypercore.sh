@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# HyperCore Engine v3.0 - MediaTek Helio G99 Ultra Tuner
+# HyperCore v3.0 - MediaTek Helio G99 Ultra Tuner
 # Author: @itswill00
 
 LOG="/sdcard/Android/hypercore.log"
@@ -20,7 +20,7 @@ rotate_log() {
     fi
 }
 
-log_msg "Tanzanite HyperCore Engine v3.0 started."
+log_msg "Tanzanite HyperCore v3.0 started."
 
 LITTLE_MAX=2000000
 BIG_MAX=2200000

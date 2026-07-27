@@ -7,12 +7,12 @@ done
 
 sleep 5
 
-pkill -f "hypercore_engine" >/dev/null 2>&1
+pkill -f "hypercore" >/dev/null 2>&1
 pkill -f "hypercore.sh" >/dev/null 2>&1
 
-if [ -f "$MODDIR/hypercore_engine" ]; then
-    chmod 755 "$MODDIR/hypercore_engine"
-    "$MODDIR/hypercore_engine"
+if [ -f "$MODDIR/hypercore" ]; then
+    chmod 755 "$MODDIR/hypercore"
+    "$MODDIR/hypercore"
 elif [ -f "$MODDIR/hypercore.sh" ]; then
     chmod 755 "$MODDIR/hypercore.sh"
     nohup "$MODDIR/hypercore.sh" >/dev/null 2>&1 &

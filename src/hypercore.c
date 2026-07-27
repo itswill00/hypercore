@@ -1,5 +1,5 @@
 /*
- * HyperCore Engine v3.0 - MediaTek Helio G99 Ultra Tuner
+ * HyperCore v3.0 - MediaTek Helio G99 Ultra Tuner
  *
  * Compact C daemon for dynamic CPU scaling, GPU responsiveness,
  * thermal hysteresis management, and IO queue tuning.
@@ -46,7 +46,7 @@ struct hw_nodes {
     int  has_schedutil;
 };
 
-struct engine_state {
+struct core_state {
     int current_profile;
     int thermal_tier;
     int thermal_hold_ticks;
@@ -56,7 +56,7 @@ struct engine_state {
 
 static volatile sig_atomic_t g_running = 1;
 static struct hw_nodes g_nodes;
-static struct engine_state g_state;
+static struct core_state g_state;
 
 static void on_signal(int sig) {
     (void)sig;
@@ -174,7 +174,7 @@ static void init_hardware_nodes(void) {
         strcpy(g_nodes.mod_dir, "/sdcard/Android");
     }
 
-    snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/engine.pid", g_nodes.mod_dir);
+    snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.mod_dir);
     snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file), "%s/.hypercore_lock", g_nodes.mod_dir);
 
     scan_thermal_zones();
@@ -386,7 +386,7 @@ int main(void) {
         fclose(fpid);
     }
 
-    log_write("Tanzanite HyperCore Engine v3.0 started.");
+    log_write("Tanzanite HyperCore v3.0 started.");
     apply_base_tuning();
     apply_cpuset();
 
@@ -482,7 +482,7 @@ int main(void) {
         sleep(2);
     }
 
-    log_write("Tanzanite HyperCore Engine stopped cleanly.");
+    log_write("Tanzanite HyperCore stopped cleanly.");
     unlink(g_nodes.pid_file);
     return 0;
 }

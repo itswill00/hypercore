@@ -12,15 +12,15 @@ echo "======================================"
 echo " Building Tanzanite HyperCore v3.0   "
 echo "======================================"
 
-echo "[1/4] Compiling native C engine..."
-clang -O3 -flto -s "$MOD_DIR/src/hypercore.c" -o "$MOD_DIR/hypercore_engine"
+echo "[1/4] Compiling native C daemon..."
+clang -O3 -flto -s "$MOD_DIR/src/hypercore.c" -o "$MOD_DIR/hypercore"
 if [ $? -ne 0 ]; then
     echo "Error: Compilation failed!"
     exit 1
 fi
 
 echo "[2/4] Setting file permissions..."
-chmod 755 "$MOD_DIR/hypercore_engine"
+chmod 755 "$MOD_DIR/hypercore"
 chmod 755 "$MOD_DIR/customize.sh"
 chmod 755 "$MOD_DIR/post-fs-data.sh"
 chmod 755 "$MOD_DIR/service.sh"
@@ -39,7 +39,7 @@ zip -r "$OUT_DIR/$ZIP_NAME" \
     service.sh \
     system.prop \
     uninstall.sh \
-    hypercore_engine
+    hypercore
 
 cp "$OUT_DIR/$ZIP_NAME" "/data/data/com.termux/files/home/$ZIP_NAME"
 cp "$MOD_DIR/LICENSE" "$OUT_DIR/LICENSE" 2>/dev/null

@@ -1,11 +1,11 @@
 # Tanzanite HyperCore v3.0
 
-Lightweight C-native kernel tuner and dynamic performance engine tailored for **MediaTek Helio G99 Ultra** devices.
+Lightweight C-native kernel tuner and dynamic performance optimizer tailored for **MediaTek Helio G99 Ultra** devices.
 
 ## Features
 
-- **HyperCore C-Native Engine**: Zero-overhead compiled C daemon running with minimal footprint (< 0.1% CPU, ~3 MB RAM).
-- **Thermal Hysteresis Protection**: Prevents thermal thrashing and profile flapping when CPU/battery temperatures peak.
+- **HyperCore C-Native Daemon**: Zero-overhead compiled C daemon running with minimal footprint (< 0.1% CPU, ~3 MB RAM).
+- **Thermal Hysteresis Protection**: Prevents thermal profile thrashing and rapid governor state flapping.
 - **Dynamic Profile Switching**:
   - `Sleep`: Low power scaling when screen is turned off.
   - `Interactive`: Balanced daily performance and power usage.
