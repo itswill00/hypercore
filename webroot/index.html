@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Tanzanite HyperFlow</title>
+  <title>Tanzanite HyperCore</title>
   <style>
     * {
       box-sizing: border-box;
@@ -155,7 +155,7 @@
 <body>
   <div class="wrap">
     <div class="header">
-      <div class="title">Tanzanite HyperFlow v2.5</div>
+      <div class="title">Tanzanite HyperCore v3.0</div>
       <div class="subtitle">MediaTek Helio G99 Ultra System Monitor</div>
     </div>
 
@@ -222,7 +222,6 @@
   <script>
     var cbCounter = 0;
     var isBusy = false;
-    var autoRefreshTimer = null;
 
     function ksuExec(command) {
       return new Promise(function(resolve, reject) {
@@ -305,19 +304,18 @@
       if (btn) btn.innerText = 'Wait...';
       setButtonsDisabled(true);
 
-      // Optimistic UI update for mode buttons
       if (act === 'game') updateModeButtonUI(true);
       if (act === 'auto') updateModeButtonUI(false);
 
       var cmd = "";
       if (act === 'game') {
-        cmd = "echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock; echo GAMING > /sdcard/Android/.hyperflow_lock; echo 'Gaming Mode locked.'";
+        cmd = "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Gaming Mode locked.'";
       } else if (act === 'auto') {
-        cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock; echo 'Auto Governor mode restored.'";
+        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /data/adb/modules/tanzanite_hyperflow/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Auto Governor mode restored.'";
       } else if (act === 'flush') {
         cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM flushed & ZRAM compacted.'";
       } else if (act === 'restart') {
-        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo 'Daemon restarted.'";
+        cmd = "pkill -9 -x hypercore_engine 2>/dev/null; sleep 1; ([ -f /data/adb/modules/tanzanite_hypercore/hypercore_engine ] && /data/adb/modules/tanzanite_hypercore/hypercore_engine || /data/adb/modules/tanzanite_hyperflow/hypercore_engine); echo 'HyperCore Daemon restarted.'";
       }
 
       ksuExec(cmd).then(function(outText) {
@@ -338,7 +336,7 @@
       if (isBusy) return;
 
       var cmdStatus = [
-        'pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)',
+        'pid=$(pgrep -x "hypercore_engine" | head -n 1)',
         '[ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"',
         'l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
         'l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
@@ -355,7 +353,7 @@
         'b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)',
         'echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"',
         'lock="AUTO"',
-        '([ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ]) && lock="GAMING LOCK"',
+        '([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /data/adb/modules/tanzanite_hyperflow/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ]) && lock="GAMING LOCK"',
         'echo "LOCK: $lock"'
       ].join('; ');
 
@@ -378,7 +376,7 @@
         });
       }).catch(console.log);
 
-      ksuExec("tail -n 25 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(function(log) {
+      ksuExec("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
         if (log) {
           document.getElementById('log_text').innerText = log.trim();
           var lines = log.trim().split('\n');
@@ -391,7 +389,7 @@
       }).catch(console.log);
     }
 
-    autoRefreshTimer = setInterval(updateData, 3000);
+    setInterval(updateData, 3000);
     updateData();
   </script>
 </body>

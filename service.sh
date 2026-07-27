@@ -7,11 +7,13 @@ done
 
 sleep 5
 
-pkill -f "hyperflow_engine" >/dev/null 2>&1
-if [ -f "$MODDIR/hyperflow_engine" ]; then
-    chmod 755 "$MODDIR/hyperflow_engine"
-    nohup "$MODDIR/hyperflow_engine" >/dev/null 2>&1 &
-elif [ -f "$MODDIR/hyperflow_engine.sh" ]; then
-    chmod 755 "$MODDIR/hyperflow_engine.sh"
-    nohup "$MODDIR/hyperflow_engine.sh" >/dev/null 2>&1 &
+pkill -f "hypercore_engine" >/dev/null 2>&1
+pkill -f "hypercore.sh" >/dev/null 2>&1
+
+if [ -f "$MODDIR/hypercore_engine" ]; then
+    chmod 755 "$MODDIR/hypercore_engine"
+    "$MODDIR/hypercore_engine"
+elif [ -f "$MODDIR/hypercore.sh" ]; then
+    chmod 755 "$MODDIR/hypercore.sh"
+    nohup "$MODDIR/hypercore.sh" >/dev/null 2>&1 &
 fi

@@ -3,6 +3,7 @@
 *.tmp
 *.log
 .hyperflow_lock
+.hypercore_lock
 engine.pid
 
 # OS generated files

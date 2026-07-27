@@ -1,24 +1,26 @@
 #!/system/bin/sh
-# Tanzanite HyperFlow Automated Build & Packaging Script
+# Tanzanite HyperCore Automated Build & Packaging Script
 # Author: @itswill00
 
 MOD_DIR="/data/data/com.termux/files/home/HyperFlow_Module"
-OUT_DIR="/data/data/com.termux/files/home/Tanzanite_HyperFlow_Release"
-ZIP_NAME="Tanzanite-HyperFlow-v2.5.zip"
+OUT_DIR="/data/data/com.termux/files/home/Tanzanite_HyperCore_Release"
+ZIP_NAME="Tanzanite-HyperCore-v3.0.zip"
+
+mkdir -p "$OUT_DIR"
 
 echo "======================================"
-echo " Building Tanzanite HyperFlow v2.5   "
+echo " Building Tanzanite HyperCore v3.0   "
 echo "======================================"
 
 echo "[1/4] Compiling native C engine..."
-clang -O3 -flto -s "$MOD_DIR/src/hyperflow_engine.c" -o "$MOD_DIR/hyperflow_engine"
+clang -O3 -flto -s "$MOD_DIR/src/hypercore.c" -o "$MOD_DIR/hypercore_engine"
 if [ $? -ne 0 ]; then
     echo "Error: Compilation failed!"
     exit 1
 fi
 
 echo "[2/4] Setting file permissions..."
-chmod 755 "$MOD_DIR/hyperflow_engine"
+chmod 755 "$MOD_DIR/hypercore_engine"
 chmod 755 "$MOD_DIR/customize.sh"
 chmod 755 "$MOD_DIR/post-fs-data.sh"
 chmod 755 "$MOD_DIR/service.sh"
@@ -37,7 +39,7 @@ zip -r "$OUT_DIR/$ZIP_NAME" \
     service.sh \
     system.prop \
     uninstall.sh \
-    hyperflow_engine
+    hypercore_engine
 
 cp "$OUT_DIR/$ZIP_NAME" "/data/data/com.termux/files/home/$ZIP_NAME"
 cp "$MOD_DIR/LICENSE" "$OUT_DIR/LICENSE" 2>/dev/null

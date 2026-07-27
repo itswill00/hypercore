@@ -1,33 +1,28 @@
-# Tanzanite HyperFlow
+# Tanzanite HyperCore v3.0
 
-Kernel and system performance tuner for MediaTek Helio G99 Ultra (MT6789) running HyperOS, MIUI, or AOSP.
+Lightweight C-native kernel tuner and dynamic performance engine tailored for **MediaTek Helio G99 Ultra** devices.
 
-Author: **@itswill00**
+## Features
 
----
-
-## What it does
-
-Tanzanite HyperFlow runs a lightweight native C daemon (`hyperflow_engine`) that dynamically tunes CPU scaling, GPU frequencies, storage queues, and ZRAM based on current load, thermal state, and active apps.
-
-- **Native C Engine:** Compiles to a 22 KB ARM64 binary with zero subshell overhead and low RAM usage (<500 KB).
-- **Dynamic Profiles:** Automatically switches between `Sleep`, `Interactive`, `Touch Boost`, `Gaming`, and `Thermal Protection`.
-- **UI Smoothness:** Sets CPU frequency ramp rate limits (`up_rate_limit_us`) to `0us` for instant response on touch.
-- **Storage Queues:** Configures UFS storage queues to `none` scheduler with 128 KB read-ahead.
-- **Memory Tuning:** Sets `vm.page-cluster = 0` for direct ZRAM swap I/O.
-- **Network Tuning:** Sets `cubic` TCP congestion control and enables Wi-Fi low-latency mode.
-- **Native WebUI Dashboard:** Built-in web dashboard for KernelSU, APatch, and MMRL Manager.
+- **HyperCore C-Native Engine**: Zero-overhead compiled C daemon running with minimal footprint (< 0.1% CPU, ~3 MB RAM).
+- **Thermal Hysteresis Protection**: Prevents thermal thrashing and profile flapping when CPU/battery temperatures peak.
+- **Dynamic Profile Switching**:
+  - `Sleep`: Low power scaling when screen is turned off.
+  - `Interactive`: Balanced daily performance and power usage.
+  - `Touch`: Instant latency boost during dynamic UI touch events.
+  - `Gaming`: Peak performance mode for high GPU/CPU workloads.
+  - `Thermal`: Gradual throttling hold for thermal dissipation.
+- **System Tuning**: UFS/MMC IO queue tuning (`none` scheduler, 128KB read-ahead), TCP low latency tunables, ZRAM/VM optimization.
+- **KernelSU / APatch WebUI**: Integrated status dashboard for real-time monitoring and control.
 
 ## Installation
 
-1. Open **KernelSU Manager**, **APatch**, or **Magisk**.
-2. Flash `Tanzanite-HyperFlow-v2.5.zip`.
-3. Reboot your device.
+1. Build or download `Tanzanite-HyperCore-v3.0.zip`.
+2. Flash via Magisk, KernelSU, or APatch manager.
+3. Reboot device.
 
-## WebUI Management
+## Control
 
-Open the WebUI tab inside **KernelSU Manager**, **APatch**, or **MMRL** to view real-time hardware metrics, toggle Gaming Lock mode, flush RAM, or restart the engine daemon.
-
-## License
-
-MIT License.
+Manual profile locks can be placed at `/data/adb/modules/tanzanite_hypercore/.hypercore_lock`:
+- Write `GAMING` to lock Gaming profile.
+- Remove lock file to restore auto governor scaling.
