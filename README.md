@@ -1,34 +1,76 @@
-# Tanzanite HyperCore v3.0
+# Tanzanite HyperCore
 
-Lightweight C-native kernel tuner and dynamic performance optimizer tailored for **MediaTek Helio G99 Ultra** devices running **Linux Kernel 5.10.x**.
+Tanzanite HyperCore is a C-native background daemon and kernel tuner for MediaTek Helio G99 Ultra devices running Linux kernel 5.10.x.
 
-## System Requirements
+It dynamically adjusts CPU governor rate limits, GPU frequency floors, storage queue parameters, and virtual memory tunables based on active load and thermal conditions.
 
-- **Processor**: MediaTek Helio G99 Ultra (MT6789/MT6877 architecture)
-- **Kernel Version**: **Linux 5.10.x** *(Installation will automatically abort on Kernel 6.12 or other incompatible versions)*
-- **Root Solution**: Magisk / KernelSU / APatch
+## Requirements
 
-## Features
+- **Device**: MediaTek Helio G99 Ultra (MT6789 / MT6877)
+- **Kernel**: Linux 5.10.x (*Installation aborts on 6.12+*)
+- **Environment**: Rooted via KernelSU, APatch, or Magisk
 
-- **HyperCore C-Native Daemon**: Zero-overhead compiled C daemon running with minimal footprint (< 0.1% CPU, ~3 MB RAM).
-- **Thermal Hysteresis Protection**: Prevents thermal profile thrashing and rapid governor state flapping.
-- **Dynamic Profile Switching**:
-  - `Sleep`: Low power scaling when screen is turned off.
-  - `Interactive`: Balanced daily performance and power usage.
-  - `Touch`: Instant latency boost during dynamic UI touch events.
-  - `Gaming`: Peak performance mode for high GPU/CPU workloads.
-  - `Thermal`: Gradual throttling hold for thermal dissipation.
-- **System Tuning**: UFS/MMC IO queue tuning (`none` scheduler, 128KB read-ahead), TCP low latency tunables, ZRAM/VM optimization.
-- **KernelSU / APatch WebUI**: Integrated status dashboard for real-time monitoring and control.
+## Architecture
 
-## Installation
+The codebase is split into modular C components under `src/`:
 
-1. Build or download `Tanzanite-HyperCore-v3.0.zip`.
-2. Flash via Magisk, KernelSU, or APatch manager.
-3. Reboot device.
+```
+src/
+├── include/
+│   ├── common.hpp     # Types, structs, and constants
+│   ├── sysfs.hpp      # Sysfs read/write helpers
+│   ├── log.hpp        # Logging and file rotation
+│   ├── cpu.hpp        # Governor rate limits & scaling
+│   ├── gpu.hpp        # GED & MediaTek FPSGO tuning
+│   ├── memory.hpp     # VM & ZRAM tunables
+│   ├── io.hpp         # Storage queue & scheduler config
+│   └── thermal.hpp    # Thermal zone scanning & hysteresis
+├── cpu.c
+├── gpu.c
+├── io.c
+├── log.c
+├── main.c
+├── memory.c
+├── sysfs.c
+└── thermal.c
+```
 
-## Control
+## Profiles & Thermal Logic
 
-Manual profile locks can be placed at `/data/adb/modules/tanzanite_hypercore/.hypercore_lock`:
-- Write `GAMING` to lock Gaming profile.
-- Remove lock file to restore auto governor scaling.
+HyperCore evaluates system state every 2 seconds:
+
+| Profile | Conditions | Core Clock Targets |
+| :--- | :--- | :--- |
+| `Sleep` | Screen off | Minimized Little / Big freqs, relaxed governor rates |
+| `Interactive` | Daily usage | 900 MHz Little / 1100 MHz Big, zero ramp delay |
+| `Touch` | Dynamic load spikes | 1200 MHz Little / 1500 MHz Big boost |
+| `Gaming` | GPU load ≥ 35% | 1200 MHz Little / 1600 MHz Big, 800 MHz GPU floor |
+| `Thermal` | CPU ≥ 58°C or Bat ≥ 47°C | Throttling hold with 4-tick hysteresis recovery |
+
+## Building
+
+To compile the native binary and package the release ZIP:
+
+```bash
+./build.sh
+```
+
+The output ZIP will be placed in `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v3.0.zip`.
+
+## Manual Overrides
+
+To lock the system into Gaming mode manually, create a lock file:
+
+```bash
+echo "GAMING" > /data/adb/modules/tanzanite_hypercore/.hypercore_lock
+```
+
+Remove the file to return to automatic governor scaling:
+
+```bash
+rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock
+```
+
+## License
+
+GPL-3.0
