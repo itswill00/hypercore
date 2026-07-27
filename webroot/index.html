@@ -1,419 +1,244 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Tanzanite HyperCore</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HyperCore Dashboard</title>
   <style>
-    :root {
-      --bg: #0b0c10;
-      --card-bg: #13151c;
-      --border: #1e2230;
-      --text: #e2e8f0;
-      --text-muted: #64748b;
-      --accent: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.15);
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
     body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.5;
-      padding: 16px;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .container {
-      max-width: 480px;
+      background: #121212;
+      color: #e0e0e0;
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 500px;
       margin: 0 auto;
+      padding: 16px;
     }
-
-    header {
+    h2 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+    }
+    p.sub {
+      margin: 0 0 16px 0;
+      color: #888;
+      font-size: 13px;
+    }
+    .box {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 14px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 6px 0;
+      border-bottom: 1px solid #262626;
+      font-size: 13px;
     }
-
-    .brand-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: #ffffff;
+    .row:last-child {
+      border-bottom: none;
     }
-
-    .brand-sub {
-      font-size: 11px;
-      color: var(--text-muted);
+    .lbl {
+      color: #999;
     }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-      color: var(--success);
-      padding: 4px 10px;
-      border-radius: 99px;
-      font-size: 11px;
-      font-weight: 600;
+    .val {
+      font-weight: bold;
     }
-
-    .status-pill.offline {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.2);
-      color: var(--danger);
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: currentColor;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-
-    .card.full {
-      grid-column: span 2;
-    }
-
-    .card-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    .card-val {
-      font-size: 18px;
-      font-weight: 700;
-      color: #ffffff;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .card-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    .profile-tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 700;
-      background: var(--accent-glow);
-      color: var(--accent);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-    }
-
-    .profile-tag.Gaming {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--warning);
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-
-    .profile-tag.Thermal {
-      background: rgba(239, 68, 68, 0.15);
-      color: var(--danger);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+    .status-on { color: #4caf50; }
+    .status-off { color: #f44336; }
+    .btn-group {
+      display: flex;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
-
     button {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      touch-action: manipulation;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-
-    button:hover {
-      border-color: #2e3448;
-    }
-
-    button:active {
-      background: #1c202d;
-    }
-
-    button.primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #ffffff;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .feedback {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      flex: 1;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #3a3a3a;
       padding: 8px 12px;
-      font-size: 11px;
-      color: var(--success);
-      margin-bottom: 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:active {
+      background: #3a3a3a;
+    }
+    button.active {
+      background: #3f51b5;
+      border-color: #3f51b5;
+    }
+    #msg {
+      font-size: 12px;
+      color: #81c784;
+      margin-bottom: 10px;
       display: none;
     }
-
-    .feedback.active {
-      display: block;
-    }
-
-    .terminal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .terminal-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .refresh-link {
-      font-size: 11px;
-      color: var(--accent);
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .terminal {
-      background: #07080a;
-      border: 1px solid var(--border);
-      border-radius: 8px;
+    pre {
+      background: #0a0a0a;
+      border: 1px solid #222;
       padding: 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-radius: 4px;
       font-size: 11px;
-      color: #94a3b8;
-      height: 200px;
+      height: 180px;
       overflow-y: auto;
       white-space: pre-wrap;
-      word-break: break-all;
+      color: #aaa;
+      margin: 6px 0 0 0;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div>
-        <div class="brand-title">HyperCore v3.0</div>
-        <div class="brand-sub">Helio G99 Ultra System Tuner</div>
-      </div>
-      <div id="status_pill" class="status-pill">
-        <div class="dot"></div>
-        <span id="status_txt">Active</span>
-      </div>
-    </header>
 
-    <div class="grid">
-      <div class="card">
-        <div class="card-label">Active Profile</div>
-        <div id="profile_val" class="profile-tag">Interactive</div>
-        <div id="lock_val" class="card-sub">Mode: Auto</div>
-      </div>
+  <h2>Tanzanite HyperCore</h2>
+  <p class="sub">Kernel Tuner for MediaTek Helio G99 Ultra</p>
 
-      <div class="card">
-        <div class="card-label">GPU Load</div>
-        <div id="gpu_val" class="card-val">0%</div>
-        <div id="load_val" class="card-sub">Sys Load: --</div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">CPU (0-5 / 6-7)</div>
-        <div id="cpu_val" class="card-val">-- / --</div>
-        <div id="cpu_sub" class="card-sub">MHz</div>
-      </div>
-
-      <div class="card">
-        <div class="card-label">Temperatures</div>
-        <div id="temp_val" class="card-val">--°C / --°C</div>
-        <div id="chg_val" class="card-sub">CPU / Battery</div>
-      </div>
+  <div class="box">
+    <div class="row">
+      <span class="lbl">Daemon Status</span>
+      <span class="val status-on" id="st_daemon">Checking...</span>
     </div>
-
-    <div class="controls">
-      <button id="btn_lock" onclick="toggleLock()">Lock Gaming</button>
-      <button id="btn_flush" onclick="runCmd('flush')">Flush ZRAM</button>
-      <button id="btn_restart" onclick="runCmd('restart')" style="grid-column: span 2;">Restart Service</button>
+    <div class="row">
+      <span class="lbl">Active Profile</span>
+      <span class="val" id="st_profile">-</span>
     </div>
-
-    <div id="feedback_box" class="feedback"></div>
-
-    <div class="terminal-header">
-      <span class="terminal-title">System Log Stream</span>
-      <span class="refresh-link" onclick="fetchMetrics()">Refresh</span>
+    <div class="row">
+      <span class="lbl">Governor Mode</span>
+      <span class="val" id="st_mode">Auto</span>
     </div>
-    <div id="log_terminal" class="terminal">Initializing...</div>
+    <div class="row">
+      <span class="lbl">Little Cores (CPU 0-5)</span>
+      <span class="val" id="st_cpulow">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Big Cores (CPU 6-7)</span>
+      <span class="val" id="st_cpuhigh">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">GPU Load</span>
+      <span class="val" id="st_gpu">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">CPU / Battery Temp</span>
+      <span class="val" id="st_temp">-</span>
+    </div>
   </div>
+
+  <div class="btn-group">
+    <button id="btn_mode" onclick="toggleGamingLock()">Lock Gaming</button>
+    <button onclick="flushRam()">Flush RAM</button>
+    <button onclick="restartDaemon()">Restart</button>
+  </div>
+
+  <div id="msg"></div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <span style="font-size:12px; color:#888;">Daemon Logs</span>
+    <a href="#" onclick="refreshData(); return false;" style="font-size:12px; color:#7986cb; text-decoration:none;">Refresh</a>
+  </div>
+  <pre id="log_box">Loading logs...</pre>
 
   <script>
     var isGamingLocked = false;
 
-    function execShell(cmd) {
+    function runShell(cmd) {
       return new Promise(function(resolve, reject) {
         if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
-          var cb = "ksu_cb_" + Date.now();
-          window[cb] = function(code, out, err) {
+          var cb = "cb_" + Date.now();
+          window[cb] = function(code, stdout, stderr) {
             delete window[cb];
-            resolve(out || err || "");
+            resolve(stdout || stderr || "");
           };
           ksu.exec(cmd, "{}", cb);
-          return;
-        }
-        if (typeof exec === "function") {
+        } else if (typeof exec === "function") {
           exec(cmd).then(function(res) {
             resolve(typeof res === "object" ? (res.stdout || res.stderr || "") : String(res));
           }).catch(reject);
-          return;
+        } else {
+          reject("Manager interface not found");
         }
-        reject("Root manager interface unavailable");
       });
     }
 
-    function showToast(msg) {
-      var box = document.getElementById('feedback_box');
-      box.innerText = msg;
-      box.className = 'feedback active';
-      setTimeout(function() { box.className = 'feedback'; }, 3000);
+    function showMsg(text) {
+      var el = document.getElementById("msg");
+      el.innerText = text;
+      el.style.display = "block";
+      setTimeout(function() { el.style.display = "none"; }, 3000);
     }
 
-    function toggleLock() {
+    function toggleGamingLock() {
       var cmd = isGamingLocked
-        ? "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Auto Mode Restored'"
-        : "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Gaming Mode Locked'";
+        ? "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Mode: Auto'"
+        : "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Mode: Gaming Locked'";
 
-      execShell(cmd).then(function(res) {
-        showToast(res.trim());
-        setTimeout(fetchMetrics, 300);
-      }).catch(function(e) { showToast(String(e)); });
+      runShell(cmd).then(function(out) {
+        showMsg(out.trim());
+        refreshData();
+      });
     }
 
-    function runCmd(type) {
-      var cmd = "";
-      if (type === 'flush') {
-        cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'Memory & ZRAM Flushed'";
-      } else if (type === 'restart') {
-        cmd = "pkill -9 -x hypercore 2>/dev/null; sleep 1; /data/adb/modules/tanzanite_hypercore/hypercore; echo 'HyperCore Restarted'";
-      }
-
-      execShell(cmd).then(function(res) {
-        showToast(res.trim());
-        setTimeout(fetchMetrics, 400);
-      }).catch(function(e) { showToast(String(e)); });
+    function flushRam() {
+      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM and ZRAM flushed'").then(function(out) {
+        showMsg(out.trim());
+      });
     }
 
-    function fetchMetrics() {
-      var statusCmd = [
-        'pgrep -x "hypercore" >/dev/null && echo "STATUS:ONLINE" || echo "STATUS:OFFLINE"',
-        'c0=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'c6=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "FREQ:${c0}/${c6}"',
-        'gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
-        'read avg _ < /proc/loadavg 2>/dev/null',
-        'echo "LOAD:${gpu}:${avg}"',
-        'ctemp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
-        'btemp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)',
-        'bstat=$(cat /sys/class/power_supply/battery/status 2>/dev/null || echo "N/A")',
-        'echo "TEMP:$((ctemp / 1000)):$((btemp / 10)):${bstat}"',
-        '[ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo "LOCK:GAMING" || echo "LOCK:AUTO"'
-      ].join('; ');
+    function restartDaemon() {
+      runShell("pkill -9 -x hypercore 2>/dev/null; sleep 1; /data/adb/modules/tanzanite_hypercore/hypercore; echo 'Daemon restarted'").then(function(out) {
+        showMsg(out.trim());
+        refreshData();
+      });
+    }
 
-      execShell(statusCmd).then(function(out) {
-        var lines = (out || "").split('\n');
-        lines.forEach(function(l) {
-          if (l.indexOf('STATUS:') === 0) {
-            var online = l.split(':')[1] === 'ONLINE';
-            document.getElementById('status_pill').className = online ? 'status-pill' : 'status-pill offline';
-            document.getElementById('status_txt').innerText = online ? 'Active' : 'Stopped';
-          }
-          if (l.indexOf('FREQ:') === 0) {
-            var parts = l.split(':')[1].split('/');
-            document.getElementById('cpu_val').innerText = parts[0] + ' / ' + parts[1];
-          }
-          if (l.indexOf('LOAD:') === 0) {
-            var parts = l.split(':')[1].split(':');
-            document.getElementById('gpu_val').innerText = parts[0] + '%';
-            document.getElementById('load_val').innerText = 'Sys Load: ' + parts[1];
-          }
-          if (l.indexOf('TEMP:') === 0) {
-            var parts = l.split(':')[1].split(':');
-            document.getElementById('temp_val').innerText = parts[0] + '°C / ' + parts[1] + '°C';
-            document.getElementById('chg_val').innerText = parts[2] === 'Charging' ? 'Bat: Charging ⚡' : 'Bat: Discharging';
-          }
-          if (l.indexOf('LOCK:') === 0) {
-            isGamingLocked = (l.split(':')[1] === 'GAMING');
-            document.getElementById('btn_lock').innerText = isGamingLocked ? 'Unlock Auto' : 'Lock Gaming';
-            document.getElementById('btn_lock').className = isGamingLocked ? 'primary' : '';
-            document.getElementById('lock_val').innerText = 'Mode: ' + (isGamingLocked ? 'Gaming Lock' : 'Auto');
-          }
-        });
-      }).catch(console.log);
+    function refreshData() {
+      var cmd = [
+        'pgrep -x "hypercore" >/dev/null && echo "RUNNING" || echo "STOPPED"',
+        'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0',
+        'cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0',
+        'cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0',
+        'cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0',
+        'cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0',
+        '([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ]) && echo "GAMING" || echo "AUTO"'
+      ].join('; echo "---"; ');
 
-      execShell("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
+      runShell(cmd).then(function(res) {
+        var parts = res.trim().split('---');
+        if (parts.length >= 7) {
+          var running = parts[0].trim() === "RUNNING";
+          var dEl = document.getElementById("st_daemon");
+          dEl.innerText = running ? "Running" : "Stopped";
+          dEl.className = "val " + (running ? "status-on" : "status-off");
+
+          document.getElementById("st_cpulow").innerText = (parseInt(parts[1].trim()) / 1000) + " MHz";
+          document.getElementById("st_cpuhigh").innerText = (parseInt(parts[2].trim()) / 1000) + " MHz";
+          document.getElementById("st_gpu").innerText = parts[3].trim() + "%";
+          document.getElementById("st_temp").innerText = (parseInt(parts[4].trim()) / 1000) + "°C / " + (parseInt(parts[5].trim()) / 10) + "°C";
+
+          isGamingLocked = (parts[6].trim() === "GAMING");
+          document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock" : "Auto";
+          var btn = document.getElementById("btn_mode");
+          btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
+          btn.className = isGamingLocked ? "active" : "";
+        }
+      });
+
+      runShell("tail -n 20 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
         if (log) {
-          document.getElementById('log_terminal').innerText = log.trim();
+          document.getElementById("log_box").innerText = log.trim();
           var lines = log.trim().split('\n');
           var last = lines[lines.length - 1];
-          if (last && last.indexOf('Profile:') !== -1) {
-            var prof = last.split('Profile:')[1].trim().split(' ')[0];
-            var el = document.getElementById('profile_val');
-            el.innerText = prof;
-            el.className = 'profile-tag ' + prof;
+          if (last && last.indexOf("Profile:") !== -1) {
+            var p = last.split("Profile:")[1].trim().split(" ")[0];
+            document.getElementById("st_profile").innerText = p;
           }
         }
-      }).catch(console.log);
+      });
     }
 
-    setInterval(fetchMetrics, 2500);
-    fetchMetrics();
+    setInterval(refreshData, 3000);
+    refreshData();
   </script>
 </body>
 </html>
