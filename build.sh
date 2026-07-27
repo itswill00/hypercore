@@ -2,7 +2,7 @@
 # Tanzanite HyperCore Automated Build & Packaging Script
 # Author: @itswill00
 
-MOD_DIR="/data/data/com.termux/files/home/HyperFlow_Module"
+MOD_DIR="/data/data/com.termux/files/home/HyperCore_Module"
 OUT_DIR="/data/data/com.termux/files/home/Tanzanite_HyperCore_Release"
 ZIP_NAME="Tanzanite-HyperCore-v3.0.zip"
 
