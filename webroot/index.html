@@ -9,29 +9,30 @@
       background: #121212;
       color: #e0e0e0;
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 500px;
+      max-width: 520px;
       margin: 0 auto;
       padding: 16px;
     }
     h2 {
-      margin: 0 0 4px 0;
+      margin: 0 0 2px 0;
       font-size: 18px;
     }
     p.sub {
       margin: 0 0 16px 0;
       color: #888;
-      font-size: 13px;
+      font-size: 12px;
     }
     .box {
       background: #1e1e1e;
       border: 1px solid #2a2a2a;
       border-radius: 6px;
-      padding: 12px 14px;
+      padding: 10px 14px;
       margin-bottom: 14px;
     }
     .row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 6px 0;
       border-bottom: 1px solid #262626;
       font-size: 13px;
@@ -44,6 +45,7 @@
     }
     .val {
       font-weight: bold;
+      font-variant-numeric: tabular-nums;
     }
     .status-on { color: #4caf50; }
     .status-off { color: #f44336; }
@@ -92,7 +94,7 @@
 <body>
 
   <h2>Tanzanite HyperCore</h2>
-  <p class="sub">Kernel Tuner for MediaTek Helio G99 Ultra</p>
+  <p class="sub">Kernel Tuner for MediaTek Helio G99 Ultra (Linux 5.10.x)</p>
 
   <div class="box">
     <div class="row">
@@ -102,6 +104,10 @@
     <div class="row">
       <span class="lbl">Active Profile</span>
       <span class="val" id="st_profile">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Thermal Tier</span>
+      <span class="val" id="st_tier">Tier 0 (Optimal)</span>
     </div>
     <div class="row">
       <span class="lbl">Governor Mode</span>
@@ -116,12 +122,28 @@
       <span class="val" id="st_cpuhigh">-</span>
     </div>
     <div class="row">
-      <span class="lbl">GPU Load</span>
+      <span class="lbl">GPU Load & Floor Freq</span>
       <span class="val" id="st_gpu">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">System Load Avg</span>
+      <span class="val" id="st_load">-</span>
     </div>
     <div class="row">
       <span class="lbl">CPU / Battery Temp</span>
       <span class="val" id="st_temp">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Power / Charging State</span>
+      <span class="val" id="st_chg">-</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Storage I/O Scheduler</span>
+      <span class="val">none | 128KB</span>
+    </div>
+    <div class="row">
+      <span class="lbl">VM Swappiness / VFS</span>
+      <span class="val">65 / 90</span>
     </div>
   </div>
 
@@ -194,29 +216,45 @@
 
     function refreshData() {
       var cmd = [
-        'pgrep -x "hypercore" >/dev/null && echo "RUNNING" || echo "STOPPED"',
-        'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0',
-        'cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0',
-        'cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0',
-        'cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0',
-        'cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0',
+        'pid=$(pgrep -x "hypercore" 2>/dev/null | head -n 1); [ -n "$pid" ] && echo "Running ($pid)" || echo "Stopped"',
+        'c0_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'c0_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'c0_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "${c0_cur} MHz [${c0_min}-${c0_max}]"',
+        'c6_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'c6_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'c6_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "${c6_cur} MHz [${c6_min}-${c6_max}]"',
+        'gpu_l=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
+        'gpu_f=$(( $(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "${gpu_l}% | ${gpu_f} MHz floor"',
+        'read avg _ < /proc/loadavg 2>/dev/null; echo "${avg:-0}"',
+        'ctemp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
+        'btemp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)',
+        'echo "$((ctemp / 1000))°C / $((btemp / 10))°C"',
+        'cat /sys/class/power_supply/battery/status 2>/dev/null || echo "Discharging"',
         '([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ]) && echo "GAMING" || echo "AUTO"'
       ].join('; echo "---"; ');
 
       runShell(cmd).then(function(res) {
         var parts = res.trim().split('---');
-        if (parts.length >= 7) {
-          var running = parts[0].trim() === "RUNNING";
+        if (parts.length >= 8) {
+          var dStatus = parts[0].trim();
+          var isRunning = dStatus.indexOf("Running") !== -1;
           var dEl = document.getElementById("st_daemon");
-          dEl.innerText = running ? "Running" : "Stopped";
-          dEl.className = "val " + (running ? "status-on" : "status-off");
+          dEl.innerText = dStatus;
+          dEl.className = "val " + (isRunning ? "status-on" : "status-off");
 
-          document.getElementById("st_cpulow").innerText = (parseInt(parts[1].trim()) / 1000) + " MHz";
-          document.getElementById("st_cpuhigh").innerText = (parseInt(parts[2].trim()) / 1000) + " MHz";
-          document.getElementById("st_gpu").innerText = parts[3].trim() + "%";
-          document.getElementById("st_temp").innerText = (parseInt(parts[4].trim()) / 1000) + "°C / " + (parseInt(parts[5].trim()) / 10) + "°C";
+          document.getElementById("st_cpulow").innerText = parts[1].trim();
+          document.getElementById("st_cpuhigh").innerText = parts[2].trim();
+          document.getElementById("st_gpu").innerText = parts[3].trim();
+          document.getElementById("st_load").innerText = parts[4].trim();
+          document.getElementById("st_temp").innerText = parts[5].trim();
+          
+          var bStat = parts[6].trim();
+          document.getElementById("st_chg").innerText = bStat === "Charging" ? "Charging ⚡" : "Discharging";
 
-          isGamingLocked = (parts[6].trim() === "GAMING");
+          isGamingLocked = (parts[7].trim() === "GAMING");
           document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock" : "Auto";
           var btn = document.getElementById("btn_mode");
           btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
@@ -229,15 +267,23 @@
           document.getElementById("log_box").innerText = log.trim();
           var lines = log.trim().split('\n');
           var last = lines[lines.length - 1];
-          if (last && last.indexOf("Profile:") !== -1) {
-            var p = last.split("Profile:")[1].trim().split(" ")[0];
-            document.getElementById("st_profile").innerText = p;
+          if (last) {
+            if (last.indexOf("Profile:") !== -1) {
+              var p = last.split("Profile:")[1].trim().split(" ")[0];
+              document.getElementById("st_profile").innerText = p;
+            }
+            if (last.indexOf("Thermal Tier:") !== -1 || last.indexOf("CPU:") !== -1) {
+              if (last.indexOf("T3") !== -1 || last.indexOf("Thermal") !== -1) document.getElementById("st_tier").innerText = "Tier 3 (Hold)";
+              else if (last.indexOf("T2") !== -1) document.getElementById("st_tier").innerText = "Tier 2 (Warm)";
+              else if (last.indexOf("T1") !== -1) document.getElementById("st_tier").innerText = "Tier 1 (Normal)";
+              else document.getElementById("st_tier").innerText = "Tier 0 (Optimal)";
+            }
           }
         }
       });
     }
 
-    setInterval(refreshData, 3000);
+    setInterval(refreshData, 2500);
     refreshData();
   </script>
 </body>
