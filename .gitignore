@@ -4,7 +4,7 @@
 *.log
 .hyperflow_lock
 .hypercore_lock
-engine.pid
+checksums.sha256
 
 # OS generated files
 .DS_Store
