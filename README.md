@@ -1,24 +1,22 @@
 # Tanzanite HyperFlow
 
-Kernel and system performance tuner tailored for the MediaTek Helio G99 Ultra (MT6789) platform running HyperOS, MIUI, or AOSP.
+Kernel and system performance tuner for MediaTek Helio G99 Ultra (MT6789) running HyperOS, MIUI, or AOSP.
 
-Developed by **@itswill00**.
+Author: **@itswill00**
 
 ---
 
-## Overview
+## What it does
 
-Tanzanite HyperFlow replaces static kernel parameters with a lightweight native daemon (`hyperflow_engine`) written in C. The daemon dynamically adjusts CPU governor rate limits, GPU bottom frequencies, storage queue schedulers, and ZRAM parameters based on system load, thermal state, and active foreground applications.
+Tanzanite HyperFlow runs a lightweight C daemon (`hyperflow_engine`) that dynamically tunes CPU scaling, GPU frequencies, storage queues, and ZRAM based on current load, thermal state, and active apps.
 
-## Features
-
-- **Native C Engine:** Compiled AArch64 ELF binary (`hyperflow_engine`) operating with zero shell parsing overhead.
-- **Dynamic Profile Governor:** Transitions between `Sleep`, `Interactive`, `Touch Boost`, `Gaming`, and `Thermal Protection` states.
-- **Storage Queue Tuning:** Configures UFS block queues to `none` scheduler to eliminate software queuing latency.
-- **Memory Optimization:** Sets `vm.page-cluster = 0` for direct ZRAM swap I/O and manages proactive compaction.
-- **Network Tuning:** Configures `cubic` / `bbr` TCP congestion control and enables Wi-Fi low-latency mode.
-- **SurfaceFlinger Alignment:** Applies phase offset tuning to reduce touch rendering latency without forcing panel refresh rates.
-- **KernelSU WebUI & CLI:** Includes a native web interface for KernelSU and a terminal management utility (`tanzanite`).
+- **Native C Engine:** Compiles to a 22 KB ARM64 binary with zero subshell overhead and low RAM usage (<500 KB).
+- **Dynamic Profiles:** Automatically switches between `Sleep`, `Interactive`, `Touch Boost`, `Gaming`, and `Thermal Protection`.
+- **UI Smoothness:** Sets CPU frequency ramp rate limits (`up_rate_limit_us`) to `0us` for instant response on touch.
+- **Storage Queues:** Configures UFS storage queues to `none` scheduler with 128 KB read-ahead.
+- **Memory Tuning:** Sets `vm.page-cluster = 0` for direct ZRAM swap I/O.
+- **Network Tuning:** Sets `cubic` TCP congestion control and enables Wi-Fi low-latency mode.
+- **KernelSU WebUI & CLI:** Web dashboard for KernelSU and terminal CLI utility (`tanzanite`).
 
 ## Installation
 
@@ -26,28 +24,17 @@ Tanzanite HyperFlow replaces static kernel parameters with a lightweight native 
 2. Flash `Tanzanite-HyperFlow-v2.5.zip`.
 3. Reboot your device.
 
-## Command Line Interface
+## CLI Usage
 
-You can control and monitor the module using the `tanzanite` CLI utility in a root terminal:
+Run `tanzanite` in a root shell (`su`):
 
-```bash
-tanzanite          # Display live CPU, GPU, temperature, and profile status
-tanzanite -g       # Lock system to Gaming mode
-tanzanite -u       # Restore automatic dynamic profile governor
-tanzanite -f       # Flush RAM page cache and compact memory
-tanzanite -s       # Display active kernel and network tunables
-tanzanite -l       # Show recent engine log output
-```
-
-## Structure
-
-```
-Tanzanite_HyperFlow_Release/
-├── Tanzanite-HyperFlow-v2.5.zip
-├── README.md
-└── LICENSE
-```
+- `tanzanite` — Check live status
+- `tanzanite -g` — Lock Gaming mode
+- `tanzanite -u` — Restore auto governor
+- `tanzanite -f` — Flush RAM cache
+- `tanzanite -s` — View active tunables
+- `tanzanite -l` — Show recent logs
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT License.
