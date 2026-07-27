@@ -95,16 +95,23 @@
       background: #262626;
       border: 1px solid #333333;
       color: #e0e0e0;
-      padding: 9px 0;
+      padding: 10px 0;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s ease;
+      touch-action: manipulation;
+      transition: all 0.15s ease;
     }
 
     button:active {
-      background: #333333;
+      background: #383838;
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     button.primary {
@@ -137,7 +144,7 @@
       font-family: monospace;
       font-size: 11px;
       color: #b0b0b0;
-      height: 240px;
+      height: 220px;
       overflow-y: auto;
       white-space: pre-wrap;
       margin-top: 8px;
@@ -213,6 +220,8 @@
 
   <script>
     var cbCounter = 0;
+    var isBusy = false;
+    var autoRefreshTimer = null;
 
     function ksuExec(command) {
       return new Promise(function(resolve, reject) {
@@ -253,13 +262,25 @@
       fb.className = 'feedback-banner active';
       setTimeout(function() {
         fb.className = 'feedback-banner';
-      }, 4000);
+      }, 3500);
+    }
+
+    function setButtonsDisabled(disabled) {
+      var btnIds = ['btn_game', 'btn_auto', 'btn_flush', 'btn_restart'];
+      btnIds.forEach(function(id) {
+        var b = document.getElementById(id);
+        if (b) b.disabled = disabled;
+      });
     }
 
     function runAction(act) {
+      if (isBusy) return;
+      isBusy = true;
+
       var btn = document.getElementById('btn_' + act);
       var origText = btn ? btn.innerText : '';
-      if (btn) btn.innerText = 'Executing...';
+      if (btn) btn.innerText = 'Wait...';
+      setButtonsDisabled(true);
 
       var cmd = "";
       if (act === 'game') {
@@ -267,43 +288,36 @@
       } else if (act === 'auto') {
         cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock";
       } else if (act === 'flush') {
-        cmd = "echo 3 > /proc/sys/vm/drop_caches && echo 1 > /proc/sys/vm/compact_memory && echo RAM flushed.";
+        cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM flushed & ZRAM compacted.'";
       } else if (act === 'restart') {
-        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo Daemon restarted.";
+        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo 'Daemon restarted.'";
       }
 
       ksuExec(cmd).then(function(outText) {
         if (btn) btn.innerText = origText;
-        showFeedback(outText ? outText.trim() : ("Action executed: " + act), false);
-        updateData();
+        setButtonsDisabled(false);
+        isBusy = false;
+        showFeedback(outText ? outText.trim() : ("Executed: " + act), false);
+        setTimeout(updateData, 500);
       }).catch(function(err) {
         if (btn) btn.innerText = origText;
+        setButtonsDisabled(false);
+        isBusy = false;
         showFeedback("Error: " + String(err), true);
       });
     }
 
     function updateData() {
-      var cmdStatus = [
-        'pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)',
-        '[ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"',
-        'l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"',
-        'b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"',
-        'gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
-        'read load_avg _ < /proc/loadavg 2>/dev/null',
-        'echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"',
-        'c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
-        'b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)',
-        'echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"',
-        'lock="AUTO"',
-        '[ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock="GAMING LOCK"',
-        'echo "LOCK: $lock"'
-      ].join('; ');
+      if (isBusy) return;
+
+      var cmdStatus = "pid=$(pgrep -f 'hyperflow_engine' | grep -v 'webroot' | head -n 1); " +
+        "[ -n \"$pid\" ] && echo \"DAEMON: Running ($pid)\" || echo \"DAEMON: Stopped\"; " +
+        "echo \"LITTLE: $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 )) MHz [min $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 )) | max $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))]\"; " +
+        "echo \"BIG: $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 )) MHz [min $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 )) | max $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))]\"; " +
+        "read load_avg _ < /proc/loadavg 2>/dev/null; " +
+        "echo \"LOAD: $(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)% load | sys load ${load_avg:-0}\"; " +
+        "echo \"TEMP: $(( $(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0) / 1000 ))°C / $(( $(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0) / 1000 ))°C\"; " +
+        "lock=\"AUTO\"; [ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock=\"GAMING LOCK\"; echo \"LOCK: $lock\"";
 
       ksuExec(cmdStatus).then(function(out) {
         var lines = (out || "").split('\n');
@@ -325,7 +339,7 @@
         });
       }).catch(console.log);
 
-      ksuExec("tail -n 30 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(function(log) {
+      ksuExec("tail -n 25 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(function(log) {
         if (log) {
           document.getElementById('log_text').innerText = log.trim();
           var lines = log.trim().split('\n');
@@ -338,7 +352,7 @@
       }).catch(console.log);
     }
 
-    setInterval(updateData, 2000);
+    autoRefreshTimer = setInterval(updateData, 3000);
     updateData();
   </script>
 </body>
