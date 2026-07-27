@@ -89,16 +89,19 @@ case "$1" in
         ;;
     "-r"|"--restart")
         echo "Restarting Tanzanite HyperFlow daemon..."
-        pkill -f "hyperflow_engine.sh" 2>/dev/null
+        pkill -f "hyperflow_engine" 2>/dev/null
         sleep 1
-        if [ -f "$MOD_DIR/hyperflow_engine.sh" ]; then
+        if [ -f "$MOD_DIR/hyperflow_engine" ]; then
+            nohup "$MOD_DIR/hyperflow_engine" >/dev/null 2>&1 &
+            echo "Daemon restarted successfully!"
+        elif [ -f "./hyperflow_engine" ]; then
+            nohup ./hyperflow_engine >/dev/null 2>&1 &
+            echo "Daemon restarted successfully!"
+        elif [ -f "$MOD_DIR/hyperflow_engine.sh" ]; then
             nohup "$MOD_DIR/hyperflow_engine.sh" >/dev/null 2>&1 &
             echo "Daemon restarted successfully!"
-        elif [ -f "./hyperflow_engine.sh" ]; then
-            nohup ./hyperflow_engine.sh >/dev/null 2>&1 &
-            echo "Daemon restarted successfully!"
         else
-            echo "Error: Could not locate hyperflow_engine.sh"
+            echo "Error: Could not locate hyperflow_engine binary"
         fi
         ;;
     "-s"|"--stats")
@@ -138,7 +141,7 @@ case "$1" in
         echo "  -h, --help   Show this help message"
         ;;
     *)
-        PID=$(pgrep -f "hyperflow_engine.sh" | head -n 1)
+        PID=$(pgrep -f "hyperflow_engine" | grep -v "tanzanite" | head -n 1)
         STATUS="Stopped"
         [ -n "$PID" ] && STATUS="Running (pid $PID)"
 
@@ -166,7 +169,7 @@ case "$1" in
         LOCK_STATE="AUTO"
         [ -f "$LOCK_FILE" ] && LOCK_STATE="LOCKED (GAMING)"
 
-        echo "tanzanite v2.5 by @itswill00 (Enhanced Engine)"
+        echo "tanzanite v2.5 by @itswill00"
         echo "---------------------------------"
         echo "Daemon      : $STATUS"
         echo "Profile     : ${PROFILE:-Interactive} [$LOCK_STATE]"
