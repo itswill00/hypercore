@@ -212,12 +212,12 @@
   </div>
 
   <script>
-    let cbCounter = 0;
+    var cbCounter = 0;
 
     function ksuExec(command) {
-      return new Promise((resolve, reject) => {
+      return new Promise(function(resolve, reject) {
         if (typeof ksu !== "undefined" && typeof ksu.exec === "function") {
-          const fnName = "ksu_cb_" + Date.now() + "_" + (cbCounter++);
+          var fnName = "ksu_cb_" + Date.now() + "_" + (cbCounter++);
           window[fnName] = function(errno, stdout, stderr) {
             delete window[fnName];
             resolve(stdout || stderr || "");
@@ -233,7 +233,7 @@
 
         if (typeof exec === "function") {
           try {
-            exec(command).then(res => {
+            exec(command).then(function(res) {
               if (typeof res === "object") resolve(res.stdout || res.stderr || JSON.stringify(res));
               else resolve(String(res));
             }).catch(reject);
@@ -246,96 +246,92 @@
     }
 
     function showFeedback(msg, isError) {
-      const fb = document.getElementById('action_feedback');
+      var fb = document.getElementById('action_feedback');
       if (!fb) return;
       fb.innerText = msg;
       fb.style.color = isError ? '#ff9800' : '#4caf50';
       fb.className = 'feedback-banner active';
-      setTimeout(() => {
+      setTimeout(function() {
         fb.className = 'feedback-banner';
       }, 4000);
     }
 
     function runAction(act) {
-      const btn = document.getElementById('btn_' + act);
-      const origText = btn ? btn.innerText : '';
+      var btn = document.getElementById('btn_' + act);
+      var origText = btn ? btn.innerText : '';
       if (btn) btn.innerText = 'Executing...';
 
-      let cmd = "";
+      var cmd = "";
       if (act === 'game') {
         cmd = "echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock || echo GAMING > /sdcard/Android/.hyperflow_lock";
       } else if (act === 'auto') {
         cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock";
       } else if (act === 'flush') {
-        cmd = "echo 3 > /proc/sys/vm/drop_caches && echo 1 > /proc/sys/vm/compact_memory && echo 'RAM flushed & ZRAM compacted.'";
+        cmd = "echo 3 > /proc/sys/vm/drop_caches && echo 1 > /proc/sys/vm/compact_memory && echo RAM flushed.";
       } else if (act === 'restart') {
-        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo 'Daemon restarted.'";
+        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo Daemon restarted.";
       }
 
-      ksuExec(cmd).then(outText => {
+      ksuExec(cmd).then(function(outText) {
         if (btn) btn.innerText = origText;
-        showFeedback(outText.trim() || ("Action executed: " + act), false);
+        showFeedback(outText ? outText.trim() : ("Action executed: " + act), false);
         updateData();
-      }).catch(err => {
+      }).catch(function(err) {
         if (btn) btn.innerText = origText;
         showFeedback("Error: " + String(err), true);
       });
     }
 
     function updateData() {
-      const cmdStatus = `
-        pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)
-        [ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"
+      var cmdStatus = [
+        'pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)',
+        '[ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"',
+        'l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"',
+        'b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"',
+        'gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
+        'read load_avg _ < /proc/loadavg 2>/dev/null',
+        'echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"',
+        'c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
+        'b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)',
+        'echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"',
+        'lock="AUTO"',
+        '[ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock="GAMING LOCK"',
+        'echo "LOCK: $lock"'
+      ].join('; ');
 
-        l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))
-        l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))
-        l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))
-        echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"
-
-        b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))
-        b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))
-        b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))
-        echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"
-
-        gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)
-        read load_avg _ < /proc/loadavg 2>/dev/null
-        echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"
-
-        c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
-        b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)
-        echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"
-
-        lock="AUTO"
-        [ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock="GAMING LOCK"
-        echo "LOCK: $lock"
-      `;
-
-      ksuExec(cmdStatus).then(out => {
-        const lines = out.split('\n');
-        lines.forEach(l => {
-          if (l.includes('DAEMON:')) {
-            const val = l.replace('DAEMON:', '').trim();
+      ksuExec(cmdStatus).then(function(out) {
+        var lines = (out || "").split('\n');
+        lines.forEach(function(l) {
+          if (l.indexOf('DAEMON:') !== -1) {
+            var val = l.replace('DAEMON:', '').trim();
             document.getElementById('daemon_txt').innerText = val;
-            document.getElementById('daemon_txt').className = val.includes('Running') ? 'val green' : 'val orange';
+            document.getElementById('daemon_txt').className = val.indexOf('Running') !== -1 ? 'val green' : 'val orange';
           }
-          if (l.includes('LITTLE:')) document.getElementById('little_val').innerText = l.replace('LITTLE:', '').trim();
-          if (l.includes('BIG:')) document.getElementById('big_val').innerText = l.replace('BIG:', '').trim();
-          if (l.includes('LOAD:')) document.getElementById('load_val').innerText = l.replace('LOAD:', '').trim();
-          if (l.includes('TEMP:')) document.getElementById('temp_val').innerText = l.replace('TEMP:', '').trim();
-          if (l.includes('LOCK:')) {
-            const lockState = l.replace('LOCK:', '').trim();
+          if (l.indexOf('LITTLE:') !== -1) document.getElementById('little_val').innerText = l.replace('LITTLE:', '').trim();
+          if (l.indexOf('BIG:') !== -1) document.getElementById('big_val').innerText = l.replace('BIG:', '').trim();
+          if (l.indexOf('LOAD:') !== -1) document.getElementById('load_val').innerText = l.replace('LOAD:', '').trim();
+          if (l.indexOf('TEMP:') !== -1) document.getElementById('temp_val').innerText = l.replace('TEMP:', '').trim();
+          if (l.indexOf('LOCK:') !== -1) {
+            var lockState = l.replace('LOCK:', '').trim();
             document.getElementById('lock_val').innerText = lockState;
-            document.getElementById('lock_val').className = lockState.includes('GAMING') ? 'val orange' : 'val';
+            document.getElementById('lock_val').className = lockState.indexOf('GAMING') !== -1 ? 'val orange' : 'val';
           }
         });
       }).catch(console.log);
 
-      ksuExec("tail -n 30 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(log => {
+      ksuExec("tail -n 30 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(function(log) {
         if (log) {
           document.getElementById('log_text').innerText = log.trim();
-          const lastLog = log.trim().split('\n').pop();
-          if (lastLog && lastLog.includes('Profile:')) {
-            const p = lastLog.split('Profile:')[1].trim().split(' ')[0];
+          var lines = log.trim().split('\n');
+          var lastLog = lines[lines.length - 1];
+          if (lastLog && lastLog.indexOf('Profile:') !== -1) {
+            var p = lastLog.split('Profile:')[1].trim().split(' ')[0];
             document.getElementById('profile_val').innerText = p;
           }
         }
