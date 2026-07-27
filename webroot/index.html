@@ -216,71 +216,106 @@
 
     function refreshData() {
       var cmd = [
-        'pid=$(pgrep -x "hypercore" 2>/dev/null | head -n 1); [ -n "$pid" ] && echo "Running ($pid)" || echo "Stopped"',
-        'c0_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'c0_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'c0_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "${c0_cur} MHz [${c0_min}-${c0_max}]"',
-        'c6_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
-        'c6_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
-        'c6_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "${c6_cur} MHz [${c6_min}-${c6_max}]"',
-        'gpu_l=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
-        'gpu_f=$(( $(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null || echo 0) / 1000 ))',
-        'echo "${gpu_l}% | ${gpu_f} MHz floor"',
-        'read avg _ < /proc/loadavg 2>/dev/null; echo "${avg:-0}"',
-        'ctemp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
-        'btemp=$(cat /sys/class/power_supply/battery/temp 2>/dev/null || echo 0)',
-        'echo "$((ctemp / 1000))°C / $((btemp / 10))°C"',
-        'cat /sys/class/power_supply/battery/status 2>/dev/null || echo "Discharging"',
-        '([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ]) && echo "GAMING" || echo "AUTO"'
-      ].join('; echo "---"; ');
+        'echo "STATUS:$(pgrep -x \"hypercore\" 2>/dev/null | head -n 1)"',
+        'echo "CPULOW:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"',
+        'echo "CPUHIGH:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)"',
+        'echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)"',
+        'echo "LOAD:$(cat /proc/loadavg 2>/dev/null | awk \'{print $1}\')"',
+        'echo "CPUTEMP:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"',
+        'echo "BATTEMP:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)"',
+        'echo "BATSTAT:$(cat /sys/class/power_supply/battery/status 2>/dev/null)"',
+        'echo "LOCK:$([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo GAMING || echo AUTO)"'
+      ].join('\n');
 
       runShell(cmd).then(function(res) {
-        var parts = res.trim().split('---');
-        if (parts.length >= 8) {
-          var dStatus = parts[0].trim();
-          var isRunning = dStatus.indexOf("Running") !== -1;
-          var dEl = document.getElementById("st_daemon");
-          dEl.innerText = dStatus;
-          dEl.className = "val " + (isRunning ? "status-on" : "status-off");
+        var lines = (res || "").trim().split('\n');
+        var kv = {};
+        lines.forEach(function(l) {
+          var idx = l.indexOf(':');
+          if (idx !== -1) {
+            kv[l.substring(0, idx).trim()] = l.substring(idx + 1).trim();
+          }
+        });
 
-          document.getElementById("st_cpulow").innerText = parts[1].trim();
-          document.getElementById("st_cpuhigh").innerText = parts[2].trim();
-          document.getElementById("st_gpu").innerText = parts[3].trim();
-          document.getElementById("st_load").innerText = parts[4].trim();
-          document.getElementById("st_temp").innerText = parts[5].trim();
-          
-          var bStat = parts[6].trim();
-          document.getElementById("st_chg").innerText = bStat === "Charging" ? "Charging ⚡" : "Discharging";
+        // 1. Daemon Status
+        var pid = kv["STATUS"] || "";
+        var isRunning = pid.length > 0;
+        var dEl = document.getElementById("st_daemon");
+        dEl.innerText = isRunning ? ("Running (" + pid + ")") : "Stopped";
+        dEl.className = "val " + (isRunning ? "status-on" : "status-off");
 
-          isGamingLocked = (parts[7].trim() === "GAMING");
-          document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock" : "Auto";
-          var btn = document.getElementById("btn_mode");
-          btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
-          btn.className = isGamingLocked ? "active" : "";
+        // 2. CPU Low (0-5)
+        if (kv["CPULOW"]) {
+          var parts = kv["CPULOW"].split(':');
+          var cCur = Math.round(parseInt(parts[0] || 0) / 1000);
+          var cMin = Math.round(parseInt(parts[1] || 0) / 1000);
+          var cMax = Math.round(parseInt(parts[2] || 0) / 1000);
+          document.getElementById("st_cpulow").innerText = cCur + " MHz [" + cMin + "-" + cMax + "]";
         }
-      });
 
-      runShell("tail -n 20 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
+        // 3. CPU High (6-7)
+        if (kv["CPUHIGH"]) {
+          var parts = kv["CPUHIGH"].split(':');
+          var cCur = Math.round(parseInt(parts[0] || 0) / 1000);
+          var cMin = Math.round(parseInt(parts[1] || 0) / 1000);
+          var cMax = Math.round(parseInt(parts[2] || 0) / 1000);
+          document.getElementById("st_cpuhigh").innerText = cCur + " MHz [" + cMin + "-" + cMax + "]";
+        }
+
+        // 4. GPU Load & Floor
+        if (kv["GPU"]) {
+          var parts = kv["GPU"].split(':');
+          var gLoad = parts[0] || "0";
+          var gFloor = Math.round(parseInt(parts[1] || 0) / 1000);
+          document.getElementById("st_gpu").innerText = gLoad + "% | " + gFloor + " MHz floor";
+        }
+
+        // 5. System Load
+        document.getElementById("st_load").innerText = kv["LOAD"] || "0.00";
+
+        // 6. Temperatures
+        var cTemp = Math.round(parseInt(kv["CPUTEMP"] || 0) / 1000);
+        var bRaw = parseInt(kv["BATTEMP"] || 0);
+        var bTemp = bRaw > 100 ? Math.round(bRaw / 10) : bRaw;
+        document.getElementById("st_temp").innerText = (cTemp > 0 ? cTemp : "--") + "°C / " + (bTemp > 0 ? bTemp : "--") + "°C";
+
+        // 7. Battery Power State
+        var bStat = kv["BATSTAT"] || "Discharging";
+        document.getElementById("st_chg").innerText = (bStat === "Charging") ? "Charging ⚡" : "Discharging";
+
+        // 8. Lock Mode
+        isGamingLocked = (kv["LOCK"] === "GAMING");
+        document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock" : "Auto";
+        var btn = document.getElementById("btn_mode");
+        btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
+        btn.className = isGamingLocked ? "active" : "";
+      }).catch(console.error);
+
+      // Log & Profile Parsing
+      runShell("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
         if (log) {
           document.getElementById("log_box").innerText = log.trim();
           var lines = log.trim().split('\n');
-          var last = lines[lines.length - 1];
-          if (last) {
-            if (last.indexOf("Profile:") !== -1) {
-              var p = last.split("Profile:")[1].trim().split(" ")[0];
-              document.getElementById("st_profile").innerText = p;
+          var lastProfile = "-";
+          var lastTier = "Tier 0 (Optimal)";
+
+          for (var i = lines.length - 1; i >= 0; i--) {
+            var line = lines[i];
+            if (lastProfile === "-" && line.indexOf("Profile:") !== -1) {
+              lastProfile = line.split("Profile:")[1].trim().split(" ")[0];
             }
-            if (last.indexOf("Thermal Tier:") !== -1 || last.indexOf("CPU:") !== -1) {
-              if (last.indexOf("T3") !== -1 || last.indexOf("Thermal") !== -1) document.getElementById("st_tier").innerText = "Tier 3 (Hold)";
-              else if (last.indexOf("T2") !== -1) document.getElementById("st_tier").innerText = "Tier 2 (Warm)";
-              else if (last.indexOf("T1") !== -1) document.getElementById("st_tier").innerText = "Tier 1 (Normal)";
-              else document.getElementById("st_tier").innerText = "Tier 0 (Optimal)";
+            if (lastTier === "Tier 0 (Optimal)" && (line.indexOf("Thermal Tier:") !== -1 || line.indexOf("CPU:") !== -1)) {
+              if (line.indexOf("T3") !== -1 || line.indexOf("Thermal") !== -1) lastTier = "Tier 3 (Throttling Hold)";
+              else if (line.indexOf("T2") !== -1) lastTier = "Tier 2 (Warm)";
+              else if (line.indexOf("T1") !== -1) lastTier = "Tier 1 (Normal)";
+              else if (line.indexOf("T0") !== -1) lastTier = "Tier 0 (Optimal)";
             }
           }
+
+          document.getElementById("st_profile").innerText = lastProfile;
+          document.getElementById("st_tier").innerText = lastTier;
         }
-      });
+      }).catch(console.error);
     }
 
     setInterval(refreshData, 2500);
