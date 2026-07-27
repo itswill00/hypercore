@@ -8,12 +8,6 @@ done
 sleep 5
 
 pkill -f "hypercore" >/dev/null 2>&1
-pkill -f "hypercore.sh" >/dev/null 2>&1
 
-if [ -f "$MODDIR/hypercore" ]; then
-    chmod 755 "$MODDIR/hypercore"
-    "$MODDIR/hypercore"
-elif [ -f "$MODDIR/hypercore.sh" ]; then
-    chmod 755 "$MODDIR/hypercore.sh"
-    nohup "$MODDIR/hypercore.sh" >/dev/null 2>&1 &
-fi
+chmod 755 "$MODDIR/hypercore"
+exec "$MODDIR/hypercore"
