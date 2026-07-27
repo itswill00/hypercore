@@ -12,8 +12,8 @@ echo "======================================"
 echo " Building Tanzanite HyperCore v3.0   "
 echo "======================================"
 
-echo "[1/4] Compiling native C daemon..."
-clang -O3 -flto -s "$MOD_DIR/src/hypercore.c" -o "$MOD_DIR/hypercore"
+echo "[1/4] Compiling native modular C daemon..."
+clang -O3 -flto -s -I"$MOD_DIR/src/include" "$MOD_DIR"/src/*.c -o "$MOD_DIR/hypercore"
 if [ $? -ne 0 ]; then
     echo "Error: Compilation failed!"
     exit 1
