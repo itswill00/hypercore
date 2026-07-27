@@ -118,6 +118,7 @@
       background: #3f51b5;
       border-color: #3f51b5;
       color: #ffffff;
+      font-weight: 600;
     }
 
     .feedback-banner {
@@ -170,7 +171,7 @@
       </div>
       <div class="row">
         <span class="label">Governor Mode</span>
-        <span class="val" id="lock_val">Auto</span>
+        <span class="val primary" id="lock_val">Auto</span>
       </div>
       <div class="row">
         <span class="label">CPU / Battery Temp</span>
@@ -204,8 +205,8 @@
 
     <div class="section-title">Control Panel</div>
     <div class="actions">
-      <button id="btn_game" class="primary" onclick="runAction('game')">Lock Gaming</button>
-      <button id="btn_auto" onclick="runAction('auto')">Auto Mode</button>
+      <button id="btn_game" onclick="runAction('game')">Lock Gaming</button>
+      <button id="btn_auto" class="primary" onclick="runAction('auto')">Auto Mode</button>
       <button id="btn_flush" onclick="runAction('flush')">Flush RAM</button>
       <button id="btn_restart" onclick="runAction('restart')">Restart Engine</button>
     </div>
@@ -273,6 +274,28 @@
       });
     }
 
+    function updateModeButtonUI(isGamingLocked) {
+      var btnGame = document.getElementById('btn_game');
+      var btnAuto = document.getElementById('btn_auto');
+      var lockVal = document.getElementById('lock_val');
+
+      if (isGamingLocked) {
+        if (btnGame) btnGame.className = 'primary';
+        if (btnAuto) btnAuto.className = '';
+        if (lockVal) {
+          lockVal.innerText = 'Gaming Lock';
+          lockVal.className = 'val orange';
+        }
+      } else {
+        if (btnGame) btnGame.className = '';
+        if (btnAuto) btnAuto.className = 'primary';
+        if (lockVal) {
+          lockVal.innerText = 'Auto';
+          lockVal.className = 'val';
+        }
+      }
+    }
+
     function runAction(act) {
       if (isBusy) return;
       isBusy = true;
@@ -282,11 +305,15 @@
       if (btn) btn.innerText = 'Wait...';
       setButtonsDisabled(true);
 
+      // Optimistic UI update for mode buttons
+      if (act === 'game') updateModeButtonUI(true);
+      if (act === 'auto') updateModeButtonUI(false);
+
       var cmd = "";
       if (act === 'game') {
-        cmd = "echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock || echo GAMING > /sdcard/Android/.hyperflow_lock";
+        cmd = "echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock; echo GAMING > /sdcard/Android/.hyperflow_lock; echo 'Gaming Mode locked.'";
       } else if (act === 'auto') {
-        cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock";
+        cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock; echo 'Auto Governor mode restored.'";
       } else if (act === 'flush') {
         cmd = "sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM flushed & ZRAM compacted.'";
       } else if (act === 'restart') {
@@ -298,7 +325,7 @@
         setButtonsDisabled(false);
         isBusy = false;
         showFeedback(outText ? outText.trim() : ("Executed: " + act), false);
-        setTimeout(updateData, 500);
+        setTimeout(updateData, 400);
       }).catch(function(err) {
         if (btn) btn.innerText = origText;
         setButtonsDisabled(false);
@@ -310,14 +337,27 @@
     function updateData() {
       if (isBusy) return;
 
-      var cmdStatus = "pid=$(pgrep -f 'hyperflow_engine' | grep -v 'webroot' | head -n 1); " +
-        "[ -n \"$pid\" ] && echo \"DAEMON: Running ($pid)\" || echo \"DAEMON: Stopped\"; " +
-        "echo \"LITTLE: $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 )) MHz [min $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 )) | max $(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))]\"; " +
-        "echo \"BIG: $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 )) MHz [min $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 )) | max $(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))]\"; " +
-        "read load_avg _ < /proc/loadavg 2>/dev/null; " +
-        "echo \"LOAD: $(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)% load | sys load ${load_avg:-0}\"; " +
-        "echo \"TEMP: $(( $(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0) / 1000 ))°C / $(( $(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0) / 1000 ))°C\"; " +
-        "lock=\"AUTO\"; [ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock=\"GAMING LOCK\"; echo \"LOCK: $lock\"";
+      var cmdStatus = [
+        'pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)',
+        '[ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"',
+        'l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"',
+        'b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))',
+        'b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))',
+        'b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))',
+        'echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"',
+        'gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)',
+        'read load_avg _ < /proc/loadavg 2>/dev/null',
+        'echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"',
+        'c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)',
+        'b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)',
+        'echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"',
+        'lock="AUTO"',
+        '([ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ]) && lock="GAMING LOCK"',
+        'echo "LOCK: $lock"'
+      ].join('; ');
 
       ksuExec(cmdStatus).then(function(out) {
         var lines = (out || "").split('\n');
@@ -333,8 +373,7 @@
           if (l.indexOf('TEMP:') !== -1) document.getElementById('temp_val').innerText = l.replace('TEMP:', '').trim();
           if (l.indexOf('LOCK:') !== -1) {
             var lockState = l.replace('LOCK:', '').trim();
-            document.getElementById('lock_val').innerText = lockState;
-            document.getElementById('lock_val').className = lockState.indexOf('GAMING') !== -1 ? 'val orange' : 'val';
+            updateModeButtonUI(lockState.indexOf('GAMING') !== -1);
           }
         });
       }).catch(console.log);
