@@ -1,5 +1,5 @@
 /*
- * Tanzanite HyperFlow Native C Engine v2.5 (Public Release Build)
+ * Tanzanite HyperFlow Native C Engine v2.5 (Smooth UI & Latency Optimized)
  * Ultimate Performance & Latency Tuner for MediaTek Helio G99 Ultra
  * Author: @itswill00
  * License: MIT
@@ -216,10 +216,8 @@ static void apply_base_tuning(void) {
     write_node("/sys/module/ged/parameters/boost_gpu_enable", "1");
     write_node("/sys/module/ged/parameters/enable_gpu_boost", "1");
     write_node("/sys/module/ged/parameters/ged_smart_boost", "1");
-    write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
+    write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
     write_node("/sys/module/ged/parameters/gx_fb_dvfs_margin", "50");
-
-    write_node("/sys/class/misc/mali0/device/devfreq/13000000.mali/governor", "bitorq");
 
     system("setprop persist.sys.smartpower.display_camera_fps_enable false 2>/dev/null");
     system("setprop persist.sys.smartpower.display.enable false 2>/dev/null");
@@ -263,46 +261,47 @@ static void apply_profile_nodes(const char *prof, int ttier) {
     }
     else if (strcmp(prof, "Interactive") == 0) {
         int max_big = (ttier >= 2) ? 2000000 : BIG_MAX;
-        snprintf(val, sizeof(val), "%d", max_big);
 
         for (int i = 0; i <= 5; i++) {
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-            write_node(path, "650000");
+            write_node(path, "800000");
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
             snprintf(val, sizeof(val), "%d", LITTLE_MAX);
             write_node(path, val);
-            set_cpu_rate_limits(i, "500", "1000");
+            set_cpu_rate_limits(i, "0", "1000");
         }
         for (int i = 6; i <= 7; i++) {
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-            write_node(path, "800000");
+            write_node(path, "1000000");
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
             snprintf(val, sizeof(val), "%d", max_big);
             write_node(path, val);
-            set_cpu_rate_limits(i, "500", "1000");
+            set_cpu_rate_limits(i, "0", "1000");
         }
         write_node("/sys/kernel/fpsgo/fbt/boost_ta", "1");
         write_node("/sys/module/ged/parameters/gpu_bottom_freq", "550000");
+        write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
     }
     else if (strcmp(prof, "Touch") == 0) {
         for (int i = 0; i <= 5; i++) {
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-            write_node(path, "1000000");
+            write_node(path, "1150000");
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
             snprintf(val, sizeof(val), "%d", LITTLE_MAX);
             write_node(path, val);
-            set_cpu_rate_limits(i, "0", "1500");
+            set_cpu_rate_limits(i, "0", "1200");
         }
         for (int i = 6; i <= 7; i++) {
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-            write_node(path, "1400000");
+            write_node(path, "1500000");
             snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
             snprintf(val, sizeof(val), "%d", BIG_MAX);
             write_node(path, val);
-            set_cpu_rate_limits(i, "0", "1500");
+            set_cpu_rate_limits(i, "0", "1200");
         }
         write_node("/sys/kernel/fpsgo/fbt/boost_ta", "1");
         write_node("/sys/module/ged/parameters/gpu_bottom_freq", "700000");
+        write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
     }
     else if (strcmp(prof, "Gaming") == 0) {
         const char *gpu_freq = (ttier == 2) ? "700000" : "800000";
@@ -325,6 +324,7 @@ static void apply_profile_nodes(const char *prof, int ttier) {
         }
         write_node("/sys/kernel/fpsgo/fbt/boost_ta", "1");
         write_node("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
+        write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
     }
     else if (strcmp(prof, "Thermal") == 0) {
         for (int i = 0; i <= 5; i++) {
@@ -377,8 +377,10 @@ int main(void) {
         if (cpu_temp <= 0) cpu_temp = 40;
 
         int raw_bat = read_int(bat_tz_path);
-        int bat_temp = raw_bat / 1000;
-        if (bat_temp > 100) bat_temp /= 10;
+        int bat_temp = raw_bat;
+        if (bat_temp > 10000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
+        if (bat_temp <= 0) bat_temp = 35;
 
         int thermal_tier = 0;
         if (cpu_temp >= 55 || bat_temp >= 45) {
@@ -424,9 +426,9 @@ int main(void) {
         } else if (gpu_load >= 35 || (gpu_load >= 15 && load_val >= 1200)) {
             strcpy(next_profile, "Gaming");
             touch_boost_ticks = 0;
-        } else if ((load_val - prev_load) > 250 || touch_boost_ticks > 0) {
+        } else if ((load_val - prev_load) > 180 || touch_boost_ticks > 0) {
             if (strcmp(current_profile, "Touch") != 0 && touch_boost_ticks == 0) {
-                touch_boost_ticks = 2;
+                touch_boost_ticks = 3;
             } else {
                 touch_boost_ticks--;
             }
@@ -455,7 +457,6 @@ int main(void) {
         if (iteration % 20 == 0) {
             apply_cpuset();
             rotate_log();
-            write_node("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
             write_node("/sys/module/ged/parameters/gx_fb_dvfs_margin", "50");
         }
 
