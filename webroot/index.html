@@ -137,7 +137,7 @@
       font-family: monospace;
       font-size: 11px;
       color: #b0b0b0;
-      height: 280px;
+      height: 240px;
       overflow-y: auto;
       white-space: pre-wrap;
       margin-top: 8px;
@@ -148,13 +148,13 @@
   <div class="wrap">
     <div class="header">
       <div class="title">Tanzanite HyperFlow v2.5</div>
-      <div class="subtitle">Helio G99 Ultra System & Kernel Monitor</div>
+      <div class="subtitle">MediaTek Helio G99 Ultra System Monitor</div>
     </div>
 
-    <div class="section-title">Device Status</div>
+    <div class="section-title">Status</div>
     <div class="list">
       <div class="row">
-        <span class="label">Daemon Service</span>
+        <span class="label">Engine Daemon</span>
         <span class="val green" id="daemon_txt">Running</span>
       </div>
       <div class="row">
@@ -163,18 +163,18 @@
       </div>
       <div class="row">
         <span class="label">Governor Mode</span>
-        <span class="val" id="lock_val">Auto (Dynamic)</span>
+        <span class="val" id="lock_val">Auto</span>
       </div>
       <div class="row">
         <span class="label">CPU / Battery Temp</span>
         <span class="val" id="temp_val">--°C / --°C</span>
       </div>
       <div class="row">
-        <span class="label">Little Cores Frequency (0-5)</span>
+        <span class="label">Little Cores (0-5)</span>
         <span class="val" id="little_val">-- MHz</span>
       </div>
       <div class="row">
-        <span class="label">Big Cores Frequency (6-7)</span>
+        <span class="label">Big Cores (6-7)</span>
         <span class="val" id="big_val">-- MHz</span>
       </div>
       <div class="row">
@@ -183,15 +183,15 @@
       </div>
     </div>
 
-    <div class="section-title">Kernel & Network Configuration</div>
+    <div class="section-title">Tunables</div>
     <div class="list">
       <div class="row">
-        <span class="label">Storage Scheduler</span>
-        <span class="val" id="sched_txt">none (UFS) | 128 KB</span>
+        <span class="label">Storage Scheduler / Read-Ahead</span>
+        <span class="val" id="sched_txt">none | 128 KB</span>
       </div>
       <div class="row">
-        <span class="label">TCP Congestion / Wi-Fi</span>
-        <span class="val" id="net_txt">cubic / Low Latency</span>
+        <span class="label">TCP Congestion / Low Latency</span>
+        <span class="val" id="net_txt">cubic / 1</span>
       </div>
     </div>
 
@@ -205,10 +205,10 @@
     <div id="action_feedback" class="feedback-banner"></div>
 
     <div class="section-title" style="display:flex; justify-content:space-between;">
-      <span>Terminal Log</span>
+      <span>Recent Logs</span>
       <span style="cursor:pointer; color:#7986cb;" onclick="updateData()">Refresh</span>
     </div>
-    <div class="console" id="log_text">Loading system logs...</div>
+    <div class="console" id="log_text">Loading logs...</div>
   </div>
 
   <script>
@@ -241,7 +241,7 @@
           } catch(e) {}
         }
 
-        reject("KernelSU WebUI Manager required");
+        reject("KernelSU / APatch / MMRL Manager required");
       });
     }
 
@@ -257,21 +257,24 @@
     }
 
     function runAction(act) {
-      const btnId = 'btn_' + act;
-      const btn = document.getElementById(btnId);
+      const btn = document.getElementById('btn_' + act);
       const origText = btn ? btn.innerText : '';
       if (btn) btn.innerText = 'Executing...';
 
-      const paths = {
-        "game": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -g",
-        "auto": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -u",
-        "flush": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -f",
-        "restart": "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite -r"
-      };
+      let cmd = "";
+      if (act === 'game') {
+        cmd = "echo GAMING > /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock || echo GAMING > /sdcard/Android/.hyperflow_lock";
+      } else if (act === 'auto') {
+        cmd = "rm -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock /sdcard/Android/.hyperflow_lock";
+      } else if (act === 'flush') {
+        cmd = "echo 3 > /proc/sys/vm/drop_caches && echo 1 > /proc/sys/vm/compact_memory && echo 'RAM flushed & ZRAM compacted.'";
+      } else if (act === 'restart') {
+        cmd = "pkill -9 -f hyperflow_engine; sleep 1; nohup /data/adb/modules/tanzanite_hyperflow/hyperflow_engine >/dev/null 2>&1 & echo 'Daemon restarted.'";
+      }
 
-      ksuExec(paths[act]).then(outText => {
+      ksuExec(cmd).then(outText => {
         if (btn) btn.innerText = origText;
-        showFeedback(outText || ("Action executed: " + act), false);
+        showFeedback(outText.trim() || ("Action executed: " + act), false);
         updateData();
       }).catch(err => {
         if (btn) btn.innerText = origText;
@@ -279,72 +282,64 @@
       });
     }
 
-    function parseStatus(outStr) {
-      if (!outStr) return;
-      const lines = String(outStr).split('\n');
-      lines.forEach(l => {
-        if (l.includes('Daemon')) {
-          const val = l.split(':')[1].trim();
-          document.getElementById('daemon_txt').innerText = val;
-          document.getElementById('daemon_txt').className = val.includes('Running') ? 'val green' : 'val orange';
-        }
-        if (l.includes('Profile')) {
-          const p = l.split(':')[1].trim();
-          document.getElementById('profile_val').innerText = p.split(' ')[0];
-          if (p.includes('LOCKED')) {
-            document.getElementById('lock_val').innerText = 'Gaming Lock';
-            document.getElementById('lock_val').className = 'val orange';
-          } else {
-            document.getElementById('lock_val').innerText = 'Auto (Dynamic)';
-            document.getElementById('lock_val').className = 'val';
-          }
-        }
-        if (l.includes('Temp')) {
-          const parts = l.split('|');
-          if (parts.length >= 2) {
-            const cpu = parts[0].replace('Temp', '').replace('CPU', '').replace(':', '').trim();
-            const bat = parts[1].replace('Battery', '').trim();
-            document.getElementById('temp_val').innerText = cpu + ' / ' + bat;
-          }
-        }
-        if (l.includes('Little Core')) {
-          document.getElementById('little_val').innerText = l.split(':')[1].trim();
-        }
-        if (l.includes('Big Core')) {
-          document.getElementById('big_val').innerText = l.split(':')[1].trim();
-        }
-        if (l.includes('GPU / Load')) {
-          const parts = l.split('|');
-          if (parts.length >= 2) {
-            const gpu = parts[0].replace('GPU / Load', '').replace(':', '').trim();
-            const sys = parts[1].replace('sys load', '').trim();
-            document.getElementById('load_val').innerText = gpu + ' (Load ' + sys + ')';
-          }
-        }
-      });
-    }
-
-    function parseStats(statsStr) {
-      if (!statsStr) return;
-      const lines = String(statsStr).split('\n');
-      let ra = "", tcp = "", wifi = "";
-      lines.forEach(l => {
-        if (l.includes('Storage Read-Ahead')) ra = l.split(':')[1].trim();
-        if (l.includes('TCP Congestion')) tcp = l.split(':')[1].trim();
-        if (l.includes('Wi-Fi Low Latency')) wifi = l.split(':')[1].trim() === "1" ? "Low Latency" : "Normal";
-      });
-      document.getElementById('sched_txt').innerText = "none (UFS) | " + (ra || "128 KB");
-      document.getElementById('net_txt').innerText = (tcp || "cubic") + " / " + (wifi || "Low Latency");
-    }
-
     function updateData() {
-      const bin = "/data/adb/modules/tanzanite_hyperflow/system/bin/tanzanite";
-      
-      ksuExec(bin).then(parseStatus).catch(e => console.log(e));
-      ksuExec(bin + " -s").then(parseStats).catch(e => console.log(e));
-      ksuExec(bin + " -l").then(log => {
-        if (log) document.getElementById('log_text').innerText = log;
-      }).catch(e => console.log(e));
+      const cmdStatus = `
+        pid=$(pgrep -f "hyperflow_engine" | grep -v "webroot" | head -n 1)
+        [ -n "$pid" ] && echo "DAEMON: Running ($pid)" || echo "DAEMON: Stopped"
+
+        l_cur=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))
+        l_min=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))
+        l_max=$(( $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))
+        echo "LITTLE: ${l_cur} MHz [min ${l_min} | max ${l_max}]"
+
+        b_cur=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0) / 1000 ))
+        b_min=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null || echo 0) / 1000 ))
+        b_max=$(( $(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null || echo 0) / 1000 ))
+        echo "BIG: ${b_cur} MHz [min ${b_min} | max ${b_max}]"
+
+        gpu=$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null || echo 0)
+        read load_avg _ < /proc/loadavg 2>/dev/null
+        echo "LOAD: ${gpu}% load | sys load ${load_avg:-0}"
+
+        c_temp=$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
+        b_temp=$(cat /sys/class/thermal/thermal_zone25/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone1/temp 2>/dev/null || echo 0)
+        echo "TEMP: $((c_temp / 1000))°C / $((b_temp / 1000))°C"
+
+        lock="AUTO"
+        [ -f /data/adb/modules/tanzanite_hyperflow/.hyperflow_lock ] || [ -f /sdcard/Android/.hyperflow_lock ] && lock="GAMING LOCK"
+        echo "LOCK: $lock"
+      `;
+
+      ksuExec(cmdStatus).then(out => {
+        const lines = out.split('\n');
+        lines.forEach(l => {
+          if (l.includes('DAEMON:')) {
+            const val = l.replace('DAEMON:', '').trim();
+            document.getElementById('daemon_txt').innerText = val;
+            document.getElementById('daemon_txt').className = val.includes('Running') ? 'val green' : 'val orange';
+          }
+          if (l.includes('LITTLE:')) document.getElementById('little_val').innerText = l.replace('LITTLE:', '').trim();
+          if (l.includes('BIG:')) document.getElementById('big_val').innerText = l.replace('BIG:', '').trim();
+          if (l.includes('LOAD:')) document.getElementById('load_val').innerText = l.replace('LOAD:', '').trim();
+          if (l.includes('TEMP:')) document.getElementById('temp_val').innerText = l.replace('TEMP:', '').trim();
+          if (l.includes('LOCK:')) {
+            const lockState = l.replace('LOCK:', '').trim();
+            document.getElementById('lock_val').innerText = lockState;
+            document.getElementById('lock_val').className = lockState.includes('GAMING') ? 'val orange' : 'val';
+          }
+        });
+      }).catch(console.log);
+
+      ksuExec("tail -n 30 /sdcard/Android/tanzanite_hyperflow.log 2>/dev/null").then(log => {
+        if (log) {
+          document.getElementById('log_text').innerText = log.trim();
+          const lastLog = log.trim().split('\n').pop();
+          if (lastLog && lastLog.includes('Profile:')) {
+            const p = lastLog.split('Profile:')[1].trim().split(' ')[0];
+            document.getElementById('profile_val').innerText = p;
+          }
+        }
+      }).catch(console.log);
     }
 
     setInterval(updateData, 2000);

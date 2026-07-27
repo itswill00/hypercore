@@ -23,16 +23,13 @@ chmod 755 "$MOD_DIR/customize.sh"
 chmod 755 "$MOD_DIR/post-fs-data.sh"
 chmod 755 "$MOD_DIR/service.sh"
 chmod 755 "$MOD_DIR/uninstall.sh"
-chmod 755 "$MOD_DIR/system/bin/tanzanite"
 
 echo "[3/4] Packing clean release zip archive..."
 cd "$MOD_DIR" || exit 1
 rm -f "$OUT_DIR/$ZIP_NAME"
 
-# Exclude source code, build scripts, duplicate shell scripts, and dev files
 zip -r "$OUT_DIR/$ZIP_NAME" \
     META-INF \
-    system \
     webroot \
     customize.sh \
     module.prop \
