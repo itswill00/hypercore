@@ -45,7 +45,7 @@ struct hw_nodes {
 };
 
 struct core_state {
-    int current_profile;
+    profile_t current_profile;
     int thermal_tier;
     int thermal_hold_ticks;
     int touch_boost_ticks;
