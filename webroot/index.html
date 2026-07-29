@@ -329,7 +329,7 @@
     </div>
     <div class="row">
       <span class="lbl">Read-ahead</span>
-      <span class="val" id="st_ra">none | 128 KB</span>
+      <span class="val" id="st_ra">none | 256 KB</span>
     </div>
     <div class="row">
       <span class="lbl">Swappiness / VFS</span>
@@ -493,7 +493,7 @@
         'echo "CPUTEMP:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"',
         'echo "BATTEMP:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)"',
         'echo "BATSTAT:$(cat /sys/class/power_supply/battery/status 2>/dev/null)"',
-        'echo "RA:$(cat /sys/block/mmcblk0/queue/read_ahead_kb 2>/dev/null || cat /sys/block/sda/queue/read_ahead_kb 2>/dev/null || echo 128)"',
+        'echo "RA:$(cat /sys/block/mmcblk0/queue/read_ahead_kb 2>/dev/null || cat /sys/block/sda/queue/read_ahead_kb 2>/dev/null || echo 256)"',
         'echo "SWAP:$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 15)"',
         'echo "VFS:$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null || echo 100)"',
         'echo "LOCK:$(cat /data/adb/modules/tanzanite_hypercore/.hypercore_lock 2>/dev/null || cat /sdcard/Android/.hypercore_lock 2>/dev/null || echo AUTO)"',
