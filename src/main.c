@@ -176,7 +176,7 @@ int main(void) {
             next_profile = PROFILE_SLEEP;
             g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
-        } else if (thermal_tier == 3 && cpu_temp >= 68) {
+        } else if (thermal_tier == 3 && cpu_temp >= 75) {
             next_profile = PROFILE_THERMAL;
             g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
