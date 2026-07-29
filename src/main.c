@@ -26,6 +26,32 @@ static void on_signal(int sig) {
     g_running = 0;
 }
 
+static void send_game_toast(const char *game_name) {
+    if (!game_name || game_name[0] == '\0') return;
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd),
+        "cmd notification post -t 'Tanzanite HyperCore' -S bigtext 'HyperCore Engine' 'hypercore_game' 'Gaming Profile Activated [%s]' >/dev/null 2>&1 &",
+        game_name);
+    system(cmd);
+}
+
+static void apply_battery_thermal_guard(int is_gaming, int is_charging) {
+    static int s_prev_limited = 0;
+    int limit = (is_gaming && is_charging);
+
+    if (limit != s_prev_limited) {
+        if (limit) {
+            sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "2000000");
+            sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", "2000000");
+            log_write("Battery Charge Thermal Guard: Charging current limited to 2.0A during gaming");
+        } else {
+            sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+            sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", "0");
+        }
+        s_prev_limited = limit;
+    }
+}
+
 static void init_hardware_nodes(void) {
     memset(&g_nodes, 0, sizeof(g_nodes));
 
@@ -60,91 +86,70 @@ static void init_hardware_nodes(void) {
     g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/schedutil", F_OK) == 0);
 }
 
-static void apply_base_tuning(void) {
+static void write_pid_file(void) {
+    FILE *f = fopen(g_nodes.pid_file, "w");
+    if (f) {
+        fprintf(f, "%d\n", getpid());
+        fclose(f);
+    }
+}
+
+static void remove_pid_file(void) {
+    unlink(g_nodes.pid_file);
+}
+
+static int is_screen_on(void) {
+    if (g_nodes.backlight[0] != '\0') {
+        int val = sysfs_read_int(g_nodes.backlight);
+        return val > 0;
+    }
+    return 1;
+}
+
+static int read_initial_load(void) {
+    FILE *f = fopen("/proc/loadavg", "r");
+    if (!f) return 0;
+    float l1 = 0;
+    if (fscanf(f, "%f", &l1) != 1) l1 = 0;
+    fclose(f);
+    return (int)(l1 * 100);
+}
+
+int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
+
+    signal(SIGTERM, on_signal);
+    signal(SIGINT, on_signal);
+    signal(SIGHUP, SIG_IGN);
+
+    init_hardware_nodes();
+    write_pid_file();
+
+    log_write("Tanzanite HyperCore v3.2 started.");
+
+    apply_cpuset();
     apply_memory_tuning();
     apply_io_tuning();
     apply_gpu_tuning();
     apply_irq_tuning();
+    load_gamelist();
 
-    system("sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || sysctl -w net.ipv4.tcp_congestion_control=bbr >/dev/null 2>&1");
-    system("sysctl -w net.core.default_qdisc=fq_codel >/dev/null 2>&1 || sysctl -w net.core.default_qdisc=fq >/dev/null 2>&1");
-    system("sysctl -w net.ipv4.tcp_low_latency=1 >/dev/null 2>&1");
-    system("sysctl -w net.ipv4.tcp_fastopen=3 >/dev/null 2>&1");
-
-    system("setprop persist.sys.smartpower.display_camera_fps_enable false 2>/dev/null");
-    system("setprop persist.sys.smartpower.display.enable false 2>/dev/null");
-    system("setprop persist.vendor.fps.switch.thermal false 2>/dev/null");
-    system("setprop persist.vendor.display.touch.idle.enable false 2>/dev/null");
-    system("setprop persist.sys.joyose.fps_boost true 2>/dev/null");
-    system("setprop persist.sys.smartpower.game.enable true 2>/dev/null");
-    system("setprop persist.sys.wifi.low_latency 1 2>/dev/null");
-}
-
-static int read_initial_load(void) {
-    int load_val = 0;
-    FILE *favg = fopen("/proc/loadavg", "r");
-    if (favg) {
-        float l1 = 0;
-        if (fscanf(favg, "%f", &l1) == 1) {
-            load_val = (int)(l1 * 100.0f);
-        }
-        fclose(favg);
-    }
-    return load_val;
-}
-
-int main(void) {
-    setsid();
-    daemon(0, 0);
-    signal(SIGTERM, on_signal);
-    signal(SIGINT, on_signal);
-    signal(SIGHUP, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
-
-    init_hardware_nodes();
-
-    FILE *fpid = fopen(g_nodes.pid_file, "w");
-    if (fpid) {
-        fprintf(fpid, "%d\n", getpid());
-        fclose(fpid);
-    }
-
-    log_write("Tanzanite HyperCore v3.1 started.");
-    apply_base_tuning();
-    apply_cpuset();
-
-    g_state.current_profile = -1;
-    g_state.thermal_tier = 0;
-    g_state.thermal_hold_ticks = 0;
-    g_state.touch_boost_ticks = 0;
+    memset(&g_state, 0, sizeof(g_state));
+    g_state.current_profile = (profile_t)-1;
     g_state.prev_load = read_initial_load();
-    g_state.is_charging = 0;
-
-    int iteration = 0;
 
     while (g_running) {
-        iteration++;
+        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+
+        if (cpu_temp > 1000) cpu_temp /= 1000;
+        if (bat_temp > 100) bat_temp /= 10;
 
         g_state.is_charging = check_charging_status();
 
-        int screen_on = 1;
-        if (g_nodes.backlight[0] != '\0') {
-            screen_on = (sysfs_read_int(g_nodes.backlight) > 0);
-        }
-
-        int raw_cpu = sysfs_read_int(g_nodes.cpu_temp);
-        int cpu_temp = raw_cpu / 1000;
-        if (cpu_temp <= 0) cpu_temp = 40;
-
-        int raw_bat = sysfs_read_int(g_nodes.bat_temp);
-        int bat_temp = raw_bat;
-        if (bat_temp > 10000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
-        if (bat_temp <= 0) bat_temp = 35;
-
         int thermal_tier = calculate_thermal_tier(cpu_temp, bat_temp);
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-
         int load_val = read_initial_load();
 
         char manual_lock[32] = "";
@@ -155,12 +160,14 @@ int main(void) {
         }
 
         char active_game[128] = "";
-        int game_active = is_game_in_foreground(active_game, sizeof(active_game));
+        profile_t custom_profile = PROFILE_GAMING;
+        int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
 
         static int s_prev_game_active = 0;
         if (game_active && !s_prev_game_active) {
             set_read_ahead("512");
             g_state.launch_boost_ticks = 3;
+            send_game_toast(active_game);
             log_write("Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
         } else if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
@@ -172,7 +179,7 @@ int main(void) {
 
         profile_t next_profile = PROFILE_INTERACTIVE;
 
-        if (!screen_on) {
+        if (!is_screen_on()) {
             next_profile = PROFILE_SLEEP;
             g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
@@ -197,7 +204,7 @@ int main(void) {
             g_state.gaming_hold_ticks = 0;
             g_state.touch_boost_ticks = 0;
         } else if (game_active) {
-            next_profile = PROFILE_GAMING;
+            next_profile = custom_profile;
             g_state.gaming_hold_ticks = 10;
             g_state.touch_boost_ticks = 0;
         } else if (g_state.gaming_hold_ticks > 0 && s_prev_game_active) {
@@ -242,17 +249,12 @@ int main(void) {
             g_state.thermal_tier = thermal_tier;
         }
 
-        if (iteration % 20 == 0) {
-            apply_cpuset();
-            rotate_log();
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "40");
-            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
-        }
+        apply_battery_thermal_guard(g_state.current_profile == PROFILE_GAMING, g_state.is_charging);
 
         sleep(2);
     }
 
-    log_write("Tanzanite HyperCore stopped cleanly.");
-    unlink(g_nodes.pid_file);
+    log_write("Tanzanite HyperCore daemon stopped.");
+    remove_pid_file();
     return 0;
 }
