@@ -99,49 +99,67 @@
     .val-amber { color: var(--amber); }
     .val-purple { color: var(--purple); }
 
-    /* Profile Selector Grid */
-    .selector-grid {
+    .grid-5 {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
-      background: #09090b;
-      padding: 3px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
+      gap: 6px;
+      margin-top: 8px;
     }
 
     .pill {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 6px 0;
-      border-radius: 4px;
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 4px;
+      text-align: center;
       font-size: 11px;
       font-weight: 500;
-      font-family: var(--mono);
-      text-align: center;
       cursor: pointer;
+      color: var(--text-muted);
       transition: all 0.15s ease;
       user-select: none;
     }
 
     .pill:hover {
+      border-color: var(--border-hover);
       color: var(--text);
     }
 
-    .pill.active {
-      background: #27272a;
-      color: #fff;
+    .pill.active-auto {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: #3b82f6;
+      color: #60a5fa;
       font-weight: 600;
     }
 
-    .pill.active-auto { background: #1e293b; color: #38bdf8; }
-    .pill.active-gaming { background: #451a03; color: #fb923c; }
-    .pill.active-balanced { background: #14532d; color: #4ade80; }
-    .pill.active-touch { background: #3b0764; color: #c084fc; }
-    .pill.active-saver { background: #451a03; color: #facc15; }
+    .pill.active-gaming {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: #ef4444;
+      color: #f87171;
+      font-weight: 600;
+    }
 
-    /* Buttons */
+    .pill.active-balanced {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: #22c55e;
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    .pill.active-touch {
+      background: rgba(168, 85, 247, 0.15);
+      border-color: #a855f7;
+      color: #c084fc;
+      font-weight: 600;
+    }
+
+    .pill.active-saver {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: #f59e0b;
+      color: #fbbf24;
+      font-weight: 600;
+    }
+
     .btn-group {
       display: flex;
       gap: 8px;
@@ -151,58 +169,54 @@
     .btn {
       flex: 1;
       background: var(--card-bg);
-      color: var(--text);
       border: 1px solid var(--border);
+      color: var(--text);
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
 
     .btn:hover {
-      background: #1c1c21;
+      background: #18181b;
       border-color: var(--border-hover);
     }
 
-    .btn:active {
-      background: #27272a;
-    }
-
     .btn-sm {
-      flex: none;
-      width: auto;
-      padding: 3px 8px;
+      padding: 4px 10px;
       font-size: 11px;
       border-radius: 4px;
-      font-family: var(--mono);
-      white-space: nowrap;
+      flex: none;
+      width: auto;
     }
 
     .btn-del {
-      background: #271414;
-      border-color: #451a1a;
+      background: #1c1917;
+      border-color: #292524;
       color: #f87171;
     }
+
     .btn-del:hover {
-      background: #3b1919;
+      background: #292524;
+      border-color: #ef4444;
     }
 
     #msg {
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #a1a1aa;
       font-size: 11px;
       font-family: var(--mono);
-      color: #4ade80;
-      background: #0d2818;
-      border: 1px solid #164e28;
-      padding: 6px 10px;
-      border-radius: 4px;
+      padding: 8px 12px;
+      border-radius: 6px;
       margin-bottom: 10px;
       display: none;
     }
 
     .game-list {
-      max-height: 130px;
+      max-height: 140px;
       overflow-y: auto;
       margin-top: 6px;
     }
@@ -219,6 +233,14 @@
       font-size: 11px;
       font-family: var(--mono);
       gap: 8px;
+    }
+
+    .game-item-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
     }
 
     .game-item span {
@@ -264,6 +286,105 @@
       color: #94a3b8;
       margin: 6px 0 0 0;
     }
+
+    /* App Picker Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 460px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .modal-search {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-search input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: var(--text);
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+    .modal-list {
+      padding: 6px 8px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .app-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border-bottom: 1px solid #18181b;
+      gap: 10px;
+    }
+    .app-row:hover {
+      background: #18181b;
+    }
+    .app-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
+    }
+    .app-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: #27272a;
+      flex: none;
+      object-fit: cover;
+    }
+    .app-text {
+      overflow: hidden;
+    }
+    .app-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .app-pkg {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -279,12 +400,12 @@
       <span>Profile mode</span>
       <span id="st_lock_lbl" style="font-weight: normal; color: var(--text);">Auto</span>
     </div>
-    <div class="selector-grid">
-      <button class="pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">Auto</button>
-      <button class="pill" id="pill_GAMING" onclick="setProfileMode('GAMING')">Gaming</button>
-      <button class="pill" id="pill_INTERACTIVE" onclick="setProfileMode('INTERACTIVE')">Balanced</button>
-      <button class="pill" id="pill_TOUCH" onclick="setProfileMode('TOUCH')">Touch</button>
-      <button class="pill" id="pill_SLEEP" onclick="setProfileMode('SLEEP')">Saver</button>
+    <div class="grid-5">
+      <div class="pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">Auto</div>
+      <div class="pill" id="pill_GAMING" onclick="setProfileMode('GAMING')">Gaming</div>
+      <div class="pill" id="pill_INTERACTIVE" onclick="setProfileMode('INTERACTIVE')">Balanced</div>
+      <div class="pill" id="pill_TOUCH" onclick="setProfileMode('TOUCH')">Touch</div>
+      <div class="pill" id="pill_SLEEP" onclick="setProfileMode('SLEEP')">Saver</div>
     </div>
   </div>
 
@@ -356,6 +477,7 @@
     <div class="add-game-box">
       <input type="text" id="new_game_pkg" placeholder="e.g. com.tencent.ig">
       <button class="btn btn-sm" onclick="addGamePkg()">Add package</button>
+      <button class="btn btn-sm" onclick="openAppPickerModal()" style="background:#18181b;">Select app</button>
     </div>
   </div>
 
@@ -365,9 +487,26 @@
   </div>
   <pre id="log_box">Loading log...</pre>
 
+  <!-- App Picker Modal -->
+  <div class="modal-overlay" id="app_modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>Installed applications</span>
+        <button class="btn btn-sm" onclick="closeAppPickerModal()">Close</button>
+      </div>
+      <div class="modal-search">
+        <input type="text" id="app_search_input" placeholder="Search app or package..." oninput="filterAppPickerList()">
+      </div>
+      <div class="modal-list" id="app_modal_list">
+        <div style="font-size:11px; color:var(--text-muted); padding:10px; text-align:center;">Loading applications...</div>
+      </div>
+    </div>
+  </div>
+
   <script>
     var currentLockMode = "AUTO";
     var cbSeq = 0;
+    var cachedInstalledApps = [];
 
     function runShell(cmd) {
       return new Promise(function(resolve, reject) {
@@ -439,6 +578,25 @@
       });
     }
 
+    function addGamePkgFromPicker(pkg) {
+      if (!pkg) return;
+      var cmd = 'echo "' + pkg + '" >> /data/adb/modules/tanzanite_hypercore/gamelist.txt; echo "' + pkg + '" >> /sdcard/Android/gamelist.txt; echo "Added ' + pkg + '"';
+      runShell(cmd).then(function(out) {
+        showMsg(out.trim());
+        closeAppPickerModal();
+        refreshData();
+      });
+    }
+
+    function launchGamePkg(pkg) {
+      if (!pkg) return;
+      var cleanPkg = pkg.split(':')[0].trim();
+      var cmd = 'monkey -p ' + cleanPkg + ' -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; echo "Launched ' + cleanPkg + '"';
+      runShell(cmd).then(function(out) {
+        showMsg(out.trim());
+      });
+    }
+
     function removeGamePkg(pkg) {
       if (!pkg) return;
       var cleanPkg = pkg.trim().replace(/\r/g, '');
@@ -458,6 +616,85 @@
         showMsg(out.trim());
         refreshData();
       });
+    }
+
+    function openAppPickerModal() {
+      document.getElementById("app_modal").style.display = "flex";
+      document.getElementById("app_search_input").value = "";
+
+      if (cachedInstalledApps.length > 0) {
+        renderAppPickerList(cachedInstalledApps);
+        return;
+      }
+
+      var mList = document.getElementById("app_modal_list");
+      mList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:10px; text-align:center;">Loading applications...</div>';
+
+      if (typeof ksu !== "undefined" && typeof ksu.listUserPackages === "function") {
+        try {
+          var packagesJson = ksu.listUserPackages();
+          var pkgs = JSON.parse(packagesJson);
+          var labels = [];
+          if (typeof ksu.getPackagesInfo === "function") {
+            try {
+              labels = JSON.parse(ksu.getPackagesInfo(packagesJson));
+            } catch(e) {}
+          }
+          cachedInstalledApps = pkgs.map(function(pkg, idx) {
+            var label = (labels[idx] && labels[idx].appLabel) ? labels[idx].appLabel : pkg;
+            return { pkg: pkg, name: label };
+          });
+          renderAppPickerList(cachedInstalledApps);
+          return;
+        } catch(e) {}
+      }
+
+      runShell("pm list packages -3").then(function(out) {
+        var lines = out.trim().split('\n');
+        cachedInstalledApps = lines.map(function(l) {
+          var p = l.replace('package:', '').trim();
+          return { pkg: p, name: p };
+        }).filter(function(i) { return i.pkg.length > 0; });
+        renderAppPickerList(cachedInstalledApps);
+      }).catch(function() {
+        mList.innerHTML = '<div style="font-size:11px; color:var(--red); padding:10px; text-align:center;">Failed to load package list.</div>';
+      });
+    }
+
+    function closeAppPickerModal() {
+      document.getElementById("app_modal").style.display = "none";
+    }
+
+    function filterAppPickerList() {
+      var query = (document.getElementById("app_search_input").value || "").toLowerCase();
+      var filtered = cachedInstalledApps.filter(function(item) {
+        return item.name.toLowerCase().indexOf(query) !== -1 || item.pkg.toLowerCase().indexOf(query) !== -1;
+      });
+      renderAppPickerList(filtered);
+    }
+
+    function renderAppPickerList(apps) {
+      var mList = document.getElementById("app_modal_list");
+      if (!apps || apps.length === 0) {
+        mList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:10px; text-align:center;">No matching applications found.</div>';
+        return;
+      }
+
+      var html = "";
+      apps.forEach(function(item) {
+        var iconUrl = "ksu://icon/" + item.pkg;
+        html += '<div class="app-row">';
+        html += '  <div class="app-info">';
+        html += '    <img class="app-icon" src="' + iconUrl + '" onerror="this.style.display=\'none\'">';
+        html += '    <div class="app-text">';
+        html += '      <div class="app-name">' + item.name + '</div>';
+        html += '      <div class="app-pkg">' + item.pkg + '</div>';
+        html += '    </div>';
+        html += '  </div>';
+        html += '  <button class="btn btn-sm" data-pkg="' + item.pkg + '" onclick="addGamePkgFromPicker(this.getAttribute(\'data-pkg\'))">Add</button>';
+        html += '</div>';
+      });
+      mList.innerHTML = html;
     }
 
     function updateProfilePills(mode) {
@@ -568,7 +805,7 @@
         document.getElementById("st_chg").innerText = bStat;
 
         // 8. Storage read-ahead & memory
-        var raVal = kv["RA"] || "128";
+        var raVal = kv["RA"] || "256";
         document.getElementById("st_ra").innerText = "none | " + raVal + " KB" + (parseInt(raVal) > 256 ? " (Burst)" : "");
 
         var swapVal = kv["SWAP"] || "15";
@@ -595,12 +832,24 @@
           gLines.forEach(function(pkg) {
             var cleanPkg = pkg.trim().replace(/\r/g, '');
             if (!cleanPkg) return;
-            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn btn-sm btn-del" data-pkg="' + cleanPkg + '" onclick="removeGamePkg(this.getAttribute(\'data-pkg\'))">Remove</button></div>';
+            var cleanPkgOnly = cleanPkg.split(':')[0].trim();
+            var iconUrl = "ksu://icon/" + cleanPkgOnly;
+
+            html += '<div class="game-item">';
+            html += '  <div class="game-item-info">';
+            html += '    <img src="' + iconUrl + '" onerror="this.style.display=\'none\'" style="width:18px; height:18px; border-radius:3px; flex:none;">';
+            html += '    <span>' + cleanPkg + '</span>';
+            html += '  </div>';
+            html += '  <div style="display:flex; gap:4px; flex:none;">';
+            html += '    <button class="btn btn-sm" data-pkg="' + cleanPkgOnly + '" onclick="launchGamePkg(this.getAttribute(\'data-pkg\'))" style="background:#1e293b; color:#60a5fa; border-color:#334155;">Launch</button>';
+            html += '    <button class="btn btn-sm btn-del" data-pkg="' + cleanPkg + '" onclick="removeGamePkg(this.getAttribute(\'data-pkg\'))">Remove</button>';
+            html += '  </div>';
+            html += '</div>';
           });
           gBox.innerHTML = html;
         }
 
-        // 11. Daemon logs & fixed profile parsing
+        // 11. Daemon logs
         if (logText) {
           document.getElementById("log_box").innerText = logText.trim();
           var logLines = logText.trim().split('\n');
@@ -618,28 +867,27 @@
               }
             }
 
-            if (lastTier === "Tier 0 (Optimal)" && (line.indexOf("Thermal Tier:") !== -1 || line.indexOf("CPU:") !== -1)) {
-              if (line.indexOf("T3") !== -1 || line.indexOf("Thermal") !== -1) lastTier = "Tier 3 (Throttling)";
+            if (line.indexOf("Thermal Tier:") !== -1) {
+              if (line.indexOf("T3") !== -1) lastTier = "Tier 3 (Throttling)";
               else if (line.indexOf("T2") !== -1) lastTier = "Tier 2 (Warm)";
               else if (line.indexOf("T1") !== -1) lastTier = "Tier 1 (Normal)";
               else if (line.indexOf("T0") !== -1) lastTier = "Tier 0 (Optimal)";
+              break;
             }
           }
 
-          var pEl = document.getElementById("st_profile");
-          pEl.innerText = lastProfile;
-          if (lastProfile === "Gaming") pEl.className = "val val-amber";
-          else if (lastProfile === "Touch") pEl.className = "val val-purple";
-          else if (lastProfile === "Sleep") pEl.className = "val val-amber";
-          else pEl.className = "val";
-
+          if (lastProfile !== "-") document.getElementById("st_profile").innerText = lastProfile;
           document.getElementById("st_tier").innerText = lastTier;
         }
-      }).catch(console.error);
+
+      }).catch(function(err) {
+        console.error("refreshData failed:", err);
+      });
     }
 
-    setInterval(refreshData, 3000);
     refreshData();
+    setInterval(refreshData, 3000);
   </script>
+
 </body>
 </html>
