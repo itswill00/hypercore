@@ -165,7 +165,7 @@ int main(void) {
         } else if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
             if (g_state.launch_boost_ticks == 0) {
-                set_read_ahead("128");
+                set_read_ahead("256");
             }
         }
         s_prev_game_active = game_active;
@@ -204,7 +204,7 @@ int main(void) {
             g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;
             g_state.touch_boost_ticks = 0;
-        } else if (gpu_load >= 40 || (load_val - g_state.prev_load) > 150 || g_state.touch_boost_ticks > 0) {
+        } else if (gpu_load >= 25 || (load_val - g_state.prev_load) > 75 || g_state.touch_boost_ticks > 0) {
             g_state.gaming_hold_ticks = 0;
             if (g_state.current_profile != PROFILE_TOUCH && g_state.touch_boost_ticks == 0) {
                 g_state.touch_boost_ticks = 3;
