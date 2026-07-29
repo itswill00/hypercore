@@ -31,7 +31,7 @@ void rotate_log(void) {
     FILE *in = fopen(LOG_PATH, "r");
     if (!in) return;
 
-    char lines[300][256];
+    static char lines[300][256];
     int count = 0;
     while (fgets(lines[count % 300], sizeof(lines[0]), in)) {
         count++;
