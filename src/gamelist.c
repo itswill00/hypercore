@@ -75,7 +75,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len) {
         cmdline[n] = '\0';
 
         for (int i = 0; i < s_game_count; i++) {
-            if (strcmp(cmdline, s_games[i]) == 0 || strstr(cmdline, s_games[i]) != NULL) {
+            if (strcmp(cmdline, s_games[i]) == 0) {
                 fclose(ftasks);
                 if (out_game_name && max_len > 0) {
                     strncpy(out_game_name, s_games[i], max_len - 1);
