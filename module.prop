@@ -1,6 +1,6 @@
 id=tanzanite_hypercore
 name=Tanzanite HyperCore
-version=v3.0
-versionCode=300
+version=v3.1
+versionCode=310
 author=@itswill00
-description=Native kernel tuner and system optimizer for MediaTek Helio G99 Ultra. Optimizes CPU scaling, UFS storage queues, ZRAM, and touch latency.
+description=Native kernel tuner & gaming optimizer for MediaTek Helio G99 Ultra. Sustained CPU clocks, optimized GPU GED, hysteresis thermal control & zero ZRAM latency.
