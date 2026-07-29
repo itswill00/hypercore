@@ -62,10 +62,8 @@
     }
 
     .card-title {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
       color: var(--text-muted);
       margin-bottom: 10px;
       display: flex;
@@ -272,14 +270,14 @@
 
   <div class="header">
     <h1>Tanzanite HyperCore v3.1</h1>
-    <div class="sub">Kernel Optimization Daemon for MediaTek Helio G99 Ultra</div>
+    <div class="sub">Kernel tuner for MediaTek Helio G99</div>
   </div>
 
-  <!-- Profile Selection Card -->
+  <!-- Profile selection card -->
   <div class="card">
     <div class="card-title">
-      <span>Profile Selection</span>
-      <span id="st_lock_lbl" style="font-weight: normal; color: var(--text);">Auto (Dynamic)</span>
+      <span>Profile mode</span>
+      <span id="st_lock_lbl" style="font-weight: normal; color: var(--text);">Auto</span>
     </div>
     <div class="selector-grid">
       <button class="pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">Auto</button>
@@ -290,82 +288,82 @@
     </div>
   </div>
 
-  <!-- System Status Card -->
+  <!-- System status card -->
   <div class="card">
-    <div class="card-title">System Telemetry</div>
+    <div class="card-title">System status</div>
     <div class="row">
-      <span class="lbl">Daemon Status</span>
-      <span class="val val-green" id="st_daemon">Initializing...</span>
+      <span class="lbl">Daemon</span>
+      <span class="val val-green" id="st_daemon">Checking...</span>
     </div>
     <div class="row">
-      <span class="lbl">Active Profile</span>
+      <span class="lbl">Active profile</span>
       <span class="val" id="st_profile">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Thermal State</span>
+      <span class="lbl">Thermal tier</span>
       <span class="val" id="st_tier">Tier 0 (Optimal)</span>
     </div>
     <div class="row">
-      <span class="lbl">CPU Cluster 0 (Cores 0–5)</span>
+      <span class="lbl">Little cores (CPU 0–5)</span>
       <span class="val" id="st_cpulow">-</span>
     </div>
     <div class="row">
-      <span class="lbl">CPU Cluster 1 (Cores 6–7)</span>
+      <span class="lbl">Big cores (CPU 6–7)</span>
       <span class="val" id="st_cpuhigh">-</span>
     </div>
     <div class="row">
-      <span class="lbl">GPU Load / Floor</span>
+      <span class="lbl">GPU load & floor</span>
       <span class="val" id="st_gpu">-</span>
     </div>
     <div class="row">
-      <span class="lbl">System Load Average</span>
+      <span class="lbl">System load</span>
       <span class="val" id="st_load">-</span>
     </div>
     <div class="row">
-      <span class="lbl">CPU / Battery Temp</span>
+      <span class="lbl">CPU / battery temp</span>
       <span class="val" id="st_temp">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Power Supply State</span>
+      <span class="lbl">Battery status</span>
       <span class="val" id="st_chg">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Storage Read-Ahead</span>
+      <span class="lbl">Read-ahead</span>
       <span class="val" id="st_ra">none | 128 KB</span>
     </div>
     <div class="row">
-      <span class="lbl">Virtual Memory Tunables</span>
+      <span class="lbl">Swappiness / VFS</span>
       <span class="val" id="st_vm">15 / 100</span>
     </div>
   </div>
 
   <div class="btn-group">
-    <button class="btn" onclick="flushRam()">Clear Cache & Memory</button>
-    <button class="btn" onclick="restartDaemon()">Restart Daemon</button>
+    <button class="btn" onclick="flushRam()">Clear RAM cache</button>
+    <button class="btn" onclick="restartDaemon()">Restart daemon</button>
   </div>
 
   <div id="msg"></div>
 
-  <!-- Game Detector Configuration Card -->
+  <!-- Game list configuration card -->
   <div class="card">
     <div class="card-title">
-      <span>Game Detector (gamelist.txt)</span>
-      <span id="game_cnt_lbl" style="font-weight: normal;">0 packages</span>
+      <span>Game list</span>
+      <span id="game_cnt_lbl" style="font-weight: normal;">0 games</span>
     </div>
     <div class="game-list" id="game_list_box">
-      <div style="font-size:11px; color:var(--text-muted);">Loading configuration...</div>
+      <div style="font-size:11px; color:var(--text-muted);">Loading list...</div>
     </div>
     <div class="add-game-box">
-      <input type="text" id="new_game_pkg" placeholder="Package name (e.g. com.tencent.ig)">
-      <button class="btn btn-sm" onclick="addGamePkg()">Add Game</button>
+      <input type="text" id="new_game_pkg" placeholder="e.g. com.tencent.ig">
+      <button class="btn btn-sm" onclick="addGamePkg()">Add package</button>
     </div>
   </div>
 
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
-    <span style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">System Log</span>
+    <span style="font-size:11px; font-weight:600; color:var(--text-muted);">System log</span>
     <a href="#" onclick="refreshData(); return false;" style="font-size:11px; font-family:var(--mono); color:#60a5fa; text-decoration:none;">Refresh</a>
   </div>
-  <pre id="log_box">Loading logs...</pre>
+  <pre id="log_box">Loading log...</pre>
 
   <script>
     var currentLockMode = "AUTO";
@@ -405,9 +403,9 @@
     function setProfileMode(mode) {
       var cmd = "";
       if (mode === "AUTO") {
-        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Profile mode set to Auto (Dynamic)'";
+        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Switched to Auto profile'";
       } else {
-        cmd = 'echo "' + mode + '" > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo "' + mode + '" > /sdcard/Android/.hypercore_lock; echo "Profile mode locked to ' + mode + '"';
+        cmd = 'echo "' + mode + '" > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo "' + mode + '" > /sdcard/Android/.hypercore_lock; echo "Locked to ' + mode + ' profile"';
       }
 
       runShell(cmd).then(function(out) {
@@ -417,13 +415,13 @@
     }
 
     function flushRam() {
-      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'System memory and ZRAM caches cleared'").then(function(out) {
+      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'Cleared RAM and ZRAM cache'").then(function(out) {
         showMsg(out.trim());
       });
     }
 
     function restartDaemon() {
-      runShell("pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup /data/adb/modules/tanzanite_hypercore/hypercore >/dev/null 2>&1 & echo 'Daemon restarted successfully'").then(function(out) {
+      runShell("pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup /data/adb/modules/tanzanite_hypercore/hypercore >/dev/null 2>&1 & echo 'Restarted daemon'").then(function(out) {
         showMsg(out.trim());
         refreshData();
       });
@@ -433,7 +431,7 @@
       var input = document.getElementById("new_game_pkg");
       var pkg = (input.value || "").trim();
       if (!pkg) return;
-      var cmd = 'echo "' + pkg + '" >> /data/adb/modules/tanzanite_hypercore/gamelist.txt; echo "' + pkg + '" >> /sdcard/Android/gamelist.txt; echo "Added package: ' + pkg + '"';
+      var cmd = 'echo "' + pkg + '" >> /data/adb/modules/tanzanite_hypercore/gamelist.txt; echo "' + pkg + '" >> /sdcard/Android/gamelist.txt; echo "Added ' + pkg + '"';
       runShell(cmd).then(function(out) {
         showMsg(out.trim());
         input.value = "";
@@ -453,7 +451,7 @@
         '    mv "$f.tmp" "$f" 2>/dev/null',
         '  fi',
         'done',
-        'echo "Removed package: ' + cleanPkg + '"'
+        'echo "Removed ' + cleanPkg + '"'
       ].join('\n');
 
       runShell(cmd).then(function(out) {
@@ -481,7 +479,7 @@
         }
       });
 
-      var displayMode = normalizedMode === "AUTO" ? "Auto (Dynamic)" : (normalizedMode + " (Locked)");
+      var displayMode = normalizedMode === "AUTO" ? "Auto" : (normalizedMode + " locked");
       document.getElementById("st_lock_lbl").innerText = displayMode;
     }
 
@@ -523,11 +521,11 @@
           }
         });
 
-        // 1. Daemon Status
+        // 1. Daemon status
         var pid = kv["STATUS"] || "";
         var isRunning = pid.length > 0;
         var dEl = document.getElementById("st_daemon");
-        dEl.innerText = isRunning ? ("Active (PID " + pid + ")") : "Stopped";
+        dEl.innerText = isRunning ? ("Running (PID " + pid + ")") : "Stopped";
         dEl.className = "val " + (isRunning ? "val-green" : "val-red");
 
         // 2. CPU Low (0-5)
@@ -548,7 +546,7 @@
           document.getElementById("st_cpuhigh").innerText = cCur + " MHz [" + cMin + "–" + cMax + "]";
         }
 
-        // 4. GPU Load & Floor
+        // 4. GPU load & floor
         if (kv["GPU"]) {
           var p = kv["GPU"].split(':');
           var gLoad = p[0] || "0";
@@ -556,7 +554,7 @@
           document.getElementById("st_gpu").innerText = gLoad + "% | " + gFloor + " MHz floor";
         }
 
-        // 5. System Load
+        // 5. System load
         document.getElementById("st_load").innerText = kv["LOAD"] || "0.00";
 
         // 6. Temperatures
@@ -565,11 +563,11 @@
         var bTemp = bRaw > 100 ? Math.round(bRaw / 10) : bRaw;
         document.getElementById("st_temp").innerText = (cTemp > 0 ? cTemp : "--") + "°C / " + (bTemp > 0 ? bTemp : "--") + "°C";
 
-        // 7. Battery Power State
+        // 7. Battery power state
         var bStat = kv["BATSTAT"] || "Discharging";
         document.getElementById("st_chg").innerText = bStat;
 
-        // 8. Storage Read Ahead & Memory
+        // 8. Storage read-ahead & memory
         var raVal = kv["RA"] || "128";
         document.getElementById("st_ra").innerText = "none | " + raVal + " KB" + (parseInt(raVal) > 256 ? " (Burst)" : "");
 
@@ -577,7 +575,7 @@
         var vfsVal = kv["VFS"] || "100";
         document.getElementById("st_vm").innerText = swapVal + " / " + vfsVal;
 
-        // 9. Lock Mode Pills
+        // 9. Lock mode pills
         currentLockMode = (kv["LOCK"] || "AUTO").trim().toUpperCase();
         if (!currentLockMode) currentLockMode = "AUTO";
         updateProfilePills(currentLockMode);
@@ -588,10 +586,10 @@
           return l.trim().length > 0 && l.trim()[0] !== '#';
         });
 
-        document.getElementById("game_cnt_lbl").innerText = gLines.length + (gLines.length === 1 ? " package" : " packages");
+        document.getElementById("game_cnt_lbl").innerText = gLines.length + (gLines.length === 1 ? " game" : " games");
 
         if (gLines.length === 0) {
-          gBox.innerHTML = '<div style="font-size:11px; color:var(--text-muted);">No packages configured.</div>';
+          gBox.innerHTML = '<div style="font-size:11px; color:var(--text-muted);">No games added yet.</div>';
         } else {
           var html = "";
           gLines.forEach(function(pkg) {
@@ -602,7 +600,7 @@
           gBox.innerHTML = html;
         }
 
-        // 11. Daemon Logs & Fixed Profile Parsing
+        // 11. Daemon logs & fixed profile parsing
         if (logText) {
           document.getElementById("log_box").innerText = logText.trim();
           var logLines = logText.trim().split('\n');
