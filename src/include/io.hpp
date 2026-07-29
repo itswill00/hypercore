@@ -14,6 +14,8 @@ extern "C" {
 #endif
 
 void apply_io_tuning(void);
+void set_read_ahead(const char *kb_val);
+void apply_irq_tuning(void);
 
 #ifdef __cplusplus
 }
