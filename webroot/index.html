@@ -6,35 +6,36 @@
   <title>HyperCore Dashboard</title>
   <style>
     body {
-      background: #121212;
+      background: #0d0d0d;
       color: #e0e0e0;
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 520px;
+      max-width: 540px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 14px;
     }
     h2 {
       margin: 0 0 2px 0;
       font-size: 18px;
+      color: #fff;
     }
     p.sub {
-      margin: 0 0 16px 0;
+      margin: 0 0 14px 0;
       color: #888;
       font-size: 12px;
     }
     .box {
-      background: #1e1e1e;
-      border: 1px solid #2a2a2a;
-      border-radius: 6px;
+      background: #181818;
+      border: 1px solid #282828;
+      border-radius: 8px;
       padding: 10px 14px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 6px 0;
-      border-bottom: 1px solid #262626;
+      border-bottom: 1px solid #222;
       font-size: 13px;
     }
     .row:last-child {
@@ -44,46 +45,95 @@
       color: #999;
     }
     .val {
-      font-weight: bold;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
     .status-on { color: #4caf50; }
     .status-off { color: #f44336; }
+    .status-gaming { color: #ff9800; }
     .btn-group {
       display: flex;
       gap: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     button {
       flex: 1;
-      background: #2a2a2a;
+      background: #242424;
       color: #fff;
-      border: 1px solid #3a3a3a;
+      border: 1px solid #363636;
       padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
+      transition: background 0.15s ease;
     }
     button:active {
-      background: #3a3a3a;
+      background: #383838;
     }
     button.active {
       background: #3f51b5;
-      border-color: #3f51b5;
+      border-color: #5c6bc0;
+    }
+    .btn-sm {
+      flex: none;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+    }
+    .btn-del {
+      background: #3a1c1c;
+      border-color: #5c2828;
+      color: #ff8a80;
     }
     #msg {
       font-size: 12px;
       color: #81c784;
+      background: #1b2e1e;
+      border: 1px solid #2e4d32;
+      padding: 6px 10px;
+      border-radius: 4px;
       margin-bottom: 10px;
       display: none;
+    }
+    .game-list {
+      max-height: 140px;
+      overflow-y: auto;
+      margin-top: 6px;
+    }
+    .game-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .add-game-box {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
     }
     pre {
       background: #0a0a0a;
       border: 1px solid #222;
-      padding: 10px;
-      border-radius: 4px;
+      padding: 8px 10px;
+      border-radius: 6px;
       font-size: 11px;
-      height: 180px;
+      height: 160px;
       overflow-y: auto;
       white-space: pre-wrap;
       color: #aaa;
@@ -93,8 +143,8 @@
 </head>
 <body>
 
-  <h2>Tanzanite HyperCore</h2>
-  <p class="sub">Kernel Tuner for MediaTek Helio G99 Ultra (Linux 5.10.x)</p>
+  <h2>Tanzanite HyperCore v3.1</h2>
+  <p class="sub">Kernel Tuner & Gaming Engine for MediaTek Helio G99 Ultra</p>
 
   <div class="box">
     <div class="row">
@@ -138,12 +188,12 @@
       <span class="val" id="st_chg">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Storage I/O Scheduler</span>
-      <span class="val">none | 128KB</span>
+      <span class="lbl">Storage Read-Ahead</span>
+      <span class="val" id="st_ra">none | 128KB</span>
     </div>
     <div class="row">
       <span class="lbl">VM Swappiness / VFS</span>
-      <span class="val">65 / 90</span>
+      <span class="val" id="st_vm">15 / 100</span>
     </div>
   </div>
 
@@ -154,6 +204,21 @@
   </div>
 
   <div id="msg"></div>
+
+  <!-- Game List Management Section -->
+  <div class="box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span style="font-size:13px; font-weight:600; color:#ddd;">Game List Detector (gamelist.txt)</span>
+      <span style="font-size:11px; color:#888;" id="game_cnt_lbl">0 games</span>
+    </div>
+    <div class="game-list" id="game_list_box">
+      <div style="font-size:11px; color:#666;">Loading game list...</div>
+    </div>
+    <div class="add-game-box">
+      <input type="text" id="new_game_pkg" placeholder="e.g. com.tencent.ig">
+      <button class="btn-sm" onclick="addGamePkg()">+ Add Game</button>
+    </div>
+  </div>
 
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <span style="font-size:12px; color:#888;">Daemon Logs</span>
@@ -202,19 +267,41 @@
     }
 
     function flushRam() {
-      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM and ZRAM flushed'").then(function(out) {
+      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM & ZRAM flushed'").then(function(out) {
         showMsg(out.trim());
       });
     }
 
     function restartDaemon() {
-      runShell("pkill -9 -x hypercore 2>/dev/null; sleep 1; /data/adb/modules/tanzanite_hypercore/hypercore; echo 'Daemon restarted'").then(function(out) {
+      runShell("pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup /data/adb/modules/tanzanite_hypercore/hypercore >/dev/null 2>&1 & echo 'Daemon restarted'").then(function(out) {
+        showMsg(out.trim());
+        refreshData();
+      });
+    }
+
+    function addGamePkg() {
+      var input = document.getElementById("new_game_pkg");
+      var pkg = (input.value || "").trim();
+      if (!pkg) return;
+      var cmd = 'echo "' + pkg + '" >> /data/adb/modules/tanzanite_hypercore/gamelist.txt; echo "' + pkg + '" >> /sdcard/Android/gamelist.txt; echo "Added: ' + pkg + '"';
+      runShell(cmd).then(function(out) {
+        showMsg(out.trim());
+        input.value = "";
+        refreshData();
+      });
+    }
+
+    function removeGamePkg(pkg) {
+      if (!pkg) return;
+      var cmd = 'sed -i "/^' + pkg + '$/d" /data/adb/modules/tanzanite_hypercore/gamelist.txt 2>/dev/null; sed -i "/^' + pkg + '$/d" /sdcard/Android/gamelist.txt 2>/dev/null; echo "Removed: ' + pkg + '"';
+      runShell(cmd).then(function(out) {
         showMsg(out.trim());
         refreshData();
       });
     }
 
     function refreshData() {
+      // Single unified shell command execution to prevent IPC overhead
       var cmd = [
         'echo "STATUS:$(pgrep -x \"hypercore\" 2>/dev/null | head -n 1)"',
         'echo "CPULOW:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"',
@@ -224,13 +311,29 @@
         'echo "CPUTEMP:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"',
         'echo "BATTEMP:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)"',
         'echo "BATSTAT:$(cat /sys/class/power_supply/battery/status 2>/dev/null)"',
-        'echo "LOCK:$([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo GAMING || echo AUTO)"'
+        'echo "RA:$(cat /sys/block/mmcblk0/queue/read_ahead_kb 2>/dev/null || cat /sys/block/sda/queue/read_ahead_kb 2>/dev/null || echo 128)"',
+        'echo "SWAP:$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 15)"',
+        'echo "VFS:$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null || echo 100)"',
+        'echo "LOCK:$([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo GAMING || echo AUTO)"',
+        'echo "===GAMELIST==="',
+        'cat /data/adb/modules/tanzanite_hypercore/gamelist.txt 2>/dev/null || cat /sdcard/Android/gamelist.txt 2>/dev/null',
+        'echo "===LOGS==="',
+        'tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null'
       ].join('\n');
 
       runShell(cmd).then(function(res) {
-        var lines = (res || "").trim().split('\n');
+        if (!res) return;
+
+        var parts = res.split("===GAMELIST===");
+        var kvText = parts[0] || "";
+        var rest = parts[1] || "";
+        var restParts = rest.split("===LOGS===");
+        var gameListText = restParts[0] || "";
+        var logText = restParts[1] || "";
+
+        // Parse key-value metrics
         var kv = {};
-        lines.forEach(function(l) {
+        kvText.trim().split('\n').forEach(function(l) {
           var idx = l.indexOf(':');
           if (idx !== -1) {
             kv[l.substring(0, idx).trim()] = l.substring(idx + 1).trim();
@@ -246,27 +349,27 @@
 
         // 2. CPU Low (0-5)
         if (kv["CPULOW"]) {
-          var parts = kv["CPULOW"].split(':');
-          var cCur = Math.round(parseInt(parts[0] || 0) / 1000);
-          var cMin = Math.round(parseInt(parts[1] || 0) / 1000);
-          var cMax = Math.round(parseInt(parts[2] || 0) / 1000);
+          var p = kv["CPULOW"].split(':');
+          var cCur = Math.round(parseInt(p[0] || 0) / 1000);
+          var cMin = Math.round(parseInt(p[1] || 0) / 1000);
+          var cMax = Math.round(parseInt(p[2] || 0) / 1000);
           document.getElementById("st_cpulow").innerText = cCur + " MHz [" + cMin + "-" + cMax + "]";
         }
 
         // 3. CPU High (6-7)
         if (kv["CPUHIGH"]) {
-          var parts = kv["CPUHIGH"].split(':');
-          var cCur = Math.round(parseInt(parts[0] || 0) / 1000);
-          var cMin = Math.round(parseInt(parts[1] || 0) / 1000);
-          var cMax = Math.round(parseInt(parts[2] || 0) / 1000);
+          var p = kv["CPUHIGH"].split(':');
+          var cCur = Math.round(parseInt(p[0] || 0) / 1000);
+          var cMin = Math.round(parseInt(p[1] || 0) / 1000);
+          var cMax = Math.round(parseInt(p[2] || 0) / 1000);
           document.getElementById("st_cpuhigh").innerText = cCur + " MHz [" + cMin + "-" + cMax + "]";
         }
 
         // 4. GPU Load & Floor
         if (kv["GPU"]) {
-          var parts = kv["GPU"].split(':');
-          var gLoad = parts[0] || "0";
-          var gFloor = Math.round(parseInt(parts[1] || 0) / 1000);
+          var p = kv["GPU"].split(':');
+          var gLoad = p[0] || "0";
+          var gFloor = Math.round(parseInt(p[1] || 0) / 1000);
           document.getElementById("st_gpu").innerText = gLoad + "% | " + gFloor + " MHz floor";
         }
 
@@ -283,42 +386,69 @@
         var bStat = kv["BATSTAT"] || "Discharging";
         document.getElementById("st_chg").innerText = (bStat === "Charging") ? "Charging ⚡" : "Discharging";
 
-        // 8. Lock Mode
+        // 8. Storage Read Ahead & Memory
+        var raVal = kv["RA"] || "128";
+        document.getElementById("st_ra").innerText = "none | " + raVal + "KB" + (parseInt(raVal) > 256 ? " (Burst 🚀)" : "");
+
+        var swapVal = kv["SWAP"] || "15";
+        var vfsVal = kv["VFS"] || "100";
+        document.getElementById("st_vm").innerText = swapVal + " / " + vfsVal;
+
+        // 9. Lock Mode
         isGamingLocked = (kv["LOCK"] === "GAMING");
-        document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock" : "Auto";
+        document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock 🔒" : "Auto";
         var btn = document.getElementById("btn_mode");
         btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
         btn.className = isGamingLocked ? "active" : "";
-      }).catch(console.error);
 
-      // Log & Profile Parsing
-      runShell("tail -n 25 /sdcard/Android/hypercore.log 2>/dev/null").then(function(log) {
-        if (log) {
-          document.getElementById("log_box").innerText = log.trim();
-          var lines = log.trim().split('\n');
+        // 10. Gamelist rendering
+        var gBox = document.getElementById("game_list_box");
+        var gLines = gameListText.trim().split('\n').filter(function(l) {
+          return l.trim().length > 0 && l.trim()[0] !== '#';
+        });
+
+        document.getElementById("game_cnt_lbl").innerText = gLines.length + " games";
+
+        if (gLines.length === 0) {
+          gBox.innerHTML = '<div style="font-size:11px; color:#666;">No games added yet.</div>';
+        } else {
+          var html = "";
+          gLines.forEach(function(pkg) {
+            var cleanPkg = pkg.trim();
+            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn-sm btn-del" onclick="removeGamePkg(\'' + cleanPkg + '\')">Remove</button></div>';
+          });
+          gBox.innerHTML = html;
+        }
+
+        // 11. Daemon Logs & Profile Parsing
+        if (logText) {
+          document.getElementById("log_box").innerText = logText.trim();
+          var logLines = logText.trim().split('\n');
           var lastProfile = "-";
           var lastTier = "Tier 0 (Optimal)";
 
-          for (var i = lines.length - 1; i >= 0; i--) {
-            var line = lines[i];
+          for (var i = logLines.length - 1; i >= 0; i--) {
+            var line = logLines[i];
             if (lastProfile === "-" && line.indexOf("Profile:") !== -1) {
               lastProfile = line.split("Profile:")[1].trim().split(" ")[0];
             }
             if (lastTier === "Tier 0 (Optimal)" && (line.indexOf("Thermal Tier:") !== -1 || line.indexOf("CPU:") !== -1)) {
-              if (line.indexOf("T3") !== -1 || line.indexOf("Thermal") !== -1) lastTier = "Tier 3 (Throttling Hold)";
+              if (line.indexOf("T3") !== -1 || line.indexOf("Thermal") !== -1) lastTier = "Tier 3 (Throttling)";
               else if (line.indexOf("T2") !== -1) lastTier = "Tier 2 (Warm)";
               else if (line.indexOf("T1") !== -1) lastTier = "Tier 1 (Normal)";
               else if (line.indexOf("T0") !== -1) lastTier = "Tier 0 (Optimal)";
             }
           }
 
-          document.getElementById("st_profile").innerText = lastProfile;
+          var pEl = document.getElementById("st_profile");
+          pEl.innerText = lastProfile;
+          pEl.className = "val " + (lastProfile === "Gaming" ? "status-gaming" : "");
           document.getElementById("st_tier").innerText = lastTier;
         }
       }).catch(console.error);
     }
 
-    setInterval(refreshData, 2500);
+    setInterval(refreshData, 3000);
     refreshData();
   </script>
 </body>
