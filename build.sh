@@ -11,7 +11,7 @@ mkdir -p "$RELEASE_DIR"
 cd "$PROJECT_DIR"
 
 echo "-> Compiling hypercore daemon..."
-clang -O3 -flto -s -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/hypercore"
+clang -O3 -flto -s -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/hypercore"
 
 echo "-> Setting executable bits..."
 chmod +x hypercore customize.sh post-fs-data.sh service.sh uninstall.sh
