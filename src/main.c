@@ -64,6 +64,7 @@ static void apply_base_tuning(void) {
     apply_memory_tuning();
     apply_io_tuning();
     apply_gpu_tuning();
+    apply_irq_tuning();
 
     system("sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || sysctl -w net.ipv4.tcp_congestion_control=bbr >/dev/null 2>&1");
     system("sysctl -w net.core.default_qdisc=fq_codel >/dev/null 2>&1 || sysctl -w net.core.default_qdisc=fq >/dev/null 2>&1");
@@ -155,6 +156,19 @@ int main(void) {
 
         char active_game[128] = "";
         int game_active = is_game_in_foreground(active_game, sizeof(active_game));
+
+        static int s_prev_game_active = 0;
+        if (game_active && !s_prev_game_active) {
+            set_read_ahead("512");
+            g_state.launch_boost_ticks = 3;
+            log_write("Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
+        } else if (g_state.launch_boost_ticks > 0) {
+            g_state.launch_boost_ticks--;
+            if (g_state.launch_boost_ticks == 0) {
+                set_read_ahead("128");
+            }
+        }
+        s_prev_game_active = game_active;
 
         profile_t next_profile = PROFILE_INTERACTIVE;
 
