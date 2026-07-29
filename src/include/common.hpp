@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/inotify.h>
 
 #define LOG_PATH        "/sdcard/Android/hypercore.log"
 #define FREQ_LITTLE_MAX 2000000

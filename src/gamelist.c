@@ -12,6 +12,7 @@ static char      s_games[MAX_GAMES][PKG_NAME_LEN];
 static profile_t s_profiles[MAX_GAMES];
 static int       s_game_count = 0;
 static time_t    s_last_load_time = 0;
+static int       s_inotify_fd = -1;
 
 void load_gamelist(void) {
     s_game_count = 0;
@@ -55,9 +56,30 @@ void load_gamelist(void) {
     s_last_load_time = time(NULL);
 }
 
+void init_gamelist_watcher(void) {
+    s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    if (s_inotify_fd < 0) return;
+
+    char path[256];
+    snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
+    inotify_add_watch(s_inotify_fd, path, IN_MODIFY | IN_CLOSE_WRITE);
+}
+
+void check_gamelist_inotify(void) {
+    if (s_inotify_fd < 0) return;
+
+    char buf[512];
+    ssize_t len = read(s_inotify_fd, buf, sizeof(buf));
+    if (len > 0) {
+        load_gamelist();
+    }
+}
+
 int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile) {
     if (out_game_name && max_len > 0) out_game_name[0] = '\0';
     if (out_profile) *out_profile = PROFILE_GAMING;
+
+    check_gamelist_inotify();
 
     time_t now = time(NULL);
     if (s_game_count == 0 || (now - s_last_load_time) > 30) {
