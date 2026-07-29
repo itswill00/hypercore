@@ -1,0 +1,19 @@
+# Tanzanite HyperCore Game List
+# Add package names of games below (one per line).
+
+com.tencent.ig
+com.pubg.krmobile
+com.pubg.imobile
+com.pubg.newstate
+com.mobile.legends
+com.garena.game.codm
+com.dts.freefireth
+com.dts.freefiremax
+com.garena.game.kgid
+com.miHoYo.GenshinImpact
+com.HoYoverse.hkrpg
+com.miHoYo.Yuanshen
+com.kurogame.wutheringwaves
+com.epicgames.fortnite
+com.vng.pubgmobile
+com.ea.gp.apexlegendsshimmer
