@@ -5,7 +5,7 @@
 
 #include "gamelist.hpp"
 
-#define MAX_GAMES 64
+#define MAX_GAMES 256
 #define PKG_NAME_LEN 128
 
 static char s_games[MAX_GAMES][PKG_NAME_LEN];
