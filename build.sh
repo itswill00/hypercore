@@ -34,6 +34,10 @@ zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     checksums.sha256 \
     hypercore >/dev/null
 
+INTERNAL_DIR="/sdcard/HyperCore_Releases"
+mkdir -p "$INTERNAL_DIR"
 cp "$RELEASE_DIR/$ZIP_OUT" "/data/data/com.termux/files/home/$ZIP_OUT"
+cp "$RELEASE_DIR/$ZIP_OUT" "$INTERNAL_DIR/$ZIP_OUT"
 
 echo "Done! Built: $RELEASE_DIR/$ZIP_OUT"
+echo "Internal: $INTERNAL_DIR/$ZIP_OUT"
