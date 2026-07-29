@@ -31,19 +31,41 @@ void rotate_log(void) {
     FILE *in = fopen(LOG_PATH, "r");
     if (!in) return;
 
-    static char lines[300][256];
+    char **lines = (char **)malloc(200 * sizeof(char *));
+    if (!lines) { fclose(in); return; }
+
+    char buf[256];
     int count = 0;
-    while (fgets(lines[count % 300], sizeof(lines[0]), in)) {
+    while (fgets(buf, sizeof(buf), in)) {
+        int slot = count % 200;
+        if (count < 200) {
+            lines[slot] = (char *)malloc(strlen(buf) + 1);
+        } else {
+            free(lines[slot]);
+            lines[slot] = (char *)malloc(strlen(buf) + 1);
+        }
+        if (lines[slot]) strcpy(lines[slot], buf);
         count++;
     }
     fclose(in);
 
     FILE *out = fopen(LOG_PATH, "w");
-    if (!out) return;
+    if (!out) {
+        int total = (count < 200) ? count : 200;
+        for (int i = 0; i < total; i++) free(lines[i]);
+        free(lines);
+        return;
+    }
 
-    int start = (count > 150) ? (count - 150) : 0;
-    for (int i = start; i < count; i++) {
-        fputs(lines[i % 300], out);
+    int total = (count < 200) ? count : 200;
+    int start_idx = (count < 200) ? 0 : (count % 200);
+    for (int i = 0; i < total; i++) {
+        int slot = (start_idx + i) % 200;
+        if (lines[slot]) {
+            fputs(lines[slot], out);
+            free(lines[slot]);
+        }
     }
     fclose(out);
+    free(lines);
 }

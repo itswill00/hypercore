@@ -1,4 +1,4 @@
-# HyperFlow System Properties (Safe & Stable for MIUI / HyperOS)
+# Tanzanite HyperCore System Properties (Safe & Stable for MIUI / HyperOS)
 
 # Dalvik / Dex2oat compiler threads
 dalvik.vm.dex2oat-threads=6

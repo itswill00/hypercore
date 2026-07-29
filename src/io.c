@@ -51,7 +51,7 @@ void apply_irq_tuning(void) {
         if (irq <= 0) continue;
 
         char name_path[128];
-        snprintf(name_path, sizeof(name_path), "/proc/irq/%d/actions", irq);
+        snprintf(name_path, sizeof(name_path), "/proc/irq/%d/action", irq);
         int fd = open(name_path, O_RDONLY | O_CLOEXEC);
         if (fd >= 0) {
             char buf[64];

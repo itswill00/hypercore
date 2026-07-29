@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     init_hardware_nodes();
     write_pid_file();
 
-    log_write("Tanzanite HyperCore v3.2 started.");
+    log_write("Tanzanite HyperCore v3.3 started.");
 
     apply_cpuset();
     apply_memory_tuning();
@@ -255,6 +255,12 @@ int main(int argc, char *argv[]) {
         }
 
         apply_battery_thermal_guard(g_state.current_profile == PROFILE_GAMING, g_state.is_charging);
+
+        static int s_rotate_counter = 0;
+        if (++s_rotate_counter >= 30) {
+            rotate_log();
+            s_rotate_counter = 0;
+        }
 
         sleep(2);
     }

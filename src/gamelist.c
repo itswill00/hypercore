@@ -11,7 +11,6 @@
 static char      s_games[MAX_GAMES][PKG_NAME_LEN];
 static profile_t s_profiles[MAX_GAMES];
 static int       s_game_count = 0;
-static time_t    s_last_load_time = 0;
 static int       s_inotify_fd = -1;
 
 void load_gamelist(void) {
@@ -53,7 +52,6 @@ void load_gamelist(void) {
         s_game_count++;
     }
     fclose(f);
-    s_last_load_time = time(NULL);
 }
 
 void init_gamelist_watcher(void) {
@@ -81,8 +79,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
 
     check_gamelist_inotify();
 
-    time_t now = time(NULL);
-    if (s_game_count == 0 || (now - s_last_load_time) > 30) {
+    if (s_game_count == 0) {
         load_gamelist();
     }
 

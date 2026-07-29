@@ -66,7 +66,7 @@ void apply_profile(profile_t prof, int tier) {
 
         case PROFILE_INTERACTIVE: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
-            set_cpu_freqs(1200000, FREQ_LITTLE_MAX, 1400000, big_max, "0", "20000");
+            set_cpu_freqs(1200000, FREQ_LITTLE_MAX, 1400000, big_max, "500", "20000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "600000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
