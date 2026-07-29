@@ -1,11 +1,12 @@
-# Tanzanite HyperCore v3.2
+# Tanzanite HyperCore v3.3
 
-### Major Enhancements & Bug Fixes
-- **Profile Scaling Logic Refinement**: Eliminated false `PROFILE_GAMING` triggers during non-gaming usage (video playback, UI animations). Non-game GPU load spikes are now gracefully handled by `PROFILE_TOUCH`.
-- **Exact Package Matching**: Enhanced `gamelist.c` foreground detector to use strict exact package matching (`strcmp`), eliminating false positive service triggers.
-- **Expanded Game Detector (`gamelist.txt`)**: Preloaded 40+ popular global, regional (SEA, Vietnam, Taiwan), and anime game package titles. Memory capacity expanded to 256 games (`MAX_GAMES=256`).
-- **WebUI Redesign & Overhaul**: Developer theme in Sentence Case, interactive multi-profile selector (`Auto`, `Gaming`, `Balanced`, `Touch`, `Saver`), and live `gamelist.txt` manager.
-- **HTML & CSS Webroot Bug Fixes**: Fixed `removeGamePkg` button layout (`flex: none;`), DOM `data-pkg` attribute escaping, and log parser active profile name extraction.
-- **Internal Storage Auto-Sync**: Compiled zip packages are automatically saved to `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.2.zip`.
-- **1-Click Online Module Updates**: Added `updateJson` support for KernelSU, APatch, and Magisk App Manager.
+### Major Enhancements & Architectural Upgrades
+- **KernelSU Live Status Integration**: Real-time daemon status dynamically rendered in KernelSU / APatch / Magisk Manager description line (`[Active: Interactive]`, `[Active: Gaming (PUBG)]`, `[Active: Touch]`).
+- **Linux inotify Event Watcher**: Implemented non-blocking kernel `inotify(2)` watcher on `gamelist.txt` and `.hypercore_lock` for 0ms instant configuration reloads.
+- **KernelSU WebUI App Picker Modal**: Interactive installed app selector in WebUI featuring real Android application icons (`ksu://icon/`) and human-readable app labels.
+- **Direct Game Launcher (`[Launch]`)**: One-click game launcher buttons added directly inside the WebUI game list.
+- **Battery Charge Thermal Guard**: Dynamically limits charging current to 2.0A (`charge_control_limit`) during plugged-in gaming sessions to prevent 45°C+ battery heat spikes.
+- **Android Toast Notifications**: System notification alerts automatically posted upon game launch (`Gaming Profile Activated [com.tencent.ig]`).
+- **Relaxed Thermal Headroom**: Expanded CPU thermal thresholds (Tier 1 @ 58°C, Tier 2 @ 65°C, Tier 3 @ 75°C) to prevent premature thermal throttling.
+- **Smooth Scrolling & App Switching**: Boosted interactive CPU governor down-rate limits (20ms–25ms) and UFS read-ahead queues (256 KB baseline, 512 KB launch burst).
 - **Strict Compiler Verification**: Compiled with `-O3 -flto -s -Wall -Wextra -Werror` (0 warnings, 0 errors).
