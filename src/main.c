@@ -184,6 +184,18 @@ int main(void) {
             next_profile = PROFILE_GAMING;
             g_state.gaming_hold_ticks = 10;
             g_state.touch_boost_ticks = 0;
+        } else if (strcmp(manual_lock, "INTERACTIVE") == 0 || strcmp(manual_lock, "BALANCED") == 0) {
+            next_profile = PROFILE_INTERACTIVE;
+            g_state.gaming_hold_ticks = 0;
+            g_state.touch_boost_ticks = 0;
+        } else if (strcmp(manual_lock, "TOUCH") == 0) {
+            next_profile = PROFILE_TOUCH;
+            g_state.gaming_hold_ticks = 0;
+            g_state.touch_boost_ticks = 3;
+        } else if (strcmp(manual_lock, "SLEEP") == 0 || strcmp(manual_lock, "SAVER") == 0) {
+            next_profile = PROFILE_SLEEP;
+            g_state.gaming_hold_ticks = 0;
+            g_state.touch_boost_ticks = 0;
         } else if (game_active) {
             next_profile = PROFILE_GAMING;
             g_state.gaming_hold_ticks = 10;
