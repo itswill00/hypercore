@@ -145,7 +145,8 @@ int main(int argc, char *argv[]) {
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
 
         if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 100) bat_temp /= 10;
+        if (bat_temp > 1000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
 
         g_state.is_charging = check_charging_status();
 
