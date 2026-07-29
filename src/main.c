@@ -107,7 +107,7 @@ int main(void) {
         fclose(fpid);
     }
 
-    log_write("Tanzanite HyperCore v3.0 started.");
+    log_write("Tanzanite HyperCore v3.1 started.");
     apply_base_tuning();
     apply_cpuset();
 
@@ -157,19 +157,27 @@ int main(void) {
         if (!screen_on) {
             next_profile = PROFILE_SLEEP;
             g_state.touch_boost_ticks = 0;
-        } else if (thermal_tier == 3 && cpu_temp >= 60) {
+            g_state.gaming_hold_ticks = 0;
+        } else if (thermal_tier == 3 && cpu_temp >= 68) {
             next_profile = PROFILE_THERMAL;
             g_state.touch_boost_ticks = 0;
+            g_state.gaming_hold_ticks = 0;
         } else if (strcmp(manual_lock, "GAMING") == 0) {
             next_profile = PROFILE_GAMING;
+            g_state.gaming_hold_ticks = 10;
             g_state.touch_boost_ticks = 0;
-        } else if (gpu_load >= 35 || (gpu_load >= 15 && load_val >= 1200)) {
+        } else if (gpu_load >= 30 || (gpu_load >= 15 && load_val >= 2200)) {
+            next_profile = PROFILE_GAMING;
+            g_state.gaming_hold_ticks = 10;
+            g_state.touch_boost_ticks = 0;
+        } else if (g_state.gaming_hold_ticks > 0) {
+            g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;
             g_state.touch_boost_ticks = 0;
         } else if ((load_val - g_state.prev_load) > 150 || g_state.touch_boost_ticks > 0) {
             if (g_state.current_profile != PROFILE_TOUCH && g_state.touch_boost_ticks == 0) {
                 g_state.touch_boost_ticks = 3;
-            } else {
+            } else if (g_state.touch_boost_ticks > 0) {
                 g_state.touch_boost_ticks--;
             }
             next_profile = (g_state.touch_boost_ticks > 0) ? PROFILE_TOUCH : PROFILE_INTERACTIVE;
