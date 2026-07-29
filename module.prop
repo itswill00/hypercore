@@ -4,3 +4,4 @@ version=v3.1
 versionCode=310
 author=@itswill00
 description=Native kernel tuner & gaming optimizer for MediaTek Helio G99 Ultra. Sustained CPU clocks, optimized GPU GED, hysteresis thermal control & zero ZRAM latency.
+updateJson=https://raw.githubusercontent.com/itswill00/hyperflow/main/update.json
