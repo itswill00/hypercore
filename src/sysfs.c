@@ -22,3 +22,30 @@ int sysfs_read_int(const char *path) {
     buf[n] = '\0';
     return atoi(buf);
 }
+
+void update_module_prop_status(const char *status) {
+    char prop_path[256];
+    snprintf(prop_path, sizeof(prop_path), "%s/module.prop", g_nodes.mod_dir);
+
+    FILE *f = fopen(prop_path, "r");
+    if (!f) return;
+
+    char lines[32][256];
+    int count = 0;
+    while (fgets(lines[count], sizeof(lines[count]), f) && count < 32) {
+        count++;
+    }
+    fclose(f);
+
+    f = fopen(prop_path, "w");
+    if (!f) return;
+
+    for (int i = 0; i < count; i++) {
+        if (strncmp(lines[i], "description=", 12) == 0) {
+            fprintf(f, "description=[Active: %s] Native kernel tuner & gaming optimizer for MediaTek Helio G99 Ultra. Sustained CPU clocks, optimized GPU GED, hysteresis thermal control & zero ZRAM latency.\n", status);
+        } else {
+            fputs(lines[i], f);
+        }
+    }
+    fclose(f);
+}

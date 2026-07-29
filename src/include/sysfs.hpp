@@ -14,6 +14,7 @@ extern "C" {
 
 void sysfs_write(const char *path, const char *val);
 int sysfs_read_int(const char *path);
+void update_module_prop_status(const char *status);
 
 #ifdef __cplusplus
 }
