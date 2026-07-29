@@ -1,10 +1,11 @@
-# Tanzanite HyperCore v3.1
+# Tanzanite HyperCore v3.2
 
-### Key Changes & Optimizations
-- **PUBG & High-FPS Gaming Stutter Fix**: Increased governor down-rate limit to 30ms, locked GPU floor to 800MHz, and set CPU minimum frequencies to 1.4GHz (Little) / 1.8GHz (Big).
-- **ZRAM Latency Spike Elimination**: Optimized `vm.swappiness=15` and `vm.vfs_cache_pressure=100` to prevent memory compression stutters during heavy gameplay.
-- **Dynamic Game Detector (cgroup top-app)**: Zero-overhead foreground game detection scanning `/dev/cpuset/top-app/tasks` with configurable `gamelist.txt` (40+ preloaded titles).
-- **Game Launch Burst**: Dynamic UFS read-ahead burst (512 KB for 6s) on game launch.
-- **Hardware IRQ Affinity Pinning**: Bound Mali GPU and MTK Display IRQs to CPU 6-7 Big cores.
+### Major Enhancements & Bug Fixes
+- **Profile Scaling Logic Refinement**: Eliminated false `PROFILE_GAMING` triggers during non-gaming usage (video playback, UI animations). Non-game GPU load spikes are now gracefully handled by `PROFILE_TOUCH`.
+- **Exact Package Matching**: Enhanced `gamelist.c` foreground detector to use strict exact package matching (`strcmp`), eliminating false positive service triggers.
+- **Expanded Game Detector (`gamelist.txt`)**: Preloaded 40+ popular global, regional (SEA, Vietnam, Taiwan), and anime game package titles. Memory capacity expanded to 256 games (`MAX_GAMES=256`).
 - **WebUI Redesign & Overhaul**: Developer theme in Sentence Case, interactive multi-profile selector (`Auto`, `Gaming`, `Balanced`, `Touch`, `Saver`), and live `gamelist.txt` manager.
+- **HTML & CSS Webroot Bug Fixes**: Fixed `removeGamePkg` button layout (`flex: none;`), DOM `data-pkg` attribute escaping, and log parser active profile name extraction.
+- **Internal Storage Auto-Sync**: Compiled zip packages are automatically saved to `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.2.zip`.
 - **1-Click Online Module Updates**: Added `updateJson` support for KernelSU, APatch, and Magisk App Manager.
+- **Strict Compiler Verification**: Compiled with `-O3 -flto -s -Wall -Wextra -Werror` (0 warnings, 0 errors).
