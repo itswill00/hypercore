@@ -3,244 +3,311 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HyperCore Dashboard</title>
+  <title>Tanzanite HyperCore</title>
   <style>
-    body {
-      background: #0d0d0d;
-      color: #e0e0e0;
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 540px;
-      margin: 0 auto;
-      padding: 14px;
+    :root {
+      --bg: #09090b;
+      --card-bg: #121215;
+      --border: #222226;
+      --border-hover: #333338;
+      --text: #e4e4e7;
+      --text-muted: #71717a;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --purple: #a855f7;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    h2 {
-      margin: 0 0 2px 0;
-      font-size: 18px;
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 16px;
+      line-height: 1.4;
+    }
+
+    .header {
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
       color: #fff;
     }
-    p.sub {
-      margin: 0 0 14px 0;
-      color: #888;
-      font-size: 12px;
+
+    .sub {
+      margin: 2px 0 0 0;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-family: var(--mono);
     }
-    .box {
-      background: #181818;
-      border: 1px solid #282828;
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 12px 14px;
       margin-bottom: 12px;
     }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     .row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 6px 0;
-      border-bottom: 1px solid #222;
-      font-size: 13px;
+      border-bottom: 1px solid #1a1a1e;
+      font-size: 12px;
     }
+
     .row:last-child {
       border-bottom: none;
     }
+
     .lbl {
-      color: #999;
-    }
-    .val {
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-    .status-on { color: #4caf50; }
-    .status-off { color: #f44336; }
-    .status-gaming { color: #ff9800; }
-    .status-touch { color: #ab47bc; }
-    .status-saver { color: #ffca28; }
-    
-    /* Profile Grid Pills */
-    .profile-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .prof-pill {
-      background: #222;
-      border: 1px solid #333;
-      color: #aaa;
-      padding: 8px 6px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      user-select: none;
-    }
-    .prof-pill:active {
-      transform: scale(0.97);
-    }
-    .prof-pill.active-auto {
-      background: #103342;
-      border-color: #00bcd4;
-      color: #00e5ff;
-      box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
-    }
-    .prof-pill.active-gaming {
-      background: #3e1b15;
-      border-color: #ff5722;
-      color: #ff8a65;
-      box-shadow: 0 0 8px rgba(255, 87, 34, 0.2);
-    }
-    .prof-pill.active-balanced {
-      background: #173319;
-      border-color: #4caf50;
-      color: #81c784;
-      box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
-    }
-    .prof-pill.active-touch {
-      background: #2d1836;
-      border-color: #ab47bc;
-      color: #ce93d8;
-      box-shadow: 0 0 8px rgba(171, 71, 188, 0.2);
-    }
-    .prof-pill.active-saver {
-      background: #382c12;
-      border-color: #ffc107;
-      color: #ffe082;
-      box-shadow: 0 0 8px rgba(255, 193, 7, 0.2);
+      color: var(--text-muted);
     }
 
+    .val {
+      font-weight: 500;
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .val-green { color: var(--green); }
+    .val-red { color: var(--red); }
+    .val-amber { color: var(--amber); }
+    .val-purple { color: var(--purple); }
+
+    /* Segmented Control / Profile Selector */
+    .selector-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      background: #09090b;
+      padding: 3px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .pill {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 0;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--mono);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .pill:hover {
+      color: var(--text);
+    }
+
+    .pill.active {
+      background: #27272a;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .pill.active-auto { background: #1e293b; color: #38bdf8; }
+    .pill.active-gaming { background: #451a03; color: #fb923c; }
+    .pill.active-balanced { background: #14532d; color: #4ade80; }
+    .pill.active-touch { background: #3b0764; color: #c084fc; }
+    .pill.active-saver { background: #451a03; color: #facc15; }
+
+    /* Action Buttons */
     .btn-group {
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
     }
-    button {
+
+    .btn {
       flex: 1;
-      background: #242424;
-      color: #fff;
-      border: 1px solid #363636;
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: all 0.15s ease;
     }
-    button:active {
-      background: #383838;
+
+    .btn:hover {
+      background: #1c1c21;
+      border-color: var(--border-hover);
     }
+
+    .btn:active {
+      background: #27272a;
+    }
+
     .btn-sm {
-      flex: none;
       padding: 4px 8px;
       font-size: 11px;
       border-radius: 4px;
+      font-family: var(--mono);
     }
+
     .btn-del {
-      background: #3a1c1c;
-      border-color: #5c2828;
-      color: #ff8a80;
+      background: #271414;
+      border-color: #451a1a;
+      color: #f87171;
     }
+    .btn-del:hover {
+      background: #3b1919;
+    }
+
     #msg {
-      font-size: 12px;
-      color: #81c784;
-      background: #1b2e1e;
-      border: 1px solid #2e4d32;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: #4ade80;
+      background: #0d2818;
+      border: 1px solid #164e28;
       padding: 6px 10px;
       border-radius: 4px;
       margin-bottom: 10px;
       display: none;
     }
+
+    /* Game List */
     .game-list {
-      max-height: 140px;
+      max-height: 130px;
       overflow-y: auto;
       margin-top: 6px;
     }
+
     .game-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #111;
+      background: #09090b;
+      border: 1px solid #1c1c20;
       padding: 4px 8px;
       border-radius: 4px;
       margin-bottom: 4px;
-      font-size: 12px;
-      font-family: monospace;
+      font-size: 11px;
+      font-family: var(--mono);
     }
+
     .add-game-box {
       display: flex;
       gap: 6px;
       margin-top: 8px;
     }
+
     input[type="text"] {
       flex: 1;
-      background: #111;
-      border: 1px solid #333;
-      color: #fff;
+      background: #09090b;
+      border: 1px solid var(--border);
+      color: var(--text);
       padding: 6px 10px;
       border-radius: 4px;
-      font-size: 12px;
-      font-family: monospace;
+      font-size: 11px;
+      font-family: var(--mono);
     }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
     pre {
-      background: #0a0a0a;
-      border: 1px solid #222;
+      background: #050507;
+      border: 1px solid #1a1a1e;
       padding: 8px 10px;
       border-radius: 6px;
-      font-size: 11px;
-      height: 160px;
+      font-size: 10.5px;
+      font-family: var(--mono);
+      height: 150px;
       overflow-y: auto;
       white-space: pre-wrap;
-      color: #aaa;
+      color: #94a3b8;
       margin: 6px 0 0 0;
     }
   </style>
 </head>
 <body>
 
-  <h2>Tanzanite HyperCore v3.1</h2>
-  <p class="sub">Kernel Tuner & Gaming Engine for MediaTek Helio G99 Ultra</p>
+  <div class="header">
+    <h1>Tanzanite HyperCore v3.1</h1>
+    <div class="sub">Helio G99 Ultra Kernel Tuning Daemon</div>
+  </div>
 
-  <!-- Profile Mode Selector Card -->
-  <div class="box">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:13px; font-weight:600; color:#ddd;">Profile Override Selector</span>
-      <span style="font-size:11px; color:#888;" id="st_lock_lbl">Mode: AUTO</span>
+  <!-- Profile Override Selector -->
+  <div class="card">
+    <div class="card-title">
+      <span>Profile Mode</span>
+      <span id="st_lock_lbl" style="font-weight: normal; color: var(--text);">AUTO</span>
     </div>
-    <div class="profile-grid">
-      <div class="prof-pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">⚡ Auto</div>
-      <div class="prof-pill" id="pill_GAMING" onclick="setProfileMode('GAMING')">🎮 Gaming</div>
-      <div class="prof-pill" id="pill_INTERACTIVE" onclick="setProfileMode('INTERACTIVE')">⚖️ Balanced</div>
-      <div class="prof-pill" id="pill_TOUCH" onclick="setProfileMode('TOUCH')">🚀 Touch</div>
-      <div class="prof-pill" id="pill_SLEEP" onclick="setProfileMode('SLEEP')">🔋 Saver</div>
+    <div class="selector-grid">
+      <button class="pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">Auto</button>
+      <button class="pill" id="pill_GAMING" onclick="setProfileMode('GAMING')">Gaming</button>
+      <button class="pill" id="pill_INTERACTIVE" onclick="setProfileMode('INTERACTIVE')">Balanced</button>
+      <button class="pill" id="pill_TOUCH" onclick="setProfileMode('TOUCH')">Touch</button>
+      <button class="pill" id="pill_SLEEP" onclick="setProfileMode('SLEEP')">Saver</button>
     </div>
   </div>
 
-  <div class="box">
+  <!-- System Metrics Card -->
+  <div class="card">
+    <div class="card-title">System Telemetry</div>
     <div class="row">
-      <span class="lbl">Daemon Status</span>
-      <span class="val status-on" id="st_daemon">Checking...</span>
+      <span class="lbl">Daemon</span>
+      <span class="val val-green" id="st_daemon">Checking...</span>
     </div>
     <div class="row">
       <span class="lbl">Active Profile</span>
       <span class="val" id="st_profile">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Thermal Tier</span>
+      <span class="lbl">Thermal State</span>
       <span class="val" id="st_tier">Tier 0 (Optimal)</span>
     </div>
     <div class="row">
-      <span class="lbl">Little Cores (CPU 0-5)</span>
+      <span class="lbl">CPU 0-5 (Little)</span>
       <span class="val" id="st_cpulow">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Big Cores (CPU 6-7)</span>
+      <span class="lbl">CPU 6-7 (Big)</span>
       <span class="val" id="st_cpuhigh">-</span>
     </div>
     <div class="row">
-      <span class="lbl">GPU Load & Floor Freq</span>
+      <span class="lbl">GPU Load / Floor</span>
       <span class="val" id="st_gpu">-</span>
     </div>
     <div class="row">
-      <span class="lbl">System Load Avg</span>
+      <span class="lbl">Load Average</span>
       <span class="val" id="st_load">-</span>
     </div>
     <div class="row">
@@ -248,7 +315,7 @@
       <span class="val" id="st_temp">-</span>
     </div>
     <div class="row">
-      <span class="lbl">Power / Charging State</span>
+      <span class="lbl">Power State</span>
       <span class="val" id="st_chg">-</span>
     </div>
     <div class="row">
@@ -262,30 +329,30 @@
   </div>
 
   <div class="btn-group">
-    <button onclick="flushRam()">Flush RAM</button>
-    <button onclick="restartDaemon()">Restart Daemon</button>
+    <button class="btn" onclick="flushRam()">Flush Cache & Memory</button>
+    <button class="btn" onclick="restartDaemon()">Restart Daemon</button>
   </div>
 
   <div id="msg"></div>
 
-  <!-- Game List Management Section -->
-  <div class="box">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <span style="font-size:13px; font-weight:600; color:#ddd;">Game List Detector (gamelist.txt)</span>
-      <span style="font-size:11px; color:#888;" id="game_cnt_lbl">0 games</span>
+  <!-- Game List Management Card -->
+  <div class="card">
+    <div class="card-title">
+      <span>Game Detector (gamelist.txt)</span>
+      <span id="game_cnt_lbl" style="font-weight: normal;">0 games</span>
     </div>
     <div class="game-list" id="game_list_box">
-      <div style="font-size:11px; color:#666;">Loading game list...</div>
+      <div style="font-size:11px; color:var(--text-muted);">Loading list...</div>
     </div>
     <div class="add-game-box">
-      <input type="text" id="new_game_pkg" placeholder="e.g. com.tencent.ig">
-      <button class="btn-sm" onclick="addGamePkg()">+ Add Game</button>
+      <input type="text" id="new_game_pkg" placeholder="package name (e.g. com.tencent.ig)">
+      <button class="btn btn-sm" onclick="addGamePkg()">Add</button>
     </div>
   </div>
 
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <span style="font-size:12px; color:#888;">Daemon Logs</span>
-    <a href="#" onclick="refreshData(); return false;" style="font-size:12px; color:#7986cb; text-decoration:none;">Refresh</a>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+    <span style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">Daemon Log</span>
+    <a href="#" onclick="refreshData(); return false;" style="font-size:11px; font-family:var(--mono); color:#60a5fa; text-decoration:none;">Refresh</a>
   </div>
   <pre id="log_box">Loading logs...</pre>
 
@@ -321,7 +388,7 @@
     function setProfileMode(mode) {
       var cmd = "";
       if (mode === "AUTO") {
-        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Mode: Auto Dynamic'";
+        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Mode: Auto'";
       } else {
         cmd = 'echo "' + mode + '" > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo "' + mode + '" > /sdcard/Android/.hypercore_lock; echo "Mode: ' + mode + ' Locked"';
       }
@@ -333,7 +400,7 @@
     }
 
     function flushRam() {
-      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM & ZRAM flushed'").then(function(out) {
+      runShell("sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory; echo 'RAM and ZRAM caches flushed'").then(function(out) {
         showMsg(out.trim());
       });
     }
@@ -371,7 +438,7 @@
       modes.forEach(function(m) {
         var el = document.getElementById("pill_" + m);
         if (!el) return;
-        el.className = "prof-pill";
+        el.className = "pill";
         if (m === mode) {
           if (m === "AUTO") el.className += " active-auto";
           else if (m === "GAMING") el.className += " active-gaming";
@@ -381,7 +448,7 @@
         }
       });
 
-      document.getElementById("st_lock_lbl").innerText = "Mode: " + (mode === "AUTO" ? "AUTO Dynamic" : mode + " Locked 🔒");
+      document.getElementById("st_lock_lbl").innerText = mode === "AUTO" ? "AUTO" : (mode + " LOCKED");
     }
 
     function refreshData() {
@@ -426,8 +493,8 @@
         var pid = kv["STATUS"] || "";
         var isRunning = pid.length > 0;
         var dEl = document.getElementById("st_daemon");
-        dEl.innerText = isRunning ? ("Running (" + pid + ")") : "Stopped";
-        dEl.className = "val " + (isRunning ? "status-on" : "status-off");
+        dEl.innerText = isRunning ? ("Active (" + pid + ")") : "Stopped";
+        dEl.className = "val " + (isRunning ? "val-green" : "val-red");
 
         // 2. CPU Low (0-5)
         if (kv["CPULOW"]) {
@@ -466,11 +533,11 @@
 
         // 7. Battery Power State
         var bStat = kv["BATSTAT"] || "Discharging";
-        document.getElementById("st_chg").innerText = (bStat === "Charging") ? "Charging ⚡" : "Discharging";
+        document.getElementById("st_chg").innerText = (bStat === "Charging") ? "Charging" : "Discharging";
 
         // 8. Storage Read Ahead & Memory
         var raVal = kv["RA"] || "128";
-        document.getElementById("st_ra").innerText = "none | " + raVal + "KB" + (parseInt(raVal) > 256 ? " (Burst 🚀)" : "");
+        document.getElementById("st_ra").innerText = "none | " + raVal + "KB" + (parseInt(raVal) > 256 ? " (Burst)" : "");
 
         var swapVal = kv["SWAP"] || "15";
         var vfsVal = kv["VFS"] || "100";
@@ -490,12 +557,12 @@
         document.getElementById("game_cnt_lbl").innerText = gLines.length + " games";
 
         if (gLines.length === 0) {
-          gBox.innerHTML = '<div style="font-size:11px; color:#666;">No games added yet.</div>';
+          gBox.innerHTML = '<div style="font-size:11px; color:var(--text-muted);">No games added yet.</div>';
         } else {
           var html = "";
           gLines.forEach(function(pkg) {
             var cleanPkg = pkg.trim();
-            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn-sm btn-del" onclick="removeGamePkg(\'' + cleanPkg + '\')">Remove</button></div>';
+            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn btn-sm btn-del" onclick="removeGamePkg(\'' + cleanPkg + '\')">Remove</button></div>';
           });
           gBox.innerHTML = html;
         }
@@ -522,9 +589,9 @@
 
           var pEl = document.getElementById("st_profile");
           pEl.innerText = lastProfile;
-          if (lastProfile === "Gaming") pEl.className = "val status-gaming";
-          else if (lastProfile === "Touch") pEl.className = "val status-touch";
-          else if (lastProfile === "Sleep") pEl.className = "val status-saver";
+          if (lastProfile === "Gaming") pEl.className = "val val-amber";
+          else if (lastProfile === "Touch") pEl.className = "val val-purple";
+          else if (lastProfile === "Sleep") pEl.className = "val val-amber";
           else pEl.className = "val";
 
           document.getElementById("st_tier").innerText = lastTier;
