@@ -66,18 +66,18 @@ void apply_profile(profile_t prof, int tier) {
 
         case PROFILE_INTERACTIVE: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
-            set_cpu_freqs(900000, FREQ_LITTLE_MAX, 1100000, big_max, "0", "10000");
+            set_cpu_freqs(1200000, FREQ_LITTLE_MAX, 1400000, big_max, "0", "20000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "550000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "12");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "600000");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
             break;
         }
 
         case PROFILE_TOUCH:
-            set_cpu_freqs(1200000, FREQ_LITTLE_MAX, 1500000, FREQ_BIG_MAX, "0", "15000");
+            set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1700000, FREQ_BIG_MAX, "0", "25000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "650000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "700000");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "20");
             break;
 
         case PROFILE_GAMING: {
