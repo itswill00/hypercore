@@ -49,6 +49,7 @@ struct core_state {
     int thermal_tier;
     int thermal_hold_ticks;
     int touch_boost_ticks;
+    int gaming_hold_ticks;
     int prev_load;
     int is_charging;
 };
