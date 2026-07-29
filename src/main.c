@@ -11,6 +11,7 @@
 #include "memory.hpp"
 #include "io.hpp"
 #include "thermal.hpp"
+#include "gamelist.hpp"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Touch", "Gaming", "Thermal"
@@ -152,6 +153,9 @@ int main(void) {
             fclose(flock);
         }
 
+        char active_game[128] = "";
+        int game_active = is_game_in_foreground(active_game, sizeof(active_game));
+
         profile_t next_profile = PROFILE_INTERACTIVE;
 
         if (!screen_on) {
@@ -163,6 +167,10 @@ int main(void) {
             g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
         } else if (strcmp(manual_lock, "GAMING") == 0) {
+            next_profile = PROFILE_GAMING;
+            g_state.gaming_hold_ticks = 10;
+            g_state.touch_boost_ticks = 0;
+        } else if (game_active) {
             next_profile = PROFILE_GAMING;
             g_state.gaming_hold_ticks = 10;
             g_state.touch_boost_ticks = 0;
@@ -191,9 +199,15 @@ int main(void) {
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
-                log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
-                          prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
-                          g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+                if (next_profile == PROFILE_GAMING && active_game[0] != '\0') {
+                    log_write("Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                              prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
+                              g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+                } else {
+                    log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                              prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
+                              g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+                }
             } else {
                 log_write("Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
                           g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
