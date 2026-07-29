@@ -431,7 +431,19 @@
 
     function removeGamePkg(pkg) {
       if (!pkg) return;
-      var cmd = 'grep -v "^' + pkg + '$" /data/adb/modules/tanzanite_hypercore/gamelist.txt > /data/adb/modules/tanzanite_hypercore/gamelist.txt.tmp 2>/dev/null && mv /data/adb/modules/tanzanite_hypercore/gamelist.txt.tmp /data/adb/modules/tanzanite_hypercore/gamelist.txt 2>/dev/null; grep -v "^' + pkg + '$" /sdcard/Android/gamelist.txt > /sdcard/Android/gamelist.txt.tmp 2>/dev/null && mv /sdcard/Android/gamelist.txt.tmp /sdcard/Android/gamelist.txt 2>/dev/null; echo "Removed package: ' + pkg + '"';
+      var cleanPkg = pkg.trim().replace(/\r/g, '');
+      if (!cleanPkg) return;
+
+      var cmd = [
+        'for f in /data/adb/modules/tanzanite_hypercore/gamelist.txt /sdcard/Android/gamelist.txt; do',
+        '  if [ -f "$f" ]; then',
+        '    grep -Fv -x "' + cleanPkg + '" "$f" > "$f.tmp" 2>/dev/null',
+        '    mv "$f.tmp" "$f" 2>/dev/null',
+        '  fi',
+        'done',
+        'echo "Removed package: ' + cleanPkg + '"'
+      ].join('\n');
+
       runShell(cmd).then(function(out) {
         showMsg(out.trim());
         refreshData();
@@ -571,8 +583,9 @@
         } else {
           var html = "";
           gLines.forEach(function(pkg) {
-            var cleanPkg = pkg.trim();
-            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn btn-sm btn-del" onclick="removeGamePkg(\'' + cleanPkg + '\')">Remove</button></div>';
+            var cleanPkg = pkg.trim().replace(/\r/g, '');
+            if (!cleanPkg) return;
+            html += '<div class="game-item"><span>' + cleanPkg + '</span><button class="btn btn-sm btn-del" data-pkg="' + cleanPkg + '" onclick="removeGamePkg(this.getAttribute(\'data-pkg\'))">Remove</button></div>';
           });
           gBox.innerHTML = html;
         }
