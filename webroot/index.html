@@ -51,6 +51,63 @@
     .status-on { color: #4caf50; }
     .status-off { color: #f44336; }
     .status-gaming { color: #ff9800; }
+    .status-touch { color: #ab47bc; }
+    .status-saver { color: #ffca28; }
+    
+    /* Profile Grid Pills */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .prof-pill {
+      background: #222;
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .prof-pill:active {
+      transform: scale(0.97);
+    }
+    .prof-pill.active-auto {
+      background: #103342;
+      border-color: #00bcd4;
+      color: #00e5ff;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+    }
+    .prof-pill.active-gaming {
+      background: #3e1b15;
+      border-color: #ff5722;
+      color: #ff8a65;
+      box-shadow: 0 0 8px rgba(255, 87, 34, 0.2);
+    }
+    .prof-pill.active-balanced {
+      background: #173319;
+      border-color: #4caf50;
+      color: #81c784;
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+    }
+    .prof-pill.active-touch {
+      background: #2d1836;
+      border-color: #ab47bc;
+      color: #ce93d8;
+      box-shadow: 0 0 8px rgba(171, 71, 188, 0.2);
+    }
+    .prof-pill.active-saver {
+      background: #382c12;
+      border-color: #ffc107;
+      color: #ffe082;
+      box-shadow: 0 0 8px rgba(255, 193, 7, 0.2);
+    }
+
     .btn-group {
       display: flex;
       gap: 8px;
@@ -70,10 +127,6 @@
     }
     button:active {
       background: #383838;
-    }
-    button.active {
-      background: #3f51b5;
-      border-color: #5c6bc0;
     }
     .btn-sm {
       flex: none;
@@ -146,6 +199,21 @@
   <h2>Tanzanite HyperCore v3.1</h2>
   <p class="sub">Kernel Tuner & Gaming Engine for MediaTek Helio G99 Ultra</p>
 
+  <!-- Profile Mode Selector Card -->
+  <div class="box">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; font-weight:600; color:#ddd;">Profile Override Selector</span>
+      <span style="font-size:11px; color:#888;" id="st_lock_lbl">Mode: AUTO</span>
+    </div>
+    <div class="profile-grid">
+      <div class="prof-pill" id="pill_AUTO" onclick="setProfileMode('AUTO')">⚡ Auto</div>
+      <div class="prof-pill" id="pill_GAMING" onclick="setProfileMode('GAMING')">🎮 Gaming</div>
+      <div class="prof-pill" id="pill_INTERACTIVE" onclick="setProfileMode('INTERACTIVE')">⚖️ Balanced</div>
+      <div class="prof-pill" id="pill_TOUCH" onclick="setProfileMode('TOUCH')">🚀 Touch</div>
+      <div class="prof-pill" id="pill_SLEEP" onclick="setProfileMode('SLEEP')">🔋 Saver</div>
+    </div>
+  </div>
+
   <div class="box">
     <div class="row">
       <span class="lbl">Daemon Status</span>
@@ -158,10 +226,6 @@
     <div class="row">
       <span class="lbl">Thermal Tier</span>
       <span class="val" id="st_tier">Tier 0 (Optimal)</span>
-    </div>
-    <div class="row">
-      <span class="lbl">Governor Mode</span>
-      <span class="val" id="st_mode">Auto</span>
     </div>
     <div class="row">
       <span class="lbl">Little Cores (CPU 0-5)</span>
@@ -198,9 +262,8 @@
   </div>
 
   <div class="btn-group">
-    <button id="btn_mode" onclick="toggleGamingLock()">Lock Gaming</button>
     <button onclick="flushRam()">Flush RAM</button>
-    <button onclick="restartDaemon()">Restart</button>
+    <button onclick="restartDaemon()">Restart Daemon</button>
   </div>
 
   <div id="msg"></div>
@@ -227,7 +290,7 @@
   <pre id="log_box">Loading logs...</pre>
 
   <script>
-    var isGamingLocked = false;
+    var currentLockMode = "AUTO";
 
     function runShell(cmd) {
       return new Promise(function(resolve, reject) {
@@ -255,10 +318,13 @@
       setTimeout(function() { el.style.display = "none"; }, 3000);
     }
 
-    function toggleGamingLock() {
-      var cmd = isGamingLocked
-        ? "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Mode: Auto'"
-        : "echo GAMING > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo GAMING > /sdcard/Android/.hypercore_lock; echo 'Mode: Gaming Locked'";
+    function setProfileMode(mode) {
+      var cmd = "";
+      if (mode === "AUTO") {
+        cmd = "rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock /sdcard/Android/.hypercore_lock; echo 'Mode: Auto Dynamic'";
+      } else {
+        cmd = 'echo "' + mode + '" > /data/adb/modules/tanzanite_hypercore/.hypercore_lock; echo "' + mode + '" > /sdcard/Android/.hypercore_lock; echo "Mode: ' + mode + ' Locked"';
+      }
 
       runShell(cmd).then(function(out) {
         showMsg(out.trim());
@@ -300,8 +366,25 @@
       });
     }
 
+    function updateProfilePills(mode) {
+      var modes = ["AUTO", "GAMING", "INTERACTIVE", "TOUCH", "SLEEP"];
+      modes.forEach(function(m) {
+        var el = document.getElementById("pill_" + m);
+        if (!el) return;
+        el.className = "prof-pill";
+        if (m === mode) {
+          if (m === "AUTO") el.className += " active-auto";
+          else if (m === "GAMING") el.className += " active-gaming";
+          else if (m === "INTERACTIVE") el.className += " active-balanced";
+          else if (m === "TOUCH") el.className += " active-touch";
+          else if (m === "SLEEP") el.className += " active-saver";
+        }
+      });
+
+      document.getElementById("st_lock_lbl").innerText = "Mode: " + (mode === "AUTO" ? "AUTO Dynamic" : mode + " Locked 🔒");
+    }
+
     function refreshData() {
-      // Single unified shell command execution to prevent IPC overhead
       var cmd = [
         'echo "STATUS:$(pgrep -x \"hypercore\" 2>/dev/null | head -n 1)"',
         'echo "CPULOW:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"',
@@ -314,7 +397,7 @@
         'echo "RA:$(cat /sys/block/mmcblk0/queue/read_ahead_kb 2>/dev/null || cat /sys/block/sda/queue/read_ahead_kb 2>/dev/null || echo 128)"',
         'echo "SWAP:$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 15)"',
         'echo "VFS:$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null || echo 100)"',
-        'echo "LOCK:$([ -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock ] || [ -f /sdcard/Android/.hypercore_lock ] && echo GAMING || echo AUTO)"',
+        'echo "LOCK:$(cat /data/adb/modules/tanzanite_hypercore/.hypercore_lock 2>/dev/null || cat /sdcard/Android/.hypercore_lock 2>/dev/null || echo AUTO)"',
         'echo "===GAMELIST==="',
         'cat /data/adb/modules/tanzanite_hypercore/gamelist.txt 2>/dev/null || cat /sdcard/Android/gamelist.txt 2>/dev/null',
         'echo "===LOGS==="',
@@ -331,7 +414,6 @@
         var gameListText = restParts[0] || "";
         var logText = restParts[1] || "";
 
-        // Parse key-value metrics
         var kv = {};
         kvText.trim().split('\n').forEach(function(l) {
           var idx = l.indexOf(':');
@@ -394,12 +476,10 @@
         var vfsVal = kv["VFS"] || "100";
         document.getElementById("st_vm").innerText = swapVal + " / " + vfsVal;
 
-        // 9. Lock Mode
-        isGamingLocked = (kv["LOCK"] === "GAMING");
-        document.getElementById("st_mode").innerText = isGamingLocked ? "Gaming Lock 🔒" : "Auto";
-        var btn = document.getElementById("btn_mode");
-        btn.innerText = isGamingLocked ? "Unlock Auto" : "Lock Gaming";
-        btn.className = isGamingLocked ? "active" : "";
+        // 9. Lock Mode Pills
+        currentLockMode = (kv["LOCK"] || "AUTO").trim().toUpperCase();
+        if (!currentLockMode) currentLockMode = "AUTO";
+        updateProfilePills(currentLockMode);
 
         // 10. Gamelist rendering
         var gBox = document.getElementById("game_list_box");
@@ -442,7 +522,11 @@
 
           var pEl = document.getElementById("st_profile");
           pEl.innerText = lastProfile;
-          pEl.className = "val " + (lastProfile === "Gaming" ? "status-gaming" : "");
+          if (lastProfile === "Gaming") pEl.className = "val status-gaming";
+          else if (lastProfile === "Touch") pEl.className = "val status-touch";
+          else if (lastProfile === "Sleep") pEl.className = "val status-saver";
+          else pEl.className = "val";
+
           document.getElementById("st_tier").innerText = lastTier;
         }
       }).catch(console.error);
