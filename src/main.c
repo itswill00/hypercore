@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
     apply_gpu_tuning();
     apply_irq_tuning();
     load_gamelist();
+    init_gamelist_watcher();
 
     memset(&g_state, 0, sizeof(g_state));
     g_state.current_profile = (profile_t)-1;
@@ -230,15 +231,19 @@ int main(int argc, char *argv[]) {
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
+                char status_buf[128];
                 if (next_profile == PROFILE_GAMING && active_game[0] != '\0') {
+                    snprintf(status_buf, sizeof(status_buf), "Gaming (%s)", active_game);
                     log_write("Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
                               prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
                               g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
                 } else {
+                    snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
                     log_write("Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
                               prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
                               g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
                 }
+                update_module_prop_status(status_buf);
             } else {
                 log_write("Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
                           g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
@@ -255,6 +260,7 @@ int main(int argc, char *argv[]) {
     }
 
     log_write("Tanzanite HyperCore daemon stopped.");
+    update_module_prop_status("Stopped");
     remove_pid_file();
     return 0;
 }
