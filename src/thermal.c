@@ -71,26 +71,26 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
     int tier = g_state.thermal_tier;
     int is_chg = g_state.is_charging;
 
-    int t3_cpu = is_chg ? 58 : 56;
-    int t3_bat = is_chg ? 47 : 45;
+    int t3_cpu = is_chg ? 64 : 66;
+    int t3_bat = is_chg ? 47 : 49;
 
     if (cpu_temp >= t3_cpu || bat_temp >= t3_bat) {
         tier = 3;
-        g_state.thermal_hold_ticks = 4;
+        g_state.thermal_hold_ticks = 5;
     } else if (g_state.thermal_hold_ticks > 0) {
         g_state.thermal_hold_ticks--;
         tier = 3;
     } else if (g_state.thermal_tier == 3) {
-        if (cpu_temp <= 51 && bat_temp <= 43) {
-            tier = (cpu_temp >= 48 || bat_temp >= 41) ? 2 : 1;
+        if (cpu_temp <= 58 && bat_temp <= 44) {
+            tier = (cpu_temp >= 52 || bat_temp >= 42) ? 2 : 1;
         }
-    } else if (cpu_temp >= 51 || bat_temp >= 44) {
+    } else if (cpu_temp >= 58 || bat_temp >= 45) {
         tier = 2;
     } else if (g_state.thermal_tier == 2) {
-        if (cpu_temp < 47 && bat_temp < 41) {
-            tier = (cpu_temp >= 43 || bat_temp >= 39) ? 1 : 0;
+        if (cpu_temp < 52 && bat_temp < 42) {
+            tier = (cpu_temp >= 46 || bat_temp >= 39) ? 1 : 0;
         }
-    } else if (cpu_temp >= 43 || bat_temp >= 39) {
+    } else if (cpu_temp >= 50 || bat_temp >= 41) {
         tier = 1;
     } else {
         tier = 0;
