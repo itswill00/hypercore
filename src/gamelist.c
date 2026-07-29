@@ -8,9 +8,10 @@
 #define MAX_GAMES 256
 #define PKG_NAME_LEN 128
 
-static char s_games[MAX_GAMES][PKG_NAME_LEN];
-static int  s_game_count = 0;
-static time_t s_last_load_time = 0;
+static char      s_games[MAX_GAMES][PKG_NAME_LEN];
+static profile_t s_profiles[MAX_GAMES];
+static int       s_game_count = 0;
+static time_t    s_last_load_time = 0;
 
 void load_gamelist(void) {
     s_game_count = 0;
@@ -33,16 +34,30 @@ void load_gamelist(void) {
         // Skip comments and empty lines
         if (line[0] == '#' || line[0] == '\0') continue;
 
+        char *colon = strchr(line, ':');
+        profile_t prof = PROFILE_GAMING;
+
+        if (colon) {
+            *colon = '\0';
+            char *prof_str = colon + 1;
+            if (strcmp(prof_str, "TOUCH") == 0) prof = PROFILE_TOUCH;
+            else if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_INTERACTIVE;
+            else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_SLEEP;
+            else if (strcmp(prof_str, "GAMING") == 0) prof = PROFILE_GAMING;
+        }
+
         strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
         s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
+        s_profiles[s_game_count] = prof;
         s_game_count++;
     }
     fclose(f);
     s_last_load_time = time(NULL);
 }
 
-int is_game_in_foreground(char *out_game_name, size_t max_len) {
+int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile) {
     if (out_game_name && max_len > 0) out_game_name[0] = '\0';
+    if (out_profile) *out_profile = PROFILE_GAMING;
 
     time_t now = time(NULL);
     if (s_game_count == 0 || (now - s_last_load_time) > 30) {
@@ -80,6 +95,9 @@ int is_game_in_foreground(char *out_game_name, size_t max_len) {
                 if (out_game_name && max_len > 0) {
                     strncpy(out_game_name, s_games[i], max_len - 1);
                     out_game_name[max_len - 1] = '\0';
+                }
+                if (out_profile) {
+                    *out_profile = s_profiles[i];
                 }
                 return 1;
             }
