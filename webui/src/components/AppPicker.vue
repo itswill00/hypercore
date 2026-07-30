@@ -3,7 +3,7 @@
     <div class="overlay" @click.self="$emit('close')">
       <div class="modal">
         <div class="modal-head">
-          <span>Installed applications</span>
+          <span>Installed apps</span>
           <button class="btn btn-sm" @click="$emit('close')">Close</button>
         </div>
         <div class="modal-filter">

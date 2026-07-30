@@ -15,7 +15,7 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Device & Module Info</div>
+    <div class="card-title">Device info</div>
     <div class="row"><span class="lbl">Module version</span><span class="val c-accent">{{ store.moduleVersion }}</span></div>
     <div class="row"><span class="lbl">Chipset</span><span class="val">{{ store.chipset }}</span></div>
     <div class="row"><span class="lbl">Kernel</span><span class="val">{{ store.kernelVersion }}</span></div>

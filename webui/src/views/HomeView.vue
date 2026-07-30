@@ -7,8 +7,8 @@
     
     <div class="card" style="margin-top: 12px;">
       <div class="card-title">
-        <span>Daemon log</span>
-        <router-link to="/logs" class="badge clickable">Full View</router-link>
+        <span>System log</span>
+        <router-link to="/logs" class="badge clickable">Expand</router-link>
       </div>
       <pre class="log-preview">{{ store.logs }}</pre>
     </div>

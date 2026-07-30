@@ -1,6 +1,6 @@
 <template>
   <div class="btn-row">
-    <button class="btn" :disabled="store.loading" @click="flush">Clear RAM cache</button>
+    <button class="btn" :disabled="store.loading" @click="flush">Clear RAM</button>
     <button class="btn" :disabled="store.loading" @click="restart">Restart daemon</button>
   </div>
   <div class="btn-row" style="margin-bottom: 16px;">

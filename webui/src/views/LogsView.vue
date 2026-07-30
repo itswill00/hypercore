@@ -1,7 +1,7 @@
 <template>
   <div class="card">
     <div class="card-title">
-      <span>Daemon log</span>
+      <span>System log</span>
       <span class="badge clickable" @click="store.refresh()">Refresh</span>
     </div>
     <pre class="log-box">{{ store.logs }}</pre>

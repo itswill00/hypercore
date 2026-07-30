@@ -48,10 +48,8 @@ body {
   margin-bottom: 12px;
 }
 .card-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--text-muted);
   margin-bottom: 10px;
   display: flex;
