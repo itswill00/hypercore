@@ -22,10 +22,10 @@
           <Icons name="rocket" :size="20" />
         </div>
         <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">
-          {{ search ? 'No matching games found' : 'No configured games' }}
+          {{ search ? 'No matching games found' : 'No games configured' }}
         </div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; max-width: 240px; margin-left: auto; margin-right: auto;">
-          Select installed games on your phone to trigger performance profiles automatically
+        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; max-width: 260px; margin-left: auto; margin-right: auto;">
+          Add installed games to automatically trigger high performance profiles when playing
         </div>
         <button class="btn-md3 btn-md3-primary" style="margin-top: 14px; font-size: 11px;" @click="$emit('open-picker')">
           <Icons name="plus" :size="14" />
@@ -35,17 +35,17 @@
 
       <!-- Loading State -->
       <div v-else-if="loading" style="padding: 24px 16px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
-        Checking configured games...
+        Scanning configured games...
       </div>
 
       <!-- Installed Game Rows -->
       <div
         v-for="item in displayGames"
-        :key="item.entry"
+        :key="item.pkg"
         class="md3-list-row"
         style="padding: 10px 14px;"
       >
-        <div class="row-left" style="gap: 10px;">
+        <div class="row-left" style="gap: 10px; min-width: 0;">
           <div class="icon-frame">
             <img
               v-if="iconFor(item.pkg) && !brokenIcons[item.pkg]"
@@ -66,22 +66,12 @@
             >
               {{ item.name }}
             </div>
-            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-              <span
-                class="row-sub"
-                style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;"
-                :title="item.pkg"
-              >
-                {{ item.pkg }}
-              </span>
-              <span
-                class="badge-pill blue"
-                style="font-size: 9px; padding: 2px 7px; cursor: pointer; user-select: none; flex-shrink: 0;"
-                title="Click to cycle profile mode"
-                @click="cycleMode(item.entry)"
-              >
-                {{ item.mode }} ⚡
-              </span>
+            <div
+              class="row-sub"
+              style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+              :title="item.pkg"
+            >
+              {{ item.pkg }}
             </div>
           </div>
         </div>
@@ -90,7 +80,7 @@
           <button
             class="btn-md3 btn-md3-primary"
             style="padding: 5px 10px; font-size: 11px; height: 30px;"
-            @click="launch(item.entry)"
+            @click="launch(item.pkg)"
           >
             <Icons name="rocket" :size="13" />
             <span>Launch</span>
@@ -98,8 +88,8 @@
           <button
             class="btn-md3 btn-md3-danger btn-icon-only"
             style="width: 30px; height: 30px;"
-            title="Remove app"
-            @click="remove(item.entry)"
+            title="Remove game"
+            @click="remove(item.pkg)"
           >
             <Icons name="trash" :size="13" />
           </button>
@@ -144,16 +134,12 @@ onMounted(() => {
 const displayGames = computed(() => {
   if (!store.games) return []
 
-  const parsed = store.games.map(entry => {
-    const parts = entry.split(':')
-    const pkg = parts[0].trim()
-    const mode = parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
+  const parsed = store.games.map(rawPkg => {
+    const pkg = rawPkg.split(':')[0].trim()
     const appName = installedMap.value[pkg]
 
     return {
-      entry,
       pkg,
-      mode,
       name: appName || pkg
     }
   })
@@ -172,26 +158,13 @@ function iconFor(pkg) {
   return getIconUrl(pkg)
 }
 
-function cycleMode(entry) {
-  const parts = entry.split(':')
-  const pkg = parts[0].trim()
-  const currentMode = parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
-  const modes = ['GAMING', 'TOUCH', 'INTERACTIVE', 'SLEEP']
-  const nextIdx = (modes.indexOf(currentMode) + 1) % modes.length
-  const nextMode = modes[nextIdx]
-  const newEntry = `${pkg}:${nextMode}`
-
-  store.updateGameMode(entry, newEntry)
-  if (toast) toast(`${installedMap.value[pkg] || pkg} mode set to ${nextMode}`)
-}
-
-async function remove(entry) {
-  const msg = await store.removeGame(entry)
+async function remove(pkg) {
+  const msg = store.removeGame(pkg)
   if (msg && toast) toast(msg)
 }
 
-async function launch(entry) {
-  const msg = await store.launchGame(entry)
+async function launch(pkg) {
+  const msg = store.launchGame(pkg)
   if (msg && toast) toast(msg)
 }
 </script>

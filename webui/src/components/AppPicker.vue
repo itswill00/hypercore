@@ -32,7 +32,7 @@
           <!-- Empty or Custom Fallback -->
           <div v-else-if="filtered.length === 0" style="padding: 24px; text-align: center;">
             <div style="font-size: 12px; color: var(--on-surface-variant); margin-bottom: 12px;">
-              No installed apps matching "{{ query }}"
+              No available apps matching "{{ query }}"
             </div>
             <button v-if="query.trim()" class="btn-md3 btn-md3-primary" style="font-size: 11px;" @click="addCustom">
               <Icons name="plus" :size="14" />
@@ -78,21 +78,31 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useHyperStore } from '@/stores/hyper'
 import { listInstalledApps, getIconUrl } from '@/helpers/shell'
 import Icons from '@/components/icons/Icons.vue'
 
 const emit = defineEmits(['close', 'pick'])
 
+const store = useHyperStore()
 const apps = ref([])
 const query = ref('')
 const loading = ref(true)
 const brokenIcons = ref({})
 const searchInput = ref(null)
 
+const existingPkgs = computed(() => {
+  if (!store.games) return []
+  return store.games.map(g => g.split(':')[0].trim())
+})
+
 const filtered = computed(() => {
-  if (!query.value.trim()) return apps.value
+  // Exclude games already added to My Games
+  const available = apps.value.filter(a => !existingPkgs.value.includes(a.pkg))
+
+  if (!query.value.trim()) return available
   const q = query.value.toLowerCase()
-  return apps.value.filter(a =>
+  return available.filter(a =>
     a.name.toLowerCase().includes(q) || a.pkg.toLowerCase().includes(q)
   )
 })

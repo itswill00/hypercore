@@ -284,10 +284,18 @@ export const useHyperStore = defineStore('hyper', () => {
       }
       thermalTier.value = tier
 
-      // Games
-      games.value = gameBlock.trim().split('\n')
-        .map(l => l.trim().replace(/\r/g, ''))
-        .filter(l => l.length > 0 && l[0] !== '#')
+      // Games: Store clean package names
+      const parsedPkgs = []
+      gameBlock.trim().split('\n').forEach(line => {
+        const trimmed = line.trim().replace(/\r/g, '')
+        if (trimmed.length > 0 && trimmed[0] !== '#') {
+          const clean = trimmed.split(':')[0].trim()
+          if (clean && !parsedPkgs.includes(clean)) {
+            parsedPkgs.push(clean)
+          }
+        }
+      })
+      games.value = parsedPkgs
 
       // Logs
       const trimmed = logBlock.trim()
@@ -333,68 +341,51 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Shortcut feature unavailable'
   }
 
-  /* ── Non-blocking Optimistic Game Management ── */
-  function addGame(pkg) {
-    const safe = sanitize(pkg)
-    if (!safe) return
+  /* ── Clean Pure Package Game Management (Like Encore) ── */
+  function addGame(rawPkg) {
+    const pkg = sanitize(rawPkg).split(':')[0].trim()
+    if (!pkg) return
 
-    const formattedEntry = safe.includes(':') ? safe : `${safe}:GAMING`
-
-    // Optimistic memory addition
-    if (!games.value.includes(formattedEntry)) {
-      games.value.push(formattedEntry)
+    // Optimistic memory addition with duplicate check
+    if (!games.value.includes(pkg)) {
+      games.value.push(pkg)
     }
-
-    execCommand(`echo '${formattedEntry}' >> ${GL_MOD}; echo '${formattedEntry}' >> ${GL_SD}`)
-    setTimeout(refresh, 500)
-    return `Added ${safe.split(':')[0]}`
-  }
-
-  function removeGame(pkg) {
-    const safe = sanitize(pkg).split(':')[0]
-    if (!safe) return
-
-    // Optimistic memory removal
-    games.value = games.value.filter(g => g !== safe && !g.startsWith(`${safe}:`))
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
-      `  [ -f "$f" ] && { grep -Fvx '${safe}' "$f" | grep -v '^${safe}:' > "$f.tmp" 2>/dev/null; mv "$f.tmp" "$f" 2>/dev/null; }`,
+      `  touch "$f" 2>/dev/null`,
+      `  if ! grep -qxE '${pkg}' "$f" 2>/dev/null; then`,
+      `    echo '${pkg}' >> "$f"`,
+      `  fi`,
       `done`
     ].join('\n')
     execCommand(cmd)
-    setTimeout(refresh, 500)
-    return `Removed ${safe}`
+    setTimeout(refresh, 400)
+    return `Added ${pkg}`
   }
 
-  function updateGameMode(oldEntry, newEntry) {
-    const oldPkg = sanitize(oldEntry.split(':')[0])
-    const newEntrySafe = sanitize(newEntry)
+  function removeGame(rawPkg) {
+    const pkg = sanitize(rawPkg).split(':')[0].trim()
+    if (!pkg) return
 
-    // Optimistic memory update
-    const idx = games.value.findIndex(g => g === oldEntry || g.startsWith(`${oldPkg}:`))
-    if (idx !== -1) {
-      games.value[idx] = newEntrySafe
-    } else {
-      games.value.push(newEntrySafe)
-    }
+    // Optimistic memory removal
+    games.value = games.value.filter(g => g !== pkg)
 
-    // Atomic shell update
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
-      `    grep -Fvx '${oldEntry}' "$f" | grep -v '^${oldPkg}:' > "$f.tmp" 2>/dev/null`,
-      `    echo '${newEntrySafe}' >> "$f.tmp"`,
+      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
       `done`
     ].join('\n')
     execCommand(cmd)
-    setTimeout(refresh, 500)
+    setTimeout(refresh, 400)
+    return `Removed ${pkg}`
   }
 
-  function launchGame(pkg) {
-    const clean = sanitize(pkg).split(':')[0]
+  function launchGame(rawPkg) {
+    const clean = sanitize(rawPkg).split(':')[0].trim()
     if (!clean) return
     execCommand(`monkey -p ${clean} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
     return `Launched ${clean}`
@@ -408,6 +399,6 @@ export const useHyperStore = defineStore('hyper', () => {
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, createShortcut,
-    addGame, removeGame, updateGameMode, launchGame
+    addGame, removeGame, launchGame
   }
 })
