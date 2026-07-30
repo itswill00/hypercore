@@ -67,7 +67,7 @@ void set_cpu_governor(const char *gov) {
 void apply_profile(profile_t prof, int tier) {
     switch (prof) {
         case PROFILE_SLEEP:
-            set_cpu_governor("powersave");
+            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
             set_cpu_freqs(500000, 1450000, 725000, 1300000, "2000", "1000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
@@ -100,7 +100,7 @@ void apply_profile(profile_t prof, int tier) {
         case PROFILE_GAMING: {
             const char *gpu_freq = (tier >= 3) ? "700000" : "800000";
             int big_min = (tier >= 3) ? 1600000 : 1800000;
-            const char *gov = (tier >= 3) ? (g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil") : "performance";
+            const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
             set_cpu_governor(gov);
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
@@ -112,7 +112,7 @@ void apply_profile(profile_t prof, int tier) {
         }
 
         case PROFILE_THERMAL:
-            set_cpu_governor("powersave");
+            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
             set_cpu_freqs(900000, FREQ_LITTLE_MAX, 1200000, 1800000, "2000", "5000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
