@@ -105,6 +105,8 @@ void apply_profile(profile_t prof, int tier) {
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
