@@ -2,7 +2,7 @@
 SKIPUNZIP=1
 
 ui_print "--------------------------------------"
-ui_print "       Tanzanite HyperCore v3.6       "
+ui_print "       Tanzanite HyperCore v3.7       "
 ui_print "            by @itswill00            "
 ui_print "--------------------------------------"
 

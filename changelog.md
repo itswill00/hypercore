@@ -1,8 +1,11 @@
-# Tanzanite HyperCore v3.6 (Fast Charge Restoration Update)
+# Tanzanite HyperCore v3.7
 
-### ⚡ Unrestricted Fast Charging & Core Enhancements
-- **Removed Charging Rate Throttling**: Completely removed `apply_battery_thermal_guard` current limit caps (2.0A cap and 0 mA locks) in native C daemon engine (`src/main.c`).
-- **Restored Unrestricted Fast Charging**: Full fast charging speeds (33W, 67W, 120W Super Charge) now operate at 100% native hardware speed during and after gaming sessions without daemon interference.
-- **Fixed Post-Gaming Charge Lock**: Eliminates kernel charge current lock issues where returning from games locked charging speed to minimum or zero.
-- **Installed App Filtering**: WebUI `My games` now filters configured entries against installed user packages, displaying real App Labels and icons without uninstalled package bloat.
-- **Kernel String Overflow Protection**: Added text truncation and tap-to-expand toggle for long Linux kernel version strings in Device Info.
+### Major Enhancements & Architectural Upgrades
+- **Zero-Latency WebUI Interaction**: Implemented optimistic UI state updates for profile switching, game mode cycling, and application management, delivering instant 0ms touch feedback without UI freezes.
+- **Atomic Game Mode Cycling**: Consolidated game mode profile changes (`GAMING`, `TOUCH`, `INTERACTIVE`, `SLEEP`) into single atomic background operations.
+- **Organic Mascot Banner Illustrations**: Integrated custom hand-drawn, warm lofi human mascot character illustrations for active (`hypercore_active.jpg`) and sleeping (`hypercore_sleep.jpg`) daemon states.
+- **Refined Material Design 3 Styling**: Material Design 3 tokens mapped with native KernelSU MUI insets, progress bars for RAM & ZRAM, expandable kernel release rows, and syntax-highlighted daemon logs.
+- **Fast Charge Restoration**: Preserved full fast charging rate capability across all performance profiles.
+- **Game Exit Transition Debouncing**: Added 3-tick absence validation to prevent profile drop during temporary game overlays or checkpoints.
+- **Disk I/O Status Rate-Limiting**: Implemented status caching with 30s rate-limiting to prevent unnecessary `module.prop` writes.
+- **Strict Compiler Verification**: Compiled with `-O3 -flto -s -Wall -Wextra -Werror` (0 warnings, 0 errors).

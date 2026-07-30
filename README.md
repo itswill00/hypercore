@@ -108,8 +108,8 @@ To compile the native binary and build the release ZIP package:
 ```
 
 The script compiles the daemon using `-O3 -flto -s -Wall -Wextra -Werror` and outputs the final package to:
-- `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v3.5.zip`
-- `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.5.zip`
+- `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v3.7.zip`
+- `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.7.zip`
 
 ---
 
