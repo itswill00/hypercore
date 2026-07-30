@@ -65,10 +65,9 @@ import Icons from '@/components/icons/Icons.vue'
 const store = useHyperStore()
 const toast = inject('toast')
 
-async function flush() {
+function flush() {
   if (store.loading) return
-  if (toast) toast('Clearing RAM cache...')
-  const msg = await store.flushRam()
+  const msg = store.flushRam()
   if (toast) toast(msg)
 }
 
