@@ -47,7 +47,6 @@ static void init_hardware_nodes(void) {
     }
 
     snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.mod_dir);
-    snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file), "%s/.hypercore_lock", g_nodes.mod_dir);
 
     scan_thermal_zones();
 
@@ -105,15 +104,6 @@ static int is_screen_on(void) {
     return 1;
 }
 
-static int read_initial_load(void) {
-    FILE *f = fopen("/proc/loadavg", "r");
-    if (!f) return 0;
-    float l1 = 0;
-    if (fscanf(f, "%f", &l1) != 1) l1 = 0;
-    fclose(f);
-    return (int)(l1 * 100);
-}
-
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
@@ -137,9 +127,6 @@ int main(int argc, char *argv[]) {
 
     memset(&g_state, 0, sizeof(g_state));
     g_state.current_profile = (profile_t)-1;
-    g_state.prev_load = read_initial_load();
-
-    int touch_hold_counter = 0;
 
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
@@ -153,14 +140,6 @@ int main(int argc, char *argv[]) {
 
         int thermal_tier = calculate_thermal_tier(cpu_temp, bat_temp);
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-        int load_val = read_initial_load();
-
-        char manual_lock[32] = "";
-        FILE *flock = fopen(g_nodes.lock_file, "r");
-        if (flock) {
-            if (fscanf(flock, "%31s", manual_lock) != 1) manual_lock[0] = '\0';
-            fclose(flock);
-        }
 
         char active_game[128] = "";
         profile_t custom_profile = PROFILE_GAMING;
@@ -197,50 +176,20 @@ int main(int argc, char *argv[]) {
         if (!is_screen_on()) {
             next_profile = PROFILE_SLEEP;
             g_state.gaming_hold_ticks = 0;
-            touch_hold_counter = 0;
         } else if (thermal_tier == 3 && cpu_temp >= 75) {
             next_profile = PROFILE_THERMAL;
             g_state.gaming_hold_ticks = 0;
-            touch_hold_counter = 0;
-        } else if (strcmp(manual_lock, "GAMING") == 0) {
-            next_profile = PROFILE_GAMING;
-            g_state.gaming_hold_ticks = 10;
-            touch_hold_counter = 0;
-        } else if (strcmp(manual_lock, "INTERACTIVE") == 0 || strcmp(manual_lock, "BALANCED") == 0) {
-            next_profile = PROFILE_INTERACTIVE;
-            g_state.gaming_hold_ticks = 0;
-            touch_hold_counter = 0;
-        } else if (strcmp(manual_lock, "TOUCH") == 0) {
-            next_profile = PROFILE_TOUCH;
-            g_state.gaming_hold_ticks = 0;
-            touch_hold_counter = 5;
-        } else if (strcmp(manual_lock, "SLEEP") == 0 || strcmp(manual_lock, "SAVER") == 0) {
-            next_profile = PROFILE_SLEEP;
-            g_state.gaming_hold_ticks = 0;
-            touch_hold_counter = 0;
         } else if (game_active) {
             next_profile = custom_profile;
             g_state.gaming_hold_ticks = 10;
-            touch_hold_counter = 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;
-            touch_hold_counter = 0;
         } else {
-            if (gpu_load >= 50) {
-                touch_hold_counter = 4;
-            }
-
-            if (touch_hold_counter > 0) {
-                touch_hold_counter--;
-                next_profile = PROFILE_TOUCH;
-            } else {
-                next_profile = PROFILE_INTERACTIVE;
-            }
+            next_profile = PROFILE_INTERACTIVE;
         }
 
         s_prev_game_active = game_active;
-        g_state.prev_load = load_val;
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
@@ -248,14 +197,14 @@ int main(int argc, char *argv[]) {
                 char status_buf[128];
                 if (next_profile == PROFILE_GAMING && active_game[0] != '\0') {
                     snprintf(status_buf, sizeof(status_buf), "Gaming (%s)", active_game);
-                    log_state("PROFILER", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                    log_state("PROFILER", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
                               prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
-                              g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+                              g_state.is_charging ? "[CHG]" : "", gpu_load);
                 } else {
                     snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
-                    log_state("PROFILER", "Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%, Load: %d)",
+                    log_state("PROFILER", "Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
                               prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
-                              g_state.is_charging ? "[CHG]" : "", gpu_load, load_val);
+                              g_state.is_charging ? "[CHG]" : "", gpu_load);
                 }
                 update_module_prop_status(status_buf);
             } else {

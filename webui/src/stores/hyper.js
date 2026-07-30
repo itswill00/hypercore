@@ -4,8 +4,6 @@ import { execCommand, sanitize, isKSU } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/tanzanite_hypercore'
 const LOG = '/sdcard/Android/hypercore.log'
-const LOCK_MOD = `${MOD}/.hypercore_lock`
-const LOCK_SD = '/sdcard/Android/.hypercore_lock'
 const GL_MOD = `${MOD}/gamelist.txt`
 const GL_SD = '/sdcard/Android/gamelist.txt'
 
@@ -14,7 +12,6 @@ export const useHyperStore = defineStore('hyper', () => {
   const daemonPid = ref('')
   const activeProfile = ref('—')
   const thermalTier = ref('—')
-  const lockMode = ref('AUTO')
 
   /* ── CPU & GPU ── */
   const cpuLittle = ref('—')
@@ -148,7 +145,6 @@ export const useHyperStore = defineStore('hyper', () => {
       `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk|ufs|dm-)' | head -1)`,
       `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
-      `echo "LK:$(cat ${LOCK_MOD} 2>/dev/null || cat ${LOCK_SD} 2>/dev/null || echo AUTO)"`,
       `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
       `DESC=$(grep '^description=' ${MOD}/module.prop 2>/dev/null); echo "DESC:$DESC"`,
       `echo "===GL==="`,
@@ -288,9 +284,6 @@ export const useHyperStore = defineStore('hyper', () => {
       }
       thermalTier.value = tier
 
-      // Lock mode
-      lockMode.value = (kv.LK || 'AUTO').trim().toUpperCase()
-
       // Games
       games.value = gameBlock.trim().split('\n')
         .map(l => l.trim().replace(/\r/g, ''))
@@ -305,19 +298,6 @@ export const useHyperStore = defineStore('hyper', () => {
     } finally {
       isRefreshing = false
     }
-  }
-
-  /* ── Non-blocking Optimistic Profile Switch ── */
-  function setProfile(mode) {
-    const safe = sanitize(mode)
-    lockMode.value = safe // 0ms Instant UI feedback!
-
-    if (safe === 'AUTO') {
-      execCommand(`rm -f ${LOCK_MOD} ${LOCK_SD}`)
-    } else {
-      execCommand(`echo '${safe}' | tee ${LOCK_MOD} ${LOCK_SD} >/dev/null`)
-    }
-    setTimeout(refresh, 400)
   }
 
   function flushRam() {
@@ -391,7 +371,7 @@ export const useHyperStore = defineStore('hyper', () => {
     const oldPkg = sanitize(oldEntry.split(':')[0])
     const newEntrySafe = sanitize(newEntry)
 
-    // Optimistic memory update (0ms UI latency!)
+    // Optimistic memory update
     const idx = games.value.findIndex(g => g === oldEntry || g.startsWith(`${oldPkg}:`))
     if (idx !== -1) {
       games.value[idx] = newEntrySafe
@@ -399,7 +379,7 @@ export const useHyperStore = defineStore('hyper', () => {
       games.value.push(newEntrySafe)
     }
 
-    // Atomic shell update in 1 background command
+    // Atomic shell update
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
@@ -424,10 +404,10 @@ export const useHyperStore = defineStore('hyper', () => {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
     cpuTemp, batTemp, batStatus, batLevel, batRate, batVolt,
-    lockMode, games, logs, loading,
+    games, logs, loading,
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
-    fetchDeviceInfo, refresh, setProfile, flushRam, restartDaemon, exportLogs, createShortcut,
+    fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, createShortcut,
     addGame, removeGame, updateGameMode, launchGame
   }
 })
