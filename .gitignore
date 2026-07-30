@@ -9,3 +9,8 @@ checksums.sha256
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Node / WebUI build artifacts
+webui/node_modules/
+webui/dist/
+

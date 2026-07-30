@@ -10,6 +10,12 @@ set -e
 mkdir -p "$RELEASE_DIR"
 cd "$PROJECT_DIR"
 
+if [ -d "$PROJECT_DIR/webui" ]; then
+    echo "-> Compiling Vue 3 WebUI..."
+    (cd "$PROJECT_DIR/webui" && node ./node_modules/vite/bin/vite.js build >/dev/null 2>&1)
+    cp "$PROJECT_DIR/webui/dist/index.html" "$PROJECT_DIR/webroot/index.html"
+fi
+
 echo "-> Compiling hypercore daemon..."
 clang -O3 -flto -s -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/hypercore"
 
