@@ -10,30 +10,48 @@ const GL_MOD = `${MOD}/gamelist.txt`
 const GL_SD = '/sdcard/Android/gamelist.txt'
 
 export const useHyperStore = defineStore('hyper', () => {
-  /* ── Reactive state ── */
+  /* ── Daemon & Profile ── */
   const daemonPid = ref('')
   const activeProfile = ref('—')
   const thermalTier = ref('—')
+  const lockMode = ref('AUTO')
+
+  /* ── CPU & GPU ── */
   const cpuLittle = ref('—')
   const cpuBig = ref('—')
+  const cpuGov = ref('—')
+  const cpuCores = ref('—')
   const gpuInfo = ref('—')
   const sysLoad = ref('—')
+
+  /* ── Memory & Storage ── */
+  const ramUsage = ref('—')
+  const ramPercent = ref(0)
+  const zramUsage = ref('—')
+  const zramPercent = ref(0)
+  const ioInfo = ref('—')
+  const vmInfo = ref('—')
+
+  /* ── Power & Thermal ── */
   const cpuTemp = ref(0)
   const batTemp = ref(0)
   const batStatus = ref('—')
   const batLevel = ref('')
-  const ioInfo = ref('—')
-  const vmInfo = ref('—')
-  const lockMode = ref('AUTO')
-  const games = ref([])
-  const logs = ref('Loading...')
-  const loading = ref(false)
+  const batRate = ref('—')
+  const batVolt = ref('—')
 
-  /* ── Device metadata ── */
+  /* ── Device & Kernel info ── */
   const moduleVersion = ref('v3.3')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
   const androidSdk = ref('—')
+  const selinux = ref('—')
+  const uptime = ref('—')
+
+  /* ── Others ── */
+  const games = ref([])
+  const logs = ref('Loading...')
+  const loading = ref(false)
 
   /* ── Computed ── */
   const isRunning = computed(() => daemonPid.value.length > 0)
@@ -68,15 +86,25 @@ export const useHyperStore = defineStore('hyper', () => {
     return Math.round(parseInt(raw || 0) / 1000)
   }
 
+  function fmtUptime(secStr) {
+    const s = parseInt(secStr || 0)
+    if (!s) return '—'
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    return `${h}h ${m}m`
+  }
+
   /* ── Actions ── */
   async function fetchDeviceInfo() {
     try {
-      const [kv, sdk] = await Promise.all([
+      const [kv, sdk, se] = await Promise.all([
         execCommand('uname -r -m 2>/dev/null'),
-        execCommand('getprop ro.build.version.sdk 2>/dev/null')
+        execCommand('getprop ro.build.version.sdk 2>/dev/null'),
+        execCommand('getenforce 2>/dev/null')
       ])
       if (kv) kernelVersion.value = kv.trim()
       if (sdk) androidSdk.value = `API ${sdk.trim()}`
+      if (se) selinux.value = se.trim()
     } catch {}
   }
 
@@ -85,16 +113,22 @@ export const useHyperStore = defineStore('hyper', () => {
       `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
       `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
       `echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)"`,
+      `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"`,
+      `echo "CORES:$(cat /sys/devices/system/cpu/online 2>/dev/null)"`,
       `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)"`,
       `echo "LOAD:$(cat /proc/loadavg 2>/dev/null | cut -d' ' -f1)"`,
+      `echo "MEM:$(cat /proc/meminfo 2>/dev/null | grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' | tr '\n' ' ')"`,
       `echo "CT:$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"`,
       `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)"`,
       `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)"`,
       `echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)"`,
+      `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`,
+      `echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)"`,
       `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk)' | head -1)`,
       `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
       `echo "LK:$(cat ${LOCK_MOD} 2>/dev/null || cat ${LOCK_SD} 2>/dev/null || echo AUTO)"`,
+      `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
       `DESC=$(grep '^description=' ${MOD}/module.prop 2>/dev/null); echo "DESC:$DESC"`,
       `echo "===GL==="`,
       `cat ${GL_MOD} 2>/dev/null || cat ${GL_SD} 2>/dev/null || true`,
@@ -126,7 +160,7 @@ export const useHyperStore = defineStore('hyper', () => {
       const m = desc.match(/\[Active:\s*([^\]]+)\]/)
       if (m) activeProfile.value = m[1].trim()
 
-      // CPU clusters
+      // CPU clusters & governor
       if (kv.CL0) {
         const p = kv.CL0.split(':')
         cpuLittle.value = `${fmtFreq(p[0])} MHz [${fmtFreq(p[1])}–${fmtFreq(p[2])}]`
@@ -135,6 +169,8 @@ export const useHyperStore = defineStore('hyper', () => {
         const p = kv.CL1.split(':')
         cpuBig.value = `${fmtFreq(p[0])} MHz [${fmtFreq(p[1])}–${fmtFreq(p[2])}]`
       }
+      cpuGov.value = (kv.GOV || 'schedutil').trim()
+      cpuCores.value = (kv.CORES || '0-7').trim()
 
       // GPU
       if (kv.GPU) {
@@ -142,8 +178,31 @@ export const useHyperStore = defineStore('hyper', () => {
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
       }
 
-      // System load
+      // System load & uptime
       sysLoad.value = kv.LOAD || '0.00'
+      uptime.value = fmtUptime(kv.UP)
+
+      // Memory (RAM & ZRAM)
+      if (kv.MEM) {
+        const memMatch = kv.MEM.match(/MemTotal:\s*(\d+)\s*kB.*MemAvailable:\s*(\d+)\s*kB/)
+        const swapMatch = kv.MEM.match(/SwapTotal:\s*(\d+)\s*kB.*SwapFree:\s*(\d+)\s*kB/)
+
+        if (memMatch) {
+          const tot = Math.round(parseInt(memMatch[1]) / 1024)
+          const avail = Math.round(parseInt(memMatch[2]) / 1024)
+          const used = tot - avail
+          ramPercent.value = Math.round((used / tot) * 100)
+          ramUsage.value = `${(used / 1024).toFixed(1)} GB / ${(tot / 1024).toFixed(1)} GB (${ramPercent.value}%)`
+        }
+
+        if (swapMatch) {
+          const tot = Math.round(parseInt(swapMatch[1]) / 1024)
+          const free = Math.round(parseInt(swapMatch[2]) / 1024)
+          const used = tot - free
+          zramPercent.value = tot > 0 ? Math.round((used / tot) * 100) : 0
+          zramUsage.value = `${(used / 1024).toFixed(1)} GB / ${(tot / 1024).toFixed(1)} GB (${zramPercent.value}%)`
+        }
+      }
 
       // Temperatures
       cpuTemp.value = normTemp(kv.CT)
@@ -153,13 +212,29 @@ export const useHyperStore = defineStore('hyper', () => {
       batStatus.value = (kv.BS || 'Unknown').trim()
       batLevel.value = (kv.BL || '').trim()
 
-      // I/O
+      // Battery current & voltage
+      const rawCurr = Math.abs(parseInt(kv.BC || 0))
+      const rawVolt = parseInt(kv.BV || 0)
+      if (rawCurr > 0) {
+        const ma = Math.round(rawCurr > 10000 ? rawCurr / 1000 : rawCurr)
+        const sign = batStatus.value === 'Charging' ? '+' : '-'
+        batRate.value = `${sign}${ma} mA`
+      } else {
+        batRate.value = '—'
+      }
+
+      if (rawVolt > 0) {
+        const v = (rawVolt > 10000 ? rawVolt / 1000000 : rawVolt / 1000).toFixed(2)
+        batVolt.value = `${v} V`
+      } else {
+        batVolt.value = '—'
+      }
+
+      // I/O & VM
       if (kv.IO) {
         const p = kv.IO.split(':')
         ioInfo.value = `${p[0] || 'none'} / ${p[1] || '256'} KB`
       }
-
-      // VM
       if (kv.SW) {
         const p = kv.SW.split(':')
         vmInfo.value = `${p[0] || '15'} / ${p[1] || '100'}`
@@ -271,10 +346,11 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   return {
-    daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, gpuInfo,
-    sysLoad, cpuTemp, batTemp, batStatus, batLevel, ioInfo, vmInfo,
+    daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
+    sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
+    cpuTemp, batTemp, batStatus, batLevel, batRate, batVolt,
     lockMode, games, logs, loading,
-    moduleVersion, kernelVersion, chipset, androidSdk,
+    moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, setProfile, flushRam, restartDaemon, exportLogs, createShortcut,
     addGame, removeGame, launchGame
