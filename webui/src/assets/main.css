@@ -267,8 +267,26 @@ html, body, #app {
   font-weight: 500;
   color: var(--on-surface);
   text-align: right;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-left: 12px;
+  transition: max-width 0.2s ease;
+}
+
+.row-val.expandable {
+  cursor: pointer;
+}
+
+.row-val.expanded {
+  white-space: normal;
+  word-break: break-all;
+  max-width: 100%;
+  text-align: left;
+  margin-top: 4px;
 }
 
 /* Profile Selector Grid */

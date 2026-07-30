@@ -237,8 +237,8 @@
       <div class="row-val">{{ store.chipset }}</div>
     </div>
 
-    <div class="md3-list-row">
-      <div class="row-left">
+    <div class="md3-list-row" :style="expandedKernel ? 'flex-direction: column; align-items: flex-start;' : ''">
+      <div class="row-left" style="width: 100%;">
         <div class="icon-badge">
           <Icons name="device" :size="18" />
         </div>
@@ -247,7 +247,14 @@
           <div class="row-sub">Linux kernel release</div>
         </div>
       </div>
-      <div class="row-val">{{ store.kernelVersion }}</div>
+      <div
+        class="row-val expandable"
+        :class="{ 'expanded': expandedKernel }"
+        :title="store.kernelVersion"
+        @click="expandedKernel = !expandedKernel"
+      >
+        {{ store.kernelVersion }}
+      </div>
     </div>
 
     <div class="md3-list-row">
@@ -279,11 +286,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
+const expandedKernel = ref(false)
 
 onMounted(() => {
   store.fetchDeviceInfo()
