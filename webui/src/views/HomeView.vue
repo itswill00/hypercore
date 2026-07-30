@@ -13,8 +13,8 @@
 
     <!-- Scroll Content -->
     <div class="content-area">
-      <ProfileSelector />
       <StatusCard />
+      <ProfileSelector />
       <ActionButtons />
 
       <div style="text-align: center; font-size: 10px; opacity: 0.45; padding: 12px 0 20px 0; font-family: var(--font-mono);">
@@ -26,8 +26,8 @@
 
 <script setup>
 import { useHyperStore } from '@/stores/hyper'
-import ProfileSelector from '@/components/ProfileSelector.vue'
 import StatusCard from '@/components/StatusCard.vue'
+import ProfileSelector from '@/components/ProfileSelector.vue'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
 
