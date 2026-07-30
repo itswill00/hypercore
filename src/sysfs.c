@@ -56,7 +56,7 @@ void update_module_prop_status(const char *status) {
 
     for (int i = 0; i < count; i++) {
         if (strncmp(lines[i], "description=", 12) == 0) {
-            fprintf(f, "description=[Active: %s] Native kernel tuner & gaming optimizer for MediaTek Helio G99 Ultra. Sustained CPU clocks, optimized GPU GED, hysteresis thermal control & zero ZRAM latency.\n", status);
+            fprintf(f, "description=[Active: %s] Smart kernel optimizer & gaming daemon for Helio G99 Ultra.\n", status);
         } else {
             fputs(lines[i], f);
         }
