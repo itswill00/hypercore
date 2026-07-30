@@ -1,22 +1,19 @@
 <template>
-  <div class="md3-card">
-    <div style="display: flex; align-items: center; justify-content: space-between;">
-      <div>
-        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Profile mode</div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Current operating mode</div>
-      </div>
-      <span class="badge-pill purple">{{ displayLabel }}</span>
+  <div class="md3-card" style="padding: 12px; margin-bottom: 10px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+      <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Operating profile</span>
+      <span class="badge-pill purple" style="font-size: 10px; padding: 2px 8px;">{{ displayLabel }}</span>
     </div>
 
-    <div class="profile-grid">
+    <div class="segment-container">
       <button
         v-for="p in profiles"
         :key="p.mode"
-        class="profile-btn"
+        class="segment-btn"
         :class="{ 'active': isActive(p.mode) }"
         @click="select(p.mode)"
       >
-        <Icons :name="p.icon" :size="16" style="margin-bottom: 4px;" />
+        <Icons :name="p.icon" :size="13" />
         <span>{{ p.label }}</span>
       </button>
     </div>
@@ -54,8 +51,8 @@ function isActive(mode) {
   return normalized.value === mode
 }
 
-async function select(mode) {
-  await store.setProfile(mode)
+function select(mode) {
+  store.setProfile(mode)
   if (toast) toast(`Profile: ${mode === 'AUTO' ? 'Auto' : mode}`)
 }
 </script>
