@@ -19,8 +19,8 @@
     </span>
   </div>
 
-  <!-- System status -->
-  <div class="section-title">System status</div>
+  <!-- Engine status -->
+  <div class="section-title">Engine status</div>
   <div class="md3-list-group">
     <div class="md3-list-row">
       <div class="row-left">
@@ -55,36 +55,10 @@
         </div>
         <div class="row-meta">
           <div class="row-title">CPU governor</div>
-          <div class="row-sub">Scaling governor (cores {{ store.cpuCores }})</div>
+          <div class="row-sub">Scaling governor</div>
         </div>
       </div>
       <div class="row-val">{{ store.cpuGov }}</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge">
-          <Icons name="cpu" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Little cores (0–5)</div>
-          <div class="row-sub">Efficiency cluster</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.cpuLittle }}</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge">
-          <Icons name="cpu" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Big cores (6–7)</div>
-          <div class="row-sub">Performance cluster</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.cpuBig }}</div>
     </div>
 
     <div class="md3-list-row">
@@ -101,9 +75,22 @@
     </div>
   </div>
 
-  <!-- Memory & storage -->
-  <div class="section-title">Memory & storage</div>
+  <!-- Hardware & memory -->
+  <div class="section-title">Hardware & memory</div>
   <div class="md3-list-group">
+    <div class="md3-list-row">
+      <div class="row-left">
+        <div class="icon-badge tertiary">
+          <Icons name="thermal" :size="18" />
+        </div>
+        <div class="row-meta">
+          <div class="row-title">Temperatures</div>
+          <div class="row-sub">CPU & battery sensors</div>
+        </div>
+      </div>
+      <div class="row-val" :class="store.tempColor">{{ tempDisplay }}</div>
+    </div>
+
     <div class="md3-list-row" style="flex-direction: column; align-items: stretch;">
       <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
         <div class="row-left">
@@ -155,125 +142,6 @@
 
     <div class="md3-list-row">
       <div class="row-left">
-        <div class="icon-badge secondary">
-          <Icons name="storage" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Virtual memory</div>
-          <div class="row-sub">Swappiness & cache pressure</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.vmInfo }}</div>
-    </div>
-  </div>
-
-  <!-- Power & thermal -->
-  <div class="section-title">Power & thermal</div>
-  <div class="md3-list-group">
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge tertiary">
-          <Icons name="thermal" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Temperatures</div>
-          <div class="row-sub">CPU & battery sensors</div>
-        </div>
-      </div>
-      <div class="row-val" :class="store.tempColor">{{ tempDisplay }}</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge tertiary">
-          <Icons name="power" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Battery level</div>
-          <div class="row-sub">Power status</div>
-        </div>
-      </div>
-      <div class="row-val" :class="store.batColor">{{ batDisplay }}</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge tertiary">
-          <Icons name="power" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Charging rate</div>
-          <div class="row-sub">Current & voltage</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.batRate }} / {{ store.batVolt }}</div>
-    </div>
-  </div>
-
-  <!-- Device info -->
-  <div class="section-title">Device info</div>
-  <div class="md3-list-group">
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge">
-          <Icons name="device" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Module version</div>
-          <div class="row-sub">Tanzanite HyperCore</div>
-        </div>
-      </div>
-      <div class="row-val c-purple" style="font-weight: 700;">{{ store.moduleVersion }}</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge">
-          <Icons name="device" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Chipset</div>
-          <div class="row-sub">System-on-Chip</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.chipset }}</div>
-    </div>
-
-    <div class="md3-list-row" :style="expandedKernel ? 'flex-direction: column; align-items: flex-start;' : ''">
-      <div class="row-left" style="width: 100%;">
-        <div class="icon-badge">
-          <Icons name="device" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Kernel</div>
-          <div class="row-sub">Linux kernel release</div>
-        </div>
-      </div>
-      <div
-        class="row-val expandable"
-        :class="{ 'expanded': expandedKernel }"
-        :title="store.kernelVersion"
-        @click="expandedKernel = !expandedKernel"
-      >
-        {{ store.kernelVersion }}
-      </div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge">
-          <Icons name="device" :size="18" />
-        </div>
-        <div class="row-meta">
-          <div class="row-title">Android SDK</div>
-          <div class="row-sub">Platform version</div>
-        </div>
-      </div>
-      <div class="row-val">{{ store.androidSdk }} ({{ store.selinux }})</div>
-    </div>
-
-    <div class="md3-list-row">
-      <div class="row-left">
         <div class="icon-badge">
           <Icons name="device" :size="18" />
         </div>
@@ -291,37 +159,28 @@
           <Icons name="star" :size="18" />
         </div>
         <div class="row-meta">
-          <div class="row-title">Inspiration</div>
-          <div class="row-sub">Module architecture credits</div>
+          <div class="row-title">Module info</div>
+          <div class="row-sub">{{ store.chipset }}</div>
         </div>
       </div>
-      <div class="row-val" style="font-size: 10px; opacity: 0.6;">encore by Rem01Gaming</div>
+      <div class="row-val c-purple" style="font-weight: 700;">{{ store.moduleVersion }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 import activeImg from '@/assets/hypercore_active.jpg'
 import sleepImg from '@/assets/hypercore_sleep.jpg'
 
 const store = useHyperStore()
-const expandedKernel = ref(false)
-
-onMounted(() => {
-  store.fetchDeviceInfo()
-})
 
 const tempDisplay = computed(() => {
   const c = store.cpuTemp > 0 ? `${store.cpuTemp}°C` : '—'
   const b = store.batTemp > 0 ? `${store.batTemp}°C` : '—'
   return `${c} / ${b}`
-})
-
-const batDisplay = computed(() => {
-  return store.batStatus + (store.batLevel ? ` (${store.batLevel}%)` : '')
 })
 
 const ramColor = computed(() => {
