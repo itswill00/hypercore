@@ -1,24 +1,22 @@
 <template>
-  <div class="md3-group p-4">
-    <div class="flex items-center justify-between mb-3">
+  <div class="md3-card">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
       <div>
-        <h2 class="text-sm font-semibold text-on-surface">Profile Mode</h2>
-        <p class="text-xs text-on-surface-variant mt-0.5">Select manual lock or dynamic auto governor</p>
+        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Profile Mode</div>
+        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Manual lock or dynamic auto governor</div>
       </div>
-      <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-secondary-container text-on-secondary-container">
-        {{ displayLabel }}
-      </span>
+      <span class="badge-pill purple">{{ displayLabel }}</span>
     </div>
 
-    <div class="grid grid-cols-5 gap-2 mt-2">
+    <div class="profile-grid">
       <button
         v-for="p in profiles"
         :key="p.mode"
-        class="profile-pill flex flex-col items-center justify-center py-2.5 px-1 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer border border-transparent"
-        :class="isActive(p.mode) ? 'active-pill shadow-sm' : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-bright'"
+        class="profile-btn"
+        :class="{ 'active': isActive(p.mode) }"
         @click="select(p.mode)"
       >
-        <Icons :name="p.icon" :size="16" class="mb-1" />
+        <Icons :name="p.icon" :size="16" style="margin-bottom: 4px;" />
         <span>{{ p.label }}</span>
       </button>
     </div>
@@ -61,12 +59,3 @@ async function select(mode) {
   if (toast) toast(`Profile: ${mode === 'AUTO' ? 'Auto Dynamic' : mode}`)
 }
 </script>
-
-<style scoped>
-.active-pill {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  border-color: var(--primary);
-  font-weight: 600;
-}
-</style>

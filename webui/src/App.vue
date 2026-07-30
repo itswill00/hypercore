@@ -1,7 +1,7 @@
 <template>
-  <div class="h-full w-full flex flex-col relative overflow-hidden bg-surface text-on-surface">
+  <div class="app-shell">
     <!-- Main Scroll View -->
-    <main class="flex-1 overflow-hidden relative">
+    <main style="flex: 1; overflow: hidden; position: relative;">
       <router-view v-slot="{ Component }">
         <transition name="page-fade" mode="out-in">
           <component :is="Component" />
@@ -14,8 +14,8 @@
 
     <!-- Toast Notification -->
     <transition name="toast-slide">
-      <div v-if="toastMsg" class="toast-pill fixed bottom-20 left-1/2 -translate-x-1/2 bg-surface-container-highest border border-surface-bright text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none flex items-center gap-2">
-        <Icons name="check" :size="14" class="text-primary" />
+      <div v-if="toastMsg" class="toast-pill">
+        <Icons name="check" :size="14" style="color: var(--primary);" />
         <span>{{ toastMsg }}</span>
       </div>
     </transition>
@@ -52,18 +52,38 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.toast-pill {
+  position: fixed;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-container-highest);
+  border: 1px solid var(--surface-bright);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 99;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .toast-slide-enter-active,
 .toast-slide-leave-active {
-  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .toast-slide-enter-from {
   opacity: 0;
-  transform: translate(-50%, 12px);
+  transform: translate(-50%, 10px);
 }
 
 .toast-slide-leave-to {
   opacity: 0;
-  transform: translate(-50%, -8px);
+  transform: translate(-50%, -6px);
 }
 </style>

@@ -1,19 +1,18 @@
 <template>
-  <div class="page-games pb-safe-nav overflow-y-auto h-full scrollbar-hidden">
-    <!-- Header -->
-    <div class="sticky top-0 z-10 bg-surface/90 backdrop-blur-md px-4 py-3 border-b border-surface-container-high mb-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-lg font-bold text-on-surface">Game Engine</h1>
-          <p class="text-xs text-on-surface-variant">Auto boost & custom profile triggers</p>
-        </div>
-        <button class="md3-btn md3-btn-secondary p-2 rounded-full" @click="store.refresh()">
-          <Icons name="refresh" :size="18" />
-        </button>
+  <div style="height: 100%; display: flex; flex-direction: column;">
+    <!-- Sticky Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-header-title">Game Engine</div>
+        <div class="page-header-sub">Auto boost & custom profile triggers</div>
       </div>
+      <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
+        <Icons name="refresh" :size="16" />
+      </button>
     </div>
 
-    <div class="px-4 max-w-md mx-auto">
+    <!-- Scroll Content -->
+    <div class="content-area">
       <GameList />
     </div>
   </div>

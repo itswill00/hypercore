@@ -1,54 +1,55 @@
 <template>
   <Teleport to="body">
     <div class="modal-backdrop" @click.self="$emit('close')">
-      <div class="modal-card flex flex-col max-h-[80vh] overflow-hidden p-0">
+      <div class="modal-card">
         <!-- Header -->
-        <div class="p-4 border-b border-surface-container-high flex items-center justify-between">
+        <div style="padding: 14px 16px; border-bottom: 1px solid var(--surface-container-high); display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <h2 class="text-base font-semibold text-on-surface">Select Application</h2>
-            <p class="text-xs text-on-surface-variant">Installed system and user packages</p>
+            <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Select Application</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Installed system & user packages</div>
           </div>
-          <button class="md3-btn md3-btn-secondary py-1.5 px-3 text-xs" @click="$emit('close')">Close</button>
+          <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 11px;" @click="$emit('close')">Close</button>
         </div>
 
         <!-- Filter -->
-        <div class="p-3 border-b border-surface-container-high bg-surface-container-low">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--surface-container-high); background: var(--surface-container-low);">
           <input
             v-model="query"
             type="text"
-            class="md3-input"
-            placeholder="Search by app name or package..."
+            class="input-md3"
+            placeholder="Search app name or package..."
             ref="searchInput"
           >
         </div>
 
         <!-- List Body -->
-        <div class="p-2 overflow-y-auto flex-1 scrollbar-hidden">
-          <div v-if="loading" class="p-8 text-center text-xs text-on-surface-variant">
+        <div style="padding: 8px; overflow-y-auto; flex: 1; scrollbar-width: none;">
+          <div v-if="loading" style="padding: 32px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
             Scanning installed packages...
           </div>
-          <div v-else-if="filtered.length === 0" class="p-8 text-center text-xs text-on-surface-variant">
+          <div v-else-if="filtered.length === 0" style="padding: 32px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
             No matching applications found
           </div>
           <div
             v-for="app in filtered"
             :key="app.pkg"
-            class="md3-list-item clickable rounded-xl mb-1.5 border border-transparent hover:border-surface-bright"
+            class="md3-list-row clickable"
+            style="border-radius: 12px; margin-bottom: 4px; border-bottom: none;"
             @click="$emit('pick', app.pkg)"
           >
-            <div class="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
+            <div class="row-left">
               <img
                 :src="iconFor(app.pkg)"
-                class="w-9 h-9 rounded-xl bg-surface-container-highest object-cover shrink-0"
+                style="width: 32px; height: 32px; border-radius: 10px; background: var(--surface-container-highest); object-fit: cover; flex-shrink: 0;"
                 @error="e => e.target.style.visibility = 'hidden'"
                 loading="lazy"
               >
-              <div class="min-w-0 flex-1">
-                <div class="item-title truncate text-xs font-medium">{{ app.name }}</div>
-                <div class="item-sub truncate text-[11px] font-mono opacity-70">{{ app.pkg }}</div>
+              <div class="row-meta">
+                <div class="row-title" style="font-size: 12px;">{{ app.name }}</div>
+                <div class="row-sub" style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75;">{{ app.pkg }}</div>
               </div>
             </div>
-            <button class="md3-btn md3-btn-primary py-1 px-3 text-xs shrink-0 ml-2" @click.stop="$emit('pick', app.pkg)">
+            <button class="btn-md3 btn-md3-primary" style="padding: 4px 10px; font-size: 11px; flex-shrink: 0; margin-left: 8px;" @click.stop="$emit('pick', app.pkg)">
               Add
             </button>
           </div>

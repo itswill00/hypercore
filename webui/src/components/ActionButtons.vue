@@ -1,57 +1,57 @@
 <template>
-  <div class="mb-6">
-    <h3 class="section-title">QUICK ACTIONS</h3>
-    <div class="md3-group">
-      <div class="md3-list-item clickable" @click="flush">
-        <div class="flex items-center gap-3.5">
+  <div>
+    <div class="section-title">Quick Actions</div>
+    <div class="md3-list-group">
+      <div class="md3-list-row clickable" @click="flush">
+        <div class="row-left">
           <div class="icon-badge">
             <Icons name="memory" :size="18" />
           </div>
-          <div>
-            <div class="item-title">Clear RAM Cache</div>
-            <div class="item-sub">Compact memory & drop page caches</div>
+          <div class="row-meta">
+            <div class="row-title">Clear RAM Cache</div>
+            <div class="row-sub">Compact memory & drop page caches</div>
           </div>
         </div>
-        <Icons name="chevron-right" :size="20" class="text-on-surface-variant" />
+        <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-item clickable" @click="saveLog">
-        <div class="flex items-center gap-3.5">
+      <div class="md3-list-row clickable" @click="saveLog">
+        <div class="row-left">
           <div class="icon-badge secondary">
             <Icons name="logs" :size="18" />
           </div>
-          <div>
-            <div class="item-title">Save System Log</div>
-            <div class="item-sub">Export log to /sdcard/HyperCore_log.txt</div>
+          <div class="row-meta">
+            <div class="row-title">Save System Log</div>
+            <div class="row-sub">Export log to /sdcard/HyperCore_log.txt</div>
           </div>
         </div>
-        <Icons name="chevron-right" :size="20" class="text-on-surface-variant" />
+        <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-item clickable" @click="restart">
-        <div class="flex items-center gap-3.5">
+      <div class="md3-list-row clickable" @click="restart">
+        <div class="row-left">
           <div class="icon-badge tertiary">
             <Icons name="refresh" :size="18" />
           </div>
-          <div>
-            <div class="item-title">Restart Daemon</div>
-            <div class="item-sub">Relaunch background C daemon</div>
+          <div class="row-meta">
+            <div class="row-title">Restart Daemon</div>
+            <div class="row-sub">Relaunch background C daemon</div>
           </div>
         </div>
-        <Icons name="chevron-right" :size="20" class="text-on-surface-variant" />
+        <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-item clickable" @click="addShortcut">
-        <div class="flex items-center gap-3.5">
+      <div class="md3-list-row clickable" @click="addShortcut">
+        <div class="row-left">
           <div class="icon-badge">
             <Icons name="star" :size="18" />
           </div>
-          <div>
-            <div class="item-title">Create App Shortcut</div>
-            <div class="item-sub">Add WebUI launcher shortcut to home screen</div>
+          <div class="row-meta">
+            <div class="row-title">Create App Shortcut</div>
+            <div class="row-sub">Add WebUI shortcut to home screen</div>
           </div>
         </div>
-        <Icons name="chevron-right" :size="20" class="text-on-surface-variant" />
+        <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
     </div>
   </div>

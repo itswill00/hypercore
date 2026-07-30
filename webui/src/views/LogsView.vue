@@ -1,31 +1,30 @@
 <template>
-  <div class="page-logs pb-safe-nav overflow-y-auto h-full scrollbar-hidden">
-    <!-- Header -->
-    <div class="sticky top-0 z-10 bg-surface/90 backdrop-blur-md px-4 py-3 border-b border-surface-container-high mb-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-lg font-bold text-on-surface">System Logs</h1>
-          <p class="text-xs text-on-surface-variant">Realtime HyperCore daemon runtime events</p>
-        </div>
-        <div class="flex gap-2">
-          <button class="md3-btn md3-btn-secondary p-2 rounded-full" @click="store.refresh()">
-            <Icons name="refresh" :size="18" />
-          </button>
-          <button class="md3-btn md3-btn-primary py-1.5 px-3 text-xs" @click="saveLog">
-            <Icons name="logs" :size="16" />
-            <span>Save Log</span>
-          </button>
-        </div>
+  <div style="height: 100%; display: flex; flex-direction: column;">
+    <!-- Sticky Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-header-title">System Logs</div>
+        <div class="page-header-sub">Realtime daemon runtime events</div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
+          <Icons name="refresh" :size="16" />
+        </button>
+        <button class="btn-md3 btn-md3-primary" style="padding: 6px 12px;" @click="saveLog">
+          <Icons name="logs" :size="14" />
+          <span>Save Log</span>
+        </button>
       </div>
     </div>
 
-    <div class="px-4 max-w-md mx-auto">
-      <div class="md3-group p-4">
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-xs font-semibold text-primary">LIVE LOG CONSOLE</span>
-          <span class="text-[11px] font-mono text-on-surface-variant">/sdcard/Android/hypercore.log</span>
+    <!-- Scroll Content -->
+    <div class="content-area">
+      <div class="md3-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase;">LIVE LOG CONSOLE</span>
+          <span style="font-size: 10px; font-family: var(--font-mono); color: var(--on-surface-variant);">/sdcard/Android/hypercore.log</span>
         </div>
-        <pre class="log-box font-mono text-[11px] leading-relaxed p-3.5 bg-surface-container-lowest rounded-xl border border-surface-container-high text-on-surface-variant overflow-y-auto h-[420px] whitespace-pre-wrap break-all">{{ store.logs }}</pre>
+        <pre class="log-box" style="background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); padding: 12px; border-radius: 12px; font-size: 11px; font-family: var(--font-mono); line-height: 1.55; height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; color: var(--on-surface-variant); margin: 0;">{{ store.logs }}</pre>
       </div>
     </div>
   </div>
