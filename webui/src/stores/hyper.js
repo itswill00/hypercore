@@ -40,8 +40,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const batRate = ref('—')
   const batVolt = ref('—')
 
-  /* ── Device & Kernel info ── */
-  const moduleVersion = ref('v3.3')
+  /* ── Device metadata ── */
+  const moduleVersion = ref('v3.4')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
   const androidSdk = ref('—')

@@ -1,12 +1,10 @@
-# Tanzanite HyperCore v3.3
+# Tanzanite HyperCore v3.4
 
 ### Major Enhancements & Architectural Upgrades
-- **KernelSU Live Status Integration**: Real-time daemon status dynamically rendered in KernelSU / APatch / Magisk Manager description line (`[Active: Interactive]`, `[Active: Gaming (PUBG)]`, `[Active: Touch]`).
-- **Linux inotify Event Watcher**: Implemented non-blocking kernel `inotify(2)` watcher on `gamelist.txt` and `.hypercore_lock` for 0ms instant configuration reloads.
-- **KernelSU WebUI App Picker Modal**: Interactive installed app selector in WebUI featuring real Android application icons (`ksu://icon/`) and human-readable app labels.
-- **Direct Game Launcher (`[Launch]`)**: One-click game launcher buttons added directly inside the WebUI game list.
-- **Battery Charge Thermal Guard**: Dynamically limits charging current to 2.0A (`charge_control_limit`) during plugged-in gaming sessions to prevent 45°C+ battery heat spikes.
-- **Android Toast Notifications**: System notification alerts automatically posted upon game launch (`Gaming Profile Activated [com.tencent.ig]`).
-- **Relaxed Thermal Headroom**: Expanded CPU thermal thresholds (Tier 1 @ 58°C, Tier 2 @ 65°C, Tier 3 @ 75°C) to prevent premature thermal throttling.
-- **Smooth Scrolling & App Switching**: Boosted interactive CPU governor down-rate limits (20ms–25ms) and UFS read-ahead queues (256 KB baseline, 512 KB launch burst).
+- **Dynamic CPU & GPU Governor Scaling**: Profiling engine now dynamically toggles CPU governors per profile (`performance` for Gaming, `powersave` for Saver/Thermal, `sugov_ext` for Interactive/Touch) alongside MediaTek GED GPU floor & cap tuning.
+- **Modern Vue 3 + Vite + Pinia WebUI**: Complete WebUI rewrite into a modular Vue 3 Single Page Application using Pinia state management, Vue Router, and `vite-plugin-singlefile` compilation.
+- **Enriched Real-Time System Dashboard**: Expanded Dashboard with 4 distinct metric sections — System Status, Memory & Storage (RAM/ZRAM live % used), Power & Thermal (charge rate mA / voltage V / temps), and Device Info (Kernel, Chipset, Android SDK, SELinux, Uptime).
+- **Streamlined Mobile Interface**: Clean sentence-case typography, compact 2-column action buttons ("Clear RAM", "Restart daemon", "Save log", "Create shortcut"), and focused tab navigation (Dashboard, Games, Logs).
+- **Game Hold & Transition Safety**: Fixed game exit hold-down timer tracking so sustained performance frequency profiles persist cleanly during game state transitions.
+- **Log Heap Retention & Protection**: Dynamic heap allocation for log line retention avoiding stack buffer overhead and preventing log file inflation beyond 200 lines.
 - **Strict Compiler Verification**: Compiled with `-O3 -flto -s -Wall -Wextra -Werror` (0 warnings, 0 errors).

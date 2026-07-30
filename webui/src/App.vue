@@ -2,7 +2,7 @@
   <div class="shell">
     <header class="header">
       <div>
-        <h1>Tanzanite HyperCore v3.3</h1>
+        <h1>Tanzanite HyperCore v3.4</h1>
         <p class="sub">Kernel tuner for MediaTek Helio G99 Ultra</p>
       </div>
     </header>
@@ -21,7 +21,7 @@
       </router-view>
     </main>
 
-    <footer class="footer">Tanzanite HyperCore v3.3 · @itswill00</footer>
+    <footer class="footer">Tanzanite HyperCore v3.4 · @itswill00</footer>
 
     <!-- Toast -->
     <transition name="toast">

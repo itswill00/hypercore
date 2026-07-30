@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     init_hardware_nodes();
     write_pid_file();
 
-    log_write("Tanzanite HyperCore v3.3 started.");
+    log_write("Tanzanite HyperCore v3.4 started.");
 
     apply_cpuset();
     apply_memory_tuning();
@@ -177,7 +177,6 @@ int main(int argc, char *argv[]) {
                 set_read_ahead("256");
             }
         }
-        s_prev_game_active = game_active;
 
         profile_t next_profile = PROFILE_INTERACTIVE;
 
@@ -209,7 +208,7 @@ int main(int argc, char *argv[]) {
             next_profile = custom_profile;
             g_state.gaming_hold_ticks = 10;
             g_state.touch_boost_ticks = 0;
-        } else if (g_state.gaming_hold_ticks > 0 && s_prev_game_active) {
+        } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;
             g_state.touch_boost_ticks = 0;
@@ -227,6 +226,7 @@ int main(int argc, char *argv[]) {
             g_state.touch_boost_ticks = 0;
         }
 
+        s_prev_game_active = game_active;
         g_state.prev_load = load_val;
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
