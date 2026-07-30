@@ -11,7 +11,10 @@ void set_read_ahead(const char *kb_val) {
 
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, "sd", 2) == 0 || strncmp(ent->d_name, "mmcblk", 6) == 0) {
+        if (strncmp(ent->d_name, "sd", 2) == 0 ||
+            strncmp(ent->d_name, "mmcblk", 6) == 0 ||
+            strncmp(ent->d_name, "dm-", 3) == 0 ||
+            strncmp(ent->d_name, "ufs", 3) == 0) {
             char p[256];
             snprintf(p, sizeof(p), "/sys/block/%s/queue/read_ahead_kb", ent->d_name);
             sysfs_write(p, kb_val);
@@ -26,7 +29,10 @@ void apply_io_tuning(void) {
 
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, "sd", 2) == 0 || strncmp(ent->d_name, "mmcblk", 6) == 0) {
+        if (strncmp(ent->d_name, "sd", 2) == 0 ||
+            strncmp(ent->d_name, "mmcblk", 6) == 0 ||
+            strncmp(ent->d_name, "dm-", 3) == 0 ||
+            strncmp(ent->d_name, "ufs", 3) == 0) {
             char p[256];
             snprintf(p, sizeof(p), "/sys/block/%s/queue/scheduler", ent->d_name);
             sysfs_write(p, "none");
