@@ -1,6 +1,5 @@
 @import url('https://mui.kernelsu.org/internal/insets.css');
 @import url('https://mui.kernelsu.org/internal/colors.css');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   /* Material Design 3 Theme Tokens */
@@ -48,8 +47,8 @@
   --red: #e57373;
   --blue: #64b5f6;
 
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', SFMono-Regular, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 /* Reset */
