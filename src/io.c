@@ -42,6 +42,10 @@ void apply_io_tuning(void) {
             sysfs_write(p, "0");
             snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
             sysfs_write(p, "64");
+            snprintf(p, sizeof(p), "/sys/block/%s/queue/add_random", ent->d_name);
+            sysfs_write(p, "0");
+            snprintf(p, sizeof(p), "/sys/block/%s/queue/rq_affinity", ent->d_name);
+            sysfs_write(p, "2");
         }
     }
     closedir(d);
