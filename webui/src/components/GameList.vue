@@ -180,7 +180,7 @@ function getMode(entry) {
   return parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
 }
 
-async function cycleMode(entry) {
+function cycleMode(entry) {
   const parts = entry.split(':')
   const pkg = parts[0].trim()
   const currentMode = parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
@@ -189,8 +189,7 @@ async function cycleMode(entry) {
   const nextMode = modes[nextIdx]
   const newEntry = `${pkg}:${nextMode}`
 
-  await store.removeGame(entry)
-  const msg = await store.addGame(newEntry)
+  store.updateGameMode(entry, newEntry)
   if (toast) toast(`${installedMap.value[pkg] || pkg} mode set to ${nextMode}`)
 }
 

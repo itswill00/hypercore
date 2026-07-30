@@ -52,6 +52,7 @@ export const useHyperStore = defineStore('hyper', () => {
   const games = ref([])
   const logs = ref('Loading...')
   const loading = ref(false)
+  let isRefreshing = false
 
   /* ── Computed ── */
   const isRunning = computed(() => daemonPid.value.length > 0)
@@ -109,6 +110,9 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   async function refresh() {
+    if (isRefreshing) return
+    isRefreshing = true
+
     const cmd = [
       `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
       `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
@@ -274,18 +278,22 @@ export const useHyperStore = defineStore('hyper', () => {
 
     } catch (err) {
       console.error('refresh:', err)
+    } finally {
+      isRefreshing = false
     }
   }
 
-  async function setProfile(mode) {
+  /* ── Non-blocking Optimistic Profile Switch ── */
+  function setProfile(mode) {
     const safe = sanitize(mode)
+    lockMode.value = safe // 0ms Instant UI feedback!
+
     if (safe === 'AUTO') {
-      await execCommand(`rm -f ${LOCK_MOD} ${LOCK_SD}`)
+      execCommand(`rm -f ${LOCK_MOD} ${LOCK_SD}`)
     } else {
-      await execCommand(`echo '${safe}' > ${LOCK_MOD}; echo '${safe}' > ${LOCK_SD}`)
+      execCommand(`echo '${safe}' > ${LOCK_MOD}; echo '${safe}' > ${LOCK_SD}`)
     }
-    lockMode.value = safe
-    await refresh()
+    setTimeout(refresh, 400)
   }
 
   async function flushRam() {
@@ -318,30 +326,68 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Shortcut feature unavailable'
   }
 
-  async function addGame(pkg) {
+  /* ── Non-blocking Optimistic Game Management ── */
+  function addGame(pkg) {
     const safe = sanitize(pkg)
     if (!safe) return
-    await execCommand(`echo '${safe}' >> ${GL_MOD}; echo '${safe}' >> ${GL_SD}`)
-    await refresh()
+
+    // Optimistic memory addition
+    if (!games.value.includes(safe)) {
+      games.value.push(safe)
+    }
+
+    execCommand(`echo '${safe}' >> ${GL_MOD}; echo '${safe}' >> ${GL_SD}`)
+    setTimeout(refresh, 500)
     return `Added ${safe}`
   }
 
-  async function removeGame(pkg) {
+  function removeGame(pkg) {
     const safe = sanitize(pkg)
     if (!safe) return
-    await execCommand([
+
+    // Optimistic memory removal
+    games.value = games.value.filter(g => g !== safe && !g.startsWith(`${safe}:`))
+
+    const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  [ -f "$f" ] && { grep -Fvx '${safe}' "$f" > "$f.tmp" 2>/dev/null; mv "$f.tmp" "$f" 2>/dev/null; }`,
       `done`
-    ].join('\n'))
-    await refresh()
+    ].join('\n')
+    execCommand(cmd)
+    setTimeout(refresh, 500)
     return `Removed ${safe}`
   }
 
-  async function launchGame(pkg) {
+  function updateGameMode(oldEntry, newEntry) {
+    const oldSafe = sanitize(oldEntry)
+    const newSafe = sanitize(newEntry)
+
+    // Optimistic memory update (0ms UI latency!)
+    const idx = games.value.indexOf(oldEntry)
+    if (idx !== -1) {
+      games.value[idx] = newEntry
+    } else {
+      games.value.push(newEntry)
+    }
+
+    // Atomic shell update in 1 background command
+    const cmd = [
+      `for f in ${GL_MOD} ${GL_SD}; do`,
+      `  if [ -f "$f" ]; then`,
+      `    grep -Fvx '${oldSafe}' "$f" > "$f.tmp" 2>/dev/null`,
+      `    echo '${newSafe}' >> "$f.tmp"`,
+      `    mv "$f.tmp" "$f" 2>/dev/null`,
+      `  fi`,
+      `done`
+    ].join('\n')
+    execCommand(cmd)
+    setTimeout(refresh, 500)
+  }
+
+  function launchGame(pkg) {
     const clean = sanitize(pkg).split(':')[0]
     if (!clean) return
-    await execCommand(`monkey -p ${clean} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
+    execCommand(`monkey -p ${clean} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
     return `Launched ${clean}`
   }
 
@@ -353,6 +399,6 @@ export const useHyperStore = defineStore('hyper', () => {
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, setProfile, flushRam, restartDaemon, exportLogs, createShortcut,
-    addGame, removeGame, launchGame
+    addGame, removeGame, updateGameMode, launchGame
   }
 })
