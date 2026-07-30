@@ -65,10 +65,13 @@ void set_cpu_governor(const char *gov) {
 }
 
 void apply_profile(profile_t prof, int tier) {
+    const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
+
     switch (prof) {
         case PROFILE_SLEEP:
-            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
+            set_cpu_governor(gov);
             set_cpu_freqs(500000, 1200000, 725000, 1200000, "2000", "1000");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
@@ -77,9 +80,10 @@ void apply_profile(profile_t prof, int tier) {
 
         case PROFILE_INTERACTIVE: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
-            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
-            // Efficient min frequencies for daily use & smooth scrolling without battery drain
-            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 800000, big_max, "1000", "10000");
+            set_cpu_governor(gov);
+            // sugov_ext rate limits: up=500us for 0ms touch response, down=20000us to prevent scroll stutter
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 800000, big_max, "500", "20000");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
@@ -89,8 +93,9 @@ void apply_profile(profile_t prof, int tier) {
         }
 
         case PROFILE_TOUCH:
-            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
-            set_cpu_freqs(1000000, FREQ_LITTLE_MAX, 1200000, FREQ_BIG_MAX, "500", "15000");
+            set_cpu_governor(gov);
+            set_cpu_freqs(1000000, FREQ_LITTLE_MAX, 1200000, FREQ_BIG_MAX, "0", "25000");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
@@ -101,22 +106,24 @@ void apply_profile(profile_t prof, int tier) {
         case PROFILE_GAMING: {
             const char *gpu_freq = (tier >= 3) ? "700000" : "800000";
             int big_min = (tier >= 3) ? 1600000 : 1800000;
-            const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
             set_cpu_governor(gov);
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on"); // Keep GPU cores active for 0ms frame drops
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "950000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
             break;
         }
 
         case PROFILE_THERMAL:
-            set_cpu_governor(g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil");
+            set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, 900000, 1600000, "2000", "5000");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "500000");
