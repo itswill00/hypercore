@@ -13,13 +13,25 @@
     <div class="row"><span class="lbl">I/O scheduler / read-ahead</span><span class="val">{{ store.ioInfo }}</span></div>
     <div class="row"><span class="lbl">Swappiness / VFS</span><span class="val">{{ store.vmInfo }}</span></div>
   </div>
+
+  <div class="card">
+    <div class="card-title">Device & Module Info</div>
+    <div class="row"><span class="lbl">Module version</span><span class="val c-accent">{{ store.moduleVersion }}</span></div>
+    <div class="row"><span class="lbl">Chipset</span><span class="val">{{ store.chipset }}</span></div>
+    <div class="row"><span class="lbl">Kernel</span><span class="val">{{ store.kernelVersion }}</span></div>
+    <div class="row"><span class="lbl">Android SDK</span><span class="val">{{ store.androidSdk }}</span></div>
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 
 const store = useHyperStore()
+
+onMounted(() => {
+  store.fetchDeviceInfo()
+})
 
 const tempDisplay = computed(() => {
   const c = store.cpuTemp > 0 ? `${store.cpuTemp}°C` : '—'

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { execCommand, sanitize } from '@/helpers/shell'
+import { execCommand, sanitize, isKSU } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/tanzanite_hypercore'
 const LOG = '/sdcard/Android/hypercore.log'
@@ -28,6 +28,12 @@ export const useHyperStore = defineStore('hyper', () => {
   const games = ref([])
   const logs = ref('Loading...')
   const loading = ref(false)
+
+  /* ── Device metadata ── */
+  const moduleVersion = ref('v3.3')
+  const kernelVersion = ref('—')
+  const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
+  const androidSdk = ref('—')
 
   /* ── Computed ── */
   const isRunning = computed(() => daemonPid.value.length > 0)
@@ -63,6 +69,17 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   /* ── Actions ── */
+  async function fetchDeviceInfo() {
+    try {
+      const [kv, sdk] = await Promise.all([
+        execCommand('uname -r -m 2>/dev/null'),
+        execCommand('getprop ro.build.version.sdk 2>/dev/null')
+      ])
+      if (kv) kernelVersion.value = kv.trim()
+      if (sdk) androidSdk.value = `API ${sdk.trim()}`
+    } catch {}
+  }
+
   async function refresh() {
     const cmd = [
       `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
@@ -211,6 +228,21 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Daemon restarted'
   }
 
+  async function exportLogs() {
+    loading.value = true
+    await execCommand(`cp ${LOG} /sdcard/HyperCore_log.txt 2>/dev/null`)
+    loading.value = false
+    return 'Log saved to /sdcard/HyperCore_log.txt'
+  }
+
+  function createShortcut() {
+    if (isKSU() && typeof ksu.createShortcut === 'function') {
+      ksu.createShortcut()
+      return 'Shortcut requested'
+    }
+    return 'Shortcut feature unavailable'
+  }
+
   async function addGame(pkg) {
     const safe = sanitize(pkg)
     if (!safe) return
@@ -242,8 +274,9 @@ export const useHyperStore = defineStore('hyper', () => {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, gpuInfo,
     sysLoad, cpuTemp, batTemp, batStatus, batLevel, ioInfo, vmInfo,
     lockMode, games, logs, loading,
+    moduleVersion, kernelVersion, chipset, androidSdk,
     isRunning, thermalColor, tempColor, batColor,
-    refresh, setProfile, flushRam, restartDaemon,
+    fetchDeviceInfo, refresh, setProfile, flushRam, restartDaemon, exportLogs, createShortcut,
     addGame, removeGame, launchGame
   }
 })
