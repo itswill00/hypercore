@@ -284,6 +284,19 @@
       </div>
       <div class="row-val">{{ store.uptime }}</div>
     </div>
+
+    <div class="md3-list-row">
+      <div class="row-left">
+        <div class="icon-badge">
+          <Icons name="star" :size="18" />
+        </div>
+        <div class="row-meta">
+          <div class="row-title">Inspiration</div>
+          <div class="row-sub">Module architecture credits</div>
+        </div>
+      </div>
+      <div class="row-val" style="font-size: 10px; opacity: 0.6;">encore by Rem01Gaming</div>
+    </div>
   </div>
 </template>
 

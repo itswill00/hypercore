@@ -16,6 +16,10 @@
       <ProfileSelector />
       <StatusCard />
       <ActionButtons />
+
+      <div style="text-align: center; font-size: 10px; opacity: 0.45; padding: 12px 0 20px 0; font-family: var(--font-mono);">
+        Inspired by encore by Rem01Gaming
+      </div>
     </div>
   </div>
 </template>
