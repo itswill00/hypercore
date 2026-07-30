@@ -1,31 +1,23 @@
 <template>
-  <div class="shell">
-    <header class="header">
-      <div>
-        <h1>Tanzanite HyperCore v3.4</h1>
-        <p class="sub">Kernel tuner for MediaTek Helio G99 Ultra</p>
-      </div>
-    </header>
-
-    <nav class="nav">
-      <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">Dashboard</router-link>
-      <router-link to="/games" class="nav-item" :class="{ active: $route.path === '/games' }">Games</router-link>
-      <router-link to="/logs" class="nav-item" :class="{ active: $route.path === '/logs' }">Logs</router-link>
-    </nav>
-
-    <main>
+  <div class="h-full w-full flex flex-col relative overflow-hidden bg-surface text-on-surface">
+    <!-- Main Scroll View -->
+    <main class="flex-1 overflow-hidden relative">
       <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
+        <transition name="page-fade" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
     </main>
 
-    <footer class="footer">Tanzanite HyperCore v3.4 · @itswill00</footer>
+    <!-- Bottom Navigation Bar -->
+    <Navigation />
 
-    <!-- Toast -->
-    <transition name="toast">
-      <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
+    <!-- Toast Notification -->
+    <transition name="toast-slide">
+      <div v-if="toastMsg" class="toast-pill fixed bottom-20 left-1/2 -translate-x-1/2 bg-surface-container-highest border border-surface-bright text-on-surface text-xs font-medium px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none flex items-center gap-2">
+        <Icons name="check" :size="14" class="text-primary" />
+        <span>{{ toastMsg }}</span>
+      </div>
     </transition>
   </div>
 </template>
@@ -33,6 +25,8 @@
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
+import Navigation from '@/components/Navigation.vue'
+import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const toastMsg = ref('')
@@ -58,85 +52,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.shell {
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 16px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
 }
 
-.header h1 {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #fff;
-  margin: 0;
-}
-.sub {
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-family: var(--mono);
+.toast-slide-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 12px);
 }
 
-.nav {
-  display: flex;
-  gap: 2px;
-  margin: 14px 0 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 3px;
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
 }
-.nav-item {
-  flex: 1;
-  text-align: center;
-  padding: 7px 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.15s var(--ease, ease);
-}
-.nav-item:hover { color: var(--text); }
-.nav-item.active {
-  background: var(--bg);
-  color: #fff;
-  font-weight: 600;
-}
-
-main { flex: 1; }
-
-.footer {
-  text-align: center;
-  font-size: 10px;
-  color: var(--text-muted);
-  font-family: var(--mono);
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-size: 11px;
-  font-family: var(--mono);
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  z-index: 9999;
-  pointer-events: none;
-}
-.toast-enter-active { transition: all 0.2s ease; }
-.toast-leave-active { transition: all 0.15s ease; }
-.toast-enter-from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-.toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-4px); }
 </style>
