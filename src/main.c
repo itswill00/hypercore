@@ -52,10 +52,10 @@ static void init_hardware_nodes(void) {
     scan_thermal_zones();
 
     const char *bl_paths[] = {
+        "/sys/class/leds/lcd-backlight/brightness",
         "/sys/class/backlight/panel0-backlight/brightness",
         "/sys/class/backlight/lcd-backlight/brightness",
         "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
-        "/sys/class/leds/lcd-backlight/brightness",
         NULL
     };
     for (int i = 0; bl_paths[i]; i++) {
@@ -82,10 +82,26 @@ static void remove_pid_file(void) {
 }
 
 static int is_screen_on(void) {
-    if (g_nodes.backlight[0] != '\0') {
+    if (g_nodes.backlight[0] != '\0' && access(g_nodes.backlight, F_OK) == 0) {
         int val = sysfs_read_int(g_nodes.backlight);
         return val > 0;
     }
+
+    const char *bl_paths[] = {
+        "/sys/class/leds/lcd-backlight/brightness",
+        "/sys/class/backlight/panel0-backlight/brightness",
+        "/sys/class/backlight/lcd-backlight/brightness",
+        "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
+        NULL
+    };
+    for (int i = 0; bl_paths[i]; i++) {
+        if (access(bl_paths[i], F_OK) == 0) {
+            strcpy(g_nodes.backlight, bl_paths[i]);
+            int val = sysfs_read_int(bl_paths[i]);
+            return val > 0;
+        }
+    }
+
     return 1;
 }
 
