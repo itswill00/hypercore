@@ -35,23 +35,6 @@ static void send_game_toast(const char *game_name) {
     system(cmd);
 }
 
-static void apply_battery_thermal_guard(int is_gaming, int is_charging) {
-    static int s_prev_limited = 0;
-    int limit = (is_gaming && is_charging);
-
-    if (limit != s_prev_limited) {
-        if (limit) {
-            sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "2000000");
-            sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", "2000000");
-            log_write("Battery Charge Thermal Guard: Charging current limited to 2.0A during gaming");
-        } else {
-            sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
-            sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", "0");
-        }
-        s_prev_limited = limit;
-    }
-}
-
 static void init_hardware_nodes(void) {
     memset(&g_nodes, 0, sizeof(g_nodes));
 
@@ -126,7 +109,7 @@ int main(int argc, char *argv[]) {
     init_hardware_nodes();
     write_pid_file();
 
-    log_write("Tanzanite HyperCore v3.5 started.");
+    log_write("Tanzanite HyperCore v3.6 started.");
 
     apply_cpuset();
     apply_memory_tuning();
@@ -267,8 +250,6 @@ int main(int argc, char *argv[]) {
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;
         }
-
-        apply_battery_thermal_guard(g_state.current_profile == PROFILE_GAMING, g_state.is_charging);
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {

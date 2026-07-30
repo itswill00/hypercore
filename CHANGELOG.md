@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.6] - Fast Charging Restoration
+
+- **Unrestricted Fast Charging**: Removed daemon current limit caps (`apply_battery_thermal_guard`), restoring 100% native fast charging speeds (33W/67W/120W) during and after gaming.
+- **Fixed Post-Gaming Charge Lock**: Solved kernel charge current lock issues after exiting games.
+- **Installed App Filtering**: WebUI `My games` now displays real App Labels and icons for installed games only.
+- **Kernel String Overflow Protection**: Added truncation and tap-to-expand toggle for long kernel version strings.
+
 ## [v3.5] - Major Update
 
 - **Material Design 3 WebUI Overhaul**: Rebuilt interface with modern MD3 dark-theme design tokens, floating navigation bar, and clean sentence-case typography.
