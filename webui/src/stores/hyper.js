@@ -47,6 +47,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const androidSdk = ref('—')
   const selinux = ref('—')
   const uptime = ref('—')
+  const uptimeSec = ref(0)
+  let uptimeInterval = null
 
   /* ── Others ── */
   const games = ref([])
@@ -87,12 +89,27 @@ export const useHyperStore = defineStore('hyper', () => {
     return Math.round(parseInt(raw || 0) / 1000)
   }
 
-  function fmtUptime(secStr) {
-    const s = parseInt(secStr || 0)
+  function fmtUptime(totalSec) {
+    const s = Math.floor(totalSec || 0)
     if (!s) return '—'
-    const h = Math.floor(s / 3600)
+    const d = Math.floor(s / 86400)
+    const h = Math.floor((s % 86400) / 3600)
     const m = Math.floor((s % 3600) / 60)
-    return `${h}h ${m}m`
+    const sec = Math.floor(s % 60)
+
+    if (d > 0) return `${d}d ${h}h ${m}m ${sec}s`
+    if (h > 0) return `${h}h ${m}m ${sec}s`
+    return `${m}m ${sec}s`
+  }
+
+  function startUptimeTicker() {
+    if (uptimeInterval) return
+    uptimeInterval = setInterval(() => {
+      if (uptimeSec.value > 0) {
+        uptimeSec.value++
+        uptime.value = fmtUptime(uptimeSec.value)
+      }
+    }, 1000)
   }
 
   /* ── Actions ── */
@@ -182,9 +199,16 @@ export const useHyperStore = defineStore('hyper', () => {
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
       }
 
-      // System load & uptime
+      // System load & uptime ticker
       sysLoad.value = kv.LOAD || '0.00'
-      uptime.value = fmtUptime(kv.UP)
+      if (kv.UP) {
+        const parsedSec = Math.floor(parseFloat(kv.UP.trim()))
+        if (parsedSec > 0) {
+          uptimeSec.value = parsedSec
+          uptime.value = fmtUptime(parsedSec)
+          startUptimeTicker()
+        }
+      }
 
       // Memory (RAM & ZRAM)
       if (kv.MEM) {
