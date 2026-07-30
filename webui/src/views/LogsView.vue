@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">System log</div>
-        <div class="page-header-sub">Operational log events</div>
+        <div class="page-header-sub">HyperCore By @itswill00</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">

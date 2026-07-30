@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">My games</div>
-        <div class="page-header-sub">Auto boost & profile triggers</div>
+        <div class="page-header-sub">HyperCore By @itswill00</div>
       </div>
       <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
         <Icons name="refresh" :size="16" />
