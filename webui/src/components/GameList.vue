@@ -19,7 +19,14 @@
           <div class="row-meta">
             <div class="row-title" style="font-family: var(--font-mono); font-size: 12px;">{{ entry.split(':')[0] }}</div>
             <div class="row-sub" style="margin-top: 2px;">
-              <span class="badge-pill blue" style="font-size: 10px; padding: 2px 6px;">{{ getMode(entry) }}</span>
+              <span
+                class="badge-pill blue"
+                style="font-size: 10px; padding: 2px 8px; cursor: pointer; user-select: none;"
+                title="Click to cycle profile mode"
+                @click="cycleMode(entry)"
+              >
+                {{ getMode(entry) }} ⚡
+              </span>
             </div>
           </div>
         </div>
@@ -75,6 +82,20 @@ function iconFor(entry) {
 function getMode(entry) {
   const parts = entry.split(':')
   return parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
+}
+
+async function cycleMode(entry) {
+  const parts = entry.split(':')
+  const pkg = parts[0].trim()
+  const currentMode = parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
+  const modes = ['GAMING', 'TOUCH', 'INTERACTIVE', 'SLEEP']
+  const nextIdx = (modes.indexOf(currentMode) + 1) % modes.length
+  const nextMode = modes[nextIdx]
+  const newEntry = `${pkg}:${nextMode}`
+
+  await store.removeGame(entry)
+  const msg = await store.addGame(newEntry)
+  if (toast) toast(`${pkg} mode set to ${nextMode}`)
 }
 
 async function add() {

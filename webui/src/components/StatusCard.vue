@@ -102,30 +102,40 @@
   <!-- Memory & storage -->
   <div class="section-title">Memory & storage</div>
   <div class="md3-list-group">
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge secondary">
-          <Icons name="memory" :size="18" />
+    <div class="md3-list-row" style="flex-direction: column; align-items: stretch;">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <div class="row-left">
+          <div class="icon-badge secondary">
+            <Icons name="memory" :size="18" />
+          </div>
+          <div class="row-meta">
+            <div class="row-title">RAM usage</div>
+            <div class="row-sub">Physical memory</div>
+          </div>
         </div>
-        <div class="row-meta">
-          <div class="row-title">RAM usage</div>
-          <div class="row-sub">Physical memory</div>
-        </div>
+        <div class="row-val">{{ store.ramUsage }}</div>
       </div>
-      <div class="row-val">{{ store.ramUsage }}</div>
+      <div class="progress-track" v-if="store.ramPercent > 0">
+        <div class="progress-fill" :class="ramColor" :style="{ width: `${store.ramPercent}%` }"></div>
+      </div>
     </div>
 
-    <div class="md3-list-row">
-      <div class="row-left">
-        <div class="icon-badge secondary">
-          <Icons name="memory" :size="18" />
+    <div class="md3-list-row" style="flex-direction: column; align-items: stretch;">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <div class="row-left">
+          <div class="icon-badge secondary">
+            <Icons name="memory" :size="18" />
+          </div>
+          <div class="row-meta">
+            <div class="row-title">ZRAM / Swap</div>
+            <div class="row-sub">Compressed swap</div>
+          </div>
         </div>
-        <div class="row-meta">
-          <div class="row-title">ZRAM / Swap</div>
-          <div class="row-sub">Compressed swap</div>
-        </div>
+        <div class="row-val">{{ store.zramUsage }}</div>
       </div>
-      <div class="row-val">{{ store.zramUsage }}</div>
+      <div class="progress-track" v-if="store.zramPercent > 0">
+        <div class="progress-fill blue" :style="{ width: `${store.zramPercent}%` }"></div>
+      </div>
     </div>
 
     <div class="md3-list-row">
@@ -287,5 +297,11 @@ const tempDisplay = computed(() => {
 
 const batDisplay = computed(() => {
   return store.batStatus + (store.batLevel ? ` (${store.batLevel}%)` : '')
+})
+
+const ramColor = computed(() => {
+  if (store.ramPercent >= 85) return 'red'
+  if (store.ramPercent >= 70) return 'amber'
+  return 'green'
 })
 </script>

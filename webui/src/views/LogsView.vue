@@ -24,19 +24,43 @@
           <span style="font-size: 12px; font-weight: 600; color: var(--on-surface-variant);">Live log console</span>
           <span style="font-size: 10px; font-family: var(--font-mono); color: var(--on-surface-variant);">/sdcard/Android/hypercore.log</span>
         </div>
-        <pre class="log-box" style="background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); padding: 12px; border-radius: 12px; font-size: 11px; font-family: var(--font-mono); line-height: 1.55; height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; color: var(--on-surface-variant); margin: 0;">{{ store.logs }}</pre>
+        
+        <div class="log-box" style="background: var(--surface-container-lowest); border: 1px solid var(--surface-container-high); padding: 12px; border-radius: 12px; font-size: 11px; font-family: var(--font-mono); line-height: 1.6; height: 420px; overflow-y: auto; color: var(--on-surface-variant); margin: 0;">
+          <div
+            v-for="(line, idx) in logLines"
+            :key="idx"
+            class="log-line"
+            :class="lineClass(line)"
+          >
+            {{ line }}
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { inject, watch, nextTick } from 'vue'
+import { computed, inject, watch, nextTick } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
+
+const logLines = computed(() => {
+  if (!store.logs) return []
+  return store.logs.split('\n').filter(l => l.trim().length > 0)
+})
+
+function lineClass(line) {
+  if (line.includes('Gaming') || line.includes('Game Launch Boost')) return 'log-gaming'
+  if (line.includes('Thermal Tier')) return 'log-thermal'
+  if (line.includes('Touch') || line.includes('Interactive')) return 'log-profile'
+  if (line.includes('started')) return 'log-start'
+  if (line.includes('stopped')) return 'log-stop'
+  return ''
+}
 
 async function saveLog() {
   const msg = await store.exportLogs()
@@ -49,3 +73,35 @@ watch(() => store.logs, async () => {
   if (el) el.scrollTop = el.scrollHeight
 })
 </script>
+
+<style scoped>
+.log-line {
+  word-break: break-all;
+  white-space: pre-wrap;
+  padding: 1px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.03);
+}
+
+.log-gaming {
+  color: #81c784;
+  font-weight: 600;
+}
+
+.log-thermal {
+  color: #ffb74d;
+  font-weight: 500;
+}
+
+.log-profile {
+  color: #d0bcff;
+}
+
+.log-start {
+  color: #64b5f6;
+  font-weight: 600;
+}
+
+.log-stop {
+  color: #e57373;
+}
+</style>
