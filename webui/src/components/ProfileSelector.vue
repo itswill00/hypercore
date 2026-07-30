@@ -2,8 +2,8 @@
   <div class="md3-card">
     <div style="display: flex; align-items: center; justify-content: space-between;">
       <div>
-        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Profile Mode</div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Manual lock or dynamic auto governor</div>
+        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Profile mode</div>
+        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Current operating mode</div>
       </div>
       <span class="badge-pill purple">{{ displayLabel }}</span>
     </div>
@@ -47,7 +47,7 @@ const normalized = computed(() => {
 })
 
 const displayLabel = computed(() => {
-  return normalized.value === 'AUTO' ? 'Auto Dynamic' : `${normalized.value.charAt(0)}${normalized.value.slice(1).toLowerCase()} Locked`
+  return normalized.value === 'AUTO' ? 'Auto' : `${normalized.value.charAt(0)}${normalized.value.slice(1).toLowerCase()} locked`
 })
 
 function isActive(mode) {
@@ -56,6 +56,6 @@ function isActive(mode) {
 
 async function select(mode) {
   await store.setProfile(mode)
-  if (toast) toast(`Profile: ${mode === 'AUTO' ? 'Auto Dynamic' : mode}`)
+  if (toast) toast(`Profile: ${mode === 'AUTO' ? 'Auto' : mode}`)
 }
 </script>

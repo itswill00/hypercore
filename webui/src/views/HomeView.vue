@@ -4,7 +4,7 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">Dashboard</div>
-        <div class="page-header-sub">Kernel tuner & gaming engine stats</div>
+        <div class="page-header-sub">Native kernel tuner for Helio G99 Ultra</div>
       </div>
       <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
         <Icons name="refresh" :size="16" />

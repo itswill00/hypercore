@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="section-title">Quick Actions</div>
+    <div class="section-title">Quick actions</div>
     <div class="md3-list-group">
       <div class="md3-list-row clickable" @click="flush">
         <div class="row-left">
@@ -8,8 +8,8 @@
             <Icons name="memory" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Clear RAM Cache</div>
-            <div class="row-sub">Compact memory & drop page caches</div>
+            <div class="row-title">Clear RAM cache</div>
+            <div class="row-sub">Compact memory & drop caches</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -21,8 +21,8 @@
             <Icons name="logs" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Save System Log</div>
-            <div class="row-sub">Export log to /sdcard/HyperCore_log.txt</div>
+            <div class="row-title">Save log</div>
+            <div class="row-sub">Export operational log to SD card</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -34,8 +34,8 @@
             <Icons name="refresh" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Restart Daemon</div>
-            <div class="row-sub">Relaunch background C daemon</div>
+            <div class="row-title">Restart daemon</div>
+            <div class="row-sub">Relaunch background service</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -47,8 +47,8 @@
             <Icons name="star" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Create App Shortcut</div>
-            <div class="row-sub">Add WebUI shortcut to home screen</div>
+            <div class="row-title">Create shortcut</div>
+            <div class="row-sub">Add home screen launcher shortcut</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />

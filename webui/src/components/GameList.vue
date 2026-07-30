@@ -2,10 +2,10 @@
   <div>
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 4px;">
       <div>
-        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Configured Applications</div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Auto boost & per-app profile triggers</div>
+        <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">My games</div>
+        <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Apps with auto boost & profile triggers</div>
       </div>
-      <span class="badge-pill purple">{{ store.games.length }} {{ store.games.length === 1 ? 'App' : 'Apps' }}</span>
+      <span class="badge-pill purple">{{ store.games.length }} {{ store.games.length === 1 ? 'app' : 'apps' }}</span>
     </div>
 
     <!-- Game List Group -->
@@ -37,7 +37,7 @@
 
     <!-- Add Application Box -->
     <div class="md3-card" style="margin-top: 16px;">
-      <div style="font-size: 12px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Add New Application</div>
+      <div style="font-size: 12px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Add game</div>
       <div style="display: flex; gap: 6px;">
         <input v-model="newPkg" type="text" class="input-md3" style="flex: 1;" placeholder="com.package.name or com.pkg:TOUCH" @keydown.enter="add">
         <button class="btn-md3 btn-md3-secondary" @click="add">
@@ -46,7 +46,7 @@
         </button>
         <button class="btn-md3 btn-md3-primary" @click="showPicker = true">
           <Icons name="device" :size="16" />
-          <span>Select</span>
+          <span>Select app</span>
         </button>
       </div>
     </div>

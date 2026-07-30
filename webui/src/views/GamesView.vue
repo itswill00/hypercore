@@ -3,8 +3,8 @@
     <!-- Sticky Header -->
     <div class="page-header">
       <div>
-        <div class="page-header-title">Game Engine</div>
-        <div class="page-header-sub">Auto boost & custom profile triggers</div>
+        <div class="page-header-title">My games</div>
+        <div class="page-header-sub">Auto boost & profile triggers</div>
       </div>
       <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
         <Icons name="refresh" :size="16" />
