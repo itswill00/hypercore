@@ -123,6 +123,8 @@ int main(int argc, char *argv[]) {
     g_state.current_profile = (profile_t)-1;
     g_state.prev_load = read_initial_load();
 
+    int touch_hold_counter = 0;
+
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
@@ -178,48 +180,48 @@ int main(int argc, char *argv[]) {
 
         if (!is_screen_on()) {
             next_profile = PROFILE_SLEEP;
-            g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
+            touch_hold_counter = 0;
         } else if (thermal_tier == 3 && cpu_temp >= 75) {
             next_profile = PROFILE_THERMAL;
-            g_state.touch_boost_ticks = 0;
             g_state.gaming_hold_ticks = 0;
+            touch_hold_counter = 0;
         } else if (strcmp(manual_lock, "GAMING") == 0) {
             next_profile = PROFILE_GAMING;
             g_state.gaming_hold_ticks = 10;
-            g_state.touch_boost_ticks = 0;
+            touch_hold_counter = 0;
         } else if (strcmp(manual_lock, "INTERACTIVE") == 0 || strcmp(manual_lock, "BALANCED") == 0) {
             next_profile = PROFILE_INTERACTIVE;
             g_state.gaming_hold_ticks = 0;
-            g_state.touch_boost_ticks = 0;
+            touch_hold_counter = 0;
         } else if (strcmp(manual_lock, "TOUCH") == 0) {
             next_profile = PROFILE_TOUCH;
             g_state.gaming_hold_ticks = 0;
-            g_state.touch_boost_ticks = 3;
+            touch_hold_counter = 5;
         } else if (strcmp(manual_lock, "SLEEP") == 0 || strcmp(manual_lock, "SAVER") == 0) {
             next_profile = PROFILE_SLEEP;
             g_state.gaming_hold_ticks = 0;
-            g_state.touch_boost_ticks = 0;
+            touch_hold_counter = 0;
         } else if (game_active) {
             next_profile = custom_profile;
             g_state.gaming_hold_ticks = 10;
-            g_state.touch_boost_ticks = 0;
+            touch_hold_counter = 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;
-            g_state.touch_boost_ticks = 0;
-        } else if (gpu_load >= 25 || (load_val - g_state.prev_load) > 75 || g_state.touch_boost_ticks > 0) {
-            g_state.gaming_hold_ticks = 0;
-            if (g_state.current_profile != PROFILE_TOUCH && g_state.touch_boost_ticks == 0) {
-                g_state.touch_boost_ticks = 3;
-            } else if (g_state.touch_boost_ticks > 0) {
-                g_state.touch_boost_ticks--;
-            }
-            next_profile = (g_state.touch_boost_ticks > 0) ? PROFILE_TOUCH : PROFILE_INTERACTIVE;
+            touch_hold_counter = 0;
         } else {
-            g_state.gaming_hold_ticks = 0;
-            next_profile = PROFILE_INTERACTIVE;
-            g_state.touch_boost_ticks = 0;
+            // Check for heavy GPU/UI load spike (>=50% GPU load)
+            if (gpu_load >= 50) {
+                touch_hold_counter = 4; // Hold Touch profile for 8 seconds to prevent rapid thrashing
+            }
+
+            if (touch_hold_counter > 0) {
+                touch_hold_counter--;
+                next_profile = PROFILE_TOUCH;
+            } else {
+                next_profile = PROFILE_INTERACTIVE;
+            }
         }
 
         s_prev_game_active = game_active;
