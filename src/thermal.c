@@ -90,6 +90,10 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
         if (cpu_temp < 58 && bat_temp < 44) {
             tier = (cpu_temp >= 54 || bat_temp >= 42) ? 1 : 0;
         }
+    } else if (g_state.thermal_tier == 1) {
+        if (cpu_temp < 54 && bat_temp < 42) {
+            tier = 0;
+        }
     } else if (cpu_temp >= 58 || bat_temp >= 44) {
         tier = 1;
     } else {
