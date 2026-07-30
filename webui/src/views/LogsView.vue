@@ -21,7 +21,7 @@
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px;">
         <span style="font-size: 12px; color: var(--on-surface-variant); font-weight: 500;">Console output</span>
         <span style="font-size: 11px; font-family: var(--font-mono); color: var(--on-surface-variant); opacity: 0.7;">
-          {{ logLines.length }} lines · live
+          {{ parsedLogs.length }} entries · live
         </span>
       </div>
 
@@ -32,12 +32,14 @@
         @scroll="handleScroll"
       >
         <div
-          v-for="(line, idx) in logLines"
+          v-for="(item, idx) in parsedLogs"
           :key="idx"
           class="terminal-line"
         >
-          <span class="t-stamp" v-if="getTimestamp(line)">{{ getTimestamp(line) }}</span>
-          <span class="t-text" :class="getTextClass(line)">{{ getBody(line) }}</span>
+          <span class="t-stamp" v-if="item.stamp">{{ item.stamp }}</span>
+          <span v-if="item.level" class="t-level" :class="item.levelClass">{{ item.level }}</span>
+          <span v-if="item.tag" class="t-tag">{{ item.tag }}</span>
+          <span class="t-text" :class="item.textClass">{{ item.msg }}</span>
         </div>
       </div>
     </div>
@@ -54,26 +56,35 @@ const toast = inject('toast')
 const logContainer = ref(null)
 const autoScroll = ref(true)
 
-const logLines = computed(() => {
+const parsedLogs = computed(() => {
   if (!store.logs) return []
-  return store.logs.split('\n').filter(l => l.trim().length > 0)
+  const rawLines = store.logs.split('\n').filter(l => l.trim().length > 0)
+
+  return rawLines.map(line => {
+    // Matches: [2026-07-30 23:30:21.142] [INFO ] [DAEMON  ] Message text OR older format
+    const m = line.match(/^(?:\[?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\]?)\s*(?:\[([^\]]+)\])?\s*(?:\[([^\]]+)\])?\s*(.*)$/)
+    if (m && m[1]) {
+      const stamp = m[1] || ''
+      const level = (m[2] || '').trim()
+      const tag = (m[3] || '').trim()
+      const msg = m[4] || line
+
+      let levelClass = 'lbl-info'
+      if (level === 'STATE') levelClass = 'lbl-state'
+      else if (level === 'WARN') levelClass = 'lbl-warn'
+      else if (level === 'ERROR') levelClass = 'lbl-error'
+
+      let textClass = ''
+      if (msg.includes('Gaming') || tag === 'GAME') textClass = 'txt-gaming'
+      else if (msg.includes('Thermal Tier') || level === 'WARN') textClass = 'txt-thermal'
+      else if (msg.includes('started')) textClass = 'txt-start'
+
+      return { stamp, level, tag, msg, levelClass, textClass }
+    }
+
+    return { stamp: '', level: '', tag: '', msg: line, levelClass: '', textClass: '' }
+  })
 })
-
-function getTimestamp(line) {
-  const m = line.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/)
-  return m ? m[1] : ''
-}
-
-function getBody(line) {
-  return line.replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*/, '')
-}
-
-function getTextClass(line) {
-  if (line.includes('Gaming')) return 'txt-gaming'
-  if (line.includes('Thermal Tier')) return 'txt-thermal'
-  if (line.includes('started')) return 'txt-start'
-  return ''
-}
 
 function handleScroll() {
   if (!logContainer.value) return
@@ -92,7 +103,7 @@ function scrollToBottom() {
 
 async function copyLog() {
   try {
-    const text = logLines.value.join('\n')
+    const text = store.logs || ''
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
     } else {
@@ -141,10 +152,11 @@ onMounted(() => {
 
 .terminal-line {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   word-break: break-all;
   white-space: pre-wrap;
-  padding: 1px 0;
+  padding: 2px 0;
 }
 
 .t-stamp {
@@ -153,6 +165,32 @@ onMounted(() => {
   font-size: 10px;
   flex-shrink: 0;
   user-select: none;
+}
+
+.t-level {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.lbl-info { background: rgba(100, 181, 246, 0.15); color: #64b5f6; }
+.lbl-state { background: rgba(186, 104, 200, 0.15); color: #ba68c8; }
+.lbl-warn { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+.lbl-error { background: rgba(229, 115, 115, 0.15); color: #e57373; }
+
+.t-tag {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  opacity: 0.85;
+  padding: 1px 5px;
+  background: var(--surface-container-high);
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .t-text {

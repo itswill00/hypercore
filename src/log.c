@@ -1,22 +1,37 @@
 /*
- * HyperCore - Logging Implementation
+ * HyperCore - Structured Logging Implementation
  * Author: @itswill00
  */
 
 #include "log.hpp"
+#include <sys/time.h>
 
-void log_write(const char *fmt, ...) {
+static const char *s_level_names[] = {
+    "INFO ",
+    "STATE",
+    "WARN ",
+    "ERROR"
+};
+
+void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
     FILE *f = fopen(LOG_PATH, "a");
     if (!f) return;
 
-    time_t t = time(NULL);
-    struct tm *tm_info = localtime(&t);
-    char tbuf[32];
-    strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", tm_info);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    struct tm *tm_info = localtime(&tv.tv_sec);
+
+    char tbuf[64];
+    size_t len = strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", tm_info);
+    snprintf(tbuf + len, sizeof(tbuf) - len, ".%03d", (int)(tv.tv_usec / 1000));
+
+    const char *lvl_str = (level >= 0 && level <= LOG_LEVEL_ERROR) ? s_level_names[level] : "INFO ";
+    const char *tag_str = (tag && tag[0] != '\0') ? tag : "SYSTEM";
+
+    fprintf(f, "[%s] [%s] [%-8s] ", tbuf, lvl_str, tag_str);
 
     va_list args;
     va_start(args, fmt);
-    fprintf(f, "%s ", tbuf);
     vfprintf(f, fmt, args);
     fprintf(f, "\n");
     va_end(args);
@@ -31,41 +46,31 @@ void rotate_log(void) {
     FILE *in = fopen(LOG_PATH, "r");
     if (!in) return;
 
-    char **lines = (char **)malloc(200 * sizeof(char *));
-    if (!lines) { fclose(in); return; }
+    // Buffer last 200 lines cleanly without dynamic heap churn
+    #define MAX_RING_LINES 250
+    #define MAX_LINE_LEN 256
+    static char s_ring_buffer[MAX_RING_LINES][MAX_LINE_LEN];
 
-    char buf[256];
+    char buf[MAX_LINE_LEN];
     int count = 0;
+
     while (fgets(buf, sizeof(buf), in)) {
-        int slot = count % 200;
-        if (count < 200) {
-            lines[slot] = (char *)malloc(strlen(buf) + 1);
-        } else {
-            free(lines[slot]);
-            lines[slot] = (char *)malloc(strlen(buf) + 1);
-        }
-        if (lines[slot]) strcpy(lines[slot], buf);
+        int slot = count % MAX_RING_LINES;
+        strncpy(s_ring_buffer[slot], buf, MAX_LINE_LEN - 1);
+        s_ring_buffer[slot][MAX_LINE_LEN - 1] = '\0';
         count++;
     }
     fclose(in);
 
     FILE *out = fopen(LOG_PATH, "w");
-    if (!out) {
-        int total = (count < 200) ? count : 200;
-        for (int i = 0; i < total; i++) free(lines[i]);
-        free(lines);
-        return;
-    }
+    if (!out) return;
 
-    int total = (count < 200) ? count : 200;
-    int start_idx = (count < 200) ? 0 : (count % 200);
+    int total = (count < MAX_RING_LINES) ? count : MAX_RING_LINES;
+    int start_idx = (count < MAX_RING_LINES) ? 0 : (count % MAX_RING_LINES);
+
     for (int i = 0; i < total; i++) {
-        int slot = (start_idx + i) % 200;
-        if (lines[slot]) {
-            fputs(lines[slot], out);
-            free(lines[slot]);
-        }
+        int slot = (start_idx + i) % MAX_RING_LINES;
+        fputs(s_ring_buffer[slot], out);
     }
     fclose(out);
-    free(lines);
 }
