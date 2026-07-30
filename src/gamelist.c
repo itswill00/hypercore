@@ -1,6 +1,6 @@
 /*
- * HyperCore - Dynamic Game List & Foreground Game Detector Implementation
- * Author: @itswill00
+ * HyperCore - Smart Dynamic Game Detector & PID Caching Implementation
+ * Author: @itswill00 (Inspired by encore by Rem01Gaming)
  */
 
 #include "gamelist.hpp"
@@ -12,6 +12,11 @@ static char      s_games[MAX_GAMES][PKG_NAME_LEN];
 static profile_t s_profiles[MAX_GAMES];
 static int       s_game_count = 0;
 static int       s_inotify_fd = -1;
+
+/* Smart Active Game PID Cache (Inspired by encore) */
+static int       s_cached_game_pid = -1;
+static char      s_cached_game_pkg[PKG_NAME_LEN] = "";
+static profile_t s_cached_game_profile = PROFILE_GAMING;
 
 void load_gamelist(void) {
     s_game_count = 0;
@@ -70,6 +75,8 @@ void check_gamelist_inotify(void) {
     ssize_t len = read(s_inotify_fd, buf, sizeof(buf));
     if (len > 0) {
         load_gamelist();
+        // Invalidate PID cache on config change
+        s_cached_game_pid = -1;
     }
 }
 
@@ -83,8 +90,46 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         load_gamelist();
     }
 
-    if (s_game_count == 0) return 0;
+    if (s_game_count == 0) {
+        s_cached_game_pid = -1;
+        return 0;
+    }
 
+    /* ── FAST PATH: Instant PID Cache Check (Inspired by encore) ── */
+    if (s_cached_game_pid > 0) {
+        // 1. Verify if cached PID process is still alive
+        if (kill(s_cached_game_pid, 0) == 0) {
+            char cmdpath[64];
+            snprintf(cmdpath, sizeof(cmdpath), "/proc/%d/cmdline", s_cached_game_pid);
+            int fd = open(cmdpath, O_RDONLY | O_CLOEXEC);
+            if (fd >= 0) {
+                char cmdline[256];
+                ssize_t n = read(fd, cmdline, sizeof(cmdline) - 1);
+                close(fd);
+
+                if (n > 0) {
+                    cmdline[n] = '\0';
+                    size_t pkg_len = strlen(s_cached_game_pkg);
+                    // Match exact package or child process prefix (e.g. com.tencent.ig:Unreal)
+                    if (strncmp(cmdline, s_cached_game_pkg, pkg_len) == 0 &&
+                        (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':')) {
+                        if (out_game_name && max_len > 0) {
+                            strncpy(out_game_name, s_cached_game_pkg, max_len - 1);
+                            out_game_name[max_len - 1] = '\0';
+                        }
+                        if (out_profile) {
+                            *out_profile = s_cached_game_profile;
+                        }
+                        return 1;
+                    }
+                }
+            }
+        }
+        // Cache invalidated if PID died or changed
+        s_cached_game_pid = -1;
+    }
+
+    /* ── SLOW PATH: Scan cpuset top-app PIDs ── */
     FILE *ftasks = fopen("/dev/cpuset/top-app/tasks", "r");
     if (!ftasks) return 0;
 
@@ -109,8 +154,18 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         cmdline[n] = '\0';
 
         for (int i = 0; i < s_game_count; i++) {
-            if (strcmp(cmdline, s_games[i]) == 0) {
+            size_t pkg_len = strlen(s_games[i]);
+            // Match exact package name or sub-process prefix
+            if (strncmp(cmdline, s_games[i], pkg_len) == 0 &&
+                (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':')) {
                 fclose(ftasks);
+
+                // Cache active game PID & details
+                s_cached_game_pid = pid;
+                strncpy(s_cached_game_pkg, s_games[i], PKG_NAME_LEN - 1);
+                s_cached_game_pkg[PKG_NAME_LEN - 1] = '\0';
+                s_cached_game_profile = s_profiles[i];
+
                 if (out_game_name && max_len > 0) {
                     strncpy(out_game_name, s_games[i], max_len - 1);
                     out_game_name[max_len - 1] = '\0';
