@@ -165,13 +165,26 @@ int main(int argc, char *argv[]) {
         profile_t custom_profile = PROFILE_GAMING;
         int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
 
+        static int s_game_absent_ticks = 0;
         static int s_prev_game_active = 0;
-        if (game_active && !s_prev_game_active) {
-            set_read_ahead("512");
-            g_state.launch_boost_ticks = 3;
-            send_game_toast(active_game);
-            log_write("Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
-        } else if (g_state.launch_boost_ticks > 0) {
+
+        if (game_active) {
+            s_game_absent_ticks = 0;
+            if (!s_prev_game_active) {
+                set_read_ahead("512");
+                g_state.launch_boost_ticks = 3;
+                send_game_toast(active_game);
+                log_write("Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
+                s_prev_game_active = 1;
+            }
+        } else {
+            s_game_absent_ticks++;
+            if (s_game_absent_ticks >= 3) {
+                s_prev_game_active = 0;
+            }
+        }
+
+        if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
             if (g_state.launch_boost_ticks == 0) {
                 set_read_ahead("256");
