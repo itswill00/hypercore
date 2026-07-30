@@ -24,6 +24,20 @@ int sysfs_read_int(const char *path) {
 }
 
 void update_module_prop_status(const char *status) {
+    static char s_last_status[128] = "";
+    static time_t s_last_write_time = 0;
+    time_t now = time(NULL);
+
+    if (status && strcmp(s_last_status, status) == 0 && (now - s_last_write_time) < 30) {
+        return;
+    }
+
+    if (status) {
+        strncpy(s_last_status, status, sizeof(s_last_status) - 1);
+        s_last_status[sizeof(s_last_status) - 1] = '\0';
+    }
+    s_last_write_time = now;
+
     char prop_path[256];
     snprintf(prop_path, sizeof(prop_path), "%s/module.prop", g_nodes.mod_dir);
 
