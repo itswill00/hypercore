@@ -49,12 +49,18 @@
             @click="$emit('pick', app.pkg)"
           >
             <div class="row-left">
-              <img
-                :src="iconFor(app.pkg)"
-                style="width: 32px; height: 32px; border-radius: 10px; background: var(--surface-container-highest); object-fit: cover; flex-shrink: 0;"
-                @error="e => e.target.style.visibility = 'hidden'"
-                loading="lazy"
-              >
+              <div class="icon-frame">
+                <img
+                  v-if="iconFor(app.pkg) && !brokenIcons[app.pkg]"
+                  :src="iconFor(app.pkg)"
+                  style="width: 32px; height: 32px; border-radius: 10px; object-fit: cover;"
+                  @error="brokenIcons[app.pkg] = true"
+                  loading="lazy"
+                >
+                <div v-else class="icon-fallback">
+                  <Icons name="rocket" :size="16" />
+                </div>
+              </div>
               <div class="row-meta">
                 <div class="row-title" style="font-size: 12px;">{{ app.name }}</div>
                 <div class="row-sub" style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75;">{{ app.pkg }}</div>
@@ -80,6 +86,7 @@ const emit = defineEmits(['close', 'pick'])
 const apps = ref([])
 const query = ref('')
 const loading = ref(true)
+const brokenIcons = ref({})
 const searchInput = ref(null)
 
 const filtered = computed(() => {
@@ -111,3 +118,25 @@ onMounted(async () => {
   if (searchInput.value) searchInput.value.focus()
 })
 </script>
+
+<style scoped>
+.icon-frame {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface-container-highest);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>

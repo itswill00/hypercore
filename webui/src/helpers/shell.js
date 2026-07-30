@@ -4,9 +4,10 @@
  */
 
 let cbSeq = 0
+let cachedInstalledApps = null
 
 /**
- * Execute a shell command via the root manager bridge
+ * Execute a shell command via the root manager bridge with 6s timeout protection
  * @param {string} cmd - Shell command to execute
  * @returns {Promise<string>} Command stdout
  */
@@ -14,13 +15,24 @@ export function execCommand(cmd) {
   return new Promise((resolve, reject) => {
     if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
       const id = `_hc_${++cbSeq}_${Date.now()}`
+      
+      const timer = setTimeout(() => {
+        if (window[id]) {
+          delete window[id]
+          resolve('')
+        }
+      }, 6000)
+
       window[id] = (errno, stdout, stderr) => {
+        clearTimeout(timer)
         delete window[id]
         resolve(stdout || stderr || '')
       }
+
       try {
         ksu.exec(cmd, '{}', id)
       } catch (e) {
+        clearTimeout(timer)
         delete window[id]
         reject(e)
       }
@@ -52,10 +64,15 @@ export function isKSU() {
 }
 
 /**
- * List installed user (3rd-party) packages
+ * List installed user (3rd-party) packages with in-memory caching
+ * @param {boolean} forceRefresh
  * @returns {Promise<Array<{pkg: string, name: string}>>}
  */
-export async function listInstalledApps() {
+export async function listInstalledApps(forceRefresh = false) {
+  if (cachedInstalledApps && !forceRefresh) {
+    return cachedInstalledApps
+  }
+
   if (isKSU() && typeof ksu.listUserPackages === 'function') {
     try {
       const raw = ksu.listUserPackages()
@@ -64,19 +81,27 @@ export async function listInstalledApps() {
       if (typeof ksu.getPackagesInfo === 'function') {
         try { infos = JSON.parse(ksu.getPackagesInfo(raw)) } catch {}
       }
-      return pkgs.map((p, i) => ({
+      cachedInstalledApps = pkgs.map((p, i) => ({
         pkg: p,
         name: (infos[i] && infos[i].appLabel) ? infos[i].appLabel : p
       })).sort((a, b) => a.name.localeCompare(b.name))
+
+      return cachedInstalledApps
     } catch {}
   }
 
   // Fallback: pm list packages
-  const out = await execCommand('pm list packages -3 2>/dev/null')
-  return out.trim().split('\n')
-    .map(l => { const p = l.replace('package:', '').trim(); return { pkg: p, name: p } })
-    .filter(i => i.pkg.length > 0)
-    .sort((a, b) => a.pkg.localeCompare(b.pkg))
+  try {
+    const out = await execCommand('pm list packages -3 2>/dev/null')
+    cachedInstalledApps = out.trim().split('\n')
+      .map(l => { const p = l.replace('package:', '').trim(); return { pkg: p, name: p } })
+      .filter(i => i.pkg.length > 0)
+      .sort((a, b) => a.pkg.localeCompare(b.pkg))
+
+    return cachedInstalledApps
+  } catch {
+    return []
+  }
 }
 
 /**

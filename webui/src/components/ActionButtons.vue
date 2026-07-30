@@ -2,7 +2,7 @@
   <div>
     <div class="section-title">Quick actions</div>
     <div class="md3-list-group">
-      <div class="md3-list-row clickable" @click="flush">
+      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="flush">
         <div class="row-left">
           <div class="icon-badge">
             <Icons name="memory" :size="18" />
@@ -15,7 +15,7 @@
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-row clickable" @click="saveLog">
+      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="saveLog">
         <div class="row-left">
           <div class="icon-badge secondary">
             <Icons name="logs" :size="18" />
@@ -28,7 +28,7 @@
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-row clickable" @click="restart">
+      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="restart">
         <div class="row-left">
           <div class="icon-badge tertiary">
             <Icons name="refresh" :size="18" />
@@ -66,16 +66,21 @@ const store = useHyperStore()
 const toast = inject('toast')
 
 async function flush() {
+  if (store.loading) return
+  if (toast) toast('Clearing RAM cache...')
   const msg = await store.flushRam()
   if (toast) toast(msg)
 }
 
 async function restart() {
+  if (store.loading) return
+  if (toast) toast('Restarting daemon...')
   const msg = await store.restartDaemon()
   if (toast) toast(msg)
 }
 
 async function saveLog() {
+  if (store.loading) return
   const msg = await store.exportLogs()
   if (toast) toast(msg)
 }
@@ -85,3 +90,10 @@ function addShortcut() {
   if (toast) toast(msg)
 }
 </script>
+
+<style scoped>
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+</style>

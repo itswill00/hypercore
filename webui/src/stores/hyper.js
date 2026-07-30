@@ -145,7 +145,7 @@ export const useHyperStore = defineStore('hyper', () => {
       `echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)"`,
       `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`,
       `echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)"`,
-      `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk)' | head -1)`,
+      `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk|ufs|dm-)' | head -1)`,
       `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
       `echo "LK:$(cat ${LOCK_MOD} 2>/dev/null || cat ${LOCK_SD} 2>/dev/null || echo AUTO)"`,
@@ -315,7 +315,7 @@ export const useHyperStore = defineStore('hyper', () => {
     if (safe === 'AUTO') {
       execCommand(`rm -f ${LOCK_MOD} ${LOCK_SD}`)
     } else {
-      execCommand(`echo '${safe}' > ${LOCK_MOD}; echo '${safe}' > ${LOCK_SD}`)
+      execCommand(`echo '${safe}' | tee ${LOCK_MOD} ${LOCK_SD} >/dev/null`)
     }
     setTimeout(refresh, 400)
   }
@@ -355,18 +355,20 @@ export const useHyperStore = defineStore('hyper', () => {
     const safe = sanitize(pkg)
     if (!safe) return
 
+    const formattedEntry = safe.includes(':') ? safe : `${safe}:GAMING`
+
     // Optimistic memory addition
-    if (!games.value.includes(safe)) {
-      games.value.push(safe)
+    if (!games.value.includes(formattedEntry)) {
+      games.value.push(formattedEntry)
     }
 
-    execCommand(`echo '${safe}' >> ${GL_MOD}; echo '${safe}' >> ${GL_SD}`)
+    execCommand(`echo '${formattedEntry}' >> ${GL_MOD}; echo '${formattedEntry}' >> ${GL_SD}`)
     setTimeout(refresh, 500)
-    return `Added ${safe}`
+    return `Added ${safe.split(':')[0]}`
   }
 
   function removeGame(pkg) {
-    const safe = sanitize(pkg)
+    const safe = sanitize(pkg).split(':')[0]
     if (!safe) return
 
     // Optimistic memory removal
@@ -374,7 +376,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
-      `  [ -f "$f" ] && { grep -Fvx '${safe}' "$f" > "$f.tmp" 2>/dev/null; mv "$f.tmp" "$f" 2>/dev/null; }`,
+      `  [ -f "$f" ] && { grep -Fvx '${safe}' "$f" | grep -v '^${safe}:' > "$f.tmp" 2>/dev/null; mv "$f.tmp" "$f" 2>/dev/null; }`,
       `done`
     ].join('\n')
     execCommand(cmd)
@@ -383,23 +385,23 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   function updateGameMode(oldEntry, newEntry) {
-    const oldSafe = sanitize(oldEntry)
-    const newSafe = sanitize(newEntry)
+    const oldPkg = sanitize(oldEntry.split(':')[0])
+    const newEntrySafe = sanitize(newEntry)
 
     // Optimistic memory update (0ms UI latency!)
-    const idx = games.value.indexOf(oldEntry)
+    const idx = games.value.findIndex(g => g === oldEntry || g.startsWith(`${oldPkg}:`))
     if (idx !== -1) {
-      games.value[idx] = newEntry
+      games.value[idx] = newEntrySafe
     } else {
-      games.value.push(newEntry)
+      games.value.push(newEntrySafe)
     }
 
     // Atomic shell update in 1 background command
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
-      `    grep -Fvx '${oldSafe}' "$f" > "$f.tmp" 2>/dev/null`,
-      `    echo '${newSafe}' >> "$f.tmp"`,
+      `    grep -Fvx '${oldEntry}' "$f" | grep -v '^${oldPkg}:' > "$f.tmp" 2>/dev/null`,
+      `    echo '${newEntrySafe}' >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
       `done`

@@ -6,7 +6,7 @@
         v-model="search"
         type="text"
         class="input-md3"
-        placeholder="Search installed games..."
+        placeholder="Search configured games..."
         style="flex: 1; border-radius: 20px; padding: 6px 14px; font-size: 11px;"
       >
       <span class="badge-pill purple" style="flex-shrink: 0; padding: 4px 10px;">
@@ -22,20 +22,20 @@
           <Icons name="rocket" :size="20" />
         </div>
         <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">
-          {{ search ? 'No matching games found' : 'No installed games configured' }}
+          {{ search ? 'No matching games found' : 'No configured games' }}
         </div>
         <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; max-width: 240px; margin-left: auto; margin-right: auto;">
           Select installed games on your phone to trigger performance profiles automatically
         </div>
         <button class="btn-md3 btn-md3-primary" style="margin-top: 14px; font-size: 11px;" @click="$emit('open-picker')">
           <Icons name="plus" :size="14" />
-          <span>Add installed game</span>
+          <span>Add game</span>
         </button>
       </div>
 
       <!-- Loading State -->
       <div v-else-if="loading" style="padding: 24px 16px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
-        Checking installed games...
+        Checking configured games...
       </div>
 
       <!-- Installed Game Rows -->
@@ -46,12 +46,18 @@
         style="padding: 10px 14px;"
       >
         <div class="row-left" style="gap: 10px;">
-          <img
-            :src="iconFor(item.pkg)"
-            style="width: 36px; height: 36px; border-radius: 10px; background: var(--surface-container-high); object-fit: cover; flex-shrink: 0;"
-            @error="e => e.target.style.visibility = 'hidden'"
-            loading="lazy"
-          >
+          <div class="icon-frame">
+            <img
+              v-if="iconFor(item.pkg) && !brokenIcons[item.pkg]"
+              :src="iconFor(item.pkg)"
+              style="width: 36px; height: 36px; border-radius: 10px; object-fit: cover;"
+              @error="brokenIcons[item.pkg] = true"
+              loading="lazy"
+            >
+            <div v-else class="icon-fallback">
+              <Icons name="rocket" :size="18" />
+            </div>
+          </div>
           <div class="row-meta" style="min-width: 0;">
             <div
               class="row-title"
@@ -115,6 +121,7 @@ const store = useHyperStore()
 const toast = inject('toast')
 const search = ref('')
 const installedMap = ref({})
+const brokenIcons = ref({})
 const loading = ref(true)
 
 async function loadInstalled() {
@@ -137,47 +144,32 @@ onMounted(() => {
 const displayGames = computed(() => {
   if (!store.games) return []
 
-  // Map entries into rich object with installed status
   const parsed = store.games.map(entry => {
     const parts = entry.split(':')
     const pkg = parts[0].trim()
     const mode = parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
     const appName = installedMap.value[pkg]
-    const isInstalled = !!appName
 
     return {
       entry,
       pkg,
       mode,
-      name: appName || pkg,
-      isInstalled
+      name: appName || pkg
     }
   })
 
-  // Filter ONLY installed apps (if installedMap is loaded)
-  let filtered = parsed
-  if (Object.keys(installedMap.value).length > 0) {
-    filtered = parsed.filter(item => item.isInstalled)
-  }
-
-  // Filter by search query
   if (search.value.trim()) {
     const q = search.value.toLowerCase()
-    filtered = filtered.filter(item =>
+    return parsed.filter(item =>
       item.name.toLowerCase().includes(q) || item.pkg.toLowerCase().includes(q)
     )
   }
 
-  return filtered
+  return parsed
 })
 
 function iconFor(pkg) {
   return getIconUrl(pkg)
-}
-
-function getMode(entry) {
-  const parts = entry.split(':')
-  return parts.length > 1 ? parts[1].trim().toUpperCase() : 'GAMING'
 }
 
 function cycleMode(entry) {
@@ -203,3 +195,25 @@ async function launch(entry) {
   if (msg && toast) toast(msg)
 }
 </script>
+
+<style scoped>
+.icon-frame {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-container-high);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
