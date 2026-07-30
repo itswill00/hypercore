@@ -2,7 +2,7 @@
 SKIPUNZIP=1
 
 ui_print "--------------------------------------"
-ui_print "       Tanzanite HyperCore v3.4       "
+ui_print "       Tanzanite HyperCore v3.5       "
 ui_print "            by @itswill00            "
 ui_print "--------------------------------------"
 
@@ -65,7 +65,7 @@ set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/system.prop" 0 0 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 
-ui_print "- Native daemon installed successfully."
+ui_print "- Native daemon v3.5 installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch."
-ui_print "- Installation complete. Reboot to apply changes."
+ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."
 ui_print "--------------------------------------"
