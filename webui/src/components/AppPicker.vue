@@ -5,36 +5,47 @@
         <!-- Header -->
         <div style="padding: 14px 16px; border-bottom: 1px solid var(--surface-container-high); display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Select Application</div>
-            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Installed system & user packages</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Select application</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Installed apps & custom packages</div>
           </div>
           <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 11px;" @click="$emit('close')">Close</button>
         </div>
 
-        <!-- Filter -->
+        <!-- Filter / Custom Package Input -->
         <div style="padding: 10px 14px; border-bottom: 1px solid var(--surface-container-high); background: var(--surface-container-low);">
           <input
             v-model="query"
             type="text"
             class="input-md3"
-            placeholder="Search app name or package..."
+            placeholder="Search app name or package (e.g. com.game)..."
             ref="searchInput"
+            @keydown.enter="addCustom"
           >
         </div>
 
         <!-- List Body -->
-        <div style="padding: 8px; overflow-y-auto; flex: 1; scrollbar-width: none;">
+        <div style="padding: 8px; overflow-y: auto; flex: 1; scrollbar-width: none;">
           <div v-if="loading" style="padding: 32px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
             Scanning installed packages...
           </div>
-          <div v-else-if="filtered.length === 0" style="padding: 32px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
-            No matching applications found
+
+          <!-- Empty or Custom Fallback -->
+          <div v-else-if="filtered.length === 0" style="padding: 24px; text-align: center;">
+            <div style="font-size: 12px; color: var(--on-surface-variant); margin-bottom: 12px;">
+              No installed apps matching "{{ query }}"
+            </div>
+            <button v-if="query.trim()" class="btn-md3 btn-md3-primary" style="font-size: 11px;" @click="addCustom">
+              <Icons name="plus" :size="14" />
+              <span>Add package "{{ query.trim() }}"</span>
+            </button>
           </div>
+
+          <!-- App List Rows -->
           <div
             v-for="app in filtered"
             :key="app.pkg"
             class="md3-list-row clickable"
-            style="border-radius: 12px; margin-bottom: 4px; border-bottom: none;"
+            style="border-radius: 12px; margin-bottom: 4px; border-bottom: none; padding: 10px 12px;"
             @click="$emit('pick', app.pkg)"
           >
             <div class="row-left">
@@ -62,8 +73,9 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { listInstalledApps, getIconUrl } from '@/helpers/shell'
+import Icons from '@/components/icons/Icons.vue'
 
-defineEmits(['close', 'pick'])
+const emit = defineEmits(['close', 'pick'])
 
 const apps = ref([])
 const query = ref('')
@@ -80,6 +92,12 @@ const filtered = computed(() => {
 
 function iconFor(pkg) {
   return getIconUrl(pkg)
+}
+
+function addCustom() {
+  if (query.value.trim()) {
+    emit('pick', query.value.trim())
+  }
 }
 
 onMounted(async () => {
