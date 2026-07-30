@@ -4,70 +4,76 @@
 [![Platform](https://img.shields.io/badge/SoC-MediaTek_Helio_G99_Ultra-orange.svg)]()
 [![Kernel](https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg)]()
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
+[![Release](https://img.shields.io/badge/Release-v3.8-purple.svg)]()
 
-Tanzanite HyperCore is a lightweight background daemon and kernel tuning module for MediaTek Helio G99 Ultra (MT6789 / MT6877) devices running Linux 5.10.
+Tanzanite HyperCore is a lightweight background daemon and kernel tuning module tailored for MediaTek Helio G99 Ultra (MT6789 / MT6877) devices running Linux 5.10.
 
-It is designed to eliminate micro-stutters in games, smooth out daily UI navigation, and manage thermal limits intelligently without unnecessary battery drain.
+It is designed to eliminate micro-stutters, optimize daily touch response, manage thermal limits intelligently, and deliver high performance during gaming without unnecessary battery drain.
+
+*Inspired By encore @Rem01Gaming*
 
 ---
 
 ## Overview
 
-Modern Android smartphones often suffer from aggressive CPU downclocking between frame renders, leading to dropped frames during gaming or social media scrolling. HyperCore runs a native C daemon in the background to dynamically adjust CPU governor rate limits, GPU frequency floors, storage read-ahead queues, and kernel thermal thresholds based on active workloads.
+Android smartphones often suffer from aggressive CPU downclocking between frame renders, leading to dropped frames during gaming or social media scrolling. HyperCore runs a lightweight native C daemon in the background that dynamically adjusts CPU governor rate limits, GPU frequency floors, interconnect memory bandwidth, storage read-ahead queues, and thermal limits based on real-time workloads.
 
 ---
 
 ## Key Features
 
-- **Smooth UI Navigation & App Switching**: Extends CPU governor down-rate limits (`sugov_ext` / `schedutil`) to 20ms–25ms, preventing CPU frequencies from dropping during brief touch pauses while scrolling or switching apps.
-- **Automated Game Detection**: Scans `/dev/cpuset/top-app/tasks` in real time to identify active games without background CPU overhead. Automatically applies the `Gaming` profile when a recognized game is in the foreground.
-- **Custom Per-App Profiles**: Supports custom per-app mode definitions in `gamelist.txt` (for example, setting games to `GAMING` or social media apps to `TOUCH`).
-- **Plugged-In Gaming Thermal Guard**: Limits battery charging current to 2.0A (`charge_control_limit`) while gaming on a charger, preventing battery temperatures from exceeding 45°C.
-- **Hardware IRQ Pinning**: Binds Mali GPU and MTK Display interrupt requests directly to Cortex-A76 Big Cores (CPU 6–7), ensuring high-priority display rendering interrupts are processed without delay.
-- **Storage Read-Ahead Boost**: Temporarily boosts UFS read-ahead queue size to 512 KB when a game launches to speed up DEX loading and asset initialization, then relaxes to a 256 KB baseline.
-- **Modern WebUI Dashboard**: Integrated KernelSU / APatch / Magisk WebUI with interactive profile selection, real-time system metrics, gamelist editor, and 1-click online updates.
+- **Smart Automated Adaptive Engine**: Zero-intervention background daemon that automatically evaluates active workloads, screen lock states, and foreground apps without requiring manual mode toggles.
+- **Fast PID Caching**: High-efficiency game detection path with 0.001ms latency and sub-process prefix matching, inspired by `encore`.
+- **MediaTek DVFSRC Interconnect Boost**: Unlocks LPDDR RAM throughput up to 4.266 GHz during active gaming sessions (`dvfsrc_qos_mode`) to eliminate memory bandwidth bottlenecks.
+- **MediaTek DRM Screen Off Detection**: Accurate display state monitoring via MediaTek DRM backlight drivers (`/sys/class/leds/lcd-backlight/brightness`), ensuring the device enters deep sleep (`PROFILE_SLEEP`) immediately when locked.
+- **ARM Mali-G57 Power Policy Management**: Dynamically switches GPU core power policy between `coarse_demand` (deep power gating for daily use) and `always_on` (zero-latency frame rendering for gaming).
+- **Calibrated `sugov_ext` Rate Limits**: Configured up-rate limit (`500 µs`) for instant touch response and down-rate limit (`20,000 µs`) to eliminate micro-stutters while scrolling social media.
+- **Enterprise Structured Logging**: Millisecond-precision timestamped logger with structured severity levels (`INFO`, `STATE`, `WARN`, `ERROR`) and component tags (`DAEMON`, `PROFILER`, `GAME`, `THERMAL`), using a static ring buffer to eliminate heap memory fragmentation.
+- **Hardware IRQ Affinity Pinning**: Directs Mali GPU, GED, DSI Display, and storage interrupts to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt processing.
+- **Storage Read-Ahead Boost**: Temporarily boosts UFS read-ahead queue size to 512 KB when a game launches to accelerate asset loading, then relaxes to a 256 KB baseline.
+- **Streamlined Material Design 3 WebUI**: Integrated KernelSU / APatch / Magisk WebUI featuring a clean status banner, smart engine indicator, game manager, structured log console, and one-click quick actions.
 
 ---
 
-## System Profiles
+## Operational Profiles
 
-The daemon evaluates hardware load every 2 seconds and applies one of five operational profiles:
+The daemon evaluates device metrics every 2 seconds and applies one of five tuned operational profiles:
 
-| Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Floor | Down-Rate Limit |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Sleep** | Screen off | 500 – 1450 MHz | 725 – 1300 MHz | 300 MHz | 1000 µs |
-| **Interactive** | Daily usage / browsing | 1200 – 2000 MHz | 1400 – 2200 MHz | 600 MHz | 20000 µs |
-| **Touch** | Gestures & UI transitions | 1400 – 2000 MHz | 1700 – 2200 MHz | 700 MHz | 25000 µs |
-| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1800 – 2200 MHz | 800 MHz | 30000 µs |
-| **Thermal** | CPU ≥ 75°C or Battery ≥ 53°C | 900 – 2000 MHz | 1200 – 1800 MHz | 500 MHz | 5000 µs |
+| Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Floor | Power Policy | Interconnect Bandwidth |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Sleep** | Screen locked | 500 – 1200 MHz | 725 – 1200 MHz | 300 MHz | `coarse_demand` | Dynamic (Low) |
+| **Interactive** | Daily use / Browsing | 600 – 2000 MHz | 800 – 2200 MHz | 300 MHz | `coarse_demand` | Dynamic |
+| **Touch** | UI Gestures & Animations | 1000 – 2000 MHz | 1200 – 2200 MHz | 500 MHz | `coarse_demand` | Dynamic |
+| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1800 – 2200 MHz | 800 MHz | `always_on` | Unlocked (4.266 GHz) |
+| **Thermal** | CPU ≥ 75°C or Battery ≥ 53°C | 600 – 2000 MHz | 900 – 1600 MHz | 300 MHz | `coarse_demand` | Dynamic |
 
 ---
 
-## Thermal Thresholds
+## Thermal Protection State Machine
 
-HyperCore uses a 4-tier thermal state machine with hysteresis to maintain performance while keeping temperatures under control:
+HyperCore uses a 4-tier thermal state machine with hysteresis to maintain performance while keeping temperatures within safe boundaries:
 
-- **Tier 0 (Optimal)**: CPU < 58°C, Battery < 44°C. Full unthrottled frequencies.
-- **Tier 1 (Normal Load)**: CPU 58°C–64°C, Battery 44°C–47°C. Standard operating range.
-- **Tier 2 (Warm Load)**: CPU 65°C–74°C, Battery 48°C–52°C. Sustained heavy usage.
-- **Tier 3 (Thermal Protection)**: CPU ≥ 75°C, Battery ≥ 53°C (72°C / 50°C during charging). Holds protective throttle state for 6 seconds before relaxing.
+- **Tier 0 (Optimal)**: CPU < 58°C, Battery < 44°C. Standard unthrottled profile limits.
+- **Tier 1 (Normal Load)**: CPU 58°C–64°C, Battery 44°C–47°C. Sustained daily operation.
+- **Tier 2 (Warm Load)**: CPU 65°C–74°C, Battery 48°C–52°C. Elevated workload adjustment.
+- **Tier 3 (Thermal Protection)**: CPU ≥ 75°C or Battery ≥ 53°C. Enforces protective frequency capping.
 
 ---
 
 ## Codebase Architecture
 
-```
+```text
 src/
 ├── include/
 │   ├── common.hpp     # Common data structures and profile definitions
 │   ├── sysfs.hpp      # Sysfs file I/O helpers
-│   ├── log.hpp        # Logging and buffer rotation
+│   ├── log.hpp        # Structured logging header & level macros
 │   ├── cpu.hpp        # Governor rate limits and CPU scaling
-│   ├── gpu.hpp        # MediaTek GED and FPSGO tuning
+│   ├── gpu.hpp        # MediaTek GED, FPSGO, and Mali power policy tuning
 │   ├── memory.hpp     # Virtual memory and ZRAM parameters
 │   ├── io.hpp         # Storage queue and IRQ affinity tuning
 │   ├── thermal.hpp    # Thermal zone scanning and tier calculations
-│   └── gamelist.hpp   # Top-app game detector and gamelist loader
+│   └── gamelist.hpp   # Top-app game detector and PID cache manager
 ├── cpu.c
 ├── gpu.c
 ├── io.c
@@ -81,48 +87,47 @@ src/
 
 ---
 
-## Game List Setup (`gamelist.txt`)
+## Game List Configuration (`gamelist.txt`)
 
-You can edit `gamelist.txt` via the WebUI or directly at `/data/adb/modules/tanzanite_hypercore/gamelist.txt`. Package names listed in this file automatically trigger the **Gaming** profile upon launch.
+You can manage your game list directly through the WebUI or by editing `/data/adb/modules/tanzanite_hypercore/gamelist.txt`. Package names listed in this file automatically trigger the **Gaming** profile upon launch.
 
-You can also specify custom per-app profiles using the `:MODE` suffix:
+Example `gamelist.txt`:
 
 ```text
-# Default Gaming trigger
-com.tencent.ig
+# Configured Games
 com.mobile.legends
-
-# Custom profile overrides
-com.instagram.android:TOUCH
-com.ss.android.ugc.trill:TOUCH
+com.tencent.ig
+com.miHoYo.GenshinImpact
+com.dts.freefireth
 ```
 
 ---
 
 ## Building from Source
 
-To compile the native binary and build the release ZIP package:
+To compile the native C daemon and package the release ZIP module:
 
 ```bash
 ./build.sh
 ```
 
 The script compiles the daemon using `-O3 -flto -s -Wall -Wextra -Werror` and outputs the final package to:
-- `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v3.7.zip`
-- `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.7.zip`
+- `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v3.8.zip`
+- `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v3.8.zip`
 
 ---
 
 ## Requirements
 
-- **Device**: MediaTek Helio G99 Ultra (MT6789 / MT6877)
+- **Target Hardware**: MediaTek Helio G99 Ultra (MT6789 / MT6877)
 - **Kernel**: Linux 5.10.x
 - **Environment**: Rooted via KernelSU, APatch, or Magisk
 
 ---
 
-## License
+## License & Credits
 
 This project is licensed under the **GNU General Public License v3.0**. See `LICENSE` for details.
 
-Developed by **[@itswill00](https://github.com/itswill00)**.
+Developed by **[@itswill00](https://github.com/itswill00)**.  
+Inspired By encore **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
