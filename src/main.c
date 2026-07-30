@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     init_hardware_nodes();
     write_pid_file();
 
-    log_write("Tanzanite HyperCore v3.4 started.");
+    log_write("Tanzanite HyperCore v3.5 started.");
 
     apply_cpuset();
     apply_memory_tuning();

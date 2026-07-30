@@ -1,10 +1,13 @@
-# Tanzanite HyperCore v3.4
+# Tanzanite HyperCore v3.5 (Major Release)
 
-### Major Enhancements & Architectural Upgrades
-- **Dynamic CPU & GPU Governor Scaling**: Profiling engine now dynamically toggles CPU governors per profile (`performance` for Gaming, `powersave` for Saver/Thermal, `sugov_ext` for Interactive/Touch) alongside MediaTek GED GPU floor & cap tuning.
-- **Modern Vue 3 + Vite + Pinia WebUI**: Complete WebUI rewrite into a modular Vue 3 Single Page Application using Pinia state management, Vue Router, and `vite-plugin-singlefile` compilation.
-- **Enriched Real-Time System Dashboard**: Expanded Dashboard with 4 distinct metric sections — System Status, Memory & Storage (RAM/ZRAM live % used), Power & Thermal (charge rate mA / voltage V / temps), and Device Info (Kernel, Chipset, Android SDK, SELinux, Uptime).
-- **Streamlined Mobile Interface**: Clean sentence-case typography, compact 2-column action buttons ("Clear RAM", "Restart daemon", "Save log", "Create shortcut"), and focused tab navigation (Dashboard, Games, Logs).
-- **Game Hold & Transition Safety**: Fixed game exit hold-down timer tracking so sustained performance frequency profiles persist cleanly during game state transitions.
-- **Log Heap Retention & Protection**: Dynamic heap allocation for log line retention avoiding stack buffer overhead and preventing log file inflation beyond 200 lines.
-- **Strict Compiler Verification**: Compiled with `-O3 -flto -s -Wall -Wextra -Werror` (0 warnings, 0 errors).
+### 🌟 Major Architecture & Interface Upgrades
+- **Complete Material Design 3 WebUI Redesign**: Rebuilt the entire WebUI interface with modern MD3 dark-theme design tokens, responsive cards, floating bottom navigation bar, and clean sentence-case typography.
+- **Native System Font Stack**: Removed external network dependencies for web fonts, enforcing native phone font integration (`system-ui`, `MiSans`, `Roboto`, `One UI Font`) for zero-delay instant rendering.
+- **Interactive App Mode Cycler**: Added one-tap profile mode cycling (`GAMING`, `TOUCH`, `BALANCED`, `SAVER`) directly on configured game tags in `My games`.
+- **Live Terminal Syntax Highlighting**: Realtime event log console in `System log` now highlights daemon events (Gaming boost, Thermal Tiers, profile locks, service status) with distinct color coding.
+- **Visual Memory & Storage Gauges**: Added dynamic visual progress bars for physical RAM and compressed ZRAM swap usage percentages.
+- **Hysteresis Thermal Protection**: Introduced a 4°C hysteresis margin for Thermal Tier transitions (T1 triggers at 58°C, releases at 54°C CPU / 42°C Battery) to eliminate thermal profile flapping.
+- **Debounced Game Detector**: Implemented a 3-tick (6-second) hysteresis debounce before marking games as exited, resolving false-positive duplicate toasts and profile ping-ponging.
+- **Dynamic CPU Scaling Governors**: Upgraded CPU governor policies to dynamically balance between `sugov_ext` and `schedutil` across interactive and gaming states.
+- **Device-Mapper & UFS Queue Tuning**: Extended storage scheduler and read-ahead tuning to Device-Mapper (`dm-`) and UFS block devices.
+- **Flash Memory Protection**: Throttled `module.prop` status writes with time-based debouncing to protect internal storage from unnecessary flash wear.
