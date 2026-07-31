@@ -71,7 +71,7 @@ for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
     fi
 done
 
-ui_print "- Native daemon v4.0 installed successfully into system/bin."
+ui_print "- Native daemon v4.1 installed successfully into system/bin."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."
 ui_print "--------------------------------------"

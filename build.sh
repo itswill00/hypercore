@@ -3,7 +3,7 @@
 
 PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
 RELEASE_DIR="/data/data/com.termux/files/home/Tanzanite_HyperCore_Release"
-ZIP_OUT="Tanzanite-HyperCore-v4.0.zip"
+ZIP_OUT="Tanzanite-HyperCore-v4.1.zip"
 
 set -e
 

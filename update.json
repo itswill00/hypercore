@@ -1,6 +1,6 @@
 {
-  "version": "v4.0",
-  "versionCode": 400,
-  "zipUrl": "https://github.com/itswill00/hyperflow/releases/download/v4.0/Tanzanite-HyperCore-v4.0.zip",
+  "version": "v4.1",
+  "versionCode": 410,
+  "zipUrl": "https://github.com/itswill00/hyperflow/releases/download/v4.1/Tanzanite-HyperCore-v4.1.zip",
   "changelog": "https://raw.githubusercontent.com/itswill00/hyperflow/main/changelog.md"
 }
