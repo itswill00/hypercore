@@ -62,7 +62,11 @@ const parsedLogs = computed(() => {
   return rawLines.map(line => {
     const m = line.match(/^(?:\[?(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d{3})?)\]?)\s*(?:\[([^\]]+)\])?\s*(?:\[([^\]]+)\])?\s*(.*)$/)
     if (m && m[1]) {
-      const stamp = m[1] || ''
+      let stamp = m[1] || ''
+      if (stamp.includes(' ')) {
+        const timePart = stamp.split(' ')[1] || stamp
+        stamp = timePart.split('.')[0]
+      }
       const level = (m[2] || '').trim()
       const tag = (m[3] || '').trim()
       const msg = m[4] || line
