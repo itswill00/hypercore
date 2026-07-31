@@ -51,7 +51,12 @@ export const useHyperStore = defineStore('hyper', () => {
   const games = ref([])
   const logs = ref('Loading...')
   const loading = ref(false)
+  const isLogsActive = ref(false)
   let isRefreshing = false
+
+  function setLogsActive(active) {
+    isLogsActive.value = active
+  }
 
   /* ── Computed ── */
   const isRunning = computed(() => daemonPid.value.length > 0)
@@ -127,7 +132,7 @@ export const useHyperStore = defineStore('hyper', () => {
     if (isRefreshing) return
     isRefreshing = true
 
-    const cmd = [
+    const cmdList = [
       `echo "IPC:$(echo GET_STATUS | nc -U ${MOD}/hypercore.sock 2>/dev/null || true)"`,
       `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
       `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
@@ -149,10 +154,14 @@ export const useHyperStore = defineStore('hyper', () => {
       `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
       `DESC=$(grep '^description=' ${MOD}/module.prop 2>/dev/null); echo "DESC:$DESC"`,
       `echo "===GL==="`,
-      `cat ${GL_MOD} 2>/dev/null || cat ${GL_SD} 2>/dev/null || true`,
-      `echo "===LOG==="`,
-      `tail -n 35 ${LOG} 2>/dev/null || true`
-    ].join('\n')
+      `cat ${GL_MOD} 2>/dev/null || cat ${GL_SD} 2>/dev/null || true`
+    ]
+
+    if (isLogsActive.value) {
+      cmdList.push(`echo "===LOG==="`, `tail -n 35 ${LOG} 2>/dev/null || true`)
+    }
+
+    const cmd = cmdList.join('\n')
 
     try {
       const res = await execCommand(cmd)
@@ -410,6 +419,6 @@ export const useHyperStore = defineStore('hyper', () => {
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, createShortcut,
-    addGame, removeGame, launchGame
+    addGame, removeGame, launchGame, setLogsActive
   }
 })

@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 
 const store = useHyperStore()
@@ -132,9 +132,15 @@ watch(() => store.logs, () => {
 })
 
 onMounted(() => {
+  store.setLogsActive(true)
+  store.refresh()
   if (logContainer.value) {
     logContainer.value.scrollTop = logContainer.value.scrollHeight
   }
+})
+
+onUnmounted(() => {
+  store.setLogsActive(false)
 })
 </script>
 
