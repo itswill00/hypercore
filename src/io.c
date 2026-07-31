@@ -23,6 +23,24 @@ void set_read_ahead(const char *kb_val) {
     closedir(d);
 }
 
+void set_io_nr_requests(const char *nr_str) {
+    DIR *d = opendir("/sys/block");
+    if (!d) return;
+
+    struct dirent *ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (strncmp(ent->d_name, "sd", 2) == 0 ||
+            strncmp(ent->d_name, "mmcblk", 6) == 0 ||
+            strncmp(ent->d_name, "dm-", 3) == 0 ||
+            strncmp(ent->d_name, "ufs", 3) == 0) {
+            char p[256];
+            snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
+            sysfs_write(p, nr_str);
+        }
+    }
+    closedir(d);
+}
+
 void apply_io_tuning(void) {
     DIR *d = opendir("/sys/block");
     if (!d) return;
@@ -42,6 +60,8 @@ void apply_io_tuning(void) {
             sysfs_write(p, "0");
             snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
             sysfs_write(p, "64");
+            snprintf(p, sizeof(p), "/sys/block/%s/queue/nomerges", ent->d_name);
+            sysfs_write(p, "2");
             snprintf(p, sizeof(p), "/sys/block/%s/queue/add_random", ent->d_name);
             sysfs_write(p, "0");
             snprintf(p, sizeof(p), "/sys/block/%s/queue/rq_affinity", ent->d_name);

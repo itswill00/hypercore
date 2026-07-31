@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 void apply_memory_tuning(void);
+void compact_memory_on_sleep(void);
 
 #ifdef __cplusplus
 }

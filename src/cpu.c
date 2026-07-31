@@ -4,6 +4,8 @@
  */
 
 #include "cpu.hpp"
+#include "memory.hpp"
+#include "io.hpp"
 
 void set_rate_limits(int cpu, const char *up, const char *down) {
     char path[256];
@@ -115,7 +117,9 @@ void apply_profile(profile_t prof, int tier) {
     switch (prof) {
         case PROFILE_SLEEP:
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, 1200000, 725000, 1200000, "2000", "1000");
+            set_cpu_freqs(500000, 1200000, 725000, 1200000, "4000", "1000");
+            compact_memory_on_sleep();
+            set_io_nr_requests("32");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
@@ -128,6 +132,7 @@ void apply_profile(profile_t prof, int tier) {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, 800000, big_max, "500", "20000");
+            set_io_nr_requests("64");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
@@ -155,6 +160,7 @@ void apply_profile(profile_t prof, int tier) {
             int big_min = (tier >= 3) ? 1600000 : 1800000;
             set_cpu_governor(gov);
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
+            set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");

@@ -225,7 +225,14 @@ int main(int argc, char *argv[]) {
             s_rotate_counter = 0;
         }
 
-        handle_ipc_events(2000);
+        int poll_timeout_ms = 2000;
+        if (next_profile == PROFILE_SLEEP) {
+            poll_timeout_ms = 8000;
+        } else if (next_profile == PROFILE_GAMING) {
+            poll_timeout_ms = 1000;
+        }
+
+        handle_ipc_events(poll_timeout_ms);
     }
 
     log_info("DAEMON", "Tanzanite HyperCore daemon stopped.");
