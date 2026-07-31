@@ -51,16 +51,27 @@ else
     ui_print "! WARNING: Missing checksums.sha256 manifest."
 fi
 
-ui_print "- Setting permissions..."
+ui_print "- Setting permissions & PATH symlinks..."
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755
+[ -d "$MODPATH/system/bin" ] && set_perm_recursive "$MODPATH/system/bin" 0 0 0755 0755
+[ -f "$MODPATH/libhypercore.so" ] && set_perm "$MODPATH/libhypercore.so" 0 0 0755
 [ -f "$MODPATH/hypercore" ] && set_perm "$MODPATH/hypercore" 0 0 0755
 set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/system.prop" 0 0 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 
-ui_print "- Native daemon v3.9 installed successfully."
-ui_print "- WebUI Dashboard enabled for KernelSU / APatch."
+# Create symlinks in root manager PATH for KSU / APatch / Magisk
+for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
+    if [ -d "$manager_dir" ]; then
+        ui_print "- Creating PATH symlink in $manager_dir"
+        ln -sf "$MODPATH/system/bin/libhypercore.so" "$manager_dir/libhypercore.so" 2>/dev/null || true
+        ln -sf "$MODPATH/system/bin/hypercore" "$manager_dir/hypercore" 2>/dev/null || true
+    fi
+done
+
+ui_print "- Native daemon v4.0 installed successfully into system/bin."
+ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."
 ui_print "--------------------------------------"

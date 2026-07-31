@@ -16,20 +16,24 @@ if [ -d "$PROJECT_DIR/webui" ]; then
     cp "$PROJECT_DIR/webui/dist/index.html" "$PROJECT_DIR/webroot/index.html"
 fi
 
-echo "-> Compiling hypercore daemon (libhypercore.so)..."
-clang -O3 -flto -s -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/libhypercore.so"
-cp "$PROJECT_DIR/libhypercore.so" "$PROJECT_DIR/hypercore"
+mkdir -p "$PROJECT_DIR/system/bin"
+echo "-> Compiling hypercore daemon into system/bin/libhypercore.so..."
+clang -O3 -flto -s -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/system/bin/libhypercore.so"
+cp "$PROJECT_DIR/system/bin/libhypercore.so" "$PROJECT_DIR/system/bin/hypercore"
+cp "$PROJECT_DIR/system/bin/libhypercore.so" "$PROJECT_DIR/libhypercore.so"
+cp "$PROJECT_DIR/system/bin/libhypercore.so" "$PROJECT_DIR/hypercore"
 
 echo "-> Setting executable bits..."
-chmod +x libhypercore.so hypercore customize.sh post-fs-data.sh service.sh uninstall.sh
+chmod +x system/bin/libhypercore.so system/bin/hypercore libhypercore.so hypercore customize.sh post-fs-data.sh service.sh uninstall.sh
 
 echo "-> Generating SHA-256 integrity checksums..."
-sha256sum libhypercore.so hypercore customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html > checksums.sha256
+sha256sum system/bin/libhypercore.so system/bin/hypercore libhypercore.so hypercore customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html > checksums.sha256
 
 echo "-> Packaging module zip..."
 rm -f "$RELEASE_DIR/$ZIP_OUT"
 zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     META-INF \
+    system \
     webroot \
     customize.sh \
     module.prop \
