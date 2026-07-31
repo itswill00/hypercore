@@ -7,7 +7,13 @@ done
 
 sleep 5
 
+pkill -f "libhypercore.so" >/dev/null 2>&1
 pkill -f "hypercore" >/dev/null 2>&1
 
-chmod 755 "$MODDIR/hypercore"
-exec "$MODDIR/hypercore"
+if [ -f "$MODDIR/libhypercore.so" ]; then
+    chmod 755 "$MODDIR/libhypercore.so"
+    exec "$MODDIR/libhypercore.so"
+else
+    chmod 755 "$MODDIR/hypercore"
+    exec "$MODDIR/hypercore"
+fi

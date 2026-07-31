@@ -134,7 +134,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const cmdList = [
       `echo "IPC:$(echo GET_STATUS | nc -U ${MOD}/hypercore.sock 2>/dev/null || true)"`,
-      `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
+      `PID=$(pidof libhypercore.so hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
       `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
       `echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)"`,
       `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"`,
