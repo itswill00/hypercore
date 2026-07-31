@@ -146,20 +146,6 @@ void apply_profile(profile_t prof, int tier) {
             break;
         }
 
-        case PROFILE_TOUCH:
-            set_cpu_governor(gov);
-            set_cpu_freqs(1000000, FREQ_LITTLE_MAX, 1200000, FREQ_BIG_MAX, "0", "25000");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
-            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "500000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "20");
-            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
-            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
-            break;
-
         case PROFILE_GAMING: {
             const char *gpu_freq = (tier >= 3) ? "700000" : "800000";
             int big_min = (tier >= 3) ? 1600000 : 1800000;

@@ -45,8 +45,7 @@ void load_gamelist(void) {
         if (colon) {
             *colon = '\0';
             char *prof_str = colon + 1;
-            if (strcmp(prof_str, "TOUCH") == 0) prof = PROFILE_TOUCH;
-            else if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_INTERACTIVE;
+            if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_INTERACTIVE;
             else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_SLEEP;
             else if (strcmp(prof_str, "GAMING") == 0) prof = PROFILE_GAMING;
         }

@@ -15,7 +15,7 @@
 #include "ipc.hpp"
 
 const char *g_profile_names[] = {
-    "Sleep", "Interactive", "Touch", "Gaming", "Thermal"
+    "Sleep", "Interactive", "Gaming", "Thermal"
 };
 
 volatile sig_atomic_t g_running = 1;

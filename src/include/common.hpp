@@ -27,7 +27,6 @@
 typedef enum {
     PROFILE_SLEEP,
     PROFILE_INTERACTIVE,
-    PROFILE_TOUCH,
     PROFILE_GAMING,
     PROFILE_THERMAL
 } profile_t;
