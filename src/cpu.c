@@ -83,8 +83,34 @@ void set_cpu_governor(const char *gov) {
     }
 }
 
+void apply_cgroup_gaming_policy(int enable) {
+    if (enable) {
+        sysfs_write("/dev/cpuset/background/cpus", "0-1");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-1");
+        sysfs_write("/dev/cpuctl/background/cpu.shares", "102");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "20");
+
+        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
+        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "50");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+    } else {
+        sysfs_write("/dev/cpuset/background/cpus", "0-3");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+        sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+
+        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
+        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+    }
+}
+
 void apply_profile(profile_t prof, int tier) {
     const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
+
+    apply_cgroup_gaming_policy(prof == PROFILE_GAMING);
 
     switch (prof) {
         case PROFILE_SLEEP:
