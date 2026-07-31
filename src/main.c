@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
             g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
-            g_state.gaming_hold_ticks = 10;
+            g_state.gaming_hold_ticks = 2;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = PROFILE_GAMING;

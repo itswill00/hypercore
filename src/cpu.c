@@ -87,15 +87,15 @@ void set_cpu_governor(const char *gov) {
 
 void apply_cgroup_gaming_policy(int enable) {
     if (enable) {
-        sysfs_write("/dev/cpuset/background/cpus", "0-1");
-        sysfs_write("/dev/cpuset/system-background/cpus", "0-1");
-        sysfs_write("/dev/cpuctl/background/cpu.shares", "102");
+        sysfs_write("/dev/cpuset/background/cpus", "0-3");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+        sysfs_write("/dev/cpuctl/background/cpu.shares", "512");
         sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "20");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "50");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "30");
         sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
     } else {
         sysfs_write("/dev/cpuset/background/cpus", "0-3");
@@ -117,10 +117,10 @@ void apply_profile(profile_t prof, int tier) {
     switch (prof) {
         case PROFILE_SLEEP:
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, 1200000, 725000, 1200000, "4000", "1000");
-            compact_memory_on_sleep();
+            set_cpu_freqs(500000, 1200000, 725000, 1200000, "2000", "1000");
             set_io_nr_requests("32");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");

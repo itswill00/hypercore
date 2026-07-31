@@ -162,7 +162,6 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
 
                 // Cache active game PID & details
                 s_cached_game_pid = pid;
-                setpriority(PRIO_PROCESS, pid, -10);
                 strncpy(s_cached_game_pkg, s_games[i], PKG_NAME_LEN - 1);
                 s_cached_game_pkg[PKG_NAME_LEN - 1] = '\0';
                 s_cached_game_profile = s_profiles[i];
