@@ -117,11 +117,13 @@ void apply_profile(profile_t prof, int tier) {
     switch (prof) {
         case PROFILE_SLEEP:
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, 1200000, 725000, 1200000, "2000", "1000");
+            set_cpu_freqs(500000, 1200000, 725000, 1200000, "4000", "1000");
             set_io_nr_requests("32");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "50");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
@@ -137,6 +139,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
