@@ -124,6 +124,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "50");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
@@ -141,6 +142,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
@@ -159,6 +161,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
