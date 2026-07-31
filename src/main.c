@@ -12,6 +12,7 @@
 #include "io.hpp"
 #include "thermal.hpp"
 #include "gamelist.hpp"
+#include "ipc.hpp"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Touch", "Gaming", "Thermal"
@@ -114,6 +115,7 @@ int main(int argc, char *argv[]) {
 
     init_hardware_nodes();
     write_pid_file();
+    init_ipc_socket();
 
     log_info("DAEMON", "Tanzanite HyperCore v3.9 started.");
 
@@ -223,11 +225,12 @@ int main(int argc, char *argv[]) {
             s_rotate_counter = 0;
         }
 
-        sleep(2);
+        handle_ipc_events(2000);
     }
 
     log_info("DAEMON", "Tanzanite HyperCore daemon stopped.");
     update_module_prop_status("Stopped");
+    close_ipc_socket();
     remove_pid_file();
     return 0;
 }

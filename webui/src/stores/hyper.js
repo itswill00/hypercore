@@ -128,6 +128,7 @@ export const useHyperStore = defineStore('hyper', () => {
     isRefreshing = true
 
     const cmd = [
+      `echo "IPC:$(echo GET_STATUS | nc -U ${MOD}/hypercore.sock 2>/dev/null || true)"`,
       `PID=$(pidof hypercore 2>/dev/null); echo "PID:\${PID:-}"`,
       `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
       `echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)"`,
@@ -169,13 +170,23 @@ export const useHyperStore = defineStore('hyper', () => {
         if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
       })
 
-      // Daemon
-      daemonPid.value = (kv.PID || '').trim()
+      // Fast IPC Check
+      if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
+        try {
+          const ipcData = JSON.parse(kv.IPC)
+          daemonPid.value = String(ipcData.pid || '')
+          activeProfile.value = ipcData.profile || '—'
+          thermalTier.value = `Tier ${ipcData.thermal_tier}`
+        } catch {}
+      } else {
+        // Daemon
+        daemonPid.value = (kv.PID || '').trim()
 
-      // Profile from module.prop
-      const desc = kv.DESC || ''
-      const m = desc.match(/\[Active:\s*([^\]]+)\]/)
-      if (m) activeProfile.value = m[1].trim()
+        // Profile from module.prop
+        const desc = kv.DESC || ''
+        const m = desc.match(/\[Active:\s*([^\]]+)\]/)
+        if (m) activeProfile.value = m[1].trim()
+      }
 
       // CPU clusters & governor
       if (kv.CL0) {
