@@ -121,11 +121,12 @@ void apply_profile(profile_t prof, int tier) {
             set_io_nr_requests("32");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             break;
 
         case PROFILE_INTERACTIVE: {
@@ -140,6 +141,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             break;
         }
 
@@ -153,6 +156,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "500000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "20");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             break;
 
         case PROFILE_GAMING: {
@@ -171,6 +176,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "950000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             break;
         }
 
@@ -183,6 +190,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "500000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             break;
     }
 }
