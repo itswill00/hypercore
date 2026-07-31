@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
     write_pid_file();
     init_ipc_socket();
 
-    log_info("DAEMON", "Tanzanite HyperCore v3.9 started.");
+    log_info("DAEMON", "Tanzanite HyperCore v4.0 started.");
 
     apply_cpuset();
     apply_memory_tuning();
