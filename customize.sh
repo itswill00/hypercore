@@ -72,6 +72,19 @@ for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
     fi
 done
 
+ui_print "- Auto-detecting installed games on your device..."
+AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom' 2>/dev/null)
+
+if [ -n "$AUTO_GAMES" ]; then
+    for pkg in $AUTO_GAMES; do
+        echo "$pkg:GAMING" >> "$MODPATH/gamelist.txt"
+        ui_print "  + Auto-added game: $pkg"
+    done
+else
+    ui_print "  (No installed games auto-detected, gamelist ready for manual entries)"
+fi
+set_perm "$MODPATH/gamelist.txt" 0 0 0644
+
 ui_print "- Native daemon v4.1 installed successfully into system/bin."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

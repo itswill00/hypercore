@@ -56,6 +56,32 @@ void load_gamelist(void) {
         s_game_count++;
     }
     fclose(f);
+
+    if (s_game_count == 0) {
+        FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom'", "r");
+        if (pp) {
+            char pkg_buf[128];
+            FILE *fw = fopen(path, "a");
+            while (fgets(pkg_buf, sizeof(pkg_buf), pp) && s_game_count < MAX_GAMES) {
+                size_t len = strlen(pkg_buf);
+                while (len > 0 && (pkg_buf[len - 1] == '\r' || pkg_buf[len - 1] == '\n' || pkg_buf[len - 1] == ' ')) {
+                    pkg_buf[--len] = '\0';
+                }
+                if (pkg_buf[0] == '\0') continue;
+
+                strncpy(s_games[s_game_count], pkg_buf, PKG_NAME_LEN - 1);
+                s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
+                s_profiles[s_game_count] = PROFILE_GAMING;
+                s_game_count++;
+
+                if (fw) {
+                    fprintf(fw, "%s:GAMING\n", pkg_buf);
+                }
+            }
+            if (fw) fclose(fw);
+            pclose(pp);
+        }
+    }
 }
 
 void init_gamelist_watcher(void) {
