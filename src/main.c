@@ -65,6 +65,13 @@ static void init_hardware_nodes(void) {
         }
     }
 
+    if (access("/sys/class/touch/touch_dev/touch_thp_smooth", F_OK) == 0) {
+        strcpy(g_nodes.touch_thp_smooth, "/sys/class/touch/touch_dev/touch_thp_smooth");
+    }
+    if (access("/sys/class/touch/touch_dev/touch_edge", F_OK) == 0) {
+        strcpy(g_nodes.touch_edge, "/sys/class/touch/touch_dev/touch_edge");
+    }
+
     g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
     g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/schedutil", F_OK) == 0);
 }

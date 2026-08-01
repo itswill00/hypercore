@@ -133,6 +133,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_edge, "0");
             break;
 
         case PROFILE_INTERACTIVE: {
@@ -155,6 +157,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_edge, "0");
             break;
         }
 
@@ -177,6 +181,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
+            sysfs_write(g_nodes.touch_thp_smooth, "1");
+            sysfs_write(g_nodes.touch_edge, "1");
             break;
         }
 
@@ -191,6 +197,8 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_edge, "0");
             break;
     }
 }

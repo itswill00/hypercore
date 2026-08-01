@@ -41,6 +41,8 @@ struct hw_nodes {
     char bat_temp[256];
     char bat_status[256];
     char backlight[256];
+    char touch_thp_smooth[256];
+    char touch_edge[256];
     int  has_sugov_ext;
     int  has_schedutil;
 };
