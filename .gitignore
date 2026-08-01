@@ -1,0 +1,20 @@
+# Build artifacts and compiled binaries
+hypercore
+libhypercore.so
+system/bin/
+*.so
+*.zip
+*.tmp
+*.log
+.hyperflow_lock
+.hypercore_lock
+checksums.sha256
+
+# Generated frontend build artifacts
+webroot/index.html
+webui/dist/
+webui/node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db

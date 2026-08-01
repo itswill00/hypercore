@@ -1,0 +1,21 @@
+# Tanzanite HyperCore System Properties (Safe & Stable for MIUI / HyperOS)
+
+# Dalvik / Dex2oat compiler threads (All 8 CPU Cores)
+dalvik.vm.dex2oat-threads=8
+dalvik.vm.image-dex2oat-threads=8
+dalvik.vm.boot-dex2oat-threads=8
+
+# SurfaceFlinger & Rendering Smoothness (Zero-Lag App Switching)
+debug.sf.latch_unsignaled=1
+ro.surface_flinger.max_frame_buffer_acquired_buffers=3
+vendor.perf.gesturement.enable=1
+
+# SmartPower & Joyose tweaks
+persist.sys.smartpower.display_camera_fps_enable=false
+persist.sys.smartpower.display.enable=false
+persist.sys.powerkeeper.fps_limit=0
+persist.sys.joyose.fps_boost=true
+
+# Wi-Fi low latency
+wifi.supplicant_scan_interval=180
+persist.sys.wifi.low_latency=1

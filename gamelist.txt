@@ -1,0 +1,60 @@
+# Tanzanite HyperCore Game List
+# Package names of games automatically trigger Profile: GAMING
+# One package name per line. Comments starting with # are ignored.
+
+# PUBG & Battle Royale Games
+com.tencent.ig
+com.pubg.krmobile
+com.pubg.imobile
+com.vng.pubgmobile
+com.pubg.newstate
+com.redefine.game.game6
+com.tencent.tmgp.pubgmhd
+
+# MOBA & Tactical Arena Games
+com.mobile.legends
+com.mobilelegends.win
+com.riotgames.league.wildrift
+com.garena.game.kgid
+com.garena.game.kgvn
+com.garena.game.kgtw
+com.tencent.ng.mobile
+com.tencent.tmgp.sgame
+
+# Free Fire & Garena Titles
+com.dts.freefireth
+com.dts.freefiremax
+
+# Call of Duty & FPS Shooter Games
+com.garena.game.codm
+com.activision.callofduty.shooter
+com.activision.callofduty.warzone
+com.proximabeta.mf.u1
+com.riotgames.valorant
+
+# HoYoverse & Anime Action RPGs
+com.miHoYo.GenshinImpact
+com.miHoYo.Yuanshen
+com.miHoYo.hkrpg
+com.HoYoverse.hkrpg
+com.miHoYo.ZenlessZoneZero
+com.miHoYo.enterprise.NGHSR
+com.kurogame.wutheringwaves.global
+com.kurogame.wutheringwaves
+com.kurogame.haru.google
+com.nexon.bluearchive
+com.YostarJP.BlueArchive
+
+# Racing & Arcade High-FPS Games
+com.carxtech.carxdr2
+com.carxtech.sr
+com.gameloft.android.ANMP.GloftA9HM
+com.ea.gp.fifamobile
+com.ea.gp.apexlegendsmobilefps
+com.ea.gp.apexlegendsshimmer
+
+# Sandbox, Survival & Casual Action Games
+com.epicgames.fortnite
+com.roblox.client
+com.mojang.minecraftpe
+com.stumbleboys.stumbleguys

@@ -1,0 +1,196 @@
+/*
+ * HyperCore - CPU Governor & Scaling Tuning Implementation
+ * Author: @itswill00
+ */
+
+#include "cpu.hpp"
+#include "memory.hpp"
+#include "io.hpp"
+
+void set_rate_limits(int cpu, const char *up, const char *down) {
+    char path[256];
+    if (g_nodes.has_sugov_ext) {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/sugov_ext/up_rate_limit_us", cpu);
+        sysfs_write(path, up);
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/sugov_ext/down_rate_limit_us", cpu);
+        sysfs_write(path, down);
+    }
+    if (g_nodes.has_schedutil) {
+        sysfs_write("/sys/devices/system/cpu/cpufreq/schedutil/up_rate_limit_us", up);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us", down);
+    }
+}
+
+void apply_cpuset(void) {
+    if (access("/dev/cpuset", F_OK) == 0) {
+        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
+        sysfs_write("/dev/cpuset/foreground/cpus", "0-7");
+        sysfs_write("/dev/cpuset/background/cpus", "0-3");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+    }
+
+    // Kernel EAS Scheduler Latency Tuning
+    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "500000");
+    sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
+}
+
+void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
+    char path[256], buf[32];
+
+    // Policy 0 (Little Cores 0-5)
+    snprintf(buf, sizeof(buf), "%d", min_lit);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq", buf);
+    snprintf(buf, sizeof(buf), "%d", max_lit);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq", buf);
+
+    for (int i = 0; i <= 5; i++) {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
+        snprintf(buf, sizeof(buf), "%d", min_lit);
+        sysfs_write(path, buf);
+
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
+        snprintf(buf, sizeof(buf), "%d", max_lit);
+        sysfs_write(path, buf);
+
+        set_rate_limits(i, up_rate, down_rate);
+    }
+
+    // Policy 6 (Big Cores 6-7)
+    snprintf(buf, sizeof(buf), "%d", min_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
+    snprintf(buf, sizeof(buf), "%d", max_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
+
+    for (int i = 6; i <= 7; i++) {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
+        snprintf(buf, sizeof(buf), "%d", min_big);
+        sysfs_write(path, buf);
+
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
+        snprintf(buf, sizeof(buf), "%d", max_big);
+        sysfs_write(path, buf);
+
+        set_rate_limits(i, up_rate, down_rate);
+    }
+}
+
+void set_cpu_governor(const char *gov) {
+    char path[256];
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", gov);
+
+    for (int i = 0; i <= 7; i++) {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
+        sysfs_write(path, gov);
+    }
+}
+
+void apply_cgroup_gaming_policy(int enable) {
+    if (enable) {
+        sysfs_write("/dev/cpuset/background/cpus", "0-3");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+        sysfs_write("/dev/cpuctl/background/cpu.shares", "512");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+
+        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
+        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "30");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+    } else {
+        sysfs_write("/dev/cpuset/background/cpus", "0-3");
+        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+        sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+
+        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
+        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+    }
+}
+
+void apply_profile(profile_t prof, int tier) {
+    const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
+
+    apply_cgroup_gaming_policy(prof == PROFILE_GAMING);
+
+    switch (prof) {
+        case PROFILE_SLEEP:
+            set_cpu_governor(gov);
+            set_cpu_freqs(500000, 1200000, 725000, 1200000, "4000", "1000");
+            set_io_nr_requests("32");
+            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "50");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            break;
+
+        case PROFILE_INTERACTIVE: {
+            int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
+            set_cpu_governor(gov);
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1000000, big_max, "500", "20000");
+            set_io_nr_requests("64");
+            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            break;
+        }
+
+        case PROFILE_GAMING: {
+            const char *gpu_freq = (tier >= 3) ? "500000" : "600000";
+            int big_min = (tier >= 3) ? 1600000 : 1800000;
+            set_cpu_governor(gov);
+            set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
+            set_io_nr_requests("128");
+            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
+            break;
+        }
+
+        case PROFILE_THERMAL:
+            set_cpu_governor(gov);
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 900000, 1600000, "2000", "5000");
+            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "500000");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+            break;
+    }
+}
