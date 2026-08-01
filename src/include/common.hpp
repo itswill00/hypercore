@@ -43,6 +43,7 @@ struct hw_nodes {
     char backlight[256];
     char touch_thp_smooth[256];
     char touch_edge[256];
+    char charge_control[256];
     int  has_sugov_ext;
     int  has_schedutil;
 };

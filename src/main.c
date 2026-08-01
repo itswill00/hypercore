@@ -72,6 +72,18 @@ static void init_hardware_nodes(void) {
         strcpy(g_nodes.touch_edge, "/sys/class/touch/touch_dev/touch_edge");
     }
 
+    const char *chg_paths[] = {
+        "/sys/class/power_supply/battery/constant_charge_current_max",
+        "/sys/class/power_supply/battery/charge_control_limit",
+        NULL
+    };
+    for (int i = 0; chg_paths[i]; i++) {
+        if (access(chg_paths[i], F_OK) == 0) {
+            strcpy(g_nodes.charge_control, chg_paths[i]);
+            break;
+        }
+    }
+
     g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
     g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/schedutil", F_OK) == 0);
 }
@@ -243,6 +255,8 @@ int main(int argc, char *argv[]) {
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;
         }
+
+        tune_memory_pressure();
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {

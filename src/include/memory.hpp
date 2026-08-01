@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 void apply_memory_tuning(void);
+void tune_memory_pressure(void);
 
 #ifdef __cplusplus
 }

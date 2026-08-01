@@ -29,9 +29,10 @@ void apply_cpuset(void) {
         sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
     }
 
-    // Kernel EAS Scheduler Latency Tuning
-    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "500000");
+    // Kernel EAS Scheduler Latency & Task Migration Tuning
+    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
     sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
+    sysfs_write("/proc/sys/kernel/sched_nr_migrate", "32");
 }
 
 void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
@@ -135,6 +136,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
             sysfs_write(g_nodes.touch_edge, "0");
+            sysfs_write(g_nodes.charge_control, "8");
             break;
 
         case PROFILE_INTERACTIVE: {
@@ -159,6 +161,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
             sysfs_write(g_nodes.touch_edge, "0");
+            sysfs_write(g_nodes.charge_control, "8");
             break;
         }
 
@@ -183,6 +186,13 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             sysfs_write(g_nodes.touch_thp_smooth, "1");
             sysfs_write(g_nodes.touch_edge, "1");
+
+            // Smart Thermal Charging Guard: limit charge current to 1800mA while gaming to prevent overheating
+            if (g_state.is_charging) {
+                sysfs_write(g_nodes.charge_control, "4");
+            } else {
+                sysfs_write(g_nodes.charge_control, "8");
+            }
             break;
         }
 
@@ -199,6 +209,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
             sysfs_write(g_nodes.touch_edge, "0");
+            sysfs_write(g_nodes.charge_control, "8");
             break;
     }
 }
