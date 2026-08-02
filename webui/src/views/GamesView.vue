@@ -1,13 +1,13 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Sticky Header -->
+    <!-- Top Header -->
     <div class="page-header">
       <div>
-        <div class="page-header-title">My games</div>
-        <div class="page-header-sub">HyperCore By @itswill00</div>
+        <div class="page-header-title">Detected Games</div>
+        <div class="page-header-sub">Installed games that trigger Gaming mode</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
+        <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()" title="Refresh">
           <Icons name="refresh" :size="16" />
         </button>
         <button class="btn-md3 btn-md3-primary" style="padding: 6px 12px; font-size: 11px;" @click="showPicker = true">

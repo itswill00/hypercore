@@ -1,10 +1,10 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Clean MD3 Header -->
+    <!-- Top Header -->
     <div class="page-header">
       <div>
-        <div class="page-header-title">System log</div>
-        <div class="page-header-sub">HyperCore By @itswill00</div>
+        <div class="page-header-title">Activity Log</div>
+        <div class="page-header-sub">History of profile switches and system events</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn-md3 btn-md3-secondary" style="padding: 6px 14px; font-size: 12px;" title="Copy all logs" @click="copyLog">

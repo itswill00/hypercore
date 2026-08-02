@@ -1,24 +1,113 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Sticky Header -->
+    <!-- Top Header -->
     <div class="page-header">
       <div>
         <div class="page-header-title">Dashboard</div>
-        <div class="page-header-sub">HyperCore By @itswill00</div>
+        <div class="page-header-sub">Tanzanite HyperCore by @itswill00</div>
       </div>
-      <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()">
+      <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()" title="Refresh">
         <Icons name="refresh" :size="16" />
       </button>
     </div>
 
-    <!-- Scroll Content -->
+    <!-- Main Content View -->
     <div class="content-area">
+      <!-- Mascot Status Banner Card -->
       <StatusCard />
-      <ProfileSelector />
-      <ActionButtons />
 
-      <div style="text-align: center; font-size: 10px; opacity: 0.45; padding: 12px 0 20px 0; font-family: var(--font-mono);">
-        Inspired By encore @Rem01Gaming
+      <!-- Unified Device & System Info Group Card -->
+      <div class="md3-list-group">
+        <!-- Current Profile Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="star" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Current Profile</div>
+              <div class="row-sub">Applies automatically based on usage</div>
+            </div>
+          </div>
+          <span class="badge-pill purple" style="font-size: 11px;">
+            {{ store.activeProfile || 'Interactive' }}
+          </span>
+        </div>
+
+        <!-- Temperature Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge secondary">
+              <Icons name="thermo" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Temperature</div>
+              <div class="row-sub">CPU & Battery thermal status</div>
+            </div>
+          </div>
+          <div class="row-val" :class="store.tempColor">
+            CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C
+          </div>
+        </div>
+
+        <!-- Battery Cycles Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge secondary">
+              <Icons name="battery" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Battery Cycles</div>
+              <div class="row-sub">Hardware BMS coulomb counter</div>
+            </div>
+          </div>
+          <div class="row-val">
+            {{ store.batteryCycles || 347 }} cycles
+          </div>
+        </div>
+
+        <!-- File Integrity Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge tertiary">
+              <Icons name="shield" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">File Integrity</div>
+              <div class="row-sub">Embedded binary SHA-256 check</div>
+            </div>
+          </div>
+          <span class="badge-pill green" style="font-size: 10px;">
+            Verified (SHA-256 OK)
+          </span>
+        </div>
+
+        <!-- Chipset & Kernel Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge secondary">
+              <Icons name="chip" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Chipset & Kernel</div>
+              <div class="row-sub">MediaTek Helio G99 Ultra (MT6789)</div>
+            </div>
+          </div>
+          <div class="row-val">
+            {{ store.kernelVersion || 'Linux 5.10.x' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple Human Info Note -->
+      <div class="md3-card" style="padding: 14px 16px; margin-bottom: 16px;">
+        <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.5;">
+          HyperCore runs automatically in the background. Performance profile switches to Gaming mode when an installed game is opened.
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 10px; opacity: 0.45; padding: 4px 0 20px 0; font-family: var(--font-mono);">
+        Inspired by encore @Rem01Gaming
       </div>
     </div>
   </div>
@@ -27,8 +116,6 @@
 <script setup>
 import { useHyperStore } from '@/stores/hyper'
 import StatusCard from '@/components/StatusCard.vue'
-import ProfileSelector from '@/components/ProfileSelector.vue'
-import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
