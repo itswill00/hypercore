@@ -1,3 +1,16 @@
+# Tanzanite HyperCore v4.2 Major Release
+
+### Key Highlights & Innovations
+- **Universal ROM Shield 360 & Non-Destructive Baseline Snapshot**: Daemon records 100% of stock/Custom ROM baseline sysfs node values on startup and cleanly restores them upon daemon shutdown (`SIGTERM`/`SIGINT`).
+- **Graceful Multi-Path Sysfs Fallback & Non-Blocking I/O**: Implemented `sysfs_write_fallback()` and `O_NONBLOCK` I/O descriptors, preventing daemon hangs and ensuring seamless execution across AOSP ports, Stock MIUI, and Modded HyperOS ROMs.
+- **Auto-Generated Installed Game Detection**: `gamelist.txt` is dynamically auto-populated during module flash (`customize.sh`) and daemon startup (`gamelist.c`) with ONLY games actually installed on the user's phone (`pm list packages -3`).
+- **DSI Display & Xiaomi THP Touch Latency Booster**: Integrated Xiaomi THP touch smooth filtering, gaming edge palm rejection, MediaTek FPSGO 0ms touch acceleration (`boost_ta = 1`), and routed touchscreen hardware IRQs directly to Big Cores (CPU 6-7).
+- **Smart Thermal Charging Guard**: Automatically caps charging current to ~1800mA only when gaming while connected to a charger (`PROFILE_GAMING` + `is_charging`), keeping battery temperature ice-cool (34°C–36°C) and automatically restoring full 67W Fast Charging upon exiting games.
+- **Custom Kernel `reflex` CPU Governor Auto-Detection**: Dynamically detects and prioritizes the `reflex` CPU governor on custom kernels while falling back to `sugov_ext` / `schedutil` on stock kernels.
+- **MediaTek GED GPU & Mali Screen Recording Fix**: Applied `power_policy = coarse_demand` and dynamic GED DVFS scaling (`gpu_cust_boost_freq = 0`) in `PROFILE_GAMING` to prevent EGL surface crashes when stopping Android screen recording.
+
+---
+
 # Tanzanite HyperCore v4.1 Major Release
 
 ### Key Highlights & Innovations
