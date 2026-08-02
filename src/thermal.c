@@ -52,6 +52,19 @@ void scan_thermal_zones(void) {
 
     if (access("/sys/class/power_supply/battery/status", F_OK) == 0) {
         strcpy(g_nodes.bat_status, "/sys/class/power_supply/battery/status");
+    } else {
+        const char *st_paths[] = {
+            "/sys/class/power_supply/bms/status",
+            "/sys/class/power_supply/usb/status",
+            "/sys/class/power_supply/main/status",
+            NULL
+        };
+        for (int i = 0; st_paths[i]; i++) {
+            if (access(st_paths[i], F_OK) == 0) {
+                strcpy(g_nodes.bat_status, st_paths[i]);
+                break;
+            }
+        }
     }
 }
 
