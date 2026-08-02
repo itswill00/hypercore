@@ -309,14 +309,16 @@ export const useHyperStore = defineStore('hyper', () => {
       }
       thermalTier.value = tier
 
-      // Games: Store clean package names
+      // Games: Store package names and profile modes
       const parsedPkgs = []
       gameBlock.trim().split('\n').forEach(line => {
         const trimmed = line.trim().replace(/\r/g, '')
         if (trimmed.length > 0 && trimmed[0] !== '#') {
-          const clean = trimmed.split(':')[0].trim()
-          if (clean && !parsedPkgs.includes(clean)) {
-            parsedPkgs.push(clean)
+          const parts = trimmed.split(':')
+          const pkg = parts[0].trim()
+          const profile = parts[1] ? parts[1].trim() : 'GAMING'
+          if (pkg && !parsedPkgs.some(p => p.pkg === pkg)) {
+            parsedPkgs.push({ pkg, profile })
           }
         }
       })
@@ -375,26 +377,28 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   /* ── Clean Pure Package Game Management (Like Encore) ── */
-  function addGame(rawPkg) {
+  function addGame(rawPkg, profile = 'GAMING') {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
     if (!pkg) return
 
     // Optimistic memory addition with duplicate check
-    if (!games.value.includes(pkg)) {
-      games.value.push(pkg)
+    if (!games.value.some(g => g.pkg === pkg)) {
+      games.value.push({ pkg, profile })
     }
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  touch "$f" 2>/dev/null`,
-      `  if ! grep -qxE '${pkg}' "$f" 2>/dev/null; then`,
-      `    echo '${pkg}' >> "$f"`,
+      `  if [ -f "$f" ]; then`,
+      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
+      `    echo '${pkg}:${profile}' >> "$f.tmp"`,
+      `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
       `done`
     ].join('\n')
     execCommand(cmd)
     setTimeout(refresh, 400)
-    return `Added ${pkg}`
+    return `Added ${pkg} (${profile})`
   }
 
   function removeGame(rawPkg) {
@@ -402,7 +406,7 @@ export const useHyperStore = defineStore('hyper', () => {
     if (!pkg) return
 
     // Optimistic memory removal
-    games.value = games.value.filter(g => g !== pkg)
+    games.value = games.value.filter(g => g.pkg !== pkg)
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
@@ -415,6 +419,25 @@ export const useHyperStore = defineStore('hyper', () => {
     execCommand(cmd)
     setTimeout(refresh, 400)
     return `Removed ${pkg}`
+  }
+
+  function updateGameProfile(pkg, profile) {
+    const existing = games.value.find(g => g.pkg === pkg)
+    if (existing) {
+      existing.profile = profile
+    }
+
+    const cmd = [
+      `for f in ${GL_MOD} ${GL_SD}; do`,
+      `  if [ -f "$f" ]; then`,
+      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
+      `    echo '${pkg}:${profile}' >> "$f.tmp"`,
+      `    mv "$f.tmp" "$f" 2>/dev/null`,
+      `  fi`,
+      `done`
+    ].join('\n')
+    execCommand(cmd)
+    return `Updated ${pkg} to ${profile}`
   }
 
   function launchGame(rawPkg) {
@@ -432,6 +455,6 @@ export const useHyperStore = defineStore('hyper', () => {
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
-    addGame, removeGame, launchGame, setLogsActive
+    addGame, removeGame, updateGameProfile, launchGame, setLogsActive
   }
 })

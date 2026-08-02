@@ -76,7 +76,18 @@
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 6px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px;">
+          <!-- Profile Selector dropdown -->
+          <select
+            v-model="item.profile"
+            @change="changeProfile(item.pkg, item.profile)"
+            class="select-md3"
+          >
+            <option value="GAMING">Gaming</option>
+            <option value="INTERACTIVE">Balanced</option>
+            <option value="SLEEP">Saver</option>
+          </select>
+
           <button
             class="btn-md3 btn-md3-primary"
             style="padding: 5px 10px; font-size: 11px; height: 30px;"
@@ -134,13 +145,13 @@ onMounted(() => {
 const displayGames = computed(() => {
   if (!store.games) return []
 
-  const parsed = store.games.map(rawPkg => {
-    const pkg = rawPkg.split(':')[0].trim()
-    const appName = installedMap.value[pkg]
+  const parsed = store.games.map(item => {
+    const appName = installedMap.value[item.pkg]
 
     return {
-      pkg,
-      name: appName || pkg
+      pkg: item.pkg,
+      profile: item.profile,
+      name: appName || item.pkg
     }
   })
 
@@ -167,6 +178,11 @@ async function launch(pkg) {
   const msg = store.launchGame(pkg)
   if (msg && toast) toast(msg)
 }
+
+async function changeProfile(pkg, profile) {
+  const msg = store.updateGameProfile(pkg, profile)
+  if (msg && toast) toast(msg)
+}
 </script>
 
 <style scoped>
@@ -188,5 +204,22 @@ async function launch(pkg) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.select-md3 {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.select-md3:focus {
+  border-color: var(--primary);
 }
 </style>

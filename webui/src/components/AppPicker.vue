@@ -93,7 +93,7 @@ const searchInput = ref(null)
 
 const existingPkgs = computed(() => {
   if (!store.games) return []
-  return store.games.map(g => g.split(':')[0].trim())
+  return store.games.map(g => g.pkg)
 })
 
 const filtered = computed(() => {
