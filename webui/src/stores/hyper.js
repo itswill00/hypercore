@@ -114,6 +114,13 @@ export const useHyperStore = defineStore('hyper', () => {
     }, 1000)
   }
 
+  function stopUptimeTicker() {
+    if (uptimeInterval) {
+      clearInterval(uptimeInterval)
+      uptimeInterval = null
+    }
+  }
+
   /* ── Actions ── */
   async function fetchDeviceInfo() {
     try {
@@ -185,12 +192,14 @@ export const useHyperStore = defineStore('hyper', () => {
       if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
       // Fast IPC Check
+      let ipcSetThermal = false
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
         try {
           const ipcData = JSON.parse(kv.IPC)
           daemonPid.value = String(ipcData.pid || '')
           activeProfile.value = ipcData.profile || '—'
           thermalTier.value = `Tier ${ipcData.thermal_tier}`
+          ipcSetThermal = true
         } catch {}
       } else {
         // Daemon
@@ -289,25 +298,27 @@ export const useHyperStore = defineStore('hyper', () => {
         vmInfo.value = `${p[0] || '15'} / ${p[1] || '100'}`
       }
 
-      // Thermal tier
-      const logLines = logBlock.trim().split('\n')
-      let tier = '—'
-      for (let i = logLines.length - 1; i >= 0; i--) {
-        if (logLines[i].indexOf('Thermal Tier:') !== -1) {
-          if (logLines[i].indexOf('T3') !== -1) tier = 'Tier 3 (Protection)'
-          else if (logLines[i].indexOf('T2') !== -1) tier = 'Tier 2 (Warm)'
-          else if (logLines[i].indexOf('T1') !== -1) tier = 'Tier 1 (Normal)'
-          else tier = 'Tier 0 (Optimal)'
-          break
+      // Thermal tier — only fall back to log/temp estimate if IPC did not already set it
+      if (!ipcSetThermal) {
+        const logLines = logBlock.trim().split('\n')
+        let tier = '—'
+        for (let i = logLines.length - 1; i >= 0; i--) {
+          if (logLines[i].indexOf('Thermal Tier:') !== -1) {
+            if (logLines[i].indexOf('T3') !== -1) tier = 'Tier 3 (Protection)'
+            else if (logLines[i].indexOf('T2') !== -1) tier = 'Tier 2 (Warm)'
+            else if (logLines[i].indexOf('T1') !== -1) tier = 'Tier 1 (Normal)'
+            else tier = 'Tier 0 (Optimal)'
+            break
+          }
         }
+        if (tier === '—' && cpuTemp.value > 0) {
+          if (cpuTemp.value >= 75) tier = 'Tier 3 (Protection)'
+          else if (cpuTemp.value >= 65) tier = 'Tier 2 (Warm)'
+          else if (cpuTemp.value >= 58) tier = 'Tier 1 (Normal)'
+          else tier = 'Tier 0 (Optimal)'
+        }
+        thermalTier.value = tier
       }
-      if (tier === '—' && cpuTemp.value > 0) {
-        if (cpuTemp.value >= 75) tier = 'Tier 3 (Protection)'
-        else if (cpuTemp.value >= 65) tier = 'Tier 2 (Warm)'
-        else if (cpuTemp.value >= 58) tier = 'Tier 1 (Normal)'
-        else tier = 'Tier 0 (Optimal)'
-      }
-      thermalTier.value = tier
 
       // Games: Store package names and profile modes
       const parsedPkgs = []
@@ -347,7 +358,8 @@ export const useHyperStore = defineStore('hyper', () => {
 
   async function restartDaemon() {
     loading.value = true
-    await execCommand(`pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/hypercore >/dev/null 2>&1 &`)
+    // Use exact binary name matching (-x) to avoid killing module dir references
+    await execCommand(`pkill -9 -x libhypercore.so 2>/dev/null; pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/system/bin/libhypercore.so >/dev/null 2>&1 &`)
     loading.value = false
     setTimeout(refresh, 1500)
     return 'Daemon restarted'
@@ -385,6 +397,9 @@ export const useHyperStore = defineStore('hyper', () => {
     if (!games.value.some(g => g.pkg === pkg)) {
       games.value.push({ pkg, profile })
     }
+
+    // Invalidate app list cache so next AppPicker open shows fresh list
+    import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
@@ -456,6 +471,6 @@ export const useHyperStore = defineStore('hyper', () => {
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
-    addGame, removeGame, updateGameProfile, launchGame, setLogsActive
+    addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker
   }
 })

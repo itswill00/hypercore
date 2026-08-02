@@ -105,6 +105,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (refreshInterval) clearInterval(refreshInterval)
+  store.stopUptimeTicker()
 })
 </script>
 

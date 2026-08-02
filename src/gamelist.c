@@ -91,6 +91,9 @@ void init_gamelist_watcher(void) {
     char path[256];
     snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
     inotify_add_watch(s_inotify_fd, path, IN_MODIFY | IN_CLOSE_WRITE);
+
+    /* Also watch the sdcard mirror so changes there are picked up too */
+    inotify_add_watch(s_inotify_fd, "/sdcard/Android/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
 }
 
 void check_gamelist_inotify(void) {
