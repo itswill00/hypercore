@@ -107,6 +107,8 @@ void apply_cgroup_gaming_policy(int enable) {
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
     }
 }
 
@@ -137,6 +139,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "400000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "0");
             const char *sleep_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
@@ -197,14 +200,12 @@ void apply_profile(profile_t prof, int tier) {
             set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
-            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
-            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "40");
             const char *gaming_game_mode_nodes[] = {
@@ -213,6 +214,10 @@ void apply_profile(profile_t prof, int tier) {
                 NULL
             };
             sysfs_write_fallback(gaming_game_mode_nodes, "1");
+            sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             sysfs_write(g_nodes.touch_thp_smooth, "1");
@@ -230,12 +235,16 @@ void apply_profile(profile_t prof, int tier) {
         case PROFILE_THERMAL: {
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, 900000, 1600000, "2000", "5000");
+            set_io_nr_requests("64");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
-            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
-            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "500000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "0");
             const char *thermal_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
@@ -243,6 +252,10 @@ void apply_profile(profile_t prof, int tier) {
                 NULL
             };
             sysfs_write_fallback(thermal_game_mode_nodes, "0");
+            sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "20");
+            sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
