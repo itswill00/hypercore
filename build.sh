@@ -52,9 +52,6 @@ clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror -
 echo "-> Setting executable bits..."
 chmod +x system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh uninstall.sh
 
-echo "-> Generating SHA-256 integrity checksums..."
-sha256sum system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html > checksums.sha256
-
 echo "-> Packaging module zip..."
 rm -f "$RELEASE_DIR/$ZIP_OUT"
 zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
@@ -69,8 +66,7 @@ zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     gamelist.txt \
     update.json \
     changelog.md \
-    uninstall.sh \
-    checksums.sha256 >/dev/null
+    uninstall.sh >/dev/null
 
 INTERNAL_DIR="/sdcard/HyperCore_Releases"
 mkdir -p "$INTERNAL_DIR"
