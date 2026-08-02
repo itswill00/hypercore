@@ -81,21 +81,24 @@
 
         <!-- Expandable Chipset Row -->
         <div
-          class="md3-list-row clickable"
-          :class="{ 'expanded-row': expandedRows['chipset'] }"
+          class="md3-list-row expandable-row clickable"
+          :class="{ 'is-expanded': expandedRows['chipset'] }"
           @click="toggleExpand('chipset')"
         >
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="chip" :size="18" />
+          <div class="row-header">
+            <div class="row-left">
+              <div class="icon-badge">
+                <Icons name="chip" :size="18" />
+              </div>
+              <div class="row-meta">
+                <div class="row-title">Chipset</div>
+                <div class="row-sub">Hardware Platform</div>
+              </div>
             </div>
-            <div class="row-meta">
-              <div class="row-title">Chipset</div>
-              <div class="row-sub">Hardware Platform (tap for details)</div>
+            <div class="row-val">
+              Helio G99 Ultra
+              <span class="expand-caret" :class="{ 'open': expandedRows['chipset'] }">▾</span>
             </div>
-          </div>
-          <div class="row-val">
-            Helio G99 Ultra
           </div>
           <div class="expanded-content">
             <div class="expanded-inner">
@@ -108,21 +111,24 @@
 
         <!-- Expandable Kernel Version Row -->
         <div
-          class="md3-list-row clickable"
-          :class="{ 'expanded-row': expandedRows['kernel'] }"
+          class="md3-list-row expandable-row clickable"
+          :class="{ 'is-expanded': expandedRows['kernel'] }"
           @click="toggleExpand('kernel')"
         >
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="cpu" :size="18" />
+          <div class="row-header">
+            <div class="row-left">
+              <div class="icon-badge">
+                <Icons name="cpu" :size="18" />
+              </div>
+              <div class="row-meta">
+                <div class="row-title">Kernel Version</div>
+                <div class="row-sub">Linux Kernel Build</div>
+              </div>
             </div>
-            <div class="row-meta">
-              <div class="row-title">Kernel Version</div>
-              <div class="row-sub">Linux Kernel Build (tap for details)</div>
+            <div class="row-val">
+              {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion.split(' ')[0] : 'Linux 5.10.x' }}
+              <span class="expand-caret" :class="{ 'open': expandedRows['kernel'] }">▾</span>
             </div>
-          </div>
-          <div class="row-val">
-            {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion.split(' ')[0] : 'Linux 5.10.x' }}
           </div>
           <div class="expanded-content">
             <div class="expanded-inner" style="white-space: normal; word-break: break-word;">
