@@ -17,7 +17,7 @@ static const file_checksum_t g_embedded_checksums[] = {
     { "changelog.md", "1e4d4139a898849998de3d58c8f0a75d0653045d4d91d228ee345f2a24ea07dc" },
     { "uninstall.sh", "d744ee35a8c5a6a7f5f9d727655579aab4035efa698d2a00cfbb4948a6fd8d1f" },
     { "webroot/index.html", "81cdaa4265de48b3b550587becdc86fc0cb16ccbe7dea89b5c8534450531c04b" },
-    { "banner.jpg", "b487d7760f77bf6db1c4ac09893664f3e4f7e2ce0eeabace8b56c5fd8bb4e7f6" },
+    { "banner.jpg", "7c529f60727b6cce0736f8df7fe7d14087fb15da15f97ff20cb289456c62def6" },
 };
 
 #endif /* EMBEDDED_CHECKSUMS_HPP */
