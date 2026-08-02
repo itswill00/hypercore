@@ -6,9 +6,6 @@
         <div class="page-header-title">Dashboard</div>
         <div class="page-header-sub">Tanzanite HyperCore by @itswill00</div>
       </div>
-      <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()" title="Refresh">
-        <Icons name="refresh" :size="16" />
-      </button>
     </div>
 
     <!-- Main Content View -->

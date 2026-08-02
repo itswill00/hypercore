@@ -6,15 +6,10 @@
         <div class="page-header-title">Detected Games</div>
         <div class="page-header-sub">Installed games that trigger Gaming mode</div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn-md3 btn-md3-secondary btn-icon-only" @click="store.refresh()" title="Refresh">
-          <Icons name="refresh" :size="16" />
-        </button>
-        <button class="btn-md3 btn-md3-primary" style="padding: 6px 12px; font-size: 11px;" @click="showPicker = true">
-          <Icons name="plus" :size="14" />
-          <span>Add game</span>
-        </button>
-      </div>
+      <button class="btn-md3 btn-md3-primary" style="padding: 6px 12px; font-size: 11px;" @click="showPicker = true">
+        <Icons name="plus" :size="14" />
+        <span>Add game</span>
+      </button>
     </div>
 
     <!-- Scroll Content -->
