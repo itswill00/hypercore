@@ -34,7 +34,7 @@ typedef struct {
 static const file_checksum_t g_embedded_checksums[] = {
 EOF
 
-for f in customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html; do
+for f in customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html banner.jpg; do
     if [ -f "$f" ]; then
         hash=$(sha256sum "$f" | awk '{print $1}')
         echo "    { \"$f\", \"$hash\" }," >> "$EMBED_HEADER"
@@ -66,7 +66,8 @@ zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     gamelist.txt \
     update.json \
     changelog.md \
-    uninstall.sh >/dev/null
+    uninstall.sh \
+    banner.jpg >/dev/null
 
 INTERNAL_DIR="/sdcard/HyperCore_Releases"
 mkdir -p "$INTERNAL_DIR"
