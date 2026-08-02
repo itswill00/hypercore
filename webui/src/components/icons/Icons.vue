@@ -21,8 +21,8 @@
       <line x1="16" y1="17" x2="8" y2="17" />
       <polyline points="10 9 9 9 8 9" />
     </g>
-    <!-- CPU -->
-    <g v-else-if="name === 'cpu'">
+    <!-- CPU / Chip -->
+    <g v-else-if="name === 'cpu' || name === 'chip'">
       <rect x="4" y="4" width="16" height="16" rx="2" />
       <rect x="9" y="9" width="6" height="6" />
       <line x1="9" y1="1" x2="9" y2="4" />
@@ -38,18 +38,22 @@
     <g v-else-if="name === 'gpu' || name === 'zap'">
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </g>
-    <!-- Thermal -->
-    <g v-else-if="name === 'thermal'">
+    <!-- Thermal / Thermo -->
+    <g v-else-if="name === 'thermal' || name === 'thermo'">
       <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
     </g>
-    <!-- Memory / Server -->
+    <!-- Shield -->
+    <g v-else-if="name === 'shield'">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </g>
+    <!-- Memory -->
     <g v-else-if="name === 'memory'">
       <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
       <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
       <line x1="6" y1="6" x2="6.01" y2="6" />
       <line x1="6" y1="18" x2="6.01" y2="18" />
     </g>
-    <!-- Storage / Hard Drive -->
+    <!-- Storage -->
     <g v-else-if="name === 'storage'">
       <line x1="22" y1="12" x2="2" y2="12" />
       <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
@@ -61,12 +65,12 @@
       <rect x="1" y="6" width="18" height="12" rx="2" ry="2" />
       <line x1="23" y1="11" x2="23" y2="13" />
     </g>
-    <!-- Device / Smartphone -->
+    <!-- Device -->
     <g v-else-if="name === 'device'">
       <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
       <line x1="12" y1="18" x2="12.01" y2="18" />
     </g>
-    <!-- Rocket / Boost -->
+    <!-- Rocket -->
     <g v-else-if="name === 'rocket'">
       <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71.79-1.81.2-2.55L4.5 16.5z" />
       <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-3.05 11a22.35 22.35 0 0 1-3.95 2z" />

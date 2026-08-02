@@ -2,45 +2,45 @@
 @import url('https://mui.kernelsu.org/internal/colors.css');
 
 :root {
-  /* Material Design 3 Theme Tokens */
-  --bg: #131217;
-  --on-bg: #f4eff4;
+  /* Soft Material Design 3 Dark Theme Tokens */
+  --bg: #111015;
+  --on-bg: #e6e1e6;
 
-  --surface: #131217;
-  --on-surface: #f4eff4;
+  --surface: #111015;
+  --on-surface: #e6e1e6;
 
-  --surface-container-lowest: #0b0a0e;
-  --surface-container-low: #18161c;
-  --surface-container: #1f1d24;
-  --surface-container-high: #2a2731;
-  --surface-container-highest: #35323d;
-  --surface-dim: #131217;
-  --surface-bright: #3a3743;
+  --surface-container-lowest: #09080c;
+  --surface-container-low: #151419;
+  --surface-container: #1b1a20;
+  --surface-container-high: #232229;
+  --surface-container-highest: #2b2a32;
+  --surface-dim: #111015;
+  --surface-bright: #33323c;
 
-  --surface-variant: #49454f;
-  --on-surface-variant: #cac4d0;
-  --outline: #938f99;
-  --outline-variant: #49454f;
+  --surface-variant: #45424b;
+  --on-surface-variant: #b8b3be;
+  --outline: #7c7882;
+  --outline-variant: #3d3a43;
 
-  --primary: #d0bcff;
-  --on-primary: #381e72;
-  --primary-container: #4f378b;
-  --on-primary-container: #eaddff;
+  --primary: #c3b1e1;
+  --on-primary: #2d1858;
+  --primary-container: #3a2e56;
+  --on-primary-container: #e4d7f5;
 
-  --secondary: #ccc2dc;
-  --on-secondary: #332d41;
-  --secondary-container: #4a4458;
-  --on-secondary-container: #e8def8;
+  --secondary: #bfaec9;
+  --on-secondary: #272132;
+  --secondary-container: #332d40;
+  --on-secondary-container: #e3d9ec;
 
-  --tertiary: #efb8c8;
-  --on-tertiary: #492532;
-  --tertiary-container: #633b48;
-  --on-tertiary-container: #ffd8e4;
+  --tertiary: #dfadc1;
+  --on-tertiary: #3a1c29;
+  --tertiary-container: #4f2d3a;
+  --on-tertiary-container: #f7d5e2;
 
-  --error: #f2b8b5;
-  --on-error: #601410;
-  --error-container: #8c1d18;
-  --on-error-container: #f9dedc;
+  --error: #e59995;
+  --on-error: #501210;
+  --error-container: #6e1814;
+  --on-error-container: #f5d4d2;
 
   --green: #81c784;
   --amber: #ffb74d;
