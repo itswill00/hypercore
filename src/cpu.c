@@ -110,8 +110,17 @@ void apply_cgroup_gaming_policy(int enable) {
     }
 }
 
+static const char *get_best_governor(void) {
+    char avail[256] = "";
+    if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors", avail, sizeof(avail))) {
+        if (strstr(avail, "reflex")) return "reflex";
+        if (strstr(avail, "sugov_ext")) return "sugov_ext";
+    }
+    return "schedutil";
+}
+
 void apply_profile(profile_t prof, int tier) {
-    const char *gov = g_nodes.has_sugov_ext ? "sugov_ext" : "schedutil";
+    const char *gov = get_best_governor();
 
     apply_cgroup_gaming_policy(prof == PROFILE_GAMING);
 
