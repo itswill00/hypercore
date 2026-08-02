@@ -5,6 +5,7 @@
 
 #include "thermal.hpp"
 #include "sysfs.hpp"
+#include "log.hpp"
 
 void scan_thermal_zones(void) {
     DIR *d = opendir("/sys/class/thermal");
@@ -136,10 +137,15 @@ int get_true_battery_cycles(void) {
 }
 
 void fix_battery_cycle_count(void) {
+    static int s_attempts = 0;
+    static int s_fixed = 0;
+    if (s_fixed || s_attempts >= 3) return;
+
     int true_cycles = get_true_battery_cycles();
     if (true_cycles > 0) {
         int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
         if (current_cycles != true_cycles) {
+            s_attempts++;
             char buf[32];
             snprintf(buf, sizeof(buf), "%d", true_cycles);
 
@@ -148,6 +154,19 @@ void fix_battery_cycle_count(void) {
 
             chmod("/sys/class/power_supply/battery/auth_dev_batt_cycle", 0664);
             sysfs_write("/sys/class/power_supply/battery/auth_dev_batt_cycle", buf);
+
+            // Re-read to verify if the write succeeded
+            int verified_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+            if (verified_cycles == true_cycles) {
+                s_fixed = 1;
+                log_info("BATTERY", "Battery cycle count successfully calibrated to %d", true_cycles);
+            } else if (s_attempts >= 3) {
+                log_info("BATTERY", "Battery cycle count node is write-locked by kernel, calibration skipped");
+            }
+        } else {
+            s_fixed = 1;
         }
+    } else {
+        s_fixed = 1;
     }
 }
