@@ -39,73 +39,75 @@
       </div>
 
       <!-- Installed Game Rows -->
-      <div
-        v-for="item in displayGames"
-        :key="item.pkg"
-        class="md3-list-row"
-        style="padding: 10px 14px;"
-      >
-        <div class="row-left" style="gap: 10px; min-width: 0;">
-          <div class="icon-frame">
-            <img
-              v-if="iconFor(item.pkg) && !brokenIcons[item.pkg]"
-              :src="iconFor(item.pkg)"
-              style="width: 36px; height: 36px; border-radius: 10px; object-fit: cover;"
-              @error="brokenIcons[item.pkg] = true"
-              loading="lazy"
-            >
-            <div v-else class="icon-fallback">
-              <Icons name="rocket" :size="18" />
+      <TransitionGroup name="list-fade">
+        <div
+          v-for="item in displayGames"
+          :key="item.pkg"
+          class="md3-list-row game-list-item"
+          style="padding: 10px 14px;"
+        >
+          <div class="row-left" style="gap: 10px; min-width: 0;">
+            <div class="icon-frame">
+              <img
+                v-if="iconFor(item.pkg) && !brokenIcons[item.pkg]"
+                :src="iconFor(item.pkg)"
+                style="width: 36px; height: 36px; border-radius: 10px; object-fit: cover;"
+                @error="brokenIcons[item.pkg] = true"
+                loading="lazy"
+              >
+              <div v-else class="icon-fallback">
+                <Icons name="rocket" :size="18" />
+              </div>
+            </div>
+            <div class="row-meta" style="min-width: 0;">
+              <div
+                class="row-title"
+                style="font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                :title="item.name"
+              >
+                {{ item.name }}
+              </div>
+              <div
+                class="row-sub"
+                style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                :title="item.pkg"
+              >
+                {{ item.pkg }}
+              </div>
             </div>
           </div>
-          <div class="row-meta" style="min-width: 0;">
-            <div
-              class="row-title"
-              style="font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-              :title="item.name"
+
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px;">
+            <!-- Profile Selector dropdown -->
+            <select
+              v-model="item.profile"
+              @change="changeProfile(item.pkg, item.profile)"
+              class="select-md3"
             >
-              {{ item.name }}
-            </div>
-            <div
-              class="row-sub"
-              style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-              :title="item.pkg"
+              <option value="GAMING">Gaming</option>
+              <option value="INTERACTIVE">Balanced</option>
+              <option value="SLEEP">Saver</option>
+            </select>
+
+            <button
+              class="btn-md3 btn-md3-primary"
+              style="padding: 5px 10px; font-size: 11px; height: 30px;"
+              @click="launch(item.pkg)"
             >
-              {{ item.pkg }}
-            </div>
+              <Icons name="rocket" :size="13" />
+              <span>Launch</span>
+            </button>
+            <button
+              class="btn-md3 btn-md3-danger btn-icon-only"
+              style="width: 30px; height: 30px;"
+              title="Remove game"
+              @click="remove(item.pkg)"
+            >
+              <Icons name="trash" :size="13" />
+            </button>
           </div>
         </div>
-
-        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px;">
-          <!-- Profile Selector dropdown -->
-          <select
-            v-model="item.profile"
-            @change="changeProfile(item.pkg, item.profile)"
-            class="select-md3"
-          >
-            <option value="GAMING">Gaming</option>
-            <option value="INTERACTIVE">Balanced</option>
-            <option value="SLEEP">Saver</option>
-          </select>
-
-          <button
-            class="btn-md3 btn-md3-primary"
-            style="padding: 5px 10px; font-size: 11px; height: 30px;"
-            @click="launch(item.pkg)"
-          >
-            <Icons name="rocket" :size="13" />
-            <span>Launch</span>
-          </button>
-          <button
-            class="btn-md3 btn-md3-danger btn-icon-only"
-            style="width: 30px; height: 30px;"
-            title="Remove game"
-            @click="remove(item.pkg)"
-          >
-            <Icons name="trash" :size="13" />
-          </button>
-        </div>
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>

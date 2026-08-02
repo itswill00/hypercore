@@ -33,16 +33,19 @@
         class="terminal-box"
         @scroll="handleScroll"
       >
-        <div
-          v-for="(item, idx) in parsedLogs"
-          :key="idx"
-          class="terminal-line"
-        >
-          <span class="t-stamp" v-if="item.stamp">{{ item.stamp }}</span>
-          <span v-if="item.level" class="t-level" :class="item.levelClass">{{ item.level }}</span>
-          <span v-if="item.tag" class="t-tag">{{ item.tag }}</span>
-          <span class="t-text" :class="item.textClass">{{ item.msg }}</span>
-        </div>
+        <TransitionGroup name="log-line" tag="div">
+          <div
+            v-for="(item, idx) in parsedLogs"
+            :key="idx"
+            class="terminal-line"
+            :style="{ '--i': Math.min(idx, 8) }"
+          >
+            <span class="t-stamp" v-if="item.stamp">{{ item.stamp }}</span>
+            <span v-if="item.level" class="t-level" :class="item.levelClass">{{ item.level }}</span>
+            <span v-if="item.tag" class="t-tag">{{ item.tag }}</span>
+            <span class="t-text" :class="item.textClass">{{ item.msg }}</span>
+          </div>
+        </TransitionGroup>
       </div>
     </div>
   </div>
@@ -172,7 +175,13 @@ onUnmounted(() => {
   gap: 8px;
   word-break: break-all;
   white-space: pre-wrap;
-  padding: 2px 0;
+  padding: 3px 4px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.terminal-line:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .t-stamp {
@@ -226,5 +235,15 @@ onUnmounted(() => {
 .txt-start {
   color: #e2e5ec;
   font-weight: 600;
+}
+
+/* Log line transition */
+.log-line-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.log-line-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
 }
 </style>

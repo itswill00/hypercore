@@ -1,9 +1,10 @@
 <template>
   <Teleport to="body">
-    <div class="modal-backdrop" @click.self="$emit('close')">
-      <div class="modal-card">
-        <!-- Header -->
-        <div style="padding: 14px 16px; border-bottom: 1px solid var(--surface-container-high); display: flex; align-items: center; justify-content: space-between;">
+    <transition name="modal-fade" appear>
+      <div class="modal-backdrop" @click.self="$emit('close')">
+        <div class="modal-card">
+          <!-- Header -->
+          <div style="padding: 14px 16px; border-bottom: 1px solid var(--surface-container-high); display: flex; align-items: center; justify-content: space-between;">
           <div>
             <div style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Select application</div>
             <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 1px;">Installed apps & custom packages</div>
@@ -73,7 +74,8 @@
         </div>
       </div>
     </div>
-  </Teleport>
+  </transition>
+</Teleport>
 </template>
 
 <script setup>

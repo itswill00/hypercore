@@ -91,11 +91,18 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Chipset</div>
-              <div class="row-sub">Hardware Platform</div>
+              <div class="row-sub">Hardware Platform (tap for details)</div>
             </div>
           </div>
-          <div class="row-val expandable">
-            Helio G99 Ultra (MT6789)
+          <div class="row-val">
+            Helio G99 Ultra
+          </div>
+          <div class="expanded-content">
+            <div class="expanded-inner">
+              Platform: MediaTek MT6789 (6nm)<br/>
+              CPU: 2x Cortex-A76 @ 2.2 GHz &amp; 6x Cortex-A55 @ 2.0 GHz<br/>
+              GPU: ARM Mali-G57 MC2 @ 950 MHz
+            </div>
           </div>
         </div>
 
@@ -111,11 +118,17 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Kernel Version</div>
-              <div class="row-sub">Linux Kernel Build (tap to expand)</div>
+              <div class="row-sub">Linux Kernel Build (tap for details)</div>
             </div>
           </div>
-          <div class="row-val expandable">
-            {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux 5.10.x' }}
+          <div class="row-val">
+            {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion.split(' ')[0] : 'Linux 5.10.x' }}
+          </div>
+          <div class="expanded-content">
+            <div class="expanded-inner" style="white-space: normal; word-break: break-word;">
+              Version: {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux 5.10.x' }}<br/>
+              Optimizations: EAS Scheduler, Helio DVFSRC QoS Enabled
+            </div>
           </div>
         </div>
       </div>
