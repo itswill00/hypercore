@@ -6,10 +6,21 @@
 #include "sysfs.hpp"
 
 void sysfs_write(const char *path, const char *val) {
-    int fd = open(path, O_WRONLY | O_CLOEXEC);
+    if (!path || path[0] == '\0' || !val) return;
+    int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) return;
     write(fd, val, strlen(val));
     close(fd);
+}
+
+void sysfs_write_fallback(const char *paths[], const char *val) {
+    if (!paths || !val) return;
+    for (int i = 0; paths[i]; i++) {
+        if (paths[i][0] != '\0' && access(paths[i], W_OK) == 0) {
+            sysfs_write(paths[i], val);
+            break;
+        }
+    }
 }
 
 int sysfs_read_int(const char *path) {
