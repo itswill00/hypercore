@@ -258,6 +258,7 @@ int main(int argc, char *argv[]) {
         }
 
         tune_memory_pressure();
+        fix_battery_cycle_count();
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {

@@ -6,6 +6,7 @@
 #include "ipc.hpp"
 #include "sysfs.hpp"
 #include "log.hpp"
+#include "thermal.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
@@ -94,13 +95,14 @@ static void process_client(int client_fd) {
 
         time_t now = time(NULL);
         long uptime_sec = (long)difftime(now, s_start_time);
+        int bat_cycles = get_true_battery_cycles();
 
         char json[512];
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
-            "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"uptime_sec\":%ld}\n",
+            "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld}\n",
             getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
-            g_state.is_charging, gpu_load, uptime_sec);
+            g_state.is_charging, gpu_load, bat_cycles, uptime_sec);
 
         write(client_fd, json, strlen(json));
     } else if (strncmp(req, "PING", 4) == 0) {

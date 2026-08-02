@@ -115,3 +115,33 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 
     return tier;
 }
+
+int get_true_battery_cycles(void) {
+    int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
+    if (bms_cycles > 0) return bms_cycles;
+
+    int bat_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (bat_cycles > 2000) {
+        return bat_cycles / 10;
+    }
+    return bat_cycles;
+}
+
+void fix_battery_cycle_count(void) {
+    int true_cycles = get_true_battery_cycles();
+    if (true_cycles <= 0) return;
+
+    int current_bat_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (current_bat_cycles > 1000 || (current_bat_cycles > 0 && current_bat_cycles != true_cycles)) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", true_cycles);
+        chmod("/sys/class/power_supply/battery/cycle_count", 0664);
+        sysfs_write("/sys/class/power_supply/battery/cycle_count", buf);
+
+        chmod("/sys/class/power_supply/battery/auth_dev_batt_cycle", 0664);
+        sysfs_write("/sys/class/power_supply/battery/auth_dev_batt_cycle", buf);
+
+        chmod("/sys/class/power_supply/battery/fg1_cycle", 0664);
+        sysfs_write("/sys/class/power_supply/battery/fg1_cycle", buf);
+    }
+}
