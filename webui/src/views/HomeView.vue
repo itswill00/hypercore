@@ -149,12 +149,12 @@
         <!-- Developer row -->
         <div class="md3-list-row">
           <div class="row-left">
-            <a href="https://t.me/noticesa" target="_blank" class="avatar-link">
+            <div class="avatar-link" @click="openExternal('https://t.me/noticesa')" style="cursor: pointer;">
               <div class="avatar-badge dev">ن</div>
-            </a>
+            </div>
             <div class="row-meta">
               <div class="row-title">@noticesa</div>
-              <div class="row-sub">Developer & Maintainer</div>
+              <div class="row-sub">Developer &amp; Maintainer</div>
             </div>
           </div>
           <span class="role-chip dev">dev</span>
@@ -163,12 +163,12 @@
         <!-- Tester 1 -->
         <div class="md3-list-row">
           <div class="row-left">
-            <a href="https://t.me/Rafzzz182" target="_blank" class="avatar-link">
+            <div class="avatar-link" @click="openExternal('https://t.me/Rafzzz182')" style="cursor: pointer;">
               <div class="avatar-badge tester">R</div>
-            </a>
+            </div>
             <div class="row-meta">
               <div class="row-title">@Rafzzz182</div>
-              <div class="row-sub">Testing & feedback</div>
+              <div class="row-sub">Testing &amp; feedback</div>
             </div>
           </div>
           <span class="role-chip tester">tester</span>
@@ -177,12 +177,12 @@
         <!-- Tester 2 -->
         <div class="md3-list-row">
           <div class="row-left">
-            <a href="https://t.me/anotherside551" target="_blank" class="avatar-link">
+            <div class="avatar-link" @click="openExternal('https://t.me/anotherside551')" style="cursor: pointer;">
               <div class="avatar-badge tester">A</div>
-            </a>
+            </div>
             <div class="row-meta">
               <div class="row-title">@anotherside551</div>
-              <div class="row-sub">Testing & feedback</div>
+              <div class="row-sub">Testing &amp; feedback</div>
             </div>
           </div>
           <span class="role-chip tester">tester</span>
@@ -198,13 +198,12 @@
             <div class="donate-sub">If HyperCore helps you, consider buying a coffee</div>
           </div>
         </div>
-        <a
-          href="https://sociabuzz.com/noticesa/tribe"
-          target="_blank"
+        <button
           class="donate-btn"
+          @click="openExternal('https://sociabuzz.com/noticesa/tribe')"
         >
           Donate
-        </a>
+        </button>
       </div>
 
       <!-- Footer -->
@@ -227,6 +226,19 @@ const expandedRows = ref({})
 
 function toggleExpand(key) {
   expandedRows.value[key] = !expandedRows.value[key]
+}
+
+/**
+ * Open a URL externally via ksu.open() — forces the device's default browser
+ * instead of KernelSU's embedded WebView which causes status bar overlap.
+ * Falls back to window.open for non-KSU environments.
+ */
+function openExternal(url) {
+  if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
+    ksu.open(url)
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 }
 </script>
 
@@ -343,8 +355,11 @@ function toggleExpand(key) {
   padding: 7px 14px;
   font-size: 12px;
   font-weight: 600;
-  text-decoration: none;
+  font-family: inherit;
   flex-shrink: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
   transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1),
               background 0.15s ease,
               filter 0.15s ease;
