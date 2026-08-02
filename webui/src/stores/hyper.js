@@ -152,6 +152,7 @@ export const useHyperStore = defineStore('hyper', () => {
       `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
       `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
+      `echo "KV:$(uname -r 2>/dev/null)"`,
       `DESC=$(grep '^description=' ${MOD}/module.prop 2>/dev/null); echo "DESC:$DESC"`,
       `VER=$(grep '^version=' ${MOD}/module.prop 2>/dev/null | cut -d'=' -f2); echo "VER:$VER"`,
       `echo "===GL==="`,
@@ -181,6 +182,7 @@ export const useHyperStore = defineStore('hyper', () => {
       })
 
       if (kv.VER) moduleVersion.value = kv.VER.trim()
+      if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
       // Fast IPC Check
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {

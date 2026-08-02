@@ -82,19 +82,35 @@
           </span>
         </div>
 
-        <!-- Chipset & Kernel Row -->
+        <!-- Chipset Row -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="icon-badge">
               <Icons name="chip" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Chipset & Kernel</div>
-              <div class="row-sub">MediaTek Helio G99 Ultra (MT6789)</div>
+              <div class="row-title">Chipset</div>
+              <div class="row-sub">Hardware Platform</div>
             </div>
           </div>
           <div class="row-val">
-            {{ store.kernelVersion || 'Linux 5.10.x' }}
+            Helio G99 Ultra (MT6789)
+          </div>
+        </div>
+
+        <!-- Kernel Version Row -->
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="cpu" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Kernel Version</div>
+              <div class="row-sub">Linux Kernel Build</div>
+            </div>
+          </div>
+          <div class="row-val">
+            {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux 5.10.x' }}
           </div>
         </div>
       </div>
