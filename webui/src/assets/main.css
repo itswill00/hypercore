@@ -281,12 +281,24 @@ html, body, #app {
   cursor: pointer;
 }
 
-.row-val.expanded {
+.md3-list-row.expanded-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.md3-list-row.expanded-row .row-left {
+  width: 100%;
+}
+
+.md3-list-row.expanded-row .row-val {
   white-space: normal;
-  word-break: break-all;
+  word-break: break-word;
   max-width: 100%;
   text-align: left;
-  margin-top: 4px;
+  margin-left: 48px;
+  font-size: 11px;
+  opacity: 0.9;
 }
 
 /* Profile Selector Grid */

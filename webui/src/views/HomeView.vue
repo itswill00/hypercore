@@ -82,8 +82,12 @@
           </span>
         </div>
 
-        <!-- Chipset Row -->
-        <div class="md3-list-row">
+        <!-- Expandable Chipset Row -->
+        <div
+          class="md3-list-row clickable"
+          :class="{ 'expanded-row': expandedRows['chipset'] }"
+          @click="toggleExpand('chipset')"
+        >
           <div class="row-left">
             <div class="icon-badge">
               <Icons name="chip" :size="18" />
@@ -93,23 +97,27 @@
               <div class="row-sub">Hardware Platform</div>
             </div>
           </div>
-          <div class="row-val">
+          <div class="row-val expandable">
             Helio G99 Ultra (MT6789)
           </div>
         </div>
 
-        <!-- Kernel Version Row -->
-        <div class="md3-list-row">
+        <!-- Expandable Kernel Version Row -->
+        <div
+          class="md3-list-row clickable"
+          :class="{ 'expanded-row': expandedRows['kernel'] }"
+          @click="toggleExpand('kernel')"
+        >
           <div class="row-left">
             <div class="icon-badge">
               <Icons name="cpu" :size="18" />
             </div>
             <div class="row-meta">
               <div class="row-title">Kernel Version</div>
-              <div class="row-sub">Linux Kernel Build</div>
+              <div class="row-sub">Linux Kernel Build (tap to expand)</div>
             </div>
           </div>
-          <div class="row-val">
+          <div class="row-val expandable">
             {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux 5.10.x' }}
           </div>
         </div>
@@ -130,9 +138,15 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import StatusCard from '@/components/StatusCard.vue'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
+const expandedRows = ref({})
+
+function toggleExpand(key) {
+  expandedRows.value[key] = !expandedRows.value[key]
+}
 </script>
