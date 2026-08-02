@@ -1,7 +1,6 @@
 #!/system/bin/sh
 
 pkill -x libhypercore.so >/dev/null 2>&1
-pkill -x hypercore >/dev/null 2>&1
 
 for i in 0 1 2 3 4 5; do
     [ -f "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" ] && echo 500000 > "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" 2>/dev/null

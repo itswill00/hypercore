@@ -19,18 +19,8 @@ for script in /data/adb/service.d/* /data/adb/post-fs-data.d/*; do
     fi
 done
 
-BIN=""
-if [ -f "$MODDIR/system/bin/libhypercore.so" ]; then
-    BIN="$MODDIR/system/bin/libhypercore.so"
-elif [ -f "$MODDIR/system/bin/hypercore" ]; then
-    BIN="$MODDIR/system/bin/hypercore"
-elif [ -f "$MODDIR/libhypercore.so" ]; then
-    BIN="$MODDIR/libhypercore.so"
-elif [ -f "$MODDIR/hypercore" ]; then
-    BIN="$MODDIR/hypercore"
-fi
-
-if [ -n "$BIN" ]; then
+BIN="$MODDIR/system/bin/libhypercore.so"
+if [ -f "$BIN" ]; then
     chmod 755 "$BIN"
     exec "$BIN"
 fi

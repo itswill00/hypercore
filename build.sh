@@ -21,10 +21,8 @@ rm -rf "$PROJECT_DIR/system/bin"
 mkdir -p "$PROJECT_DIR/system/bin"
 echo "-> Compiling single hypercore daemon into system/bin/libhypercore.so..."
 clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" "$PROJECT_DIR"/src/*.c -o "$PROJECT_DIR/system/bin/libhypercore.so"
-(cd "$PROJECT_DIR/system/bin" && ln -sf libhypercore.so hypercore)
-
 echo "-> Setting executable bits..."
-chmod +x system/bin/libhypercore.so system/bin/hypercore customize.sh post-fs-data.sh service.sh uninstall.sh
+chmod +x system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh uninstall.sh
 
 echo "-> Generating SHA-256 integrity checksums..."
 sha256sum system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh system.prop module.prop gamelist.txt update.json changelog.md uninstall.sh webroot/index.html > checksums.sha256
