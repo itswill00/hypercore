@@ -6,12 +6,15 @@
         <div class="page-header-title">Activity Log</div>
         <div class="page-header-sub">History of profile switches and system events</div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 14px; font-size: 12px;" title="Copy all logs" @click="copyLog">
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Copy all logs" @click="copyLog">
           Copy
         </button>
-        <button class="btn-md3 btn-md3-primary" style="padding: 6px 14px; font-size: 12px;" title="Save log file" @click="saveLog">
+        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Save log file" @click="saveLog">
           Save
+        </button>
+        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px; color: var(--error);" title="Clear log content" @click="clearLog">
+          Clear
         </button>
       </div>
     </div>
@@ -127,6 +130,11 @@ async function saveLog() {
   if (toast) toast(msg)
 }
 
+async function clearLog() {
+  const msg = await store.clearLogs()
+  if (toast) toast(msg)
+}
+
 watch(() => store.logs, () => {
   scrollToBottom()
 })
@@ -147,7 +155,7 @@ onUnmounted(() => {
 <style scoped>
 .terminal-box {
   flex: 1;
-  background: #0d0c11;
+  background: #0b0b0e;
   border: 1px solid var(--surface-container-high);
   border-radius: 12px;
   padding: 12px;
@@ -185,9 +193,9 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
 }
 
-.lbl-info { background: rgba(100, 181, 246, 0.15); color: #64b5f6; }
-.lbl-state { background: rgba(186, 104, 200, 0.15); color: #ba68c8; }
-.lbl-warn { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+.lbl-info { background: rgba(160, 178, 198, 0.15); color: #a0b2c6; }
+.lbl-state { background: rgba(226, 229, 236, 0.15); color: #e2e5ec; }
+.lbl-warn { background: rgba(210, 200, 176, 0.15); color: #d2c8b0; }
 .lbl-error { background: rgba(229, 115, 115, 0.15); color: #e57373; }
 
 .t-tag {
@@ -207,16 +215,16 @@ onUnmounted(() => {
 }
 
 .txt-gaming {
-  color: #81c784;
+  color: #a0b2c6;
   font-weight: 600;
 }
 
 .txt-thermal {
-  color: #ffb74d;
+  color: #d2c8b0;
 }
 
 .txt-start {
-  color: #64b5f6;
+  color: #e2e5ec;
   font-weight: 600;
 }
 </style>

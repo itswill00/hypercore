@@ -358,6 +358,14 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Log saved to /sdcard/HyperCore_log.txt'
   }
 
+  async function clearLogs() {
+    loading.value = true
+    await execCommand(`> ${LOG} 2>/dev/null || true; > /sdcard/Android/hypercore.log 2>/dev/null || true`)
+    logs.value = ''
+    loading.value = false
+    return 'Log cleared'
+  }
+
   function createShortcut() {
     if (isKSU() && typeof ksu.createShortcut === 'function') {
       ksu.createShortcut()
@@ -423,7 +431,7 @@ export const useHyperStore = defineStore('hyper', () => {
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
-    fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, createShortcut,
+    fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
     addGame, removeGame, launchGame, setLogsActive
   }
 })
