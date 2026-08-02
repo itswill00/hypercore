@@ -89,7 +89,8 @@ void apply_irq_tuning(void) {
             close(fd);
             if (n > 0) {
                 buf[n] = '\0';
-                if (strstr(buf, "mali") || strstr(buf, "ged") || strstr(buf, "kgsl") || strstr(buf, "dsi")) {
+                if (strstr(buf, "mali") || strstr(buf, "ged") || strstr(buf, "kgsl") || strstr(buf, "dsi") ||
+                    strstr(buf, "touch") || strstr(buf, "tpd") || strstr(buf, "fts")) {
                     char aff_path[128];
                     snprintf(aff_path, sizeof(aff_path), "/proc/irq/%d/smp_affinity", irq);
                     sysfs_write(aff_path, "c0");
