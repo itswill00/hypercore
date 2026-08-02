@@ -13,7 +13,7 @@
 
     <!-- Main Content View -->
     <div class="content-area">
-      <!-- Mascot Status Banner Card -->
+      <!-- Banner Status Card -->
       <StatusCard />
 
       <!-- Unified Device & System Info Group Card -->
@@ -29,7 +29,7 @@
               <div class="row-sub">Applies automatically based on usage</div>
             </div>
           </div>
-          <span class="badge-pill purple" style="font-size: 11px;">
+          <span class="badge-pill" style="background: rgba(226, 229, 236, 0.12); color: #e2e5ec; font-size: 11px;">
             {{ store.activeProfile || 'Interactive' }}
           </span>
         </div>
@@ -37,7 +37,7 @@
         <!-- Temperature Row -->
         <div class="md3-list-row">
           <div class="row-left">
-            <div class="icon-badge secondary">
+            <div class="icon-badge">
               <Icons name="thermo" :size="18" />
             </div>
             <div class="row-meta">
@@ -45,7 +45,7 @@
               <div class="row-sub">CPU & Battery thermal status</div>
             </div>
           </div>
-          <div class="row-val" :class="store.tempColor">
+          <div class="row-val">
             CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C
           </div>
         </div>
@@ -53,7 +53,7 @@
         <!-- Battery Cycles Row -->
         <div class="md3-list-row">
           <div class="row-left">
-            <div class="icon-badge secondary">
+            <div class="icon-badge">
               <Icons name="battery" :size="18" />
             </div>
             <div class="row-meta">
@@ -69,7 +69,7 @@
         <!-- File Integrity Row -->
         <div class="md3-list-row">
           <div class="row-left">
-            <div class="icon-badge tertiary">
+            <div class="icon-badge">
               <Icons name="shield" :size="18" />
             </div>
             <div class="row-meta">
@@ -77,7 +77,7 @@
               <div class="row-sub">Embedded binary SHA-256 check</div>
             </div>
           </div>
-          <span class="badge-pill green" style="font-size: 10px;">
+          <span class="badge-pill" style="background: rgba(160, 178, 198, 0.16); color: #a0b2c6; font-size: 10px;">
             Verified (SHA-256 OK)
           </span>
         </div>
@@ -85,7 +85,7 @@
         <!-- Chipset & Kernel Row -->
         <div class="md3-list-row">
           <div class="row-left">
-            <div class="icon-badge secondary">
+            <div class="icon-badge">
               <Icons name="chip" :size="18" />
             </div>
             <div class="row-meta">
@@ -99,7 +99,7 @@
         </div>
       </div>
 
-      <!-- Simple Human Info Note -->
+      <!-- Info Note -->
       <div class="md3-card" style="padding: 14px 16px; margin-bottom: 16px;">
         <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.5;">
           HyperCore runs automatically in the background. Performance profile switches to Gaming mode when an installed game is opened.
