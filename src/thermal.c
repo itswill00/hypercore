@@ -129,7 +129,10 @@ int get_true_battery_cycles(void) {
     }
     if (raw_cycles > 0) return raw_cycles;
 
-    return 347;
+    int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
+    if (bms_cycles > 0) return bms_cycles;
+
+    return 0;
 }
 
 void fix_battery_cycle_count(void) {
