@@ -437,6 +437,7 @@ export const useHyperStore = defineStore('hyper', () => {
       `done`
     ].join('\n')
     execCommand(cmd)
+    setTimeout(refresh, 400)
     return `Updated ${pkg} to ${profile}`
   }
 

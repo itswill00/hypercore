@@ -189,8 +189,9 @@ int main(int argc, char *argv[]) {
         profile_t custom_profile = PROFILE_GAMING;
         int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
 
-        static int s_game_absent_ticks = 0;
-        static int s_prev_game_active = 0;
+        static int       s_game_absent_ticks = 0;
+        static int       s_prev_game_active  = 0;
+        static profile_t s_last_game_profile = PROFILE_GAMING; /* remember per-game profile for hold ticks */
 
         if (game_active) {
             s_game_absent_ticks = 0;
@@ -225,10 +226,11 @@ int main(int argc, char *argv[]) {
             g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
+            s_last_game_profile = custom_profile; /* remember for hold ticks */
             g_state.gaming_hold_ticks = 2;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
-            next_profile = PROFILE_GAMING;
+            next_profile = s_last_game_profile; /* use per-game profile, not hardcoded GAMING */
         } else {
             next_profile = PROFILE_INTERACTIVE;
         }
