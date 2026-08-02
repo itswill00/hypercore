@@ -81,9 +81,17 @@ export async function listInstalledApps(forceRefresh = false) {
       if (typeof ksu.getPackagesInfo === 'function') {
         try { infos = JSON.parse(ksu.getPackagesInfo(raw)) } catch {}
       }
-      cachedInstalledApps = pkgs.map((p, i) => ({
+      const infoMap = {}
+      if (Array.isArray(infos)) {
+        infos.forEach(info => {
+          if (info && info.packageName) {
+            infoMap[info.packageName] = info.appLabel || info.packageName
+          }
+        })
+      }
+      cachedInstalledApps = pkgs.map(p => ({
         pkg: p,
-        name: (infos[i] && infos[i].appLabel) ? infos[i].appLabel : p
+        name: infoMap[p] || p
       })).sort((a, b) => a.name.localeCompare(b.name))
 
       return cachedInstalledApps

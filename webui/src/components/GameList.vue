@@ -133,6 +133,22 @@ async function loadInstalled() {
     list.forEach(a => {
       map[a.pkg] = a.name
     })
+
+    // Batch query labels for all configured games (handles system apps & edge cases)
+    if (store.games && store.games.length > 0 && typeof ksu !== 'undefined' && typeof ksu.getPackagesInfo === 'function') {
+      try {
+        const pkgs = store.games.map(g => g.pkg)
+        const infos = JSON.parse(ksu.getPackagesInfo(JSON.stringify(pkgs)))
+        if (Array.isArray(infos)) {
+          infos.forEach(info => {
+            if (info && info.packageName && info.appLabel) {
+              map[info.packageName] = info.appLabel
+            }
+          })
+        }
+      } catch {}
+    }
+
     installedMap.value = map
   } catch {}
   loading.value = false
