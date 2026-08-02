@@ -151,6 +151,7 @@ int main(int argc, char *argv[]) {
     signal(SIGHUP, SIG_IGN);
 
     init_hardware_nodes();
+    save_baseline_nodes();
     write_pid_file();
     init_ipc_socket();
 
@@ -274,7 +275,8 @@ int main(int argc, char *argv[]) {
         handle_ipc_events(poll_timeout_ms);
     }
 
-    log_info("DAEMON", "Tanzanite HyperCore daemon stopped.");
+    log_info("DAEMON", "Tanzanite HyperCore daemon stopped. Restoring ROM baseline nodes...");
+    restore_baseline_nodes();
     update_module_prop_status("Stopped");
     close_ipc_socket();
     remove_pid_file();

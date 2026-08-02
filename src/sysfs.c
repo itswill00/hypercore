@@ -23,6 +23,55 @@ int sysfs_read_int(const char *path) {
     return atoi(buf);
 }
 
+int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
+    if (!out_buf || max_len == 0) return 0;
+    out_buf[0] = '\0';
+
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    ssize_t n = read(fd, out_buf, max_len - 1);
+    close(fd);
+    if (n <= 0) return 0;
+    out_buf[n] = '\0';
+
+    size_t len = strlen(out_buf);
+    while (len > 0 && (out_buf[len - 1] == '\r' || out_buf[len - 1] == '\n' || out_buf[len - 1] == ' ')) {
+        out_buf[--len] = '\0';
+    }
+    return 1;
+}
+
+static struct {
+    char gov0[64];
+    char gov6[64];
+    char mali_policy[64];
+    char migration_cost[64];
+    char charge_limit[64];
+    int  has_baseline;
+} s_baseline = { "", "", "", "", "", 0 };
+
+void save_baseline_nodes(void) {
+    if (s_baseline.has_baseline) return;
+
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0, sizeof(s_baseline.gov0));
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6, sizeof(s_baseline.gov6));
+    sysfs_read_str("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy, sizeof(s_baseline.mali_policy));
+    sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost, sizeof(s_baseline.migration_cost));
+    sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit, sizeof(s_baseline.charge_limit));
+
+    s_baseline.has_baseline = 1;
+}
+
+void restore_baseline_nodes(void) {
+    if (!s_baseline.has_baseline) return;
+
+    if (s_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0);
+    if (s_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6);
+    if (s_baseline.mali_policy[0] != '\0') sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy);
+    if (s_baseline.migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost);
+    if (s_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit);
+}
+
 void update_module_prop_status(const char *status) {
     static char s_last_status[128] = "";
     static time_t s_last_write_time = 0;
