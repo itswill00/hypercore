@@ -124,6 +124,8 @@ static int is_screen_on(void) {
     return 1;
 }
 
+#include "integrity.hpp"
+
 static int validate_hardware_target(void) {
     if (access("/sys/module/ged", F_OK) != 0 && access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
         fprintf(stderr, "ERROR: Incompatible hardware target detected. Tanzanite HyperCore is strictly designed for MediaTek MT6789 (Helio G99 Ultra).\n");
@@ -133,8 +135,9 @@ static int validate_hardware_target(void) {
 }
 
 int main(int argc, char *argv[]) {
-    (void)argc;
-    (void)argv;
+    if (argc >= 3 && strcmp(argv[1], "--verify-integrity") == 0) {
+        return verify_module_integrity(argv[2]);
+    }
 
     if (!validate_hardware_target()) {
         return 1;
@@ -151,6 +154,7 @@ int main(int argc, char *argv[]) {
     signal(SIGHUP, SIG_IGN);
 
     init_hardware_nodes();
+    verify_module_integrity(g_nodes.mod_dir);
     save_baseline_nodes();
     write_pid_file();
     init_ipc_socket();

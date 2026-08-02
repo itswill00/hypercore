@@ -32,23 +32,21 @@ esac
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 
-ui_print "- Verifying SHA-256 file integrity..."
-if [ -f "$MODPATH/checksums.sha256" ]; then
-    cd "$MODPATH"
-    if sha256sum -c checksums.sha256 >/dev/null 2>&1; then
-        ui_print "- File integrity check passed (SHA-256 OK)."
+ui_print "- Verifying embedded binary SHA-256 integrity..."
+chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
+if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
+    if "$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" >/dev/null 2>&1; then
+        ui_print "- Embedded binary SHA-256 integrity verified successfully."
     else
         ui_print "--------------------------------------"
-        ui_print "! ERROR: File integrity check failed!"
-        ui_print "! Checksum mismatch detected. Files may be corrupted or tampered with."
-        ui_print "! Installation aborted for safety."
+        ui_print "! ERROR: File tampering or corruption detected!"
+        ui_print "! SHA-256 checksums embedded inside C binary mismatch!"
+        ui_print "! Installation aborted for security."
         ui_print "--------------------------------------"
         rm -rf "$MODPATH"
-        abort "! SHA-256 Checksum mismatch"
+        abort "! Embedded Binary Checksum Mismatch"
         exit 1
     fi
-else
-    ui_print "! WARNING: Missing checksums.sha256 manifest."
 fi
 
 # Clean up legacy root binary copies if upgrading
