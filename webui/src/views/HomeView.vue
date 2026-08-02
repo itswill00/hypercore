@@ -123,6 +123,9 @@
         </div>
       </div>
 
+      <!-- Quick Actions Group Card -->
+      <ActionButtons />
+
       <!-- Info Note -->
       <div class="md3-card" style="padding: 14px 16px; margin-bottom: 16px;">
         <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.5;">
@@ -141,6 +144,7 @@
 import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import StatusCard from '@/components/StatusCard.vue'
+import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
