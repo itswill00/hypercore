@@ -38,7 +38,7 @@ export const useHyperStore = defineStore('hyper', () => {
   const batVolt = ref('—')
 
   /* ── Device metadata ── */
-  const moduleVersion = ref('v4.0')
+  const moduleVersion = ref('v4.2')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
   const androidSdk = ref('—')
@@ -153,6 +153,7 @@ export const useHyperStore = defineStore('hyper', () => {
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
       `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
       `DESC=$(grep '^description=' ${MOD}/module.prop 2>/dev/null); echo "DESC:$DESC"`,
+      `VER=$(grep '^version=' ${MOD}/module.prop 2>/dev/null | cut -d'=' -f2); echo "VER:$VER"`,
       `echo "===GL==="`,
       `cat ${GL_MOD} 2>/dev/null || cat ${GL_SD} 2>/dev/null || true`
     ]
@@ -178,6 +179,8 @@ export const useHyperStore = defineStore('hyper', () => {
         const i = line.indexOf(':')
         if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
       })
+
+      if (kv.VER) moduleVersion.value = kv.VER.trim()
 
       // Fast IPC Check
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
