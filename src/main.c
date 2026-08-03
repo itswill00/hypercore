@@ -132,6 +132,34 @@ static int get_top_app_pid(void) {
     return pid;
 }
 
+static int check_and_recover_sysfs_tampering(profile_t current_prof) {
+    if (current_prof < 0 || current_prof > 2) return 0;
+
+    char curr_gov[64] = "";
+    if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
+        size_t len = strlen(curr_gov);
+        while (len > 0 && (curr_gov[len - 1] == '\n' || curr_gov[len - 1] == '\r' || curr_gov[len - 1] == ' ')) {
+            curr_gov[--len] = '\0';
+        }
+        const char *expected_gov = (current_prof == PROFILE_Gaming) ? "performance" : NULL;
+        if (expected_gov && curr_gov[0] != '\0' && strcmp(curr_gov, expected_gov) != 0) {
+            log_warn("Guard", "External CPU governor mutation detected [%s -> %s]! Re-enforcing HyperCore profile...", curr_gov, expected_gov);
+            return 1;
+        }
+    }
+
+    char curr_mali[64] = "";
+    if (sysfs_read_str("/sys/devices/platform/soc/13000000.mali/power_policy", curr_mali, sizeof(curr_mali))) {
+        const char *expected_mali = (current_prof == PROFILE_Gaming) ? "always_on" : "coarse_demand";
+        if (strstr(curr_mali, expected_mali) == NULL) {
+            log_warn("Guard", "External Mali GPU power_policy mutation detected! Re-enforcing HyperCore profile...");
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 #include "integrity.hpp"
 
 static int validate_hardware_target(void) {
@@ -263,9 +291,10 @@ int main(int argc, char *argv[]) {
         static int s_prev_gpu_heavy = -1;
         static int s_prev_app_boost = 0;
         int is_gpu_heavy = (gpu_load >= 20);
+        int is_tampered = check_and_recover_sysfs_tampering(g_state.current_profile);
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
-            g_state.app_boost_ticks != s_prev_app_boost ||
+            g_state.app_boost_ticks != s_prev_app_boost || is_tampered ||
             (next_profile == PROFILE_Gaming && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
             s_prev_app_boost = g_state.app_boost_ticks;
