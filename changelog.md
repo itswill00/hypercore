@@ -1,4 +1,32 @@
+# Tanzanite HyperCore v4.3 — Bug Fix & Polish Release
+
+### Bug Fixes
+- **Battery Cycle Count Stuck at 347**: Three-layer fix — store never declared `batteryCycles` reactive ref so `battery_cycles` from IPC was silently discarded, HomeView had hardcoded `|| 347` fallback, and daemon `get_true_battery_cycles()` wrongly divided `cycle_count` by 16 when it was already in full-cycle units. All three fixed.
+- **Per-Game Profile Not Honored During Cooldown**: `gaming_hold_ticks` countdown after game exit always applied `PROFILE_GAMING` regardless of the per-game config. Fixed by storing `s_last_game_profile` and using it during cooldown ticks.
+- **`restartDaemon()` Never Actually Restarted**: Button sent `pkill -x hypercore` to a binary named `libhypercore.so` — wrong name, wrong path. Fixed to `pkill -x libhypercore.so` + correct `system/bin/` path.
+- **thermalTier Overwritten After IPC Set It**: Log-parse fallback always overwrote the authoritative IPC `thermal_tier` value even when daemon was running. Added `ipcSetThermal` flag to guard.
+- **inotify Only Watched Module Gamelist**: Daemon never hot-reloaded when `/sdcard/Android/gamelist.txt` was edited directly. Added second `inotify_add_watch` for sdcard path.
+- **`updateGameProfile` No UI Sync**: After writing profile change, UI stayed stale. Added `setTimeout(refresh, 400)` to re-read file and confirm persisted state.
+- **`uptimeInterval` Memory Leak**: `setInterval` ticker for uptime display was never cleared on app unmount. Added `stopUptimeTicker()` called in `App.vue onUnmounted`.
+- **External Links Opening in Embedded WebView**: Links using `<a target="_blank">` opened inside KernelSU WebView where the Android status bar overlapped content. All external links now use `ksu.open(url)` to force the device's default browser.
+- **`cachedInstalledApps` Stale After `addGame()`**: App picker showed old list after adding a game. Cache is now invalidated via `listInstalledApps(true)` after each add.
+
+### Features
+- **Contributors Card**: Dashboard now shows developer (@noticesa) and testers (@Rafzzz182, @anotherside551) with avatar initials, role chips, and tap-to-open Telegram links.
+- **Donate Button**: SociaBuzz support link (sociabuzz.com/noticesa/tribe) added as a styled card below Contributors. Opens in external browser.
+- **WebUI Animations**: Smooth page transitions (slide-left/right), fade-in for list rows, spring-based button press feedback, and banner entrance animation.
+- **Navigation Polish**: Bottom nav bar redesigned for better touch ergonomics and visual clarity.
+
+### Improvements
+- `fix_battery_cycle_count()` no longer permanently locks `s_fixed = 1` when cycle data is unavailable — retries next tick instead of giving up forever.
+- `get_true_battery_cycles()` priority logic cleaned up: `fg1_cycle` path only activates when `cycle_count` is absent (true MTK sub-cycle source); removes wrong `/16` division on standard `cycle_count`.
+- HomeView expandable rows (Chipset, Kernel) rebuilt with column-flex structure to eliminate positional glitch when collapsing.
+- `apply_profile()` switch now covers all 4 profile enum values cleanly.
+
+---
+
 # Tanzanite HyperCore v4.2 Major Release
+
 
 ### Key Highlights & Innovations
 - **Universal ROM Shield 360 & Non-Destructive Baseline Snapshot**: Daemon records 100% of stock/Custom ROM baseline sysfs node values on startup and cleanly restores them upon daemon shutdown (`SIGTERM`/`SIGINT`).
