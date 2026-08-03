@@ -119,69 +119,105 @@
 
       <ActionButtons />
 
-      <div class="section-title">Contributors</div>
+      <div class="section-title">Community</div>
       <div class="md3-list-group" style="margin-bottom: 14px;">
-
-        <div class="md3-list-row">
+        <div class="md3-list-row clickable" @click="showContributorsModal = true">
           <div class="row-left">
-            <div class="avatar-link" @click="openExternal('https://t.me/noticesa')" style="cursor: pointer;">
-              <div class="avatar-badge dev">ن</div>
+            <div class="icon-badge">
+              <Icons name="heart" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">@noticesa</div>
-              <div class="row-sub">Developer &amp; Maintainer</div>
+              <div class="row-title">Contributors &amp; Support</div>
+              <div class="row-sub">Meet project team, testers &amp; support links</div>
             </div>
           </div>
-          <span class="role-chip dev">dev</span>
-        </div>
-
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="avatar-link" @click="openExternal('https://t.me/Rafzzz182')" style="cursor: pointer;">
-              <div class="avatar-badge tester">R</div>
-            </div>
-            <div class="row-meta">
-              <div class="row-title">@Rafzzz182</div>
-              <div class="row-sub">Testing &amp; feedback</div>
-            </div>
-          </div>
-          <span class="role-chip tester">tester</span>
-        </div>
-
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="avatar-link" @click="openExternal('https://t.me/anotherside551')" style="cursor: pointer;">
-              <div class="avatar-badge tester">A</div>
-            </div>
-            <div class="row-meta">
-              <div class="row-title">@anotherside551</div>
-              <div class="row-sub">Testing &amp; feedback</div>
-            </div>
-          </div>
-          <span class="role-chip tester">tester</span>
-        </div>
-      </div>
-
-      <div class="donate-card">
-        <div class="donate-left">
-          <div class="donate-icon">♡</div>
-          <div>
-            <div class="donate-title">Support development</div>
-            <div class="donate-sub">If HyperCore helps you, consider buying a coffee</div>
+          <div class="preview-stack">
+            <span class="preview-avatar dev">ن</span>
+            <span class="preview-avatar tester">R</span>
+            <span class="preview-avatar tester">A</span>
+            <Icons name="chevron-right" :size="16" style="opacity: 0.5; margin-left: 2px;" />
           </div>
         </div>
-        <button
-          class="donate-btn"
-          @click="openExternal('https://sociabuzz.com/noticesa/tribe')"
-        >
-          Donate
-        </button>
       </div>
 
       <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 4px 0 20px 0; font-family: var(--font-mono);">
         Inspired by encore @Rem01Gaming
       </div>
     </div>
+
+    <!-- Contributors & Support Modal Window -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showContributorsModal" class="modal-backdrop" @click.self="showContributorsModal = false">
+          <div class="modal-window">
+            <div class="modal-header">
+              <div class="modal-title-box">
+                <div class="modal-title">Contributors &amp; Support</div>
+                <div class="modal-sub">Tanzanite HyperCore Team</div>
+              </div>
+              <button class="modal-close" @click="showContributorsModal = false">✕</button>
+            </div>
+
+            <div class="modal-body">
+              <div class="modal-section-title">Developer &amp; Maintainer</div>
+              <div class="contributor-card">
+                <div class="contributor-left">
+                  <div class="avatar-badge dev">ن</div>
+                  <div class="contributor-info">
+                    <div class="contributor-name">@noticesa</div>
+                    <div class="contributor-role">Lead Developer &amp; Architect</div>
+                  </div>
+                </div>
+                <button class="action-chip" @click="openExternal('https://t.me/noticesa')">
+                  Telegram
+                </button>
+              </div>
+
+              <div class="modal-section-title" style="margin-top: 14px;">Testers &amp; Feedback</div>
+              <div class="contributor-card">
+                <div class="contributor-left">
+                  <div class="avatar-badge tester">R</div>
+                  <div class="contributor-info">
+                    <div class="contributor-name">@Rafzzz182</div>
+                    <div class="contributor-role">Hardware &amp; Game Testing</div>
+                  </div>
+                </div>
+                <button class="action-chip" @click="openExternal('https://t.me/Rafzzz182')">
+                  Telegram
+                </button>
+              </div>
+
+              <div class="contributor-card" style="margin-top: 8px;">
+                <div class="contributor-left">
+                  <div class="avatar-badge tester">A</div>
+                  <div class="contributor-info">
+                    <div class="contributor-name">@anotherside551</div>
+                    <div class="contributor-role">Kernel &amp; Thermal Testing</div>
+                  </div>
+                </div>
+                <button class="action-chip" @click="openExternal('https://t.me/anotherside551')">
+                  Telegram
+                </button>
+              </div>
+
+              <div class="modal-section-title" style="margin-top: 16px;">Support Development</div>
+              <div class="donate-banner">
+                <div class="donate-left">
+                  <div class="donate-icon">♡</div>
+                  <div>
+                    <div class="donate-title">Support Project</div>
+                    <div class="donate-sub">If HyperCore helps you, consider buying a coffee</div>
+                  </div>
+                </div>
+                <button class="donate-btn" @click="openExternal('https://sociabuzz.com/noticesa/tribe')">
+                  Donate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -194,6 +230,7 @@ import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const expandedRows = ref({})
+const showContributorsModal = ref(false)
 
 function toggleExpand(key) {
   expandedRows.value[key] = !expandedRows.value[key]
@@ -338,5 +375,200 @@ function openExternal(url) {
 .donate-btn:active {
   transform: scale(0.93);
   transition: transform 0.08s ease;
+}
+
+.preview-stack {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.preview-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: -6px;
+  border: 2px solid var(--surface, #12141a);
+}
+
+.preview-avatar.dev {
+  background: rgba(113, 107, 168, 0.4);
+  color: #c4bef5;
+  z-index: 3;
+}
+
+.preview-avatar.tester {
+  background: rgba(160, 178, 198, 0.3);
+  color: #d0e0f0;
+  z-index: 2;
+}
+
+/* Modal Window Overlay */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 480px) {
+  .modal-backdrop {
+    align-items: center;
+    padding: 20px;
+  }
+}
+
+.modal-window {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface-variant, #1c1f26);
+  border: 1px solid rgba(160, 178, 198, 0.18);
+  border-radius: 24px 24px 0 0;
+  padding: 20px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 480px) {
+  .modal-window {
+    border-radius: 24px;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.modal-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+}
+
+.modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:active {
+  transform: scale(0.9);
+}
+
+.modal-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+
+.contributor-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.contributor-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contributor-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.contributor-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.contributor-role {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+}
+
+.action-chip {
+  background: rgba(113, 107, 168, 0.2);
+  color: #c4bef5;
+  border: 1px solid rgba(113, 107, 168, 0.3);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.action-chip:active {
+  transform: scale(0.92);
+}
+
+.donate-banner {
+  background: linear-gradient(135deg, rgba(113, 107, 168, 0.16) 0%, rgba(160, 178, 198, 0.08) 100%);
+  border: 1px solid rgba(113, 107, 168, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Modal Transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .modal-window,
+.modal-leave-to .modal-window {
+  transform: translateY(30px) scale(0.96);
 }
 </style>
