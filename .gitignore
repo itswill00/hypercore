@@ -9,6 +9,7 @@ system/bin/
 .hyperflow_lock
 .hypercore_lock
 checksums.sha256
+src/include/embedded_checksums.hpp
 
 # Generated frontend build artifacts
 webroot/index.html
