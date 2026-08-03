@@ -165,7 +165,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         case PROFILE_Interactive: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             set_cpu_governor(gov);
-            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1200000, big_max, "200", "15000");
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1000000, big_max, "200", "20000");
             set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "0");
