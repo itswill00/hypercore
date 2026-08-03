@@ -19,7 +19,7 @@ int init_ipc_socket(void) {
 
     s_server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (s_server_fd < 0) {
-        log_error("IPC", "Failed to create UNIX domain socket: %s", strerror(errno));
+        log_error("Ipc", "Failed to create UNIX domain socket: %s", strerror(errno));
         return -1;
     }
 
@@ -36,7 +36,7 @@ int init_ipc_socket(void) {
     strncpy(addr.sun_path, s_sock_path, sizeof(addr.sun_path) - 1);
 
     if (bind(s_server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        log_error("IPC", "Failed to bind socket to %s: %s", s_sock_path, strerror(errno));
+        log_error("Ipc", "Failed to bind socket to %s: %s", s_sock_path, strerror(errno));
         close(s_server_fd);
         s_server_fd = -1;
         return -1;
@@ -45,13 +45,13 @@ int init_ipc_socket(void) {
     chmod(s_sock_path, 0666);
 
     if (listen(s_server_fd, 5) < 0) {
-        log_error("IPC", "Failed to listen on socket: %s", strerror(errno));
+        log_error("Ipc", "Failed to listen on socket: %s", strerror(errno));
         close(s_server_fd);
         s_server_fd = -1;
         return -1;
     }
 
-    log_info("IPC", "Socket IPC server listening at %s", s_sock_path);
+    log_info("Ipc", "Socket IPC server listening at %s", s_sock_path);
     return 0;
 }
 
