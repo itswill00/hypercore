@@ -397,14 +397,14 @@ function openExternal(url) {
 }
 
 .preview-avatar.dev {
-  background: rgba(113, 107, 168, 0.4);
-  color: #c4bef5;
+  background: var(--surface-container-highest, #30323a);
+  color: var(--on-surface, #f0f2f5);
   z-index: 3;
 }
 
 .preview-avatar.tester {
-  background: rgba(160, 178, 198, 0.3);
-  color: #d0e0f0;
+  background: var(--surface-container-high, #26272e);
+  color: var(--on-surface-variant, #b0b4c0);
   z-index: 2;
 }
 
@@ -412,9 +412,9 @@ function openExternal(url) {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 16, 0.72);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(10, 11, 13, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 999;
   display: flex;
   align-items: flex-end;
@@ -432,11 +432,11 @@ function openExternal(url) {
 .modal-window {
   width: 100%;
   max-width: 440px;
-  background: var(--surface-variant, #1c1f26);
-  border: 1px solid rgba(160, 178, 198, 0.18);
+  background: var(--surface-container-high, #26272e);
+  border: 1px solid var(--outline-variant, #383a42);
   border-radius: 24px 24px 0 0;
   padding: 20px;
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -453,46 +453,47 @@ function openExternal(url) {
   justify-content: space-between;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant, #383a42);
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--on-surface);
+  color: var(--on-surface, #f0f2f5);
 }
 
 .modal-sub {
   font-size: 11px;
-  color: var(--on-surface-variant);
-  opacity: 0.7;
+  color: var(--on-surface-variant, #b0b4c0);
+  opacity: 0.8;
 }
 
 .modal-close {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--on-surface);
-  font-size: 14px;
+  border: 1px solid var(--outline-variant, #383a42);
+  background: var(--surface-container, #1d1e23);
+  color: var(--on-surface, #f0f2f5);
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.12s ease;
 }
 
 .modal-close:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 
 .modal-section-title {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--on-surface-variant);
-  opacity: 0.6;
+  color: var(--blue, #a0b2c6);
+  opacity: 0.9;
   margin-bottom: 8px;
 }
 
@@ -500,8 +501,8 @@ function openExternal(url) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-container, #1d1e23);
+  border: 1px solid var(--outline-variant, #383a42);
   border-radius: 14px;
   padding: 10px 12px;
 }
@@ -520,25 +521,25 @@ function openExternal(url) {
 .contributor-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--on-surface);
+  color: var(--on-surface, #f0f2f5);
 }
 
 .contributor-role {
   font-size: 10px;
-  color: var(--on-surface-variant);
-  opacity: 0.7;
+  color: var(--on-surface-variant, #b0b4c0);
+  opacity: 0.8;
 }
 
 .action-chip {
-  background: rgba(113, 107, 168, 0.2);
-  color: #c4bef5;
-  border: 1px solid rgba(113, 107, 168, 0.3);
+  background: var(--primary-container, #33353e);
+  color: var(--on-primary-container, #f0f2f5);
+  border: 1px solid var(--outline-variant, #383a42);
   border-radius: 20px;
   padding: 5px 12px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.12s ease;
+  transition: transform 0.12s ease, background 0.15s ease;
 }
 
 .action-chip:active {
@@ -546,8 +547,8 @@ function openExternal(url) {
 }
 
 .donate-banner {
-  background: linear-gradient(135deg, rgba(113, 107, 168, 0.16) 0%, rgba(160, 178, 198, 0.08) 100%);
-  border: 1px solid rgba(113, 107, 168, 0.25);
+  background: var(--surface-container, #1d1e23);
+  border: 1px solid var(--outline-variant, #383a42);
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;
