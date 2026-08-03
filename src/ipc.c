@@ -86,7 +86,7 @@ static void process_client(int client_fd) {
         else if (bat_temp > 100) bat_temp /= 10;
 
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-        const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 5) ?
+        const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 3) ?
                                 g_profile_names[g_state.current_profile] : "Unknown";
 
         time_t now = time(NULL);

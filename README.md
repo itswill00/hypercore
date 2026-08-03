@@ -41,25 +41,19 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 
 ## Operational Profiles
 
-The daemon evaluates device metrics using an adaptive loop (500 ms – 8000 ms) and applies one of four consolidated core operational profiles (inspired by `encore` architecture):
+The daemon evaluates device metrics using an adaptive loop (500 ms – 8000 ms) and applies one of three consolidated core operational profiles:
 
 | Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Floor | Power Policy | Interconnect Bandwidth |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Sleep** | Screen locked | 500 – 1200 MHz | 725 – 1000 MHz | 300 MHz | `coarse_demand` | Dynamic (Low) |
 | **Interactive** | Daily use / Browsing | 600 – 2000 MHz | 1000 – 2200 MHz | 300 MHz | `coarse_demand` | Dynamic |
-| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1600 – 2200 MHz | 300 / 600 MHz | `coarse_demand` | Unlocked (4.266 GHz) |
-| **Thermal** | CPU ≥ 75°C or Battery ≥ 53°C | 600 – 2000 MHz | 900 – 1600 MHz | 300 MHz | `coarse_demand` | Dynamic |
+| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1800 – 2200 MHz | 300 / 600 MHz | `coarse_demand` | Unlocked (4.266 GHz) |
 
 ---
 
-## Thermal Protection State Machine
+## Non-Interfering Thermal Hardware Coexistence
 
-HyperCore uses a 4-tier thermal state machine with hysteresis to maintain performance while keeping temperatures within safe boundaries:
-
-- **Tier 0 (Optimal)**: CPU < 58°C, Battery < 44°C. Standard unthrottled profile limits.
-- **Tier 1 (Normal Load)**: CPU 58°C–64°C, Battery 44°C–47°C. Sustained daily operation.
-- **Tier 2 (Warm Load)**: CPU 65°C–74°C, Battery 48°C–52°C. Elevated workload adjustment.
-- **Tier 3 (Thermal Protection)**: CPU ≥ 75°C or Battery ≥ 53°C. Enforces protective frequency capping (`PROFILE_THERMAL`).
+HyperCore relies on native kernel hardware thermal drivers and user-installed thermal mods for throttling. The daemon dynamically adjusts 3-stage thermal charging current limits (2.5A / 1.8A / 1.0A) while allowing hardware HALs and thermal mods to maintain optimal thermal limits.
 
 ---
 

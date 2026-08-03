@@ -23,8 +23,7 @@
 typedef enum {
     PROFILE_Sleep,
     PROFILE_Interactive,
-    PROFILE_Gaming,
-    PROFILE_Thermal
+    PROFILE_Gaming
 } profile_t;
 
 extern const char *g_profile_names[];

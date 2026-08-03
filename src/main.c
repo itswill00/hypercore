@@ -11,7 +11,7 @@
 #include "ipc.hpp"
 
 const char *g_profile_names[] = {
-    "Sleep", "Interactive", "Gaming", "Thermal"
+    "Sleep", "Interactive", "Gaming"
 };
 
 volatile sig_atomic_t g_running = 1;
@@ -216,9 +216,6 @@ int main(int argc, char *argv[]) {
         if (!is_screen_on()) {
             next_profile = PROFILE_Sleep;
             g_state.gaming_hold_ticks = 0;
-        } else if (thermal_tier == 3 && cpu_temp >= 75) {
-            next_profile = PROFILE_Thermal;
-            g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
             s_last_game_profile = custom_profile; 
@@ -242,7 +239,7 @@ int main(int argc, char *argv[]) {
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
             (next_profile == PROFILE_Gaming && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
-            const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
+            const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 3) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
                 if (next_profile == PROFILE_Gaming && active_game[0] != '\0') {
@@ -281,8 +278,6 @@ int main(int argc, char *argv[]) {
             poll_timeout_ms = (bat_temp >= 45) ? 3000 : 8000;
         } else if (next_profile == PROFILE_Gaming) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 500 : 1000;
-        } else if (next_profile == PROFILE_Thermal) {
-            poll_timeout_ms = 500;
         } else if (next_profile == PROFILE_Interactive) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 1000 : 2000;
         }
