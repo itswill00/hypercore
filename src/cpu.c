@@ -196,13 +196,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             const char *gpu_freq = is_heavy_gpu ? ((tier >= 3) ? "500000" : "600000") : "300000";
             const char *dvfs_margin = is_heavy_gpu ? "40" : "20";
             int big_min = (tier >= 3) ? 1600000 : 1800000;
-            set_cpu_governor(gov);
+            set_cpu_governor("performance");
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
             set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
