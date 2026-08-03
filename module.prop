@@ -4,5 +4,5 @@ version=v4.3
 versionCode=430
 author=@itswill00
 description=Smart kernel optimizer & gaming daemon for Helio G99 Ultra. Inspired By encore @Rem01Gaming.
-updateJson=https://raw.githubusercontent.com/itswill00/hyperflow/main/update.json
+updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
 banner=banner.jpg
