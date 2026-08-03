@@ -59,7 +59,7 @@
             </div>
           </div>
           <div class="row-val">
-            {{ store.batteryCycles || 347 }} cycles
+            {{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}
           </div>
         </div>
 

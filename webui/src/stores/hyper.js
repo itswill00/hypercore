@@ -36,6 +36,7 @@ export const useHyperStore = defineStore('hyper', () => {
   const batLevel = ref('')
   const batRate = ref('—')
   const batVolt = ref('—')
+  const batteryCycles = ref(0)
 
   /* ── Device metadata ── */
   const moduleVersion = ref('v4.2')
@@ -199,6 +200,7 @@ export const useHyperStore = defineStore('hyper', () => {
           daemonPid.value = String(ipcData.pid || '')
           activeProfile.value = ipcData.profile || '—'
           thermalTier.value = `Tier ${ipcData.thermal_tier}`
+          if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           ipcSetThermal = true
         } catch {}
       } else {
@@ -466,7 +468,7 @@ export const useHyperStore = defineStore('hyper', () => {
   return {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
-    cpuTemp, batTemp, batStatus, batLevel, batRate, batVolt,
+    cpuTemp, batTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
