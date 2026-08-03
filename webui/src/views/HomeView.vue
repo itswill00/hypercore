@@ -29,33 +29,105 @@
           </span>
         </div>
 
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="thermo" :size="18" />
+        <div
+          class="md3-list-row expandable-row clickable"
+          :class="{ 'is-expanded': expandedRows['thermal'] }"
+          @click="toggleExpand('thermal')"
+        >
+          <div class="row-header">
+            <div class="row-left">
+              <div class="icon-badge">
+                <Icons name="thermo" :size="18" />
+              </div>
+              <div class="row-meta">
+                <div class="row-title">Thermal state</div>
+                <div class="row-sub">CPU, battery &amp; thermal tier status</div>
+              </div>
             </div>
-            <div class="row-meta">
-              <div class="row-title">Temperature</div>
-              <div class="row-sub">CPU &amp; Battery live temperature</div>
+            <div class="row-val" :class="store.tempColor">
+              CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C
             </div>
           </div>
-          <div class="row-val">
-            CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C
+          <div class="expanded-content">
+            <div class="expanded-inner">
+              <div class="stat-grid-2">
+                <div class="stat-box">
+                  <div class="stat-lbl">CPU SoC peak</div>
+                  <div class="stat-num" :class="store.tempColor">{{ store.cpuTemp }}°C</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Battery sensor</div>
+                  <div class="stat-num">{{ store.batTemp }}°C</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">GPU sensor</div>
+                  <div class="stat-num">{{ store.gpuTemp > 0 ? store.gpuTemp + '°C' : store.cpuTemp + '°C' }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">PMIC charger</div>
+                  <div class="stat-num">{{ store.chgTemp > 0 ? store.chgTemp + '°C' : store.batTemp + '°C' }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">HyperCore tier</div>
+                  <div class="stat-num" :class="store.thermalColor">{{ store.thermalTier }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Charging guard</div>
+                  <div class="stat-num">{{ store.thermalGuardState }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="battery" :size="18" />
+        <div
+          class="md3-list-row expandable-row clickable"
+          :class="{ 'is-expanded': expandedRows['battery'] }"
+          @click="toggleExpand('battery')"
+        >
+          <div class="row-header">
+            <div class="row-left">
+              <div class="icon-badge">
+                <Icons name="battery" :size="18" />
+              </div>
+              <div class="row-meta">
+                <div class="row-title">Battery</div>
+                <div class="row-sub">Health, cycles &amp; power flow</div>
+              </div>
             </div>
-            <div class="row-meta">
-              <div class="row-title">Battery Cycles</div>
-              <div class="row-sub">Hardware BMS coulomb counter</div>
+            <div class="row-val">
+              {{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}
             </div>
           </div>
-          <div class="row-val">
-            {{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}
+          <div class="expanded-content">
+            <div class="expanded-inner">
+              <div class="stat-grid-2">
+                <div class="stat-box">
+                  <div class="stat-lbl">Calibrated cycles</div>
+                  <div class="stat-num">{{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Health &amp; status</div>
+                  <div class="stat-num">{{ store.batHealth }} ({{ store.batStatus }})</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Current flow</div>
+                  <div class="stat-num">{{ store.batRate }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Voltage</div>
+                  <div class="stat-num">{{ store.batVolt }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Full capacity</div>
+                  <div class="stat-num">{{ store.batCapFull }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Technology</div>
+                  <div class="stat-num">{{ store.batTech }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

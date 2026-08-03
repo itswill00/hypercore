@@ -93,12 +93,37 @@ static void process_client(int client_fd) {
         long uptime_sec = (long)difftime(now, s_start_time);
         int bat_cycles = get_true_battery_cycles();
 
-        char json[512];
+        char bat_health[32] = "Good";
+        if (!sysfs_read_str("/sys/class/power_supply/battery/health", bat_health, sizeof(bat_health))) {
+            sysfs_read_str("/sys/class/power_supply/bms/health", bat_health, sizeof(bat_health));
+        }
+
+        char bat_status[32] = "Discharging";
+        if (!sysfs_read_str("/sys/class/power_supply/battery/status", bat_status, sizeof(bat_status))) {
+            sysfs_read_str("/sys/class/power_supply/bms/status", bat_status, sizeof(bat_status));
+        }
+
+        char bat_tech[32] = "Li-poly";
+        if (!sysfs_read_str("/sys/class/power_supply/battery/technology", bat_tech, sizeof(bat_tech))) {
+            sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
+        }
+
+        int gpu_temp = sysfs_read_int("/sys/class/thermal/thermal_zone10/temp");
+        if (gpu_temp > 1000) gpu_temp /= 1000;
+        if (gpu_temp <= 0) gpu_temp = cpu_temp;
+
+        int chg_temp = sysfs_read_int("/sys/class/thermal/thermal_zone17/temp");
+        if (chg_temp > 1000) chg_temp /= 1000;
+        if (chg_temp <= 0) chg_temp = bat_temp;
+
+        char json[640];
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
-            "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld}\n",
-            getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
-            g_state.is_charging, gpu_load, bat_cycles, uptime_sec);
+            "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
+            "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\"}\n",
+            getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp, gpu_temp, chg_temp,
+            g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
+            bat_health, bat_status, bat_tech);
 
         write(client_fd, json, strlen(json));
     } else if (strncmp(req, "PING", 4) == 0) {

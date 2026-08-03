@@ -29,11 +29,22 @@ export const useHyperStore = defineStore('hyper', () => {
 
   const cpuTemp = ref(0)
   const batTemp = ref(0)
+  const gpuTemp = ref(0)
+  const chgTemp = ref(0)
   const batStatus = ref('—')
   const batLevel = ref('')
   const batRate = ref('—')
   const batVolt = ref('—')
   const batteryCycles = ref(0)
+  const batHealth = ref('Good')
+  const batCapFull = ref('5350 mAh')
+  const batTech = ref('Li-poly')
+
+  const thermalGuardState = computed(() => {
+    if (batTemp.value >= 42) return 'Trickle Guard (1.0A)'
+    if (batTemp.value >= 37) return 'Safety Balance (1.8A)'
+    return 'Fast Charge (2.5A)'
+  })
 
   const moduleVersion = ref('v4.3')
   const kernelVersion = ref('—')
@@ -148,6 +159,9 @@ export const useHyperStore = defineStore('hyper', () => {
       `echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)"`,
       `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`,
       `echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)"`,
+      `echo "BH:$(cat /sys/class/power_supply/battery/health 2>/dev/null || cat /sys/class/power_supply/bms/health 2>/dev/null)"`,
+      `echo "BFC:$(cat /sys/class/power_supply/battery/charge_full 2>/dev/null || cat /sys/class/power_supply/bms/charge_full 2>/dev/null)"`,
+      `echo "BTEC:$(cat /sys/class/power_supply/battery/technology 2>/dev/null || cat /sys/class/power_supply/bms/technology 2>/dev/null)"`,
       `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk|ufs|dm-)' | head -1)`,
       `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
       `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
@@ -192,6 +206,8 @@ export const useHyperStore = defineStore('hyper', () => {
           activeProfile.value = ipcData.profile || '—'
           thermalTier.value = `Tier ${ipcData.thermal_tier}`
           if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
+          if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
+          if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
           ipcSetThermal = true
         } catch {}
       } else {
@@ -271,6 +287,16 @@ export const useHyperStore = defineStore('hyper', () => {
         batVolt.value = `${v} V`
       } else {
         batVolt.value = '—'
+      }
+
+      if (kv.BH) batHealth.value = kv.BH.trim() || 'Good'
+      if (kv.BTEC) batTech.value = kv.BTEC.trim() || 'Li-poly'
+      if (kv.BFC) {
+        const rawFc = parseInt(kv.BFC || 0)
+        if (rawFc > 0) {
+          const mah = Math.round(rawFc > 10000 ? rawFc / 1000 : rawFc)
+          batCapFull.value = `${mah} mAh`
+        }
       }
 
       if (kv.IO) {
@@ -443,7 +469,8 @@ export const useHyperStore = defineStore('hyper', () => {
   return {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
-    cpuTemp, batTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
+    cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
+    batHealth, batCapFull, batTech, thermalGuardState,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
