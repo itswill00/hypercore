@@ -59,21 +59,6 @@
           </div>
         </div>
 
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="shield" :size="18" />
-            </div>
-            <div class="row-meta">
-              <div class="row-title">File Integrity</div>
-              <div class="row-sub">Embedded binary SHA-256 check</div>
-            </div>
-          </div>
-          <span class="badge-pill" style="background: rgba(160, 178, 198, 0.16); color: #a0b2c6; font-size: 10px;">
-            Verified (SHA-256 OK)
-          </span>
-        </div>
-
         <div
           class="md3-list-row expandable-row clickable"
           :class="{ 'is-expanded': expandedRows['chipset'] }"
