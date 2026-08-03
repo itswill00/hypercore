@@ -45,7 +45,8 @@
               </div>
             </div>
             <div class="row-val" :class="store.tempColor">
-              CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C
+              <span>CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C</span>
+              <span class="expand-caret" :class="{ 'open': expandedRows['thermal'] }">▼</span>
             </div>
           </div>
           <div class="expanded-content">
@@ -96,7 +97,8 @@
               </div>
             </div>
             <div class="row-val">
-              {{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}
+              <span>{{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}</span>
+              <span class="expand-caret" :class="{ 'open': expandedRows['battery'] }">▼</span>
             </div>
           </div>
           <div class="expanded-content">

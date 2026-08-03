@@ -325,20 +325,58 @@ html, body, #app {
 }
 
 .expandable-row.is-expanded .expanded-content {
-  max-height: 140px;
+  max-height: 400px;
   opacity: 1;
-  padding: 0 14px 12px 14px;
+  padding: 0 14px 14px 14px;
 }
 
 .expanded-inner {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--on-surface-variant);
-  line-height: 1.7;
-  padding-left: 48px;
+  line-height: 1.6;
+  padding-left: 0;
   border-top: 1px dashed var(--outline-variant);
-  padding-top: 8px;
+  padding-top: 10px;
   width: 100%;
+}
+
+.stat-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.stat-box {
+  background: var(--surface-container-low, #17181c);
+  border: 1px solid var(--outline-variant, #383a42);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stat-lbl {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--on-surface-variant, #b0b4c0);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface, #f0f2f5);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expand-caret {
