@@ -120,6 +120,18 @@ static int is_screen_on(void) {
     return 1;
 }
 
+static int get_top_app_pid(void) {
+    FILE *f = fopen("/dev/cpuset/top-app/tasks", "r");
+    if (!f) return 0;
+    char line[32];
+    int pid = 0;
+    if (fgets(line, sizeof(line), f)) {
+        pid = atoi(line);
+    }
+    fclose(f);
+    return pid;
+}
+
 #include "integrity.hpp"
 
 static int validate_hardware_target(void) {
@@ -184,6 +196,21 @@ int main(int argc, char *argv[]) {
         profile_t custom_profile = PROFILE_Gaming;
         int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
 
+        int current_top_pid = get_top_app_pid();
+        static int s_prev_top_pid = 0;
+        if (current_top_pid > 0 && s_prev_top_pid > 0 && current_top_pid != s_prev_top_pid && !game_active) {
+            g_state.app_boost_ticks = 3;
+            set_read_ahead("384");
+        }
+        s_prev_top_pid = current_top_pid;
+
+        if (g_state.app_boost_ticks > 0) {
+            g_state.app_boost_ticks--;
+            if (g_state.app_boost_ticks == 0 && g_state.launch_boost_ticks == 0) {
+                set_read_ahead("256");
+            }
+        }
+
         static int       s_game_absent_ticks = 0;
         static int       s_prev_game_active  = 0;
         static profile_t s_last_game_profile = PROFILE_Gaming; 
@@ -206,7 +233,7 @@ int main(int argc, char *argv[]) {
 
         if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
-            if (g_state.launch_boost_ticks == 0) {
+            if (g_state.launch_boost_ticks == 0 && g_state.app_boost_ticks == 0) {
                 set_read_ahead("256");
             }
         }
@@ -234,11 +261,14 @@ int main(int argc, char *argv[]) {
         s_prev_cpu_temp = cpu_temp;
 
         static int s_prev_gpu_heavy = -1;
+        static int s_prev_app_boost = 0;
         int is_gpu_heavy = (gpu_load >= 20);
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
+            g_state.app_boost_ticks != s_prev_app_boost ||
             (next_profile == PROFILE_Gaming && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
+            s_prev_app_boost = g_state.app_boost_ticks;
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 3) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];

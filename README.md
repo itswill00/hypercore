@@ -31,7 +31,8 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 - **MediaTek DRM Screen Off Detection**: Accurate display state monitoring via MediaTek DRM backlight drivers, ensuring the device enters deep sleep (`PROFILE_SLEEP`) immediately when locked.
 - **Load-Aware GPU Floor & DVFS Margin**: Dynamically scales GPU bottom frequency (300 MHz vs 600 MHz) and DVFS margin based on real-time GPU load (`gpu_loading`), saving energy during loading screens while boosting full throttle during heavy 3D fights.
 - **MediaTek FPSGO `ultra_rescue` & `boost_ta`**: Instant 0ms touch acceleration and frame-drop rescue bursts during heavy 3D combat.
-- **Calibrated `sugov_ext` / `reflex` Governor Scaling**: Auto-detects custom kernel `reflex` governor or sets `sugov_ext` up-rate limit (`500 µs`) for 0ms touch response and down-rate limit (`20,000 µs`) for 90/120 Hz smooth scrolling.
+- **Foreground App Transition & Gesture Boost Engine**: Detects active app switches (e.g. TikTok to Instagram or MIUI Launcher) and injects a 1.5s burst (1.6 GHz Big core floor, 35% uclamp, 384KB read-ahead) for 120 FPS stutter-free app switching animations.
+- **Calibrated `sugov_ext` / `reflex` Governor Scaling**: Auto-detects custom kernel `reflex` governor or sets `sugov_ext` up-rate limit (`200 µs`) for 0ms touch response and down-rate limit (`20,000 µs`) for 60/90/120 Hz smooth scrolling.
 - **Enterprise Structured Logging**: Millisecond-precision timestamped logger with structured severity levels (`INFO`, `STATE`, `WARN`, `ERROR`), using a static ring buffer to eliminate heap memory fragmentation.
 - **Hardware IRQ Affinity Pinning**: Directs Mali GPU, GED, DSI Display, and storage interrupts to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt processing.
 - **Embedded Binary SHA-256 Self-Integrity Check**: Verifies binary and module file checksums on startup to detect tampering or corruption (`libhypercore.so --verify-integrity`).

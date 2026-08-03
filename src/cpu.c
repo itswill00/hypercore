@@ -102,7 +102,8 @@ void apply_cgroup_gaming_policy(int enable) {
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "15");
+        const char *uclamp_min = (g_state.app_boost_ticks > 0) ? "35" : "15";
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", uclamp_min);
         sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
     }
 }
@@ -164,8 +165,10 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
         case PROFILE_Interactive: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
+            int big_min = (g_state.app_boost_ticks > 0) ? 1600000 : 1000000;
+            const char *dvfs_margin = (g_state.app_boost_ticks > 0) ? "30" : "15";
             set_cpu_governor(gov);
-            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1000000, big_max, "200", "20000");
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "200", "20000");
             set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "0");
@@ -178,7 +181,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "15");
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", dvfs_margin);
             const char *interactive_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
