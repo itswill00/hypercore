@@ -59,7 +59,7 @@ typedef struct {
 static const file_checksum_t g_embedded_checksums[] = {
 EOF
 
-for f in post-fs-data.sh service.sh system.prop module.prop update.json changelog.md uninstall.sh webroot/index.html banner.jpg; do
+for f in post-fs-data.sh service.sh system.prop module.prop update.json changelog.md NOTICE.md uninstall.sh webroot/index.html banner.jpg; do
     if [ -f "$f" ]; then
         hash=$(sha256sum "$f" | awk '{print $1}')
         echo "    { \"$f\", \"$hash\" }," >> "$EMBED_HEADER"
@@ -99,6 +99,7 @@ if ! zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
     gamelist.txt \
     update.json \
     changelog.md \
+    NOTICE.md \
     uninstall.sh \
     banner.jpg >/dev/null; then
     echo "error: packaging failed"
