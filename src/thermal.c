@@ -115,19 +115,18 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 
 int get_true_battery_cycles(void) {
     int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
-    int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
-
     if (fg_raw > 0) {
         return fg_raw / 16;
     }
 
-    if (cycle_count > 1000) {
-        return cycle_count / 16;
-    }
-
+    int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
     if (auth_cycles > 1000) {
         return auth_cycles / 16;
+    }
+
+    int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (cycle_count > 1000) {
+        return cycle_count / 16;
     }
 
     if (cycle_count > 0) return cycle_count;
@@ -142,20 +141,22 @@ int get_true_battery_cycles(void) {
 }
 
 void fix_battery_cycle_count(void) {
-    static int s_attempts = 0;
-    static int s_fixed = 0;
-    if (s_fixed || s_attempts >= 3) return;
+    static int s_last_calibrated_cycles = -1;
+    static int s_write_failed_for_cycle = -1;
 
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) return;
 
-    int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (current_cycles == true_cycles) {
-        s_fixed = 1;
+    if (true_cycles == s_last_calibrated_cycles || true_cycles == s_write_failed_for_cycle) {
         return;
     }
 
-    s_attempts++;
+    int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (current_cycles == true_cycles) {
+        s_last_calibrated_cycles = true_cycles;
+        return;
+    }
+
     char buf[32];
     snprintf(buf, sizeof(buf), "%d", true_cycles);
 
@@ -167,12 +168,13 @@ void fix_battery_cycle_count(void) {
 
     int verified = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
     if (verified == true_cycles) {
-        s_fixed = 1;
+        s_last_calibrated_cycles = true_cycles;
         log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
-    } else if (s_attempts >= 3) {
-        s_fixed = 1;
+    } else {
+        s_write_failed_for_cycle = true_cycles;
         log_warn("Battery", "Cycle count node write-locked, reporting raw value %d", true_cycles);
     }
 }
+
 
 
