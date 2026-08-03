@@ -1,5 +1,4 @@
 #!/system/bin/sh
-# Minimalist and natural build script for Tanzanite HyperCore
 
 PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
 RELEASE_DIR="/data/data/com.termux/files/home/Tanzanite_HyperCore_Release"
@@ -8,7 +7,6 @@ set -e
 
 cd "$PROJECT_DIR"
 
-# 1. Parse version
 if [ ! -f "module.prop" ]; then
     echo "error: module.prop not found"
     exit 1
@@ -19,7 +17,6 @@ ZIP_OUT="Tanzanite-HyperCore-${VERSION}.zip"
 
 echo "building tanzanite hypercore ${VERSION} (${VERSION_CODE})"
 
-# 2. Check tools
 for tool in clang zip node npm; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "error: $tool is not installed"
@@ -27,7 +24,6 @@ for tool in clang zip node npm; do
     fi
 done
 
-# 3. Compile WebUI
 if [ -d "webui" ]; then
     if [ ! -d "webui/node_modules" ]; then
         echo "installing webui dependencies..."
@@ -49,7 +45,6 @@ if [ -d "webui" ]; then
     cp "webui/dist/index.html" "webroot/index.html"
 fi
 
-# 4. Generate checksums
 echo "generating sha256 checksums..."
 EMBED_HEADER="src/include/embedded_checksums.hpp"
 cat << 'EOF' > "$EMBED_HEADER"
@@ -77,7 +72,6 @@ cat << 'EOF' >> "$EMBED_HEADER"
 #endif /* EMBEDDED_CHECKSUMS_HPP */
 EOF
 
-# 5. Compile C Daemon
 echo "compiling c daemon..."
 rm -f hypercore libhypercore.so
 rm -rf system/bin
@@ -89,7 +83,6 @@ if ! clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Wer
 fi
 chmod +x system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh uninstall.sh
 
-# 6. Package ZIP
 echo "packaging zip package..."
 mkdir -p "$RELEASE_DIR"
 rm -f "$RELEASE_DIR/$ZIP_OUT"
@@ -119,7 +112,6 @@ cp "$RELEASE_DIR/$ZIP_OUT" "$INTERNAL_DIR/$ZIP_OUT"
 
 echo "build finished: ${RELEASE_DIR}/${ZIP_OUT}"
 
-# 7. Deploy if requested
 if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."
     if su -c "
