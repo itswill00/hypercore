@@ -127,7 +127,7 @@
               <Icons name="heart" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Contributors &amp; Support</div>
+              <div class="row-title">Contributors &amp; support</div>
               <div class="row-sub">Meet project team, testers &amp; support links</div>
             </div>
           </div>
@@ -152,20 +152,20 @@
           <div class="modal-window">
             <div class="modal-header">
               <div class="modal-title-box">
-                <div class="modal-title">Contributors &amp; Support</div>
-                <div class="modal-sub">Tanzanite HyperCore Team</div>
+                <div class="modal-title">Contributors &amp; support</div>
+                <div class="modal-sub">Tanzanite HyperCore team</div>
               </div>
               <button class="modal-close" @click="showContributorsModal = false">✕</button>
             </div>
 
             <div class="modal-body">
-              <div class="modal-section-title">Developer &amp; Maintainer</div>
+              <div class="modal-section-title">Developer &amp; maintainer</div>
               <div class="contributor-card">
                 <div class="contributor-left">
                   <div class="avatar-badge dev">ن</div>
                   <div class="contributor-info">
                     <div class="contributor-name">@noticesa</div>
-                    <div class="contributor-role">Lead Developer &amp; Architect</div>
+                    <div class="contributor-role">Lead developer &amp; architect</div>
                   </div>
                 </div>
                 <button class="action-chip" @click="openExternal('https://t.me/noticesa')">
@@ -173,13 +173,13 @@
                 </button>
               </div>
 
-              <div class="modal-section-title" style="margin-top: 14px;">Testers &amp; Feedback</div>
+              <div class="modal-section-title" style="margin-top: 14px;">Testers &amp; feedback</div>
               <div class="contributor-card">
                 <div class="contributor-left">
                   <div class="avatar-badge tester">R</div>
                   <div class="contributor-info">
                     <div class="contributor-name">@Rafzzz182</div>
-                    <div class="contributor-role">Hardware &amp; Game Testing</div>
+                    <div class="contributor-role">Hardware &amp; game testing</div>
                   </div>
                 </div>
                 <button class="action-chip" @click="openExternal('https://t.me/Rafzzz182')">
@@ -192,7 +192,7 @@
                   <div class="avatar-badge tester">A</div>
                   <div class="contributor-info">
                     <div class="contributor-name">@anotherside551</div>
-                    <div class="contributor-role">Kernel &amp; Thermal Testing</div>
+                    <div class="contributor-role">Kernel &amp; thermal testing</div>
                   </div>
                 </div>
                 <button class="action-chip" @click="openExternal('https://t.me/anotherside551')">
@@ -200,12 +200,12 @@
                 </button>
               </div>
 
-              <div class="modal-section-title" style="margin-top: 16px;">Support Development</div>
+              <div class="modal-section-title" style="margin-top: 16px;">Support development</div>
               <div class="donate-banner">
                 <div class="donate-left">
                   <div class="donate-icon">♡</div>
                   <div>
-                    <div class="donate-title">Support Project</div>
+                    <div class="donate-title">Support project</div>
                     <div class="donate-sub">If HyperCore helps you, consider buying a coffee</div>
                   </div>
                 </div>
@@ -224,6 +224,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
+import { execCommand } from '@/helpers/shell'
 import StatusCard from '@/components/StatusCard.vue'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
@@ -236,12 +237,26 @@ function toggleExpand(key) {
   expandedRows.value[key] = !expandedRows.value[key]
 }
 
-function openExternal(url) {
-  if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
-    ksu.open(url)
-  } else {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
+async function openExternal(url) {
+  try {
+    if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
+      ksu.open(url)
+      return
+    }
+  } catch (e) {}
+
+  try {
+    await execCommand(`am start -a android.intent.action.VIEW -d "${url}" 2>/dev/null`)
+    return
+  } catch (e) {}
+
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 </script>
 
@@ -489,9 +504,7 @@ function openExternal(url) {
 
 .modal-section-title {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--blue, #a0b2c6);
   opacity: 0.9;
   margin-bottom: 8px;
