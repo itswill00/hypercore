@@ -1,7 +1,3 @@
-/*
- * HyperCore - Thermal Zone Scanner & Hysteresis Implementation
- * Author: @itswill00
- */
 
 #include "thermal.hpp"
 #include "sysfs.hpp"
@@ -118,25 +114,17 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 }
 
 int get_true_battery_cycles(void) {
-    /*
-     * Priority 1: MediaTek fg1_cycle — raw 1/16th sub-cycle accumulator.
-     * Only use this path if the raw value clearly indicates sub-cycles
-     * (i.e. not just a small direct cycle count that happens to be < 16).
-     * A reasonable heuristic: fg1_cycle is used as sub-cycle if it exists
-     * AND cycle_count is 0 or absent (meaning fg1_cycle is the sole source).
-     */
+    
     int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
     int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
 
     if (fg_raw > 0 && cycle_count == 0) {
-        /* fg1_cycle is the only source — treat as 1/16th sub-cycle */
+        
         return fg_raw / 16;
     }
 
-    /* Priority 2: standard cycle_count node (already in full cycles) */
     if (cycle_count > 0) return cycle_count;
 
-    /* Priority 3: BMS sub-node */
     int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
     if (bms_cycles > 0) return bms_cycles;
 
@@ -150,13 +138,13 @@ void fix_battery_cycle_count(void) {
 
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) {
-        /* No cycle data available — don't lock s_fixed so we retry next tick */
+        
         return;
     }
 
     int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
     if (current_cycles == true_cycles) {
-        s_fixed = 1; /* already correct, no action needed */
+        s_fixed = 1; 
         return;
     }
 
@@ -175,7 +163,7 @@ void fix_battery_cycle_count(void) {
         s_fixed = 1;
         log_info("BATTERY", "Battery cycle count calibrated to %d cycles", true_cycles);
     } else if (s_attempts >= 3) {
-        s_fixed = 1; /* give up — node is write-locked by kernel */
+        s_fixed = 1; 
         log_warn("BATTERY", "Cycle count node write-locked, reporting raw value %d", true_cycles);
     }
 }

@@ -1,7 +1,3 @@
-/*
- * HyperCore - Main Daemon Entry Point
- * Author: @itswill00
- */
 
 #include "common.hpp"
 #include "sysfs.hpp"
@@ -143,7 +139,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // POSIX Daemonization (Detach from init service process group like encore)
     if (daemon(0, 0) != 0) {
         perror("daemonization failed");
         return 1;
@@ -191,7 +186,7 @@ int main(int argc, char *argv[]) {
 
         static int       s_game_absent_ticks = 0;
         static int       s_prev_game_active  = 0;
-        static profile_t s_last_game_profile = PROFILE_GAMING; /* remember per-game profile for hold ticks */
+        static profile_t s_last_game_profile = PROFILE_GAMING; 
 
         if (game_active) {
             s_game_absent_ticks = 0;
@@ -226,11 +221,11 @@ int main(int argc, char *argv[]) {
             g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
-            s_last_game_profile = custom_profile; /* remember for hold ticks */
+            s_last_game_profile = custom_profile; 
             g_state.gaming_hold_ticks = 2;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
-            next_profile = s_last_game_profile; /* use per-game profile, not hardcoded GAMING */
+            next_profile = s_last_game_profile; 
         } else {
             next_profile = PROFILE_INTERACTIVE;
         }

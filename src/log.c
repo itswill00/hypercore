@@ -1,7 +1,3 @@
-/*
- * HyperCore - Structured Logging Implementation
- * Author: @itswill00
- */
 
 #include "log.hpp"
 #include <sys/time.h>
@@ -46,7 +42,6 @@ void rotate_log(void) {
     FILE *in = fopen(LOG_PATH, "r");
     if (!in) return;
 
-    // Buffer last 200 lines cleanly without dynamic heap churn
     #define MAX_RING_LINES 250
     #define MAX_LINE_LEN 256
     static char s_ring_buffer[MAX_RING_LINES][MAX_LINE_LEN];

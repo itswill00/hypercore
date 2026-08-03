@@ -1,7 +1,3 @@
-/*
- * Minimal standalone C SHA-256 Implementation
- * Author: @itswill00
- */
 
 #ifndef SHA256_HPP
 #define SHA256_HPP
@@ -30,4 +26,4 @@ int sha256_file(const char *filepath, char out_hex[65]);
 }
 #endif
 
-#endif /* SHA256_HPP */
+#endif 

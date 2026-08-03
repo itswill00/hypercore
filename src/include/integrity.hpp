@@ -1,7 +1,3 @@
-/*
- * Embedded Integrity Verification Header
- * Author: @itswill00
- */
 
 #ifndef INTEGRITY_HPP
 #define INTEGRITY_HPP
@@ -16,4 +12,4 @@ int verify_module_integrity(const char *mod_dir);
 }
 #endif
 
-#endif /* INTEGRITY_HPP */
+#endif 

@@ -1,7 +1,3 @@
-/*
- * HyperCore - Sysfs Utilities Implementation
- * Author: @itswill00
- */
 
 #include "sysfs.hpp"
 

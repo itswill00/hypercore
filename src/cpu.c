@@ -1,7 +1,3 @@
-/*
- * HyperCore - CPU Governor & Scaling Tuning Implementation
- * Author: @itswill00
- */
 
 #include "cpu.hpp"
 #include "memory.hpp"
@@ -29,7 +25,6 @@ void apply_cpuset(void) {
         sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
     }
 
-    // Kernel EAS Scheduler Latency & Task Migration Tuning
     sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
     sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
     sysfs_write("/proc/sys/kernel/sched_nr_migrate", "32");
@@ -38,7 +33,6 @@ void apply_cpuset(void) {
 void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
     char path[256], buf[32];
 
-    // Policy 0 (Little Cores 0-5)
     snprintf(buf, sizeof(buf), "%d", min_lit);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq", buf);
     snprintf(buf, sizeof(buf), "%d", max_lit);
@@ -56,7 +50,6 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
         set_rate_limits(i, up_rate, down_rate);
     }
 
-    // Policy 6 (Big Cores 6-7)
     snprintf(buf, sizeof(buf), "%d", min_big);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
     snprintf(buf, sizeof(buf), "%d", max_big);
@@ -231,18 +224,17 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write(g_nodes.touch_thp_smooth, "1");
             sysfs_write(g_nodes.touch_edge, "1");
 
-            // Smart Thermal Charging Guard: 3-stage thermal-aware charge current scaling
             if (g_state.is_charging) {
                 int bat_temp = sysfs_read_int(g_nodes.bat_temp);
                 if (bat_temp > 1000) bat_temp /= 1000;
                 else if (bat_temp > 100) bat_temp /= 10;
 
                 if (bat_temp >= 42) {
-                    sysfs_write(g_nodes.charge_control, "2"); /* ~1000mA trickle guard for hot battery */
+                    sysfs_write(g_nodes.charge_control, "2"); 
                 } else if (bat_temp >= 37) {
-                    sysfs_write(g_nodes.charge_control, "4"); /* ~1800mA safety balance */
+                    sysfs_write(g_nodes.charge_control, "4"); 
                 } else {
-                    sysfs_write(g_nodes.charge_control, "8"); /* ~2500-3000mA fast charge when cool */
+                    sysfs_write(g_nodes.charge_control, "8"); 
                 }
             } else {
                 sysfs_write(g_nodes.charge_control, "8");

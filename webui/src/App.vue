@@ -4,7 +4,7 @@
     @touchstart="onTouchStart"
     @touchend="onTouchEnd"
   >
-    <!-- Main Scroll View -->
+    
     <main style="flex: 1; overflow: hidden; position: relative;">
       <router-view v-slot="{ Component }">
         <transition :name="transitionName" mode="out-in">
@@ -13,10 +13,8 @@
       </router-view>
     </main>
 
-    <!-- Bottom Navigation Bar -->
     <Navigation />
 
-    <!-- Toast Notification -->
     <transition name="toast-slide">
       <div v-if="toastMsg" class="toast-pill">
         <Icons name="check" :size="14" style="color: var(--primary);" />
@@ -62,17 +60,16 @@ function onTouchEnd(e) {
   const deltaX = touchEndX - touchStartX
   const deltaY = touchEndY - touchStartY
 
-  // Ensure horizontal gesture is dominant (horizontal > 1.4 * vertical) and distance > 55px
   if (Math.abs(deltaX) > Math.abs(deltaY) * 1.4 && Math.abs(deltaX) > 55) {
     const currentIdx = routesOrder.indexOf(route.path)
     if (currentIdx === -1) return
 
     if (deltaX < 0 && currentIdx < routesOrder.length - 1) {
-      // Swipe Left -> Next Tab (Dashboard -> Games -> Logs)
+      
       transitionName.value = 'slide-left'
       router.push(routesOrder[currentIdx + 1])
     } else if (deltaX > 0 && currentIdx > 0) {
-      // Swipe Right -> Previous Tab (Logs -> Games -> Dashboard)
+      
       transitionName.value = 'slide-right'
       router.push(routesOrder[currentIdx - 1])
     }

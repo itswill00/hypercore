@@ -1,7 +1,3 @@
-/*
- * HyperCore - Storage I/O Queue Tuning Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_IO_HPP
 #define HYPERCORE_IO_HPP
@@ -22,4 +18,4 @@ void apply_irq_tuning(void);
 }
 #endif
 
-#endif /* HYPERCORE_IO_HPP */
+#endif 

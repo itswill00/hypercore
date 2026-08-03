@@ -1,18 +1,13 @@
-/*
- * HyperCore - GPU DVFS & FPSGO Tuning Implementation
- * Author: @itswill00
- */
 
 #include "gpu.hpp"
 
 void apply_gpu_tuning(void) {
-    // FPSGO Governor & Frame Rescue Policy
+    
     sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
     sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
     sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
     sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
 
-    // MediaTek GED GPU Governor Policy
     sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
     sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
     sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
@@ -26,6 +21,5 @@ void apply_gpu_tuning(void) {
     };
     sysfs_write_fallback(game_mode_nodes, "0");
 
-    // ARM Mali-G57 MC2 Coarse Demand Power Policy
     sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
 }

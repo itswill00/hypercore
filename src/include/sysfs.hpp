@@ -1,7 +1,3 @@
-/*
- * HyperCore - Sysfs Utilities Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_SYSFS_HPP
 #define HYPERCORE_SYSFS_HPP
@@ -24,4 +20,4 @@ void update_module_prop_status(const char *status);
 }
 #endif
 
-#endif /* HYPERCORE_SYSFS_HPP */
+#endif 

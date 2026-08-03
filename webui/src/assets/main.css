@@ -2,7 +2,7 @@
 @import url('https://mui.kernelsu.org/internal/colors.css');
 
 :root {
-  /* Clean Slate & Charcoal Monochrome Theme (Matching Banner) */
+  
   --bg: #121316;
   --on-bg: #f0f2f5;
 
@@ -51,7 +51,6 @@
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-/* Reset */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -71,7 +70,6 @@ html, body, #app {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App Shell Container */
 .app-shell {
   height: 100%;
   width: 100%;
@@ -83,7 +81,6 @@ html, body, #app {
   background: var(--bg);
 }
 
-/* Sticky Header with Status Bar Inset Integration */
 .page-header {
   position: sticky;
   top: 0;
@@ -109,7 +106,6 @@ html, body, #app {
   margin-top: 1px;
 }
 
-/* Content Area */
 .content-area {
   flex: 1;
   overflow-y: auto;
@@ -133,7 +129,6 @@ html, body, #app {
   display: none;
 }
 
-/* Section Header - Natural Sentence Case */
 .section-title {
   font-size: 13px;
   font-weight: 600;
@@ -145,7 +140,6 @@ html, body, #app {
   margin-top: 0;
 }
 
-/* MD3 Cards & Containers */
 .md3-card {
   background: var(--surface-container);
   border-radius: 16px;
@@ -235,8 +229,6 @@ html, body, #app {
   background: var(--surface-container-high);
 }
 
-
-/* Icon Badges */
 .icon-badge {
   width: 36px;
   height: 36px;
@@ -259,7 +251,6 @@ html, body, #app {
   color: var(--on-tertiary-container);
 }
 
-/* Row Left Metadata */
 .row-left {
   display: flex;
   align-items: center;
@@ -308,9 +299,8 @@ html, body, #app {
   cursor: pointer;
 }
 
-/* Expandable Rows — new clean column approach */
 .expandable-row {
-  /* Override the default row flex to column */
+  
   flex-direction: column;
   align-items: stretch;
   padding: 0;
@@ -351,7 +341,6 @@ html, body, #app {
   width: 100%;
 }
 
-/* Caret icon that rotates on expand */
 .expand-caret {
   display: inline-block;
   margin-left: 4px;
@@ -365,7 +354,6 @@ html, body, #app {
   transform: rotate(-180deg);
 }
 
-/* Profile Selector Grid */
 .profile-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -406,7 +394,6 @@ html, body, #app {
   font-weight: 600;
 }
 
-/* Segment Control */
 .segment-container {
   display: flex;
   background: var(--surface-container-lowest);
@@ -440,7 +427,6 @@ html, body, #app {
   font-weight: 600;
 }
 
-/* Floating Navigation Bar with Bottom Inset */
 .md3-navbar {
   position: fixed;
   bottom: 0;
@@ -508,7 +494,6 @@ html, body, #app {
   color: var(--on-surface-variant);
 }
 
-/* Buttons */
 .btn-md3 {
   display: inline-flex;
   align-items: center;
@@ -569,7 +554,6 @@ html, body, #app {
   border-radius: 50%;
 }
 
-/* Input */
 .input-md3 {
   background: var(--surface-container-lowest);
   border: 1px solid var(--outline-variant);
@@ -586,13 +570,11 @@ html, body, #app {
   border-color: var(--primary);
 }
 
-/* Status colors */
 .c-green { color: var(--green); }
 .c-amber { color: var(--amber); }
 .c-red { color: var(--red); }
 .c-blue { color: var(--blue); }
 
-/* Badges */
 .badge-pill {
   padding: 3px 8px;
   border-radius: 12px;
@@ -606,7 +588,6 @@ html, body, #app {
 .badge-pill.amber { background: rgba(255, 183, 77, 0.18); color: #ffb74d; }
 .badge-pill.purple { background: rgba(208, 188, 255, 0.18); color: #d0bcff; }
 
-/* Modal Backdrop */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -632,7 +613,6 @@ html, body, #app {
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
-/* Page Fade Transitions */
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -648,7 +628,6 @@ html, body, #app {
   transform: translateY(-4px);
 }
 
-/* Modal Fade Transitions */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.28s cubic-bezier(0.2, 0, 0, 1);
@@ -677,7 +656,6 @@ html, body, #app {
   transform: scale(0.95) translateY(8px);
 }
 
-/* List Fade Transitions */
 .list-fade-enter-active,
 .list-fade-leave-active {
   transition: all 0.28s cubic-bezier(0.2, 0, 0, 1);

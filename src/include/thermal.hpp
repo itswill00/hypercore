@@ -1,7 +1,3 @@
-/*
- * HyperCore - Thermal Zone Scanner & Hysteresis Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_THERMAL_HPP
 #define HYPERCORE_THERMAL_HPP
@@ -22,4 +18,4 @@ int get_true_battery_cycles(void);
 }
 #endif
 
-#endif /* HYPERCORE_THERMAL_HPP */
+#endif 

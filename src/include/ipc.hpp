@@ -1,7 +1,3 @@
-/*
- * HyperCore - UNIX Domain Socket IPC Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_IPC_HPP
 #define HYPERCORE_IPC_HPP
@@ -20,4 +16,4 @@ void handle_ipc_events(int timeout_ms);
 }
 #endif
 
-#endif /* HYPERCORE_IPC_HPP */
+#endif 

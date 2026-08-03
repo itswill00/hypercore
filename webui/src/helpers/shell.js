@@ -1,16 +1,7 @@
-/**
- * KernelSU / APatch / Magisk shell execution bridge
- * Isolated helper — all shell interactions flow through here
- */
 
 let cbSeq = 0
 let cachedInstalledApps = null
 
-/**
- * Execute a shell command via the root manager bridge with 6s timeout protection
- * @param {string} cmd - Shell command to execute
- * @returns {Promise<string>} Command stdout
- */
 export function execCommand(cmd) {
   return new Promise((resolve, reject) => {
     if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
@@ -46,28 +37,14 @@ export function execCommand(cmd) {
   })
 }
 
-/**
- * Sanitize a string for safe use in shell commands (package names, modes)
- * @param {string} s
- * @returns {string}
- */
 export function sanitize(s) {
   return String(s).replace(/[^a-zA-Z0-9._:\-]/g, '').trim()
 }
 
-/**
- * Check if running inside KernelSU WebUI environment
- * @returns {boolean}
- */
 export function isKSU() {
   return typeof ksu !== 'undefined'
 }
 
-/**
- * List installed user (3rd-party) packages with in-memory caching
- * @param {boolean} forceRefresh
- * @returns {Promise<Array<{pkg: string, name: string}>>}
- */
 export async function listInstalledApps(forceRefresh = false) {
   if (cachedInstalledApps && !forceRefresh) {
     return cachedInstalledApps
@@ -98,7 +75,6 @@ export async function listInstalledApps(forceRefresh = false) {
     } catch {}
   }
 
-  // Fallback: pm list packages
   try {
     const out = await execCommand('pm list packages -3 2>/dev/null')
     cachedInstalledApps = out.trim().split('\n')
@@ -112,11 +88,6 @@ export async function listInstalledApps(forceRefresh = false) {
   }
 }
 
-/**
- * Get app icon URL (KernelSU scheme or empty)
- * @param {string} pkg
- * @returns {string}
- */
 export function getIconUrl(pkg) {
   if (isKSU()) return `ksu://icon/${pkg}`
   return ''

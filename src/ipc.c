@@ -1,7 +1,3 @@
-/*
- * HyperCore - UNIX Domain Socket IPC Implementation
- * Author: @itswill00
- */
 
 #include "ipc.hpp"
 #include "sysfs.hpp"

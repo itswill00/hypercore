@@ -1,7 +1,3 @@
-/*
- * HyperCore - Storage I/O Queue Tuning Implementation
- * Author: @itswill00
- */
 
 #include "io.hpp"
 

@@ -1,7 +1,3 @@
-/*
- * HyperCore - Dynamic Game List & Foreground Game Detector Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_GAMELIST_HPP
 #define HYPERCORE_GAMELIST_HPP
@@ -21,4 +17,4 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
 }
 #endif
 
-#endif /* HYPERCORE_GAMELIST_HPP */
+#endif 

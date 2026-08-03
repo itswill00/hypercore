@@ -1,6 +1,6 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Top Header -->
+    
     <div class="page-header">
       <div>
         <div class="page-header-title">Detected Games</div>
@@ -12,12 +12,10 @@
       </button>
     </div>
 
-    <!-- Scroll Content -->
     <div class="content-area">
       <GameList @open-picker="showPicker = true" />
     </div>
 
-    <!-- App Picker Modal -->
     <AppPicker v-if="showPicker" @close="showPicker = false" @pick="onPick" />
   </div>
 </template>

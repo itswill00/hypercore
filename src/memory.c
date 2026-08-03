@@ -1,7 +1,3 @@
-/*
- * HyperCore - Virtual Memory & ZRAM Tuning Implementation
- * Author: @itswill00
- */
 
 #include "memory.hpp"
 
@@ -34,7 +30,6 @@ void tune_memory_pressure(void) {
     }
     fclose(f);
 
-    // If free RAM is critical (< 350MB), boost ZRAM swappiness and compaction
     if (mem_free_kb > 0 && mem_free_kb < 358400) {
         sysfs_write("/proc/sys/vm/swappiness", "80");
         sysfs_write("/proc/sys/vm/compaction_proactiveness", "50");

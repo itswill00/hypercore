@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Search & Counter Header Bar -->
+    
     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
       <input
         v-model="search"
@@ -14,9 +14,8 @@
       </span>
     </div>
 
-    <!-- Game List Group -->
     <div class="md3-list-group">
-      <!-- Empty State -->
+      
       <div v-if="displayGames.length === 0 && !loading" style="padding: 32px 16px; text-align: center;">
         <div class="icon-badge secondary" style="width: 44px; height: 44px; margin: 0 auto 10px auto;">
           <Icons name="rocket" :size="20" />
@@ -33,12 +32,10 @@
         </button>
       </div>
 
-      <!-- Loading State -->
       <div v-else-if="loading" style="padding: 24px 16px; text-align: center; font-size: 12px; color: var(--on-surface-variant);">
         Scanning configured games...
       </div>
 
-      <!-- Installed Game Rows -->
       <TransitionGroup name="list-fade">
         <div
           v-for="item in displayGames"
@@ -78,7 +75,7 @@
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px;">
-            <!-- Profile Selector dropdown -->
+            
             <select
               v-model="item.profile"
               @change="changeProfile(item.pkg, item.profile)"
@@ -136,7 +133,6 @@ async function loadInstalled() {
       map[a.pkg] = a.name
     })
 
-    // Batch query labels for all configured games (handles system apps & edge cases)
     if (store.games && store.games.length > 0 && typeof ksu !== 'undefined' && typeof ksu.getPackagesInfo === 'function') {
       try {
         const pkgs = store.games.map(g => g.pkg)

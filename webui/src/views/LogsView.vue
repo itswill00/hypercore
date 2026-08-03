@@ -1,6 +1,6 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Top Header -->
+    
     <div class="page-header">
       <div>
         <div class="page-header-title">Activity Log</div>
@@ -19,7 +19,6 @@
       </div>
     </div>
 
-    <!-- Terminal Container -->
     <div class="content-area" style="display: flex; flex-direction: column; height: 100%; gap: 8px;">
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 2px;">
         <span style="font-size: 12px; color: var(--on-surface-variant); font-weight: 500;">Console output</span>
@@ -237,7 +236,6 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-/* Log line transition */
 .log-line-enter-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }

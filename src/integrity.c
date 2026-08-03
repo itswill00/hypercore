@@ -1,7 +1,3 @@
-/*
- * Embedded Integrity Verification Implementation
- * Author: @itswill00
- */
 
 #include "integrity.hpp"
 #include "sha256.hpp"

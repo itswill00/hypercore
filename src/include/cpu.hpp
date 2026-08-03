@@ -1,7 +1,3 @@
-/*
- * HyperCore - CPU Governor & Scaling Tuning Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_CPU_HPP
 #define HYPERCORE_CPU_HPP
@@ -24,4 +20,4 @@ void apply_profile(profile_t prof, int tier, int gpu_load);
 }
 #endif
 
-#endif /* HYPERCORE_CPU_HPP */
+#endif 

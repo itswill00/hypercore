@@ -1,7 +1,3 @@
-/*
- * HyperCore - Structured Logging Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_LOG_HPP
 #define HYPERCORE_LOG_HPP
@@ -22,7 +18,6 @@ extern "C" {
 void log_write(log_level_t level, const char *tag, const char *fmt, ...);
 void rotate_log(void);
 
-/* Convenience helper macros */
 #define log_info(tag, fmt, ...)  log_write(LOG_LEVEL_INFO, tag, fmt, ##__VA_ARGS__)
 #define log_state(tag, fmt, ...) log_write(LOG_LEVEL_STATE, tag, fmt, ##__VA_ARGS__)
 #define log_warn(tag, fmt, ...)  log_write(LOG_LEVEL_WARN, tag, fmt, ##__VA_ARGS__)
@@ -32,4 +27,4 @@ void rotate_log(void);
 }
 #endif
 
-#endif /* HYPERCORE_LOG_HPP */
+#endif 

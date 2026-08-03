@@ -1,7 +1,3 @@
-/*
- * HyperCore - Virtual Memory & ZRAM Tuning Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_MEMORY_HPP
 #define HYPERCORE_MEMORY_HPP
@@ -20,4 +16,4 @@ void tune_memory_pressure(void);
 }
 #endif
 
-#endif /* HYPERCORE_MEMORY_HPP */
+#endif 

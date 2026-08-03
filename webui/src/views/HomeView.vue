@@ -1,6 +1,6 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    <!-- Top Header -->
+    
     <div class="page-header">
       <div>
         <div class="page-header-title">Dashboard</div>
@@ -8,14 +8,12 @@
       </div>
     </div>
 
-    <!-- Main Content View -->
     <div class="content-area">
-      <!-- Banner Status Card -->
+      
       <StatusCard />
 
-      <!-- Unified Device & System Info Group Card -->
       <div class="md3-list-group">
-        <!-- Current Profile Row -->
+        
         <div class="md3-list-row">
           <div class="row-left">
             <div class="icon-badge">
@@ -31,7 +29,6 @@
           </span>
         </div>
 
-        <!-- Temperature Row -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="icon-badge">
@@ -47,7 +44,6 @@
           </div>
         </div>
 
-        <!-- Battery Cycles Row -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="icon-badge">
@@ -63,7 +59,6 @@
           </div>
         </div>
 
-        <!-- File Integrity Row -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="icon-badge">
@@ -79,7 +74,6 @@
           </span>
         </div>
 
-        <!-- Expandable Chipset Row -->
         <div
           class="md3-list-row expandable-row clickable"
           :class="{ 'is-expanded': expandedRows['chipset'] }"
@@ -109,7 +103,6 @@
           </div>
         </div>
 
-        <!-- Expandable Kernel Version Row -->
         <div
           class="md3-list-row expandable-row clickable"
           :class="{ 'is-expanded': expandedRows['kernel'] }"
@@ -139,14 +132,11 @@
         </div>
       </div>
 
-      <!-- Quick Actions Group Card -->
       <ActionButtons />
 
-      <!-- Contributors Card -->
       <div class="section-title">Contributors</div>
       <div class="md3-list-group" style="margin-bottom: 14px;">
 
-        <!-- Developer row -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="avatar-link" @click="openExternal('https://t.me/noticesa')" style="cursor: pointer;">
@@ -160,7 +150,6 @@
           <span class="role-chip dev">dev</span>
         </div>
 
-        <!-- Tester 1 -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="avatar-link" @click="openExternal('https://t.me/Rafzzz182')" style="cursor: pointer;">
@@ -174,7 +163,6 @@
           <span class="role-chip tester">tester</span>
         </div>
 
-        <!-- Tester 2 -->
         <div class="md3-list-row">
           <div class="row-left">
             <div class="avatar-link" @click="openExternal('https://t.me/anotherside551')" style="cursor: pointer;">
@@ -189,7 +177,6 @@
         </div>
       </div>
 
-      <!-- Donate Card -->
       <div class="donate-card">
         <div class="donate-left">
           <div class="donate-icon">♡</div>
@@ -206,7 +193,6 @@
         </button>
       </div>
 
-      <!-- Footer -->
       <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 4px 0 20px 0; font-family: var(--font-mono);">
         Inspired by encore @Rem01Gaming
       </div>
@@ -228,11 +214,6 @@ function toggleExpand(key) {
   expandedRows.value[key] = !expandedRows.value[key]
 }
 
-/**
- * Open a URL externally via ksu.open() — forces the device's default browser
- * instead of KernelSU's embedded WebView which causes status bar overlap.
- * Falls back to window.open for non-KSU environments.
- */
 function openExternal(url) {
   if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
     ksu.open(url)
@@ -243,7 +224,7 @@ function openExternal(url) {
 </script>
 
 <style scoped>
-/* Avatar badges */
+
 .avatar-link {
   text-decoration: none;
   flex-shrink: 0;
@@ -278,7 +259,6 @@ function openExternal(url) {
   border: 1px solid rgba(160, 178, 198, 0.2);
 }
 
-/* Role chips */
 .role-chip {
   font-size: 9px;
   font-weight: 700;
@@ -299,7 +279,6 @@ function openExternal(url) {
   color: #8fa0b0;
 }
 
-/* Donate Card */
 .donate-card {
   background: linear-gradient(135deg,
     rgba(113, 107, 168, 0.14) 0%,

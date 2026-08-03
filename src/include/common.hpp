@@ -1,7 +1,3 @@
-/*
- * HyperCore - Shared Common Types and Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_COMMON_HPP
 #define HYPERCORE_COMMON_HPP
@@ -63,4 +59,4 @@ extern volatile sig_atomic_t g_running;
 extern struct hw_nodes g_nodes;
 extern struct core_state g_state;
 
-#endif /* HYPERCORE_COMMON_HPP */
+#endif 

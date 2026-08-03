@@ -8,12 +8,11 @@ const GL_MOD = `${MOD}/gamelist.txt`
 const GL_SD = '/sdcard/Android/gamelist.txt'
 
 export const useHyperStore = defineStore('hyper', () => {
-  /* ── Daemon & Profile ── */
+  
   const daemonPid = ref('')
   const activeProfile = ref('—')
   const thermalTier = ref('—')
 
-  /* ── CPU & GPU ── */
   const cpuLittle = ref('—')
   const cpuBig = ref('—')
   const cpuGov = ref('—')
@@ -21,7 +20,6 @@ export const useHyperStore = defineStore('hyper', () => {
   const gpuInfo = ref('—')
   const sysLoad = ref('—')
 
-  /* ── Memory & Storage ── */
   const ramUsage = ref('—')
   const ramPercent = ref(0)
   const zramUsage = ref('—')
@@ -29,7 +27,6 @@ export const useHyperStore = defineStore('hyper', () => {
   const ioInfo = ref('—')
   const vmInfo = ref('—')
 
-  /* ── Power & Thermal ── */
   const cpuTemp = ref(0)
   const batTemp = ref(0)
   const batStatus = ref('—')
@@ -38,7 +35,6 @@ export const useHyperStore = defineStore('hyper', () => {
   const batVolt = ref('—')
   const batteryCycles = ref(0)
 
-  /* ── Device metadata ── */
   const moduleVersion = ref('v4.3')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
@@ -48,7 +44,6 @@ export const useHyperStore = defineStore('hyper', () => {
   const uptimeSec = ref(0)
   let uptimeInterval = null
 
-  /* ── Others ── */
   const games = ref([])
   const logs = ref('Loading...')
   const loading = ref(false)
@@ -59,7 +54,6 @@ export const useHyperStore = defineStore('hyper', () => {
     isLogsActive.value = active
   }
 
-  /* ── Computed ── */
   const isRunning = computed(() => daemonPid.value.length > 0)
 
   const thermalColor = computed(() => {
@@ -80,7 +74,6 @@ export const useHyperStore = defineStore('hyper', () => {
     return ''
   })
 
-  /* ── Helpers ── */
   function normTemp(raw) {
     const v = parseInt(raw || 0)
     if (v > 1000) return Math.round(v / 1000)
@@ -122,7 +115,6 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
-  /* ── Actions ── */
   async function fetchDeviceInfo() {
     try {
       const [kv, sdk, se] = await Promise.all([
@@ -192,7 +184,6 @@ export const useHyperStore = defineStore('hyper', () => {
       if (kv.VER) moduleVersion.value = kv.VER.trim()
       if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
-      // Fast IPC Check
       let ipcSetThermal = false
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
         try {
@@ -204,16 +195,14 @@ export const useHyperStore = defineStore('hyper', () => {
           ipcSetThermal = true
         } catch {}
       } else {
-        // Daemon
+        
         daemonPid.value = (kv.PID || '').trim()
 
-        // Profile from module.prop
         const desc = kv.DESC || ''
         const m = desc.match(/\[Active:\s*([^\]]+)\]/)
         if (m) activeProfile.value = m[1].trim()
       }
 
-      // CPU clusters & governor
       if (kv.CL0) {
         const p = kv.CL0.split(':')
         cpuLittle.value = `${fmtFreq(p[0])} MHz [${fmtFreq(p[1])}–${fmtFreq(p[2])}]`
@@ -225,13 +214,11 @@ export const useHyperStore = defineStore('hyper', () => {
       cpuGov.value = (kv.GOV || 'schedutil').trim()
       cpuCores.value = (kv.CORES || '0-7').trim()
 
-      // GPU
       if (kv.GPU) {
         const p = kv.GPU.split(':')
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
       }
 
-      // System load & uptime ticker
       sysLoad.value = kv.LOAD || '0.00'
       if (kv.UP) {
         const parsedSec = Math.floor(parseFloat(kv.UP.trim()))
@@ -242,7 +229,6 @@ export const useHyperStore = defineStore('hyper', () => {
         }
       }
 
-      // Memory (RAM & ZRAM)
       if (kv.MEM) {
         const memMatch = kv.MEM.match(/MemTotal:\s*(\d+)\s*kB.*MemAvailable:\s*(\d+)\s*kB/)
         const swapMatch = kv.MEM.match(/SwapTotal:\s*(\d+)\s*kB.*SwapFree:\s*(\d+)\s*kB/)
@@ -264,15 +250,12 @@ export const useHyperStore = defineStore('hyper', () => {
         }
       }
 
-      // Temperatures
       cpuTemp.value = normTemp(kv.CT)
       batTemp.value = normTemp(kv.BT)
 
-      // Battery
       batStatus.value = (kv.BS || 'Unknown').trim()
       batLevel.value = (kv.BL || '').trim()
 
-      // Battery current & voltage
       const rawCurr = Math.abs(parseInt(kv.BC || 0))
       const rawVolt = parseInt(kv.BV || 0)
       if (rawCurr > 0) {
@@ -290,7 +273,6 @@ export const useHyperStore = defineStore('hyper', () => {
         batVolt.value = '—'
       }
 
-      // I/O & VM
       if (kv.IO) {
         const p = kv.IO.split(':')
         ioInfo.value = `${p[0] || 'none'} / ${p[1] || '256'} KB`
@@ -300,7 +282,6 @@ export const useHyperStore = defineStore('hyper', () => {
         vmInfo.value = `${p[0] || '15'} / ${p[1] || '100'}`
       }
 
-      // Thermal tier — only fall back to log/temp estimate if IPC did not already set it
       if (!ipcSetThermal) {
         const logLines = logBlock.trim().split('\n')
         let tier = '—'
@@ -322,7 +303,6 @@ export const useHyperStore = defineStore('hyper', () => {
         thermalTier.value = tier
       }
 
-      // Games: Store package names and profile modes
       const parsedPkgs = []
       gameBlock.trim().split('\n').forEach(line => {
         const trimmed = line.trim().replace(/\r/g, '')
@@ -337,7 +317,6 @@ export const useHyperStore = defineStore('hyper', () => {
       })
       games.value = parsedPkgs
 
-      // Logs
       const trimmed = logBlock.trim()
       if (trimmed) logs.value = trimmed
 
@@ -360,7 +339,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
   async function restartDaemon() {
     loading.value = true
-    // Use exact binary name matching (-x) to avoid killing module dir references
+    
     await execCommand(`pkill -9 -x libhypercore.so 2>/dev/null; pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/system/bin/libhypercore.so >/dev/null 2>&1 &`)
     loading.value = false
     setTimeout(refresh, 1500)
@@ -390,17 +369,14 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Shortcut feature unavailable'
   }
 
-  /* ── Clean Pure Package Game Management (Like Encore) ── */
   function addGame(rawPkg, profile = 'GAMING') {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
     if (!pkg) return
 
-    // Optimistic memory addition with duplicate check
     if (!games.value.some(g => g.pkg === pkg)) {
       games.value.push({ pkg, profile })
     }
 
-    // Invalidate app list cache so next AppPicker open shows fresh list
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
@@ -422,7 +398,6 @@ export const useHyperStore = defineStore('hyper', () => {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
     if (!pkg) return
 
-    // Optimistic memory removal
     games.value = games.value.filter(g => g.pkg !== pkg)
 
     const cmd = [

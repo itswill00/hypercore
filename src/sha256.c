@@ -1,7 +1,3 @@
-/*
- * System SHA-256 Wrapper Implementation
- * Author: @itswill00
- */
 
 #include "sha256.hpp"
 #include <stdio.h>

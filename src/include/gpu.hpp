@@ -1,7 +1,3 @@
-/*
- * HyperCore - GPU DVFS & FPSGO Tuning Header
- * Author: @itswill00
- */
 
 #ifndef HYPERCORE_GPU_HPP
 #define HYPERCORE_GPU_HPP
@@ -19,4 +15,4 @@ void apply_gpu_tuning(void);
 }
 #endif
 
-#endif /* HYPERCORE_GPU_HPP */
+#endif 
