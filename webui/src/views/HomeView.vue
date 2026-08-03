@@ -36,7 +36,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Temperature</div>
-              <div class="row-sub">CPU & Battery thermal status</div>
+              <div class="row-sub">CPU &amp; Battery live temperature</div>
             </div>
           </div>
           <div class="row-val">

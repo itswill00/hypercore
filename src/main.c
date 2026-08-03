@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
                 }
                 update_module_prop_status(status_buf);
             } else if (thermal_tier != g_state.thermal_tier) {
-                log_warn("Thermal", "Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
+                log_warn("Temp", "Temp Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
                          g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
                          g_state.is_charging ? "[CHG]" : "");
             }

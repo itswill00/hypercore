@@ -15,7 +15,7 @@ We express our gratitude to **@Rem01Gaming** and the **encore** project for pion
 ### Referenced & Inspired Concepts:
 - **Smart Automated Adaptive Engine**: Zero-intervention background state evaluation without requiring manual mode toggles.
 - **Fast PID Caching & Prefix Matching**: Sub-process package matching with 0.001ms fast-path in-memory validation.
-- **Consolidated 4-Profile Engine Architecture**: Lean state machine (`SLEEP`, `INTERACTIVE`, `GAMING`, `THERMAL`).
+- **Consolidated 3-Profile Engine Architecture**: Lean state machine (`SLEEP`, `INTERACTIVE`, `GAMING`).
 - **Pure Package Game List**: Clean line-by-line package configuration management.
 
 ---
