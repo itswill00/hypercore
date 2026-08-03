@@ -128,8 +128,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_io_nr_requests("32");
             sysfs_write("/dev/cpuset/background/cpus", "0-3");
             sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
-            sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "20");
-            sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "20");
+            sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "30");
+            sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
