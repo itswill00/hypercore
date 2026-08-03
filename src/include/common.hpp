@@ -21,10 +21,10 @@
 #define FREQ_BIG_MAX    2200000
 
 typedef enum {
-    PROFILE_SLEEP,
-    PROFILE_INTERACTIVE,
-    PROFILE_GAMING,
-    PROFILE_THERMAL
+    PROFILE_Sleep,
+    PROFILE_Interactive,
+    PROFILE_Gaming,
+    PROFILE_Thermal
 } profile_t;
 
 extern const char *g_profile_names[];

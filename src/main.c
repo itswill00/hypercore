@@ -27,7 +27,7 @@ static void send_game_toast(const char *game_name) {
     if (!game_name || game_name[0] == '\0') return;
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
-        "cmd notification post -t 'Tanzanite HyperCore' -S bigtext 'HyperCore Engine' 'hypercore_game' 'Gaming Profile Activated [%s]' >/dev/null 2>&1 &",
+        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' 'Gaming Profile Activated [%s]' >/dev/null 2>&1 &",
         game_name);
     system(cmd);
 }
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
     write_pid_file();
     init_ipc_socket();
 
-    log_info("DAEMON", "Tanzanite HyperCore v4.3 started.");
+    log_info("Daemon", "Tanzanite HyperCore v4.3 started.");
 
     apply_cpuset();
     apply_memory_tuning();
@@ -181,12 +181,12 @@ int main(int argc, char *argv[]) {
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
 
         char active_game[128] = "";
-        profile_t custom_profile = PROFILE_GAMING;
+        profile_t custom_profile = PROFILE_Gaming;
         int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
 
         static int       s_game_absent_ticks = 0;
         static int       s_prev_game_active  = 0;
-        static profile_t s_last_game_profile = PROFILE_GAMING; 
+        static profile_t s_last_game_profile = PROFILE_Gaming; 
 
         if (game_active) {
             s_game_absent_ticks = 0;
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
                 set_read_ahead("512");
                 g_state.launch_boost_ticks = 3;
                 send_game_toast(active_game);
-                log_info("GAME", "Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
+                log_info("Game", "Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
                 s_prev_game_active = 1;
             }
         } else {
@@ -211,13 +211,13 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        profile_t next_profile = PROFILE_INTERACTIVE;
+        profile_t next_profile = PROFILE_Interactive;
 
         if (!is_screen_on()) {
-            next_profile = PROFILE_SLEEP;
+            next_profile = PROFILE_Sleep;
             g_state.gaming_hold_ticks = 0;
         } else if (thermal_tier == 3 && cpu_temp >= 75) {
-            next_profile = PROFILE_THERMAL;
+            next_profile = PROFILE_Thermal;
             g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
@@ -227,7 +227,7 @@ int main(int argc, char *argv[]) {
             g_state.gaming_hold_ticks--;
             next_profile = s_last_game_profile; 
         } else {
-            next_profile = PROFILE_INTERACTIVE;
+            next_profile = PROFILE_Interactive;
         }
 
         s_prev_game_active = game_active;
@@ -240,25 +240,25 @@ int main(int argc, char *argv[]) {
         int is_gpu_heavy = (gpu_load >= 20);
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
-            (next_profile == PROFILE_GAMING && is_gpu_heavy != s_prev_gpu_heavy)) {
+            (next_profile == PROFILE_Gaming && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
-                if (next_profile == PROFILE_GAMING && active_game[0] != '\0') {
+                if (next_profile == PROFILE_Gaming && active_game[0] != '\0') {
                     snprintf(status_buf, sizeof(status_buf), "Gaming (%s)", active_game);
-                    log_state("PROFILER", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
+                    log_state("Profiler", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
                               prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
                 } else {
                     snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
-                    log_state("PROFILER", "Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
+                    log_state("Profiler", "Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
                               prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
                 }
                 update_module_prop_status(status_buf);
             } else if (thermal_tier != g_state.thermal_tier) {
-                log_warn("THERMAL", "Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
+                log_warn("Thermal", "Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
                          g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
                          g_state.is_charging ? "[CHG]" : "");
             }
@@ -277,20 +277,20 @@ int main(int argc, char *argv[]) {
         }
 
         int poll_timeout_ms = 2000;
-        if (next_profile == PROFILE_SLEEP) {
+        if (next_profile == PROFILE_Sleep) {
             poll_timeout_ms = (bat_temp >= 45) ? 3000 : 8000;
-        } else if (next_profile == PROFILE_GAMING) {
+        } else if (next_profile == PROFILE_Gaming) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 500 : 1000;
-        } else if (next_profile == PROFILE_THERMAL) {
+        } else if (next_profile == PROFILE_Thermal) {
             poll_timeout_ms = 500;
-        } else if (next_profile == PROFILE_INTERACTIVE) {
+        } else if (next_profile == PROFILE_Interactive) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 1000 : 2000;
         }
 
         handle_ipc_events(poll_timeout_ms);
     }
 
-    log_info("DAEMON", "Tanzanite HyperCore daemon stopped. Restoring ROM baseline nodes...");
+    log_info("Daemon", "HyperCore daemon stopped. Restoring ROM baseline nodes...");
     restore_baseline_nodes();
     update_module_prop_status("Stopped");
     close_ipc_socket();

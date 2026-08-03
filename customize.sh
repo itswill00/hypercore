@@ -82,7 +82,6 @@ else
 fi
 set_perm "$MODPATH/gamelist.txt" 0 0 0644
 
-ui_print "- Native daemon v4.2 installed successfully into system/bin."
+ui_print "- Daemon v4.3 installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."
-ui_print "--------------------------------------"

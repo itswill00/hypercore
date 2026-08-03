@@ -119,10 +119,10 @@ static const char *get_best_governor(void) {
 void apply_profile(profile_t prof, int tier, int gpu_load) {
     const char *gov = get_best_governor();
 
-    apply_cgroup_gaming_policy(prof == PROFILE_GAMING);
+    apply_cgroup_gaming_policy(prof == PROFILE_Gaming);
 
     switch (prof) {
-        case PROFILE_SLEEP: {
+        case PROFILE_Sleep: {
             set_cpu_governor(gov);
             set_cpu_freqs(500000, 1200000, 725000, 1000000, "5000", "500");
             set_io_nr_requests("32");
@@ -158,7 +158,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             break;
         }
 
-        case PROFILE_INTERACTIVE: {
+        case PROFILE_Interactive: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1000000, big_max, "500", "20000");
@@ -191,7 +191,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             break;
         }
 
-        case PROFILE_GAMING: {
+        case PROFILE_Gaming: {
             int is_heavy_gpu = (gpu_load >= 20);
             const char *gpu_freq = is_heavy_gpu ? ((tier >= 3) ? "500000" : "600000") : "300000";
             const char *dvfs_margin = is_heavy_gpu ? "40" : "20";
@@ -242,7 +242,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             break;
         }
 
-        case PROFILE_THERMAL: {
+        case PROFILE_Thermal: {
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, 900000, 1600000, "2000", "5000");
             set_io_nr_requests("64");

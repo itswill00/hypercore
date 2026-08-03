@@ -11,7 +11,7 @@ static int       s_inotify_fd = -1;
 
 static int       s_cached_game_pid = -1;
 static char      s_cached_game_pkg[PKG_NAME_LEN] = "";
-static profile_t s_cached_game_profile = PROFILE_GAMING;
+static profile_t s_cached_game_profile = PROFILE_Gaming;
 
 void load_gamelist(void) {
     s_game_count = 0;
@@ -35,14 +35,14 @@ void load_gamelist(void) {
         if (line[0] == '#' || line[0] == '\0') continue;
 
         char *colon = strchr(line, ':');
-        profile_t prof = PROFILE_GAMING;
+        profile_t prof = PROFILE_Gaming;
 
         if (colon) {
             *colon = '\0';
             char *prof_str = colon + 1;
-            if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_INTERACTIVE;
-            else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_SLEEP;
-            else if (strcmp(prof_str, "GAMING") == 0) prof = PROFILE_GAMING;
+            if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
+            else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
+            else if (strcmp(prof_str, "GAMING") == 0) prof = PROFILE_Gaming;
         }
 
         strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
@@ -66,7 +66,7 @@ void load_gamelist(void) {
 
                 strncpy(s_games[s_game_count], pkg_buf, PKG_NAME_LEN - 1);
                 s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
-                s_profiles[s_game_count] = PROFILE_GAMING;
+                s_profiles[s_game_count] = PROFILE_Gaming;
                 s_game_count++;
 
                 if (fw) {
@@ -104,7 +104,7 @@ void check_gamelist_inotify(void) {
 
 int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile) {
     if (out_game_name && max_len > 0) out_game_name[0] = '\0';
-    if (out_profile) *out_profile = PROFILE_GAMING;
+    if (out_profile) *out_profile = PROFILE_Gaming;
 
     check_gamelist_inotify();
 

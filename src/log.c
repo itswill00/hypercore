@@ -3,10 +3,10 @@
 #include <sys/time.h>
 
 static const char *s_level_names[] = {
-    "INFO ",
-    "STATE",
-    "WARN ",
-    "ERROR"
+    "Info ",
+    "State",
+    "Warn ",
+    "Error"
 };
 
 void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
@@ -21,8 +21,8 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
     size_t len = strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", tm_info);
     snprintf(tbuf + len, sizeof(tbuf) - len, ".%03d", (int)(tv.tv_usec / 1000));
 
-    const char *lvl_str = (level >= 0 && level <= LOG_LEVEL_ERROR) ? s_level_names[level] : "INFO ";
-    const char *tag_str = (tag && tag[0] != '\0') ? tag : "SYSTEM";
+    const char *lvl_str = (level >= 0 && level <= LOG_LEVEL_Error) ? s_level_names[level] : "Info ";
+    const char *tag_str = (tag && tag[0] != '\0') ? tag : "System";
 
     fprintf(f, "[%s] [%s] [%-8s] ", tbuf, lvl_str, tag_str);
 

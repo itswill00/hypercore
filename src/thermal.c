@@ -161,10 +161,10 @@ void fix_battery_cycle_count(void) {
     int verified = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
     if (verified == true_cycles) {
         s_fixed = 1;
-        log_info("BATTERY", "Battery cycle count calibrated to %d cycles", true_cycles);
+        log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
     } else if (s_attempts >= 3) {
         s_fixed = 1; 
-        log_warn("BATTERY", "Cycle count node write-locked, reporting raw value %d", true_cycles);
+        log_warn("Battery", "Cycle count node write-locked, reporting raw value %d", true_cycles);
     }
 }
 
