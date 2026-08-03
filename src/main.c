@@ -237,7 +237,16 @@ int main(int argc, char *argv[]) {
 
         s_prev_game_active = game_active;
 
-        if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier) {
+        static int s_prev_cpu_temp = 0;
+        int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;
+        s_prev_cpu_temp = cpu_temp;
+
+        static int s_prev_gpu_heavy = -1;
+        int is_gpu_heavy = (gpu_load >= 20);
+
+        if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
+            (next_profile == PROFILE_GAMING && is_gpu_heavy != s_prev_gpu_heavy)) {
+            s_prev_gpu_heavy = is_gpu_heavy;
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 5) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
@@ -253,12 +262,12 @@ int main(int argc, char *argv[]) {
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
                 }
                 update_module_prop_status(status_buf);
-            } else {
+            } else if (thermal_tier != g_state.thermal_tier) {
                 log_warn("THERMAL", "Thermal Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
                          g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
                          g_state.is_charging ? "[CHG]" : "");
             }
-            apply_profile(next_profile, thermal_tier);
+            apply_profile(next_profile, thermal_tier, gpu_load);
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;
         }
@@ -274,9 +283,13 @@ int main(int argc, char *argv[]) {
 
         int poll_timeout_ms = 2000;
         if (next_profile == PROFILE_SLEEP) {
-            poll_timeout_ms = 8000;
+            poll_timeout_ms = (bat_temp >= 45) ? 3000 : 8000;
         } else if (next_profile == PROFILE_GAMING) {
-            poll_timeout_ms = 1000;
+            poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 500 : 1000;
+        } else if (next_profile == PROFILE_THERMAL) {
+            poll_timeout_ms = 500;
+        } else if (next_profile == PROFILE_INTERACTIVE) {
+            poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 1000 : 2000;
         }
 
         handle_ipc_events(poll_timeout_ms);

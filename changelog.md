@@ -18,6 +18,12 @@
 - **Navigation Polish**: Bottom nav bar redesigned for better touch ergonomics and visual clarity.
 
 ### Improvements
+- **Self-Adaptive Thermal & Load Tuning Engine**:
+  - **Dynamic Thermal Charging Guard**: 3-stage charging current scaling during gaming based on real-time battery temperature (<37°C 2.5A-3A fast charge, 37°C-41°C 1.8A safety balance, >=42°C 1.0A trickle guard).
+  - **Dynamic Adaptive Polling Rate & Thermal Spike Sensing**: Dynamic loop interval scaling (500ms during rapid thermal spikes Δtemp >= 3°C or cpu >= 65°C) to react instantly to sudden temperature rises.
+  - **Strict Cgroup v2 `cpu.uclamp.max` Isolation**: Throttles background and system-background tasks to `cpu.uclamp.max = 40` during gaming, guaranteeing 100% Big Cores (CPU 6-7) capacity exclusively for active game PIDs.
+  - **Deep Sleep Core Barrier**: Applies `uclamp.max = 20` and limits Big Cores max freq to 1.0GHz in `PROFILE_SLEEP` state for near-zero standby battery drain.
+  - **Load-Aware GPU Floor & DVFS Margin**: Dynamically scales GPU bottom frequency (300MHz vs 600MHz) and DVFS margin (20 vs 40) in `PROFILE_GAMING` based on real-time GPU load (`gpu_loading`), saving energy during 2D games and loading screens while boosting full throttle during heavy 3D fights.
 - `fix_battery_cycle_count()` no longer permanently locks `s_fixed = 1` when cycle data is unavailable — retries next tick instead of giving up forever.
 - `get_true_battery_cycles()` priority logic cleaned up: `fg1_cycle` path only activates when `cycle_count` is absent (true MTK sub-cycle source); removes wrong `/16` division on standard `cycle_count`.
 - HomeView expandable rows (Chipset, Kernel) rebuilt with column-flex structure to eliminate positional glitch when collapsing.

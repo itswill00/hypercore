@@ -92,7 +92,8 @@ void apply_cgroup_gaming_policy(int enable) {
         sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
         sysfs_write("/dev/cpuctl/background/cpu.shares", "512");
         sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "40");
+        sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "40");
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
@@ -104,6 +105,7 @@ void apply_cgroup_gaming_policy(int enable) {
         sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
         sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
         sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+        sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
@@ -121,7 +123,7 @@ static const char *get_best_governor(void) {
     return "schedutil";
 }
 
-void apply_profile(profile_t prof, int tier) {
+void apply_profile(profile_t prof, int tier, int gpu_load) {
     const char *gov = get_best_governor();
 
     apply_cgroup_gaming_policy(prof == PROFILE_GAMING);
@@ -129,8 +131,12 @@ void apply_profile(profile_t prof, int tier) {
     switch (prof) {
         case PROFILE_SLEEP: {
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, 1200000, 725000, 1200000, "4000", "1000");
+            set_cpu_freqs(500000, 1200000, 725000, 1000000, "5000", "500");
             set_io_nr_requests("32");
+            sysfs_write("/dev/cpuset/background/cpus", "0-3");
+            sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
+            sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "20");
+            sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "20");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
@@ -193,7 +199,9 @@ void apply_profile(profile_t prof, int tier) {
         }
 
         case PROFILE_GAMING: {
-            const char *gpu_freq = (tier >= 3) ? "500000" : "600000";
+            int is_heavy_gpu = (gpu_load >= 20);
+            const char *gpu_freq = is_heavy_gpu ? ((tier >= 3) ? "500000" : "600000") : "300000";
+            const char *dvfs_margin = is_heavy_gpu ? "40" : "20";
             int big_min = (tier >= 3) ? 1600000 : 1800000;
             set_cpu_governor(gov);
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, big_min, FREQ_BIG_MAX, "0", "30000");
@@ -207,7 +215,7 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", gpu_freq);
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "25");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "40");
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", dvfs_margin);
             const char *gaming_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
@@ -223,9 +231,19 @@ void apply_profile(profile_t prof, int tier) {
             sysfs_write(g_nodes.touch_thp_smooth, "1");
             sysfs_write(g_nodes.touch_edge, "1");
 
-            // Smart Thermal Charging Guard: limit charge current to 1800mA while gaming to prevent overheating
+            // Smart Thermal Charging Guard: 3-stage thermal-aware charge current scaling
             if (g_state.is_charging) {
-                sysfs_write(g_nodes.charge_control, "4");
+                int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+                if (bat_temp > 1000) bat_temp /= 1000;
+                else if (bat_temp > 100) bat_temp /= 10;
+
+                if (bat_temp >= 42) {
+                    sysfs_write(g_nodes.charge_control, "2"); /* ~1000mA trickle guard for hot battery */
+                } else if (bat_temp >= 37) {
+                    sysfs_write(g_nodes.charge_control, "4"); /* ~1800mA safety balance */
+                } else {
+                    sysfs_write(g_nodes.charge_control, "8"); /* ~2500-3000mA fast charge when cool */
+                }
             } else {
                 sysfs_write(g_nodes.charge_control, "8");
             }
