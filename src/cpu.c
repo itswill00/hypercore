@@ -102,7 +102,7 @@ void apply_cgroup_gaming_policy(int enable) {
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");
+        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "15");
         sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
     }
 }
@@ -165,8 +165,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         case PROFILE_Interactive: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             set_cpu_governor(gov);
-            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1000000, big_max, "500", "20000");
-            set_io_nr_requests("64");
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, 1200000, big_max, "200", "15000");
+            set_io_nr_requests("128");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
             sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "0");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
@@ -178,7 +178,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "300000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "0");
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "15");
             const char *interactive_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
@@ -188,7 +188,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
             sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
             sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
-            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
