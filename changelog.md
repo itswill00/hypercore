@@ -1,33 +1,24 @@
-# Tanzanite HyperCore v4.3 — Bug Fix & Polish Release
+# Tanzanite HyperCore v4.3 — Major Release & Architecture Polish
+
+### Key Highlights & Innovations
+- **Consolidated 3 Lean Core Profiles (`Sleep`, `Interactive`, `Gaming`)**: Streamlined state machine to 3 core profiles. Relies on native kernel hardware thermal drivers and user-installed thermal mods without profile interference.
+- **Enforced `performance` CPU Governor & `always_on` Mali GPU Policy**: Sets CPU scaling governor to `performance` and Mali GPU power policy to `always_on` in `PROFILE_Gaming` for zero-latency frame rendering.
+- **Calibrated MT6789 Hardware GPU OPP Frequencies**: Matches exact MediaTek MT6789 hardware OPP table (390 MHz min floor, 674 MHz gaming floor, 1003 MHz max boost) and keeps `gpu_cust_boost_freq = 0` to eliminate `DVFSState` debug clock freezes.
+- **Foreground App Transition & Gesture Boost Engine**: Dynamically senses active app switches (e.g. TikTok to Instagram or MIUI Launcher) and injects a 1.5s burst (1.6 GHz Big core floor, 35% uclamp, 384KB read-ahead) for 120 FPS stutter-free app switching animations.
+- **Kernel Auto Self-Recovery Guard**: Detects unauthorized sysfs overrides by third-party kernel tweak apps or rogue scripts (e.g. CPU governor or GPU policy overrides) and automatically re-enforces HyperCore's optimal configuration within 1-2 seconds.
+- **Universal Refresh-Rate Governor Scaling (60Hz / 90Hz / 120Hz)**: Calibrated `sugov_ext` / `reflex` rate limits (200 µs up-rate limit, 20,000 µs down-rate limit) to cleanly span frame redraw intervals across 60Hz, 90Hz, and 120Hz displays with maximum battery efficiency.
 
 ### Bug Fixes
-- **Battery Cycle Count Stuck at 347**: Three-layer fix — store never declared `batteryCycles` reactive ref so `battery_cycles` from IPC was silently discarded, HomeView had hardcoded `|| 347` fallback, and daemon `get_true_battery_cycles()` wrongly divided `cycle_count` by 16 when it was already in full-cycle units. All three fixed.
-- **Per-Game Profile Not Honored During Cooldown**: `gaming_hold_ticks` countdown after game exit always applied `PROFILE_GAMING` regardless of the per-game config. Fixed by storing `s_last_game_profile` and using it during cooldown ticks.
-- **`restartDaemon()` Never Actually Restarted**: Button sent `pkill -x hypercore` to a binary named `libhypercore.so` — wrong name, wrong path. Fixed to `pkill -x libhypercore.so` + correct `system/bin/` path.
-- **thermalTier Overwritten After IPC Set It**: Log-parse fallback always overwrote the authoritative IPC `thermal_tier` value even when daemon was running. Added `ipcSetThermal` flag to guard.
-- **inotify Only Watched Module Gamelist**: Daemon never hot-reloaded when `/sdcard/Android/gamelist.txt` was edited directly. Added second `inotify_add_watch` for sdcard path.
-- **`updateGameProfile` No UI Sync**: After writing profile change, UI stayed stale. Added `setTimeout(refresh, 400)` to re-read file and confirm persisted state.
-- **`uptimeInterval` Memory Leak**: `setInterval` ticker for uptime display was never cleared on app unmount. Added `stopUptimeTicker()` called in `App.vue onUnmounted`.
-- **External Links Opening in Embedded WebView**: Links using `<a target="_blank">` opened inside KernelSU WebView where the Android status bar overlapped content. All external links now use `ksu.open(url)` to force the device's default browser.
-- **`cachedInstalledApps` Stale After `addGame()`**: App picker showed old list after adding a game. Cache is now invalidated via `listInstalledApps(true)` after each add.
+- **Battery Cycle Count Calibration**: Three-layer fix — resolved Pinia store reactive ref for `batteryCycles`, removed hardcoded fallback in HomeView, and corrected MediaTek `fg1_cycle` 1/16th sub-cycle conversion in C daemon.
+- **Per-Game Profile Cooldown Fix**: Preserves `s_last_game_profile` during post-game exit debounce ticks instead of defaulting to hardcoded gaming profile.
+- **Daemon Process Management Fix**: Corrected `pkill` target to `libhypercore.so` matching stealth binary process name.
+- **inotify Multi-Path Watcher**: Added dual `inotify` watchers for both module directory and `/sdcard/Android/gamelist.txt`.
+- **External Links `ksu.open()`**: Opens all external URLs (GitHub, Telegram, SociaBuzz) using native device browser via `ksu.open(url)`.
 
-### Features
-- **Contributors Card**: Dashboard now shows developer (@noticesa) and testers (@Rafzzz182, @anotherside551) with avatar initials, role chips, and tap-to-open Telegram links.
-- **Donate Button**: SociaBuzz support link (sociabuzz.com/noticesa/tribe) added as a styled card below Contributors. Opens in external browser.
-- **WebUI Animations**: Smooth page transitions (slide-left/right), fade-in for list rows, spring-based button press feedback, and banner entrance animation.
-- **Navigation Polish**: Bottom nav bar redesigned for better touch ergonomics and visual clarity.
-
-### Improvements
-- **Self-Adaptive Thermal & Load Tuning Engine**:
-  - **Dynamic Thermal Charging Guard**: 3-stage charging current scaling during gaming based on real-time battery temperature (<37°C 2.5A-3A fast charge, 37°C-41°C 1.8A safety balance, >=42°C 1.0A trickle guard).
-  - **Dynamic Adaptive Polling Rate & Thermal Spike Sensing**: Dynamic loop interval scaling (500ms during rapid thermal spikes Δtemp >= 3°C or cpu >= 65°C) to react instantly to sudden temperature rises.
-  - **Strict Cgroup v2 `cpu.uclamp.max` Isolation**: Throttles background and system-background tasks to `cpu.uclamp.max = 40` during gaming, guaranteeing 100% Big Cores (CPU 6-7) capacity exclusively for active game PIDs.
-  - **Deep Sleep Core Barrier**: Applies `uclamp.max = 20` and limits Big Cores max freq to 1.0GHz in `PROFILE_SLEEP` state for near-zero standby battery drain.
-  - **Load-Aware GPU Floor & DVFS Margin**: Dynamically scales GPU bottom frequency (300MHz vs 600MHz) and DVFS margin (20 vs 40) in `PROFILE_GAMING` based on real-time GPU load (`gpu_loading`), saving energy during 2D games and loading screens while boosting full throttle during heavy 3D fights.
-- `fix_battery_cycle_count()` no longer permanently locks `s_fixed = 1` when cycle data is unavailable — retries next tick instead of giving up forever.
-- `get_true_battery_cycles()` priority logic cleaned up: `fg1_cycle` path only activates when `cycle_count` is absent (true MTK sub-cycle source); removes wrong `/16` division on standard `cycle_count`.
-- HomeView expandable rows (Chipset, Kernel) rebuilt with column-flex structure to eliminate positional glitch when collapsing.
-- `apply_profile()` switch now covers all 4 profile enum values cleanly.
+### Features & UI Polish
+- **Contributors & Support Cards**: Dashboard features developer (@noticesa) and testers (@Rafzzz182, @anotherside551) with role chips and tap-to-open Telegram links.
+- **SociaBuzz Support Card**: Integrated SociaBuzz support link card below Contributors.
+- **WebUI Animations**: Smooth page transitions, fade-in list rows, spring button feedback, and banner entrance animation.
 
 ---
 
