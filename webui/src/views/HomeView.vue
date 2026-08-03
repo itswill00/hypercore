@@ -556,19 +556,38 @@ function openExternal(url) {
   gap: 8px;
 }
 
-/* Modal Transition */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Silky-Smooth GPU-Accelerated Vue Modal Transition */
+.modal-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.modal-enter-from,
+.modal-leave-active {
+  transition: opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.modal-enter-active .modal-window {
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.modal-leave-active .modal-window {
+  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.modal-enter-from {
+  opacity: 0;
+}
+
+.modal-enter-from .modal-window {
+  opacity: 0;
+  transform: translate3d(0, 50px, 0) scale(0.96);
+}
+
 .modal-leave-to {
   opacity: 0;
 }
 
-.modal-enter-from .modal-window,
 .modal-leave-to .modal-window {
-  transform: translateY(30px) scale(0.96);
+  opacity: 0;
+  transform: translate3d(0, 30px, 0) scale(0.97);
 }
 </style>
