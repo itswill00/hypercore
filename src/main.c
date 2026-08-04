@@ -166,6 +166,13 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
         }
     }
 
+    if (current_prof != PROFILE_Gaming) {
+        int poll_int = sysfs_read_int("/sys/class/devfreq/13000000.mali/polling_interval");
+        if (poll_int == 0) {
+            sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
+        }
+    }
+
     return 0;
 }
 
