@@ -52,10 +52,11 @@ static struct {
     char gov0[64];
     char gov6[64];
     char mali_policy[64];
+    char mali_gpu_gov[64];
     char migration_cost[64];
     char charge_limit[64];
     int  has_baseline;
-} s_baseline = { "", "", "", "", "", 0 };
+} s_baseline = { "", "", "", "", "", "", 0 };
 
 void save_baseline_nodes(void) {
     if (s_baseline.has_baseline) return;
@@ -63,6 +64,7 @@ void save_baseline_nodes(void) {
     sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0, sizeof(s_baseline.gov0));
     sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6, sizeof(s_baseline.gov6));
     sysfs_read_str("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy, sizeof(s_baseline.mali_policy));
+    sysfs_read_str("/sys/class/devfreq/13000000.mali/governor", s_baseline.mali_gpu_gov, sizeof(s_baseline.mali_gpu_gov));
     sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost, sizeof(s_baseline.migration_cost));
     sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit, sizeof(s_baseline.charge_limit));
 
@@ -75,6 +77,7 @@ void restore_baseline_nodes(void) {
     if (s_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0);
     if (s_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6);
     if (s_baseline.mali_policy[0] != '\0') sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy);
+    if (s_baseline.mali_gpu_gov[0] != '\0') sysfs_write("/sys/class/devfreq/13000000.mali/governor", s_baseline.mali_gpu_gov);
     if (s_baseline.migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost);
     if (s_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit);
 }

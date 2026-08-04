@@ -21,5 +21,26 @@ void apply_gpu_tuning(void) {
     };
     sysfs_write_fallback(game_mode_nodes, "0");
 
+    const char *devfreq_gov_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/governor",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+        NULL
+    };
+    sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+
+    const char *devfreq_min_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/min_freq",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
+        NULL
+    };
+    sysfs_write_fallback(devfreq_min_nodes, "390000000");
+
+    const char *devfreq_max_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/max_freq",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
+        NULL
+    };
+    sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+
     sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
 }
