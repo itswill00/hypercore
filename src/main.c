@@ -157,6 +157,15 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
         }
     }
 
+    char curr_gpu_gov[64] = "";
+    if (sysfs_read_str("/sys/class/devfreq/13000000.mali/governor", curr_gpu_gov, sizeof(curr_gpu_gov))) {
+        const char *expected_gpu_gov = (current_prof == PROFILE_Gaming) ? "performance" : "simple_ondemand";
+        if (strstr(curr_gpu_gov, expected_gpu_gov) == NULL) {
+            log_warn("Guard", "External Mali GPU governor mutation detected! Re-enforcing HyperCore profile...");
+            return 1;
+        }
+    }
+
     return 0;
 }
 

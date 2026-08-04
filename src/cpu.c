@@ -132,8 +132,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
             sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "30");
             sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "0");
+            const char *devfreq_gov_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                NULL
+            };
+            sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
+            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "415000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
@@ -170,8 +176,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "200", "20000");
             set_io_nr_requests("128");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "0");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "0");
+            const char *devfreq_gov_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                NULL
+            };
+            sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
+            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
@@ -205,8 +217,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_cpu_governor("performance");
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "0", "30000");
             set_io_nr_requests("256");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode", "1");
-            sysfs_write("/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore", "1");
+            const char *devfreq_gov_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                NULL
+            };
+            sysfs_write_fallback(devfreq_gov_nodes, "performance");
+            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "674000000");
+            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
