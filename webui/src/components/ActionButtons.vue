@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="section-title">Quick actions</div>
+    <div class="section-title">Quick Actions</div>
     <div class="md3-list-group">
       <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="flush">
         <div class="row-left">
@@ -65,9 +65,10 @@ import Icons from '@/components/icons/Icons.vue'
 const store = useHyperStore()
 const toast = inject('toast')
 
-function flush() {
+async function flush() {
   if (store.loading) return
-  const msg = store.flushRam()
+  if (toast) toast('Clearing RAM cache...')
+  const msg = await store.flushRam()
   if (toast) toast(msg)
 }
 

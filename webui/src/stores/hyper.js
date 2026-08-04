@@ -353,14 +353,18 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
-  function flushRam() {
+  async function flushRam() {
     loading.value = true
-    execCommand('sync; echo 3 > /proc/sys/vm/drop_caches; (echo 1 > /proc/sys/vm/compact_memory &)')
-    setTimeout(() => {
+    try {
+      await execCommand('sync; echo 3 > /proc/sys/vm/drop_caches; (echo 1 > /proc/sys/vm/compact_memory &)')
+      await new Promise(resolve => setTimeout(resolve, 600))
+      await refresh()
+      return `RAM cleared (${ramUsage.value})`
+    } catch (e) {
+      return 'Failed to clear RAM'
+    } finally {
       loading.value = false
-      refresh()
-    }, 400)
-    return 'RAM cache cleared'
+    }
   }
 
   async function restartDaemon() {
