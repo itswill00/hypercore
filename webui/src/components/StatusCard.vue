@@ -3,24 +3,36 @@
     <div class="status-banner-left">
       <div class="status-title">Tanzanite HyperCore</div>
       <div class="status-sub">
-        {{ store.isRunning ? `Running (PID ${store.daemonPid}) • ${store.moduleVersion}` : 'Service inactive' }}
+        {{ store.isRunning ? `Daemon active • PID ${store.daemonPid}` : 'Service inactive' }}
       </div>
     </div>
-    <div class="status-banner-badges">
-      <span class="status-pill" :class="store.isRunning ? 'is-running' : 'is-stopped'">
-        {{ store.isRunning ? 'Running' : 'Stopped' }}
-      </span>
-      <span v-if="store.isRunning" class="profile-pill">
-        {{ store.activeProfile || 'Interactive' }}
-      </span>
+    <div class="status-banner-right">
+      <div class="profile-hero-badge" :class="heroBadgeClass">
+        <span class="status-dot"></span>
+        <span class="profile-text">{{ heroBadgeText }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 
 const store = useHyperStore()
+
+const heroBadgeText = computed(() => {
+  if (!store.isRunning) return 'Stopped'
+  return store.activeProfile || 'Interactive'
+})
+
+const heroBadgeClass = computed(() => {
+  if (!store.isRunning) return 'is-stopped'
+  const prof = (store.activeProfile || 'interactive').toLowerCase()
+  if (prof.includes('game') || prof.includes('gaming')) return 'is-gaming'
+  if (prof.includes('sleep') || prof.includes('saver')) return 'is-sleep'
+  return 'is-interactive'
+})
 </script>
 
 <style scoped>
@@ -46,50 +58,85 @@ const store = useHyperStore()
   font-size: 15px;
   font-weight: 700;
   color: var(--on-surface, #f0f2f5);
+  letter-spacing: -0.2px;
 }
 
 .status-sub {
   font-size: 11px;
   color: var(--on-surface-variant, #b0b4c0);
-  opacity: 0.85;
+  opacity: 0.8;
   margin-top: 2px;
+  font-weight: 400;
 }
 
-.status-banner-badges {
+.status-banner-right {
   display: flex;
   align-items: center;
-  gap: 6px;
   flex-shrink: 0;
 }
 
-.status-pill {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 10px;
+.profile-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
   border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
 }
 
-.status-pill.is-running {
-  background: rgba(160, 178, 198, 0.16);
-  color: var(--blue, #a0b2c6);
-  border: 1px solid rgba(160, 178, 198, 0.25);
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
-.status-pill.is-stopped {
-  background: rgba(229, 115, 115, 0.16);
-  color: var(--red, #e57373);
-  border: 1px solid rgba(229, 115, 115, 0.25);
+.profile-hero-badge.is-interactive {
+  background: rgba(160, 178, 198, 0.14);
+  color: #a0b2c6;
+  border: 1px solid rgba(160, 178, 198, 0.24);
+}
+.profile-hero-badge.is-interactive .status-dot {
+  background: #a0b2c6;
+  box-shadow: 0 0 6px rgba(160, 178, 198, 0.6);
 }
 
-.profile-pill {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: var(--surface-container, #1d1e23);
-  color: var(--on-surface, #f0f2f5);
-  border: 1px solid var(--outline-variant, #383a42);
+.profile-hero-badge.is-gaming {
+  background: rgba(184, 179, 232, 0.16);
+  color: #b8b3e8;
+  border: 1px solid rgba(184, 179, 232, 0.3);
+}
+.profile-hero-badge.is-gaming .status-dot {
+  background: #b8b3e8;
+  box-shadow: 0 0 8px rgba(184, 179, 232, 0.8);
+  animation: pulse-dot 1.8s infinite;
+}
+
+.profile-hero-badge.is-sleep {
+  background: rgba(210, 200, 176, 0.14);
+  color: #d2c8b0;
+  border: 1px solid rgba(210, 200, 176, 0.22);
+}
+.profile-hero-badge.is-sleep .status-dot {
+  background: #d2c8b0;
+  box-shadow: 0 0 6px rgba(210, 200, 176, 0.5);
+}
+
+.profile-hero-badge.is-stopped {
+  background: rgba(229, 115, 115, 0.14);
+  color: #e57373;
+  border: 1px solid rgba(229, 115, 115, 0.22);
+}
+.profile-hero-badge.is-stopped .status-dot {
+  background: #e57373;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.6; }
 }
 </style>
