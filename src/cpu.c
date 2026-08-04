@@ -182,6 +182,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+            sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
             sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
             sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
