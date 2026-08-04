@@ -3,17 +3,18 @@
 #include "memory.hpp"
 #include "io.hpp"
 
-void set_rate_limits(int cpu, const char *up, const char *down) {
-    char path[256];
+void set_rate_limits(const char *up, const char *down) {
     if (g_nodes.has_sugov_ext) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/sugov_ext/up_rate_limit_us", cpu);
-        sysfs_write(path, up);
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/sugov_ext/down_rate_limit_us", cpu);
-        sysfs_write(path, down);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", up);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", down);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", up);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", down);
     }
     if (g_nodes.has_schedutil) {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/schedutil/up_rate_limit_us", up);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us", down);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us", up);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us", down);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us", up);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us", down);
     }
 }
 
@@ -46,8 +47,6 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
         snprintf(buf, sizeof(buf), "%d", max_lit);
         sysfs_write(path, buf);
-
-        set_rate_limits(i, up_rate, down_rate);
     }
 
     snprintf(buf, sizeof(buf), "%d", min_big);
@@ -63,9 +62,9 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
         snprintf(buf, sizeof(buf), "%d", max_big);
         sysfs_write(path, buf);
-
-        set_rate_limits(i, up_rate, down_rate);
     }
+
+    set_rate_limits(up_rate, down_rate);
 }
 
 void set_cpu_governor(const char *gov) {
