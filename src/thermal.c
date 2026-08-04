@@ -116,21 +116,18 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 int get_true_battery_cycles(void) {
     int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
     if (fg_raw > 0) {
-        return fg_raw / 16;
+        return (fg_raw > 1000) ? (fg_raw / 16) : fg_raw;
     }
 
     int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
-    if (auth_cycles > 1000) {
-        return auth_cycles / 16;
+    if (auth_cycles > 0) {
+        return (auth_cycles > 1000) ? (auth_cycles / 16) : auth_cycles;
     }
 
     int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (cycle_count > 1000) {
-        return cycle_count / 16;
+    if (cycle_count > 0) {
+        return (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
     }
-
-    if (cycle_count > 0) return cycle_count;
-    if (auth_cycles > 0) return auth_cycles;
 
     int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
     if (bms_cycles > 0) {
@@ -141,38 +138,20 @@ int get_true_battery_cycles(void) {
 }
 
 void fix_battery_cycle_count(void) {
-    static int s_last_calibrated_cycles = -1;
-    static int s_write_failed_for_cycle = -1;
-
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) return;
 
-    if (true_cycles == s_last_calibrated_cycles || true_cycles == s_write_failed_for_cycle) {
-        return;
-    }
-
     int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (current_cycles == true_cycles) {
-        s_last_calibrated_cycles = true_cycles;
-        return;
-    }
+    if (current_cycles != true_cycles) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", true_cycles);
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", true_cycles);
+        chmod("/sys/class/power_supply/battery/cycle_count", 0664);
+        sysfs_write("/sys/class/power_supply/battery/cycle_count", buf);
 
-    chmod("/sys/class/power_supply/battery/cycle_count", 0664);
-    sysfs_write("/sys/class/power_supply/battery/cycle_count", buf);
-
-    chmod("/sys/class/power_supply/battery/auth_dev_batt_cycle", 0664);
-    sysfs_write("/sys/class/power_supply/battery/auth_dev_batt_cycle", buf);
-
-    int verified = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (verified == true_cycles) {
-        s_last_calibrated_cycles = true_cycles;
+        chmod("/sys/class/power_supply/battery/auth_dev_batt_cycle", 0664);
+        sysfs_write("/sys/class/power_supply/battery/auth_dev_batt_cycle", buf);
         log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
-    } else {
-        s_write_failed_for_cycle = true_cycles;
-        log_warn("Battery", "Cycle count node write-locked, reporting raw value %d", true_cycles);
     }
 }
 
