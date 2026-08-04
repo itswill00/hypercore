@@ -113,28 +113,84 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
     return tier;
 }
 
+static float s_accumulated_pct = 0.0f;
+static int   s_prev_cap_for_cycle = -1;
+static int   s_added_cycles = 0;
+static int   s_tracker_loaded = 0;
+
+static void load_cycle_tracker(void) {
+    if (s_tracker_loaded) return;
+    char path[256];
+    snprintf(path, sizeof(path), "%s/cycle_tracker.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        if (fscanf(f, "%d %f", &s_added_cycles, &s_accumulated_pct) != 2) {
+            s_added_cycles = 0;
+            s_accumulated_pct = 0.0f;
+        }
+        fclose(f);
+    }
+    s_tracker_loaded = 1;
+}
+
+static void save_cycle_tracker(void) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/cycle_tracker.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    fprintf(f, "%d %.2f\n", s_added_cycles, s_accumulated_pct);
+    fclose(f);
+}
+
+void track_charging_cycles(int is_charging) {
+    load_cycle_tracker();
+
+    int current_cap = sysfs_read_int("/sys/class/power_supply/battery/capacity");
+    if (current_cap <= 0) {
+        current_cap = sysfs_read_int("/sys/class/power_supply/bms/capacity");
+    }
+
+    if (is_charging && s_prev_cap_for_cycle > 0 && current_cap > s_prev_cap_for_cycle) {
+        int delta = current_cap - s_prev_cap_for_cycle;
+        if (delta > 0 && delta <= 50) {
+            s_accumulated_pct += (float)delta;
+            if (s_accumulated_pct >= 100.0f) {
+                int new_added = (int)(s_accumulated_pct / 100.0f);
+                s_added_cycles += new_added;
+                s_accumulated_pct -= (float)(new_added * 100);
+                log_info("Battery", "Dynamic full charge cycle reached! Total added cycles: %d", s_added_cycles);
+            }
+            save_cycle_tracker();
+        }
+    }
+    s_prev_cap_for_cycle = current_cap;
+}
+
 int get_true_battery_cycles(void) {
+    load_cycle_tracker();
+
+    int base_cycles = 0;
     int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
     if (cycle_count > 0) {
-        return (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
+        base_cycles = (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
+    } else {
+        int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
+        if (fg_raw > 0) {
+            base_cycles = (fg_raw > 1000) ? (fg_raw / 16) : fg_raw;
+        } else {
+            int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
+            if (auth_cycles > 0) {
+                base_cycles = (auth_cycles > 1000) ? (auth_cycles / 16) : auth_cycles;
+            } else {
+                int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
+                if (bms_cycles > 0) {
+                    base_cycles = (bms_cycles > 1000) ? (bms_cycles / 16) : bms_cycles;
+                }
+            }
+        }
     }
 
-    int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
-    if (fg_raw > 0) {
-        return (fg_raw > 1000) ? (fg_raw / 16) : fg_raw;
-    }
-
-    int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
-    if (auth_cycles > 0) {
-        return (auth_cycles > 1000) ? (auth_cycles / 16) : auth_cycles;
-    }
-
-    int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
-    if (bms_cycles > 0) {
-        return (bms_cycles > 1000) ? (bms_cycles / 16) : bms_cycles;
-    }
-
-    return 0;
+    return base_cycles + s_added_cycles;
 }
 
 void fix_battery_cycle_count(void) {
