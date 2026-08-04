@@ -141,13 +141,13 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
             sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
-            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "415000000");
+            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "415000");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
@@ -175,8 +175,6 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             apply_cgroup_gaming_policy(0);
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             int big_min = (g_state.app_boost_ticks > 0) ? 1600000 : 1000000;
-            const char *dvfs_margin = (g_state.app_boost_ticks > 0) ? "30" : "10";
-            const char *dvfs_thresh = (g_state.app_boost_ticks > 0) ? "30" : "60";
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "200", "20000");
             set_io_nr_requests("128");
@@ -190,15 +188,15 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
             sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
             sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
-            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
-            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
-            sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", dvfs_thresh);
-            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", dvfs_margin);
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "20");
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "15");
             const char *interactive_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
@@ -237,7 +235,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "674000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "30");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "50");
