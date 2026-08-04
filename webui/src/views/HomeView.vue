@@ -12,23 +12,9 @@
       
       <StatusCard />
 
-      <div class="md3-list-group">
+      <div class="section-title">Device Status</div>
+      <div class="md3-list-group" style="margin-bottom: 14px;">
         
-        <div class="md3-list-row">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="star" :size="18" />
-            </div>
-            <div class="row-meta">
-              <div class="row-title">Current Profile</div>
-              <div class="row-sub">Applies automatically based on usage</div>
-            </div>
-          </div>
-          <span class="badge-pill" style="background: rgba(226, 229, 236, 0.12); color: #e2e5ec; font-size: 11px;">
-            {{ store.activeProfile || 'Interactive' }}
-          </span>
-        </div>
-
         <div
           class="md3-list-row expandable-row clickable"
           :class="{ 'is-expanded': expandedRows['thermal'] }"
@@ -40,12 +26,11 @@
                 <Icons name="thermo" :size="18" />
               </div>
               <div class="row-meta">
-                <div class="row-title">Thermal state</div>
-                <div class="row-sub">CPU, battery &amp; thermal tier status</div>
+                <div class="row-title">Temperature &amp; Thermal</div>
+                <div class="row-sub">CPU &amp; battery thermal monitoring</div>
               </div>
             </div>
-            <div class="row-val" :class="store.tempColor">
-              <span>CPU {{ store.cpuTemp }}°C • Bat {{ store.batTemp }}°C</span>
+            <div class="row-val">
               <span class="expand-caret" :class="{ 'open': expandedRows['thermal'] }">▼</span>
             </div>
           </div>
@@ -53,27 +38,27 @@
             <div class="expanded-inner">
               <div class="stat-grid-2">
                 <div class="stat-box">
-                  <div class="stat-lbl">CPU SoC peak</div>
+                  <div class="stat-lbl">CPU temp</div>
                   <div class="stat-num" :class="store.tempColor">{{ store.cpuTemp }}°C</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Battery sensor</div>
+                  <div class="stat-lbl">Battery temp</div>
                   <div class="stat-num">{{ store.batTemp }}°C</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">GPU sensor</div>
+                  <div class="stat-lbl">GPU temp</div>
                   <div class="stat-num">{{ store.gpuTemp > 0 ? store.gpuTemp + '°C' : store.cpuTemp + '°C' }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">PMIC charger</div>
+                  <div class="stat-lbl">Charger temp</div>
                   <div class="stat-num">{{ store.chgTemp > 0 ? store.chgTemp + '°C' : store.batTemp + '°C' }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">HyperCore tier</div>
+                  <div class="stat-lbl">Thermal tier</div>
                   <div class="stat-num" :class="store.thermalColor">{{ store.thermalTier }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Charging guard</div>
+                  <div class="stat-lbl">Power guard</div>
                   <div class="stat-num">{{ store.thermalGuardState }}</div>
                 </div>
               </div>
@@ -92,12 +77,11 @@
                 <Icons name="battery" :size="18" />
               </div>
               <div class="row-meta">
-                <div class="row-title">Battery</div>
-                <div class="row-sub">Health, cycles &amp; power flow</div>
+                <div class="row-title">Battery &amp; Power</div>
+                <div class="row-sub">Health, cycles &amp; power usage</div>
               </div>
             </div>
             <div class="row-val">
-              <span>{{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}</span>
               <span class="expand-caret" :class="{ 'open': expandedRows['battery'] }">▼</span>
             </div>
           </div>
@@ -105,7 +89,7 @@
             <div class="expanded-inner">
               <div class="stat-grid-2">
                 <div class="stat-box">
-                  <div class="stat-lbl">Calibrated cycles</div>
+                  <div class="stat-lbl">Battery cycles</div>
                   <div class="stat-num">{{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}</div>
                 </div>
                 <div class="stat-box">
@@ -132,7 +116,10 @@
             </div>
           </div>
         </div>
+      </div>
 
+      <div class="section-title">Hardware &amp; System</div>
+      <div class="md3-list-group" style="margin-bottom: 14px;">
         <div
           class="md3-list-row expandable-row clickable"
           :class="{ 'is-expanded': expandedRows['chipset'] }"
@@ -144,13 +131,12 @@
                 <Icons name="chip" :size="18" />
               </div>
               <div class="row-meta">
-                <div class="row-title">Chipset</div>
-                <div class="row-sub">Hardware Platform</div>
+                <div class="row-title">Chipset Specs</div>
+                <div class="row-sub">Processor &amp; GPU platform</div>
               </div>
             </div>
             <div class="row-val">
-              Helio G99 Ultra
-              <span class="expand-caret" :class="{ 'open': expandedRows['chipset'] }">▾</span>
+              <span class="expand-caret" :class="{ 'open': expandedRows['chipset'] }">▼</span>
             </div>
           </div>
           <div class="expanded-content">
@@ -174,12 +160,11 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Kernel Version</div>
-                <div class="row-sub">Linux Kernel Build</div>
+                <div class="row-sub">Linux OS kernel details</div>
               </div>
             </div>
             <div class="row-val">
-              {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion.split(' ')[0] : 'Linux 5.10.x' }}
-              <span class="expand-caret" :class="{ 'open': expandedRows['kernel'] }">▾</span>
+              <span class="expand-caret" :class="{ 'open': expandedRows['kernel'] }">▼</span>
             </div>
           </div>
           <div class="expanded-content">
@@ -193,7 +178,7 @@
 
       <ActionButtons />
 
-      <div class="section-title">Community</div>
+      <div class="section-title">Community &amp; Support</div>
       <div class="md3-list-group" style="margin-bottom: 14px;">
         <div class="md3-list-row clickable" @click="showContributorsModal = true">
           <div class="row-left">
@@ -201,8 +186,8 @@
               <Icons name="heart" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Contributors &amp; support</div>
-              <div class="row-sub">Meet project team, testers &amp; support links</div>
+              <div class="row-title">Contributors &amp; Support</div>
+              <div class="row-sub">Developer &amp; testing team</div>
             </div>
           </div>
           <div class="preview-stack">
