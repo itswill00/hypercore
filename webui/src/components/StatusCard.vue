@@ -8,7 +8,6 @@
     </div>
     <div class="status-banner-right">
       <div class="profile-hero-badge" :class="heroBadgeClass">
-        <span class="status-dot"></span>
         <span class="profile-text">{{ heroBadgeText }}</span>
       </div>
     </div>
@@ -78,7 +77,6 @@ const heroBadgeClass = computed(() => {
 .profile-hero-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 12px;
@@ -87,22 +85,10 @@ const heroBadgeClass = computed(() => {
   user-select: none;
 }
 
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: inline-block;
-}
-
 .profile-hero-badge.is-interactive {
   background: rgba(160, 178, 198, 0.14);
   color: #a0b2c6;
   border: 1px solid rgba(160, 178, 198, 0.24);
-}
-.profile-hero-badge.is-interactive .status-dot {
-  background: #a0b2c6;
-  box-shadow: 0 0 6px rgba(160, 178, 198, 0.6);
 }
 
 .profile-hero-badge.is-gaming {
@@ -110,33 +96,16 @@ const heroBadgeClass = computed(() => {
   color: #b8b3e8;
   border: 1px solid rgba(184, 179, 232, 0.3);
 }
-.profile-hero-badge.is-gaming .status-dot {
-  background: #b8b3e8;
-  box-shadow: 0 0 8px rgba(184, 179, 232, 0.8);
-  animation: pulse-dot 1.8s infinite;
-}
 
 .profile-hero-badge.is-sleep {
   background: rgba(210, 200, 176, 0.14);
   color: #d2c8b0;
   border: 1px solid rgba(210, 200, 176, 0.22);
 }
-.profile-hero-badge.is-sleep .status-dot {
-  background: #d2c8b0;
-  box-shadow: 0 0 6px rgba(210, 200, 176, 0.5);
-}
 
 .profile-hero-badge.is-stopped {
   background: rgba(229, 115, 115, 0.14);
   color: #e57373;
   border: 1px solid rgba(229, 115, 115, 0.22);
-}
-.profile-hero-badge.is-stopped .status-dot {
-  background: #e57373;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.35); opacity: 0.6; }
 }
 </style>
