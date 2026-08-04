@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-void set_rate_limits(int cpu, const char *up, const char *down);
+void set_rate_limits(const char *up, const char *down);
 void apply_cpuset(void);
 void apply_cgroup_gaming_policy(int enable);
 void set_cpu_governor(const char *gov);
