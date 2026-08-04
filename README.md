@@ -25,19 +25,18 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 - **Smart Automated Adaptive Engine**: Zero-intervention background daemon that automatically evaluates active workloads, screen lock states, and foreground apps without requiring manual mode toggles.
 - **Fast PID Caching**: High-efficiency game detection path with 0.001ms latency and sub-process prefix matching (`com.package:child`), inspired by `encore`.
 - **Anti-Root & Anti-Cheat Stealth Binary (`libhypercore.so`)**: Disguised native daemon executable to prevent detection by banking apps and game anti-cheats (Tencent ACE / MTP).
-- **UNIX Domain Socket IPC (0ms Latency)**: Non-blocking IPC socket server (`hypercore.sock`) for instant JSON telemetry updates to the WebUI.
-- **MediaTek DVFSRC Interconnect Boost**: Unlocks LPDDR RAM throughput up to 4.266 GHz during active gaming sessions (`dvfsrc_qos_mode = 1`) to eliminate memory bandwidth bottlenecks.
-- **Dynamic Thermal Charging Guard**: 3-stage charging current scaling during gaming based on battery temperature (<37°C 2.5A fast charge, 37°C–41°C 1.8A safety balance, ≥42°C 1.0A trickle guard), restoring full fast charging upon game exit.
+- **UNIX Domain Socket IPC (0ms Latency)**: Non-blocking IPC socket server (`hypercore.sock`) for instant JSON telemetry updates (`status`, `cpu_temp`, `bat_temp`, `gpu_temp`, `chg_temp`, `battery_cycles`, `bat_health`) to the WebUI.
+- **Mali GPU Devfreq Governor & 674 MHz Floor**: Automatically switches GPU Devfreq governor (`/sys/class/devfreq/13000000.mali/governor`) to `performance` and locks a 674 MHz minimum frequency floor during active gaming sessions, eliminating GPU frequency drops under heavy loads.
+- **MediaTek DVFSRC Interconnect Boost**: Unlocks LPDDR4X RAM throughput up to 4.266 GHz during active gaming sessions (`dvfsrc_qos_mode = 1`) to eliminate memory bandwidth bottlenecks.
+- **Dynamic Thermal Charging Guard**: 3-stage thermal charging current guard (`charge_control` = 2, 4, 8) based on battery temperature (≥42°C restricted to 2A, ≥37°C restricted to 4A, <37°C full 8A fast charging).
 - **MediaTek DRM Screen Off Detection**: Accurate display state monitoring via MediaTek DRM backlight drivers, ensuring the device enters deep sleep (`PROFILE_SLEEP`) immediately when locked.
-- **Load-Aware GPU Floor & DVFS Margin**: Dynamically scales GPU bottom frequency (300 MHz vs 600 MHz) and DVFS margin based on real-time GPU load (`gpu_loading`), saving energy during loading screens while boosting full throttle during heavy 3D fights.
 - **MediaTek FPSGO `ultra_rescue` & `boost_ta`**: Instant 0ms touch acceleration and frame-drop rescue bursts during heavy 3D combat.
-- **Kernel Auto Self-Recovery Guard**: Detects unauthorized sysfs mutations by third-party kernel tweak apps or rogue scripts (e.g., CPU governor or GPU power policy overrides) and automatically re-enforces HyperCore's optimal configuration within 1-2 seconds.
+- **Kernel Auto Self-Recovery Guard**: Detects unauthorized sysfs mutations by third-party kernel tweak apps or rogue scripts (e.g., CPU governor, Mali GPU power policy, or GPU devfreq governor overrides) and automatically re-enforces HyperCore's optimal configuration within 1-2 seconds.
 - **Foreground App Transition & Gesture Boost Engine**: Detects active app switches (e.g. TikTok to Instagram or MIUI Launcher) and injects a 1.5s burst (1.6 GHz Big core floor, 35% uclamp, 384KB read-ahead) for 120 FPS stutter-free app switching animations.
 - **Calibrated `sugov_ext` / `reflex` Governor Scaling**: Auto-detects custom kernel `reflex` governor or sets `sugov_ext` up-rate limit (`200 µs`) for 0ms touch response and down-rate limit (`20,000 µs`) for 60/90/120 Hz smooth scrolling.
-- **Enterprise Structured Logging**: Millisecond-precision timestamped logger with structured severity levels (`INFO`, `STATE`, `WARN`, `ERROR`), using a static ring buffer to eliminate heap memory fragmentation.
-- **Hardware IRQ Affinity Pinning**: Directs Mali GPU, GED, DSI Display, and storage interrupts to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt processing.
+- **Hardware IRQ Subdirectory Pinning**: Scans Linux kernel `/proc/irq/<irq>/` subdirectories to pin Mali GPU, DSI Display, and FocalTech Touchscreen interrupts directly to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt handling.
 - **Embedded Binary SHA-256 Self-Integrity Check**: Verifies binary and module file checksums on startup to detect tampering or corruption (`libhypercore.so --verify-integrity`).
-- **Streamlined Material Design 3 WebUI**: Integrated KernelSU / APatch / Magisk WebUI featuring status banner, smart engine indicator, game manager, live log console, and quick actions.
+- **Human-Centric Material Design 3 WebUI**: Integrated KernelSU / APatch / Magisk WebUI featuring active profile hero badge, natural English titles, ultra-compact micro-tile status cards, instant 120 FPS accordion transitions, real-time RAM cache flushing, and native Telegram intent launcher bridge.
 
 ---
 
@@ -45,17 +44,17 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 
 The daemon evaluates device metrics using an adaptive loop (500 ms – 8000 ms) and applies one of three consolidated core operational profiles:
 
-| Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Floor | Power Policy | Interconnect Bandwidth |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Sleep** | Screen locked | 500 – 1200 MHz | 725 – 1000 MHz | 300 MHz | `coarse_demand` | Dynamic (Low) |
-| **Interactive** | Daily use / Browsing | 600 – 2000 MHz | 1000 – 2200 MHz | 300 MHz | `coarse_demand` | Dynamic |
-| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1800 – 2200 MHz | 300 / 600 MHz | `coarse_demand` | Unlocked (4.266 GHz) |
+| Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Devfreq Gov | GPU Floor | Power Policy | Interconnect Bandwidth |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Sleep** | Screen locked | 500 – 1200 MHz | 725 – 1000 MHz | `simple_ondemand` | 390 MHz | `coarse_demand` | Dynamic (Low) |
+| **Interactive** | Daily use / Browsing | 600 – 2000 MHz | 1000 – 2200 MHz | `simple_ondemand` | 390 MHz | `coarse_demand` | Dynamic |
+| **Gaming** | Active foreground game | 1400 – 2000 MHz | 1800 – 2200 MHz | `performance` | 674 MHz | `always_on` | Unlocked (4.266 GHz) |
 
 ---
 
 ## Non-Interfering Thermal Hardware Coexistence
 
-HyperCore relies on native kernel hardware thermal drivers and user-installed thermal mods for throttling. The daemon dynamically adjusts 3-stage thermal charging current limits (2.5A / 1.8A / 1.0A) while allowing hardware HALs and thermal mods to maintain optimal thermal limits.
+HyperCore relies on native kernel hardware thermal drivers and Xiaomi `sconfig = 10` Game Turbo thermal mode for throttling. The daemon dynamically adjusts 3-stage thermal charging current limits while allowing hardware HALs and vendor thermal drivers to maintain safe thermal limits.
 
 ---
 

@@ -123,7 +123,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
         cp update.json /data/adb/modules/tanzanite_hypercore/update.json
         cp changelog.md /data/adb/modules/tanzanite_hypercore/changelog.md
         chmod 755 /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so
-        nohup /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so >/dev/null 2>&1 &
+        exec /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so
     "; then
         echo "daemon restarted successfully"
     else
