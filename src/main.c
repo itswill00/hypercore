@@ -171,6 +171,11 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
         if (poll_int == 0) {
             sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
         }
+        int cust_boost = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_boost_freq");
+        if (cust_boost != 0) {
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+        }
     }
 
     return 0;
