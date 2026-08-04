@@ -339,6 +339,20 @@ int main(int argc, char *argv[]) {
             g_state.thermal_tier = thermal_tier;
         }
 
+        if (g_state.current_profile == PROFILE_Gaming) {
+            if (g_state.is_charging) {
+                if (bat_temp >= 42) {
+                    sysfs_write(g_nodes.charge_control, "2");
+                } else if (bat_temp >= 37) {
+                    sysfs_write(g_nodes.charge_control, "4");
+                } else {
+                    sysfs_write(g_nodes.charge_control, "8");
+                }
+            } else {
+                sysfs_write(g_nodes.charge_control, "8");
+            }
+        }
+
         tune_memory_pressure();
         fix_battery_cycle_count();
 

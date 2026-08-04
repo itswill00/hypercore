@@ -124,6 +124,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
     switch (prof) {
         case PROFILE_Sleep: {
+            apply_cgroup_gaming_policy(0);
+            g_state.app_boost_ticks = 0;
             set_cpu_governor(gov);
             set_cpu_freqs(500000, 1200000, 725000, 1000000, "5000", "500");
             set_io_nr_requests("32");
@@ -170,6 +172,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         }
 
         case PROFILE_Interactive: {
+            apply_cgroup_gaming_policy(0);
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             int big_min = (g_state.app_boost_ticks > 0) ? 1600000 : 1000000;
             const char *dvfs_margin = (g_state.app_boost_ticks > 0) ? "30" : "15";
@@ -215,6 +218,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         }
 
         case PROFILE_Gaming: {
+            apply_cgroup_gaming_policy(1);
             set_cpu_governor("performance");
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "0", "30000");
             set_io_nr_requests("256");
