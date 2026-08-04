@@ -27,6 +27,7 @@ void apply_gpu_tuning(void) {
         NULL
     };
     sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+    sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
 
     const char *devfreq_min_nodes[] = {
         "/sys/class/devfreq/13000000.mali/min_freq",
