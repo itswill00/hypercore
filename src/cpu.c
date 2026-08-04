@@ -175,7 +175,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             apply_cgroup_gaming_policy(0);
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
             int big_min = (g_state.app_boost_ticks > 0) ? 1600000 : 1000000;
-            const char *dvfs_margin = (g_state.app_boost_ticks > 0) ? "30" : "15";
+            const char *dvfs_margin = (g_state.app_boost_ticks > 0) ? "30" : "10";
+            const char *dvfs_thresh = (g_state.app_boost_ticks > 0) ? "30" : "60";
             set_cpu_governor(gov);
             set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "200", "20000");
             set_io_nr_requests("128");
@@ -195,7 +196,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", dvfs_thresh);
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", dvfs_margin);
             const char *interactive_game_mode_nodes[] = {
