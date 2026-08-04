@@ -114,6 +114,11 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 }
 
 int get_true_battery_cycles(void) {
+    int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (cycle_count > 0) {
+        return (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
+    }
+
     int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
     if (fg_raw > 0) {
         return (fg_raw > 1000) ? (fg_raw / 16) : fg_raw;
@@ -122,11 +127,6 @@ int get_true_battery_cycles(void) {
     int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
     if (auth_cycles > 0) {
         return (auth_cycles > 1000) ? (auth_cycles / 16) : auth_cycles;
-    }
-
-    int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (cycle_count > 0) {
-        return (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
     }
 
     int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
