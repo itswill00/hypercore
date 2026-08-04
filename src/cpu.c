@@ -194,7 +194,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", dvfs_thresh);
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
