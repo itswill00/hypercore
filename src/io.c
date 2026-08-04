@@ -76,22 +76,30 @@ void apply_irq_tuning(void) {
         int irq = atoi(ent->d_name);
         if (irq <= 0) continue;
 
-        char name_path[128];
-        snprintf(name_path, sizeof(name_path), "/proc/irq/%d/action", irq);
-        int fd = open(name_path, O_RDONLY | O_CLOEXEC);
-        if (fd >= 0) {
-            char buf[64];
-            ssize_t n = read(fd, buf, sizeof(buf) - 1);
-            close(fd);
-            if (n > 0) {
-                buf[n] = '\0';
-                if (strstr(buf, "mali") || strstr(buf, "ged") || strstr(buf, "kgsl") || strstr(buf, "dsi") ||
-                    strstr(buf, "touch") || strstr(buf, "tpd") || strstr(buf, "fts")) {
-                    char aff_path[128];
-                    snprintf(aff_path, sizeof(aff_path), "/proc/irq/%d/smp_affinity", irq);
-                    sysfs_write(aff_path, "c0");
+        char irq_dir_path[256];
+        snprintf(irq_dir_path, sizeof(irq_dir_path), "/proc/irq/%d", irq);
+        DIR *subdir = opendir(irq_dir_path);
+        if (!subdir) continue;
+
+        struct dirent *subent;
+        int matched = 0;
+        while ((subent = readdir(subdir)) != NULL) {
+            if (subent->d_name[0] != '.') {
+                const char *name = subent->d_name;
+                if (strstr(name, "mali") || strstr(name, "ged") || strstr(name, "kgsl") ||
+                    strstr(name, "dsi") || strstr(name, "touch") || strstr(name, "tpd") ||
+                    strstr(name, "fts") || strstr(name, "GPU") || strstr(name, "gpu")) {
+                    matched = 1;
+                    break;
                 }
             }
+        }
+        closedir(subdir);
+
+        if (matched) {
+            char aff_path[256];
+            snprintf(aff_path, sizeof(aff_path), "/proc/irq/%d/smp_affinity", irq);
+            sysfs_write(aff_path, "c0");
         }
     }
     closedir(dir);
