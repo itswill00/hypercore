@@ -1,3 +1,21 @@
+# HyperCore v4.4 — Universal MT6789 Stability & Multi-OEM Release
+
+### Key Highlights & Innovations
+- **Universal Multi-OEM Support (MediaTek MT6789 Family)**: Complete sysfs node fallbacks for Xiaomi, Poco, Infinix, Tecno, Realme, and Advan devices (supporting both `13000000.mali` and `soc:mali` GPU paths, `mi_thermald` and FPSGO thermal drivers, and Transsion/Infinix PMIC charge controls).
+- **Automated SHA-256 Binary & Payload Integrity Guard**: Real-time checksum verification (`verify_module_integrity`) at startup to ensure module files (`system.prop`, `service.sh`, `post-fs-data.sh`, `uninstall.sh`, `webroot/index.html`, etc.) are 100% untampered with 0 mismatches.
+- **Enhanced Adaptive Sysfs Tamper Recovery**: Dynamically detects external CPU governor, Mali power policy, or GPU devfreq governor overrides by third-party apps across all MT6789 devices and re-enforces optimal profile within 1-2 seconds.
+- **Clean Hardware State Reset on Uninstall**: Enhanced `uninstall.sh` to fully restore CPU scaling governors (`schedutil`), CPU frequencies, Mali GPU power policy (`coarse_demand`), GPU devfreq governor (`simple_ondemand`), FPSGO thermal limits (`thrm_enable = 1`), and GED boost parameters upon module uninstallation.
+- **MemAvailable Priority Memory Management**: Updated memory pressure tuner to prioritize `MemAvailable` for realistic usable RAM detection, avoiding false swap/compaction pressure caused by low `MemFree`.
+
+### Bug Fixes & WebUI Polish
+- **WebUI Daemon Restart & Loading State Fix**: Prevents premature loading state dismissal during daemon restart (`restartDaemon`), holding spinner feedback until daemon IPC socket responds.
+- **Installed Games Cache Invalidation**: `removeGame()` and `addGame()` now force-refresh the installed app picker cache (`listInstalledApps(true)`), preventing stale app listings.
+- **Debounced Battery Cycle Calibration**: Added rate-limiting (5-minute interval) to `fix_battery_cycle_count()` to prevent redundant sysfs I/O and log churn.
+- **Dynamic Thermal Zone Fallback**: Removed hardcoded GPU/Charger thermal zone numbers in IPC JSON handler, falling back gracefully to `cpu_temp` and `bat_temp` on non-Xiaomi devices.
+- **WebUI Subtitle & Typography Alignment**: Standardized WebUI section headers and subtitle texts for clean, human English typography.
+
+---
+
 # HyperCore v4.3 — Major Release & Architecture Polish
 
 ### Key Highlights & Innovations
