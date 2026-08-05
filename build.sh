@@ -46,11 +46,14 @@ if [ -d "webui" ]; then
     if [ -f banner.jpg ]; then
         cp banner.jpg webroot/banner.jpg
     fi
+    if [ -f icon.png ]; then
+        cp icon.png webroot/icon.png
+    fi
 fi
 
 echo "generating sha256 checksums..."
 rm -f checksums.txt
-for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg update.json changelog.md NOTICE.md uninstall.sh banner.jpg; do
+for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg webroot/icon.png update.json changelog.md NOTICE.md uninstall.sh banner.jpg icon.png; do
     if [ -f "$file" ]; then
         sha256sum "$file" >> checksums.txt
     fi
@@ -110,12 +113,14 @@ if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
     system/bin/libhypercore.so \
     webroot/index.html \
     webroot/banner.jpg \
+    webroot/icon.png \
     gamelist.txt \
     update.json \
     changelog.md \
     NOTICE.md \
     uninstall.sh \
-    banner.jpg >/dev/null; then
+    banner.jpg \
+    icon.png >/dev/null; then
     echo "error: packaging failed"
     exit 1
 fi
@@ -138,6 +143,9 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
         if [ -d \"\$MOD_TARGET\" ]; then
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
+            [ -f webroot/banner.jpg ] && cp webroot/banner.jpg \$MOD_TARGET/webroot/banner.jpg
+            [ -f webroot/icon.png ] && cp webroot/icon.png \$MOD_TARGET/webroot/icon.png
+            [ -f icon.png ] && cp icon.png \$MOD_TARGET/icon.png
             cp module.prop \$MOD_TARGET/module.prop
             cp update.json \$MOD_TARGET/update.json
             cp changelog.md \$MOD_TARGET/changelog.md
