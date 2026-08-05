@@ -1,8 +1,8 @@
-id=tanzanite_hypercore
-name=Tanzanite HyperCore
+id=hypercore
+name=HyperCore
 version=v4.3
 versionCode=430
 author=@itswill00
-description=Smart kernel optimizer & gaming daemon for Helio G99 Ultra. Inspired By encore @Rem01Gaming.
+description=Universal kernel optimizer & hardware daemon for MediaTek Helio G99 (Kernel 5.10.x). Inspired by encore @Rem01Gaming.
 updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
 banner=banner.jpg

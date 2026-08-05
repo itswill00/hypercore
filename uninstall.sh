@@ -9,6 +9,7 @@ for i in 6 7; do
     [ -f "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" ] && echo 725000 > "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" 2>/dev/null
 done
 
+rm -f /data/adb/modules/hypercore/.hypercore_lock 2>/dev/null
 rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock 2>/dev/null
 rm -f /data/adb/modules/tanzanite_hyperflow/.hypercore_lock 2>/dev/null
 rm -f /data/local/tmp/.hypercore_lock 2>/dev/null

@@ -134,14 +134,52 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/class/devfreq/soc:mali/governor",
                 "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
+                "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/governor",
                 NULL
             };
+            const char *devfreq_min_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/min_freq",
+                "/sys/class/devfreq/soc:mali/min_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
+                NULL
+            };
+            const char *devfreq_max_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/max_freq",
+                "/sys/class/devfreq/soc:mali/max_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
+                NULL
+            };
+            const char *devfreq_poll_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/polling_interval",
+                "/sys/class/devfreq/soc:mali/polling_interval",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
+                NULL
+            };
+            const char *power_policy_nodes[] = {
+                "/sys/devices/platform/soc/13000000.mali/power_policy",
+                "/sys/devices/platform/soc/soc:mali/power_policy",
+                "/sys/class/devfreq/13000000.mali/power_policy",
+                "/sys/class/devfreq/soc:mali/power_policy",
+                NULL
+            };
+            const char *sconfig_nodes[] = {
+                "/sys/class/thermal/thermal_message/sconfig",
+                "/sys/devices/virtual/thermal/thermal_message/sconfig",
+                "/sys/class/thermal/thermal_message/sport_mode",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
-            sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
-            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
-            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write_fallback(devfreq_poll_nodes, "50");
+            sysfs_write_fallback(devfreq_min_nodes, "390000000");
+            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
@@ -162,7 +200,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "50");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
-            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
             sysfs_write(g_nodes.touch_edge, "0");
@@ -178,14 +216,52 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_io_nr_requests("128");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/class/devfreq/soc:mali/governor",
                 "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
+                "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/governor",
                 NULL
             };
+            const char *devfreq_min_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/min_freq",
+                "/sys/class/devfreq/soc:mali/min_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
+                NULL
+            };
+            const char *devfreq_max_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/max_freq",
+                "/sys/class/devfreq/soc:mali/max_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
+                NULL
+            };
+            const char *devfreq_poll_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/polling_interval",
+                "/sys/class/devfreq/soc:mali/polling_interval",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
+                NULL
+            };
+            const char *power_policy_nodes[] = {
+                "/sys/devices/platform/soc/13000000.mali/power_policy",
+                "/sys/devices/platform/soc/soc:mali/power_policy",
+                "/sys/class/devfreq/13000000.mali/power_policy",
+                "/sys/class/devfreq/soc:mali/power_policy",
+                NULL
+            };
+            const char *sconfig_nodes[] = {
+                "/sys/class/thermal/thermal_message/sconfig",
+                "/sys/devices/virtual/thermal/thermal_message/sconfig",
+                "/sys/class/thermal/thermal_message/sport_mode",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
-            sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
-            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "390000000");
-            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "coarse_demand");
+            sysfs_write_fallback(devfreq_poll_nodes, "50");
+            sysfs_write_fallback(devfreq_min_nodes, "390000000");
+            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
@@ -206,7 +282,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
-            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+            sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
             sysfs_write(g_nodes.touch_edge, "0");
@@ -220,13 +296,44 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_io_nr_requests("256");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
+                "/sys/class/devfreq/soc:mali/governor",
                 "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
+                "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/governor",
                 NULL
             };
+            const char *devfreq_min_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/min_freq",
+                "/sys/class/devfreq/soc:mali/min_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
+                NULL
+            };
+            const char *devfreq_max_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/max_freq",
+                "/sys/class/devfreq/soc:mali/max_freq",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
+                NULL
+            };
+            const char *power_policy_nodes[] = {
+                "/sys/devices/platform/soc/13000000.mali/power_policy",
+                "/sys/devices/platform/soc/soc:mali/power_policy",
+                "/sys/class/devfreq/13000000.mali/power_policy",
+                "/sys/class/devfreq/soc:mali/power_policy",
+                NULL
+            };
+            const char *sconfig_nodes[] = {
+                "/sys/class/thermal/thermal_message/sconfig",
+                "/sys/devices/virtual/thermal/thermal_message/sconfig",
+                "/sys/class/thermal/thermal_message/sport_mode",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "performance");
-            sysfs_write("/sys/class/devfreq/13000000.mali/min_freq", "674000000");
-            sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
-            sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", "always_on");
+            sysfs_write_fallback(devfreq_min_nodes, "674000000");
+            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(power_policy_nodes, "always_on");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
@@ -247,7 +354,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
             sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
-            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+            sysfs_write_fallback(sconfig_nodes, "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             sysfs_write(g_nodes.touch_thp_smooth, "1");
             sysfs_write(g_nodes.touch_edge, "1");

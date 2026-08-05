@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
-RELEASE_DIR="/data/data/com.termux/files/home/Tanzanite_HyperCore_Release"
+RELEASE_DIR="/data/data/com.termux/files/home/HyperCore_Release"
 
 set -e
 
@@ -13,9 +13,9 @@ if [ ! -f "module.prop" ]; then
 fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
-ZIP_OUT="Tanzanite-HyperCore-${VERSION}.zip"
+ZIP_OUT="HyperCore-${VERSION}.zip"
 
-echo "building tanzanite hypercore ${VERSION} (${VERSION_CODE})"
+echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
 for tool in clang zip node npm; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -42,12 +42,22 @@ if [ -d "webui" ]; then
     fi
     
     mkdir -p webroot
-    cp "webui/dist/index.html" "webroot/index.html"
+    cp webui/dist/index.html webroot/index.html
 fi
 
 echo "generating sha256 checksums..."
-EMBED_HEADER="src/include/embedded_checksums.hpp"
-cat << 'EOF' > "$EMBED_HEADER"
+find . -maxdepth 2 -type f \
+    ! -path "./.*" \
+    ! -path "./webui/*" \
+    ! -path "./src/*" \
+    ! -path "./system/bin/*" \
+    ! -name "*.zip" \
+    ! -name "*.o" \
+    ! -name "build.sh" \
+    ! -name "checksums.txt" \
+    -exec sha256sum {} + | sort -k2 > checksums.txt
+
+cat << 'EOF' > src/include/embedded_checksums.hpp
 #ifndef EMBEDDED_CHECKSUMS_HPP
 #define EMBEDDED_CHECKSUMS_HPP
 
@@ -59,43 +69,47 @@ typedef struct {
 static const file_checksum_t g_embedded_checksums[] = {
 EOF
 
-for f in post-fs-data.sh service.sh system.prop module.prop update.json changelog.md NOTICE.md uninstall.sh webroot/index.html banner.jpg; do
-    if [ -f "$f" ]; then
-        hash=$(sha256sum "$f" | awk '{print $1}')
-        echo "    { \"$f\", \"$hash\" }," >> "$EMBED_HEADER"
-    fi
-done
+while read -r hash path; do
+    rel_path=$(echo "$path" | sed 's|^\./||')
+    echo "    { \"$rel_path\", \"$hash\" }," >> src/include/embedded_checksums.hpp
+done < checksums.txt
 
-cat << 'EOF' >> "$EMBED_HEADER"
+cat << 'EOF' >> src/include/embedded_checksums.hpp
 };
 
 #endif /* EMBEDDED_CHECKSUMS_HPP */
 EOF
 
 echo "compiling c daemon..."
-rm -f hypercore libhypercore.so
-rm -rf system/bin
-mkdir -p system/bin
+clang -O3 -Wall -Werror \
+    -DVERSION=\"${VERSION}\" \
+    -I./src/include \
+    src/main.c \
+    src/cpu.c \
+    src/gpu.c \
+    src/thermal.c \
+    src/memory.c \
+    src/io.c \
+    src/gamelist.c \
+    src/ipc.c \
+    src/log.c \
+    src/sysfs.c \
+    src/integrity.c \
+    src/sha256.c \
+    -o system/bin/libhypercore.so
 
-if ! clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror -I"$PROJECT_DIR/src/include" src/*.c -o system/bin/libhypercore.so; then
-    echo "error: daemon build failed"
-    exit 1
-fi
-chmod +x system/bin/libhypercore.so customize.sh post-fs-data.sh service.sh uninstall.sh
-
-echo "packaging zip package..."
 mkdir -p "$RELEASE_DIR"
 rm -f "$RELEASE_DIR/$ZIP_OUT"
 
-if ! zip -r9 "$RELEASE_DIR/$ZIP_OUT" \
-    META-INF \
-    system \
-    webroot \
-    customize.sh \
+echo "packaging zip package..."
+if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
     module.prop \
-    post-fs-data.sh \
-    service.sh \
     system.prop \
+    service.sh \
+    post-fs-data.sh \
+    customize.sh \
+    system/bin/libhypercore.so \
+    webroot/index.html \
     gamelist.txt \
     update.json \
     changelog.md \
@@ -117,13 +131,19 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."
     if su -c "
         pkill -9 -x libhypercore.so 2>/dev/null || true
-        cp system/bin/libhypercore.so /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so
-        cp webroot/index.html /data/adb/modules/tanzanite_hypercore/webroot/index.html
-        cp module.prop /data/adb/modules/tanzanite_hypercore/module.prop
-        cp update.json /data/adb/modules/tanzanite_hypercore/update.json
-        cp changelog.md /data/adb/modules/tanzanite_hypercore/changelog.md
-        chmod 755 /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so
-        exec /data/adb/modules/tanzanite_hypercore/system/bin/libhypercore.so
+        MOD_TARGET=\"/data/adb/modules/hypercore\"
+        if [ ! -d \"\$MOD_TARGET\" ]; then
+            MOD_TARGET=\"/data/adb/modules/tanzanite_hypercore\"
+        fi
+        if [ -d \"\$MOD_TARGET\" ]; then
+            cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
+            cp webroot/index.html \$MOD_TARGET/webroot/index.html
+            cp module.prop \$MOD_TARGET/module.prop
+            cp update.json \$MOD_TARGET/update.json
+            cp changelog.md \$MOD_TARGET/changelog.md
+            chmod 755 \$MOD_TARGET/system/bin/libhypercore.so
+            exec \$MOD_TARGET/system/bin/libhypercore.so
+        fi
     "; then
         echo "daemon restarted successfully"
     else

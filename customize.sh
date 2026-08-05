@@ -12,7 +12,7 @@ case "$KERNEL_VER" in
     6.12.*|6.12*)
         ui_print "--------------------------------------"
         ui_print "! ERROR: Unsupported Kernel 6.12 detected!"
-        ui_print "! Tanzanite HyperCore is strictly designed for Linux 5.10.x."
+        ui_print "! HyperCore is strictly designed for Linux 5.10.x."
         ui_print "! Installation aborted."
         ui_print "--------------------------------------"
         abort "! Incompatible kernel version: $KERNEL_VER"
@@ -21,7 +21,7 @@ case "$KERNEL_VER" in
     *)
         ui_print "--------------------------------------"
         ui_print "! ERROR: Unsupported Kernel version ($KERNEL_VER)!"
-        ui_print "! Tanzanite HyperCore only supports Linux kernel 5.10.x."
+        ui_print "! HyperCore only supports Linux kernel 5.10.x."
         ui_print "! Installation aborted."
         ui_print "--------------------------------------"
         abort "! Incompatible kernel version: $KERNEL_VER"

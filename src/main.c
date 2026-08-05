@@ -35,7 +35,9 @@ static void send_game_toast(const char *game_name) {
 static void init_hardware_nodes(void) {
     memset(&g_nodes, 0, sizeof(g_nodes));
 
-    if (access("/data/adb/modules/tanzanite_hypercore", F_OK) == 0) {
+    if (access("/data/adb/modules/hypercore", F_OK) == 0) {
+        strcpy(g_nodes.mod_dir, "/data/adb/modules/hypercore");
+    } else if (access("/data/adb/modules/tanzanite_hypercore", F_OK) == 0) {
         strcpy(g_nodes.mod_dir, "/data/adb/modules/tanzanite_hypercore");
     } else if (access("/data/adb/modules/tanzanite_hyperflow", F_OK) == 0) {
         strcpy(g_nodes.mod_dir, "/data/adb/modules/tanzanite_hyperflow");
@@ -217,7 +219,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 
 static int validate_hardware_target(void) {
     if (access("/sys/module/ged", F_OK) != 0 && access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
-        fprintf(stderr, "ERROR: Incompatible hardware target detected. Tanzanite HyperCore is strictly designed for MediaTek MT6789 (Helio G99 Ultra).\n");
+        fprintf(stderr, "ERROR: Incompatible hardware target detected. HyperCore is strictly designed for MediaTek Helio G99 (Kernel 5.10.x).\n");
         return 0;
     }
     return 1;
@@ -247,7 +249,7 @@ int main(int argc, char *argv[]) {
     write_pid_file();
     init_ipc_socket();
 
-    log_info("Daemon", "Tanzanite HyperCore v4.3 started.");
+    log_info("Daemon", "HyperCore v4.3 started.");
 
     apply_cpuset();
     apply_memory_tuning();
