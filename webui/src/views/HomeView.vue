@@ -21,7 +21,7 @@
             <div class="banner-title-group">
               <div class="banner-title-line">
                 <span class="app-banner-title">HyperCore</span>
-                <span class="badge-pill purple">{{ store.moduleVersion || 'v4.3' }}</span>
+                <span class="badge-pill purple">{{ store.moduleVersion || 'v4.4' }}</span>
               </div>
               <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
             </div>

@@ -4,7 +4,7 @@
 [![Platform](https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg)]()
 [![Kernel](https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg)]()
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
-[![Release](https://img.shields.io/badge/Release-v4.3-purple.svg)]()
+[![Release](https://img.shields.io/badge/Release-v4.4-purple.svg)]()
 
 HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
 
@@ -120,8 +120,8 @@ To compile the native C daemon, generate embedded checksums, build the WebUI fro
 ```
 
 The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror` and outputs the final package to:
-- `HyperCore_Release/HyperCore-v4.3.zip`
-- `/sdcard/HyperCore_Releases/HyperCore-v4.3.zip`
+- `HyperCore_Release/HyperCore-v4.4.zip`
+- `/sdcard/HyperCore_Releases/HyperCore-v4.4.zip`
 
 ---
 

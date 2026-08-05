@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
     write_pid_file();
     init_ipc_socket();
 
-    log_info("Daemon", "HyperCore v4.3 started.");
+    log_info("Daemon", "HyperCore v4.4 started.");
 
     apply_cpuset();
     apply_memory_tuning();

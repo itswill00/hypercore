@@ -8,7 +8,7 @@
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
       <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.3' }}
+        {{ store.moduleVersion || 'v4.4' }}
       </span>
     </div>
 
