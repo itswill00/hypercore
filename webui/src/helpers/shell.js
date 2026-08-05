@@ -207,19 +207,3 @@ export async function openExternal(url) {
     document.body.removeChild(a)
   } catch (e) {}
 }
-
-export function createShortcut() {
-  try {
-    if (typeof ksu !== 'undefined') {
-      if (typeof ksu.shortcut === 'function') {
-        ksu.shortcut()
-        return true
-      }
-      if (typeof ksu.createShortcut === 'function') {
-        ksu.createShortcut()
-        return true
-      }
-    }
-  } catch (e) {}
-  return false
-}

@@ -46,9 +46,6 @@ if [ -d "webui" ]; then
     if [ -f banner.jpg ]; then
         cp banner.jpg webroot/banner.jpg
     fi
-    if [ -f icon.png ]; then
-        cp icon.png webroot/icon.png
-    fi
 fi
 
 echo "generating sha256 checksums..."
