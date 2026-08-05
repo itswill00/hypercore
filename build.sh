@@ -43,11 +43,14 @@ if [ -d "webui" ]; then
     
     mkdir -p webroot
     cp webui/dist/index.html webroot/index.html
+    if [ -f banner.jpg ]; then
+        cp banner.jpg webroot/banner.jpg
+    fi
 fi
 
 echo "generating sha256 checksums..."
 rm -f checksums.txt
-for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html update.json changelog.md NOTICE.md uninstall.sh banner.jpg; do
+for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg update.json changelog.md NOTICE.md uninstall.sh banner.jpg; do
     if [ -f "$file" ]; then
         sha256sum "$file" >> checksums.txt
     fi
@@ -106,6 +109,7 @@ if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
     customize.sh \
     system/bin/libhypercore.so \
     webroot/index.html \
+    webroot/banner.jpg \
     gamelist.txt \
     update.json \
     changelog.md \
