@@ -22,6 +22,11 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 
 ## Key Features
 
+<details>
+<summary><b>✨ Click to expand / collapse Key Features list (18+ Optimizations &amp; Features)</b></summary>
+
+<br>
+
 - **Universal Read-Before-Write Guard**: Eliminates sysfs I/O thrashing with 0.0001ms fast-path checks on all CPU, GPU, Memory, IO, Cgroup, and Thermal sysfs writes.
 - **Event-Driven Screen & Battery Watcher (`inotify` & `netlink`)**: Integrates Linux `inotify` on screen backlight and Linux `NETLINK_KOBJECT_UEVENT` kernel socket for instant 0ms latency transitions with 0% CPU wakeups during sleep.
 - **Non-Blocking Asynchronous Command Engine (`async_system_cmd`)**: Executes system shell calls via POSIX double-forking, ensuring the main daemon loop thread never stalls (0ms interruption).
@@ -40,6 +45,8 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 - **Hardware IRQ Subdirectory Pinning**: Scans Linux kernel `/proc/irq/<irq>/` subdirectories to pin Mali GPU, DSI Display, and FocalTech Touchscreen interrupts directly to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt handling.
 - **Embedded Binary SHA-256 Self-Integrity Check**: Verifies binary and module file checksums on startup to detect tampering or corruption (`libhypercore.so --verify-integrity`).
 - **Human-Centric Material Design 3 WebUI**: Integrated KernelSU / APatch / Magisk WebUI featuring active profile hero badge, natural English titles, ultra-compact micro-tile status cards, instant 120 FPS accordion transitions, real-time RAM cache flushing, Base64 data URL inlining, and native Telegram intent launcher bridge.
+
+</details>
 
 ---
 
