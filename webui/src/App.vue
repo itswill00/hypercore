@@ -42,7 +42,7 @@ const transitionName = ref('slide-left')
 let toastTimer = null
 let refreshInterval = null
 
-const routesOrder = ['/', '/games', '/logs']
+const routesOrder = ['/', '/games', '/logs', '/about']
 
 let touchStartX = 0
 let touchStartY = 0
@@ -67,11 +67,9 @@ function onTouchEnd(e) {
     if (currentIdx === -1) return
 
     if (deltaX < 0 && currentIdx < routesOrder.length - 1) {
-      
       transitionName.value = 'slide-left'
       router.push(routesOrder[currentIdx + 1])
     } else if (deltaX > 0 && currentIdx > 0) {
-      
       transitionName.value = 'slide-right'
       router.push(routesOrder[currentIdx - 1])
     }
@@ -97,14 +95,37 @@ function toast(msg) {
 
 provide('toast', toast)
 
-onMounted(() => {
+function startPolling() {
+  if (refreshInterval) return
   store.refresh()
   refreshInterval = setInterval(() => store.refresh(), 3000)
+}
+
+function stopPolling() {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopPolling()
+    store.stopUptimeTicker()
+  } else {
+    startPolling()
+  }
+}
+
+onMounted(() => {
+  startPolling()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
-  if (refreshInterval) clearInterval(refreshInterval)
+  stopPolling()
   store.stopUptimeTicker()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
