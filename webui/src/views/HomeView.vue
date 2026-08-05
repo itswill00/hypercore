@@ -41,8 +41,6 @@
         </div>
       </div>
 
-      <StatusCard />
-
       <div class="section-title">Device Status</div>
       <div class="md3-list-group" style="margin-bottom: 14px;">
         
@@ -220,7 +218,6 @@
 import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import { execCommand } from '@/helpers/shell'
-import StatusCard from '@/components/StatusCard.vue'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
 
