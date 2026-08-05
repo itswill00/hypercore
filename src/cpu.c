@@ -1,5 +1,6 @@
 
 #include "cpu.hpp"
+#include "gpu.hpp"
 #include "memory.hpp"
 #include "io.hpp"
 
@@ -178,13 +179,13 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write_fallback(devfreq_poll_nodes, "50");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
-            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "15");
@@ -277,14 +278,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(devfreq_upthreshold_nodes, "60");
             sysfs_write_fallback(devfreq_downdifferential_nodes, "10");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
-            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "20");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "15");
@@ -349,14 +350,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
             sysfs_write_fallback(devfreq_gov_nodes, "performance");
             sysfs_write_fallback(devfreq_min_nodes, "674000000");
-            sysfs_write_fallback(devfreq_max_nodes, "1003000000");
+            sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "always_on");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
+            sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "674000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "30");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "50");
