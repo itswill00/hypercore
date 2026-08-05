@@ -191,24 +191,10 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     }
 
     if (current_prof != PROFILE_Gaming) {
-        int poll_int = sysfs_read_int("/sys/class/devfreq/13000000.mali/polling_interval");
-        if (poll_int == 0) {
-            sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
-        }
-        int cust_boost = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_boost_freq");
-        if (cust_boost != 0) {
-            sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-        }
         if (current_prof == PROFILE_Interactive) {
-            int max_fr = sysfs_read_int("/sys/class/devfreq/13000000.mali/max_freq");
-            if (max_fr < 1003000000) {
-                sysfs_write("/sys/class/devfreq/13000000.mali/max_freq", "1003000000");
-                sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
-            }
-            int cust_up = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
-            if (cust_up < 1003000) {
-                sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
-            }
+            enforce_interactive_gpu_polling(20);
+        } else if (current_prof == PROFILE_Sleep) {
+            enforce_interactive_gpu_polling(50);
         }
     }
 
@@ -390,6 +376,8 @@ int main(int argc, char *argv[]) {
             } else {
                 sysfs_write(g_nodes.charge_control, "8");
             }
+        } else if (g_state.current_profile == PROFILE_Interactive) {
+            enforce_interactive_gpu_polling(20);
         }
 
         tune_memory_pressure();

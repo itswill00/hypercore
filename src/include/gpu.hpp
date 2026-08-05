@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 void apply_gpu_tuning(void);
+void enforce_interactive_gpu_polling(int target_poll_ms);
 
 #ifdef __cplusplus
 }
