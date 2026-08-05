@@ -131,6 +131,16 @@
     <g v-else-if="name === 'github'">
       <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
     </g>
+
+    <g v-else-if="name === 'pictogram-male' || name === 'pictogram-user'">
+      <circle cx="12" cy="5" r="3.2" fill="currentColor" stroke="none" />
+      <path d="M7.5 10.5C7.5 9.67 8.17 9 9 9h6c.83 0 1.5.67 1.5 1.5V16c0 .55-.45 1-1 1h-1.25v4.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5V17h-.5v4.5c0 .83-.67 1.5-1.5 1.5S8.75 22.33 8.75 21.5V17H7.5c-.55 0-1-.45-1-1v-5.5z" fill="currentColor" stroke="none" />
+    </g>
+
+    <g v-else-if="name === 'pictogram-female'">
+      <circle cx="12" cy="5" r="3.2" fill="currentColor" stroke="none" />
+      <path d="M10 9h4c.83 0 1.5.67 1.5 1.5l1.2 5.5c.15.68-.37 1.3-.1 1.3H14v4.2c0 .83-.67 1.5-1.5 1.5S11 22.33 11 21.5V17.3H9.4c.27 0-.25-.62-.1-1.3L10.5 10.5C10.5 9.67 10 9 10 9z" fill="currentColor" stroke="none" />
+    </g>
   </svg>
 </template>
 

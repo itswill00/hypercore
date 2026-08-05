@@ -78,7 +78,9 @@
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/itswill00')">
           <div class="row-left">
-            <div class="avatar-badge dev">ن</div>
+            <div class="avatar-badge dev">
+              <Icons name="pictogram-user" :size="18" />
+            </div>
             <div class="row-meta">
               <div class="row-title">@itswill00</div>
               <div class="row-sub">Lead Developer &amp; Architect (Telegram: @noticesa)</div>
@@ -91,7 +93,9 @@
 
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/Rem01Gaming')">
           <div class="row-left">
-            <div class="avatar-badge inspiration">R</div>
+            <div class="avatar-badge inspiration">
+              <Icons name="pictogram-user" :size="18" />
+            </div>
             <div class="row-meta">
               <div class="row-title">@Rem01Gaming</div>
               <div class="row-sub">Inspiration &amp; Architecture Concepts (encore)</div>
@@ -108,7 +112,9 @@
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://t.me/Rafzzz182')">
           <div class="row-left">
-            <div class="avatar-badge tester">R</div>
+            <div class="avatar-badge tester">
+              <Icons name="pictogram-user" :size="18" />
+            </div>
             <div class="row-meta">
               <div class="row-title">@Rafzzz182</div>
               <div class="row-sub">Hardware &amp; Game Testing</div>
@@ -121,7 +127,9 @@
 
         <div class="md3-list-row clickable" @click="openExternal('https://t.me/anotherside551')">
           <div class="row-left">
-            <div class="avatar-badge tester">A</div>
+            <div class="avatar-badge tester">
+              <Icons name="pictogram-female" :size="18" />
+            </div>
             <div class="row-meta">
               <div class="row-title">@anotherside551</div>
               <div class="row-sub">HyperOS &amp; Custom ROM Testing</div>
