@@ -3,8 +3,8 @@
     
     <div class="page-header">
       <div>
-        <div class="page-header-title">About HyperCore</div>
-        <div class="page-header-sub">Module information, contributors &amp; license</div>
+        <div class="page-header-title">About Device &amp; Module</div>
+        <div class="page-header-sub">HyperCore specifications, credits &amp; license</div>
       </div>
       <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
         {{ store.moduleVersion || 'v4.3' }}
@@ -13,30 +13,68 @@
 
     <div class="content-area">
       
-      <!-- Hero Card -->
-      <div class="md3-card about-hero">
-        <div class="hero-header">
-          <div class="icon-badge primary" style="width: 44px; height: 44px;">
-            <Icons name="chip" :size="22" />
-          </div>
+      <!-- OxygenOS Style Hero Device Card -->
+      <div class="oxygen-hero-card">
+        <div class="oxygen-hero-header">
           <div>
-            <div class="hero-title">HyperCore</div>
-            <div class="hero-subtitle">Kernel Optimizer &amp; Hardware Daemon</div>
+            <div class="oxygen-hero-title">HyperCore</div>
+            <div class="oxygen-hero-sub">Helio G99 Hardware Tuning Engine</div>
+          </div>
+          <div class="oxygen-ver-badge">
+            {{ store.moduleVersion || 'v4.3' }}
           </div>
         </div>
-        <div class="hero-body">
-          Lightweight zero-overhead background daemon tailored for MediaTek Helio G99 Ultra (MT6789) devices. Automates CPU governors, GPU devfreq scaling, DVFSRC interconnect bandwidth, and storage read-ahead queues.
+
+        <div class="oxygen-hero-desc">
+          Universal background daemon and kernel tuning module for MediaTek MT6789 (Helio G99 Ultra) devices running Linux Kernel 5.10.x.
         </div>
-        <div class="hero-tags">
-          <span class="tag-chip">SoC: MT6789 (Helio G99)</span>
-          <span class="tag-chip">Kernel: 5.10.x</span>
-          <span class="tag-chip">Arch: ARM64</span>
-          <span class="tag-chip">License: GPL v3</span>
+
+        <!-- 2x2 Specs Grid -->
+        <div class="oxygen-spec-grid">
+          <div class="oxygen-spec-tile">
+            <div class="spec-tile-icon">
+              <Icons name="chip" :size="16" />
+            </div>
+            <div class="spec-tile-meta">
+              <div class="spec-tile-label">Processor</div>
+              <div class="spec-tile-val">Helio G99 (MT6789)</div>
+            </div>
+          </div>
+
+          <div class="oxygen-spec-tile">
+            <div class="spec-tile-icon">
+              <Icons name="cpu" :size="16" />
+            </div>
+            <div class="spec-tile-meta">
+              <div class="spec-tile-label">Kernel</div>
+              <div class="spec-tile-val">{{ store.kernelVersion ? store.kernelVersion.split('-')[0] : 'Linux 5.10.x' }}</div>
+            </div>
+          </div>
+
+          <div class="oxygen-spec-tile">
+            <div class="spec-tile-icon">
+              <Icons name="shield" :size="16" />
+            </div>
+            <div class="spec-tile-meta">
+              <div class="spec-tile-label">Architecture</div>
+              <div class="spec-tile-val">ARM64 (aarch64)</div>
+            </div>
+          </div>
+
+          <div class="oxygen-spec-tile">
+            <div class="spec-tile-icon">
+              <Icons name="zap" :size="16" />
+            </div>
+            <div class="spec-tile-meta">
+              <div class="spec-tile-label">IPC Daemon</div>
+              <div class="spec-tile-val">C Native (0ms IPC)</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Developer & Inspiration -->
-      <div class="section-title">Developer &amp; Inspiration</div>
+      <!-- Developer & Maintainer Section -->
+      <div class="section-title">Developer &amp; Maintainer</div>
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/itswill00')">
           <div class="row-left">
@@ -65,8 +103,8 @@
         </div>
       </div>
 
-      <!-- Testing Team -->
-      <div class="section-title">Testing Team</div>
+      <!-- Testing Team Section -->
+      <div class="section-title">Quality Assurance &amp; Testing</div>
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://t.me/Rafzzz182')">
           <div class="row-left">
@@ -95,30 +133,31 @@
         </div>
       </div>
 
-      <!-- License & Repository -->
+      <!-- License & Open Source Section -->
       <div class="section-title">License &amp; Source Code</div>
       <div class="md3-card">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">GNU General Public License v3.0</div>
           <span class="badge-pill green" style="font-size: 10px; padding: 2px 8px;">GPL v3.0</span>
         </div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 12px;">
-          HyperCore is Free Open-Source Software. You are free to redistribute and modify it under the terms of the GNU General Public License as published by the Free Software Foundation.
+        <div style="font-size: 11px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 14px;">
+          HyperCore is Free Open-Source Software. You are free to redistribute and modify it under the terms of the GNU General Public License v3.0 as published by the Free Software Foundation.
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-md3 btn-md3-primary" style="flex: 1; font-size: 11px;" @click="openExternal('https://github.com/itswill00/hypercore')">
+        
+        <div class="oxygen-action-grid">
+          <button class="btn-md3 btn-md3-primary" style="font-size: 11px;" @click="openExternal('https://github.com/itswill00/hypercore')">
             <Icons name="github" :size="14" />
             <span>GitHub Repository</span>
           </button>
-          <button class="btn-md3 btn-md3-secondary" style="flex: 1; font-size: 11px;" @click="openExternal('https://t.me/noticesa')">
+          <button class="btn-md3 btn-md3-secondary" style="font-size: 11px;" @click="openExternal('https://t.me/noticesa')">
             <Icons name="about" :size="14" />
             <span>Telegram Channel</span>
           </button>
         </div>
       </div>
 
-      <div style="text-align: center; font-size: 10px; color: var(--on-surface-variant); opacity: 0.5; padding: 12px 0 24px 0; font-family: var(--font-mono);">
-        HyperCore by @itswill00 • Inspired by encore @Rem01Gaming
+      <div class="oxygen-footer">
+        HyperCore for MediaTek Helio G99 • Free &amp; Open Source Software
       </div>
 
     </div>
@@ -141,55 +180,104 @@ function openExternal(url) {
 </script>
 
 <style scoped>
-.about-hero {
-  background: var(--surface-container-high);
-  border: 1px solid var(--surface-bright);
+.oxygen-hero-card {
+  background: linear-gradient(135deg, var(--surface-container-high) 0%, var(--surface-container) 100%);
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--surface-container-highest);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
-.hero-header {
+.oxygen-hero-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 10px;
 }
 
-.hero-title {
-  font-size: 16px;
-  font-weight: 700;
+.oxygen-hero-title {
+  font-size: 20px;
+  font-weight: 800;
   color: var(--on-surface);
+  letter-spacing: -0.3px;
 }
 
-.hero-subtitle {
+.oxygen-hero-sub {
   font-size: 11px;
   color: var(--on-surface-variant);
+  margin-top: 1px;
 }
 
-.hero-body {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.hero-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tag-chip {
+.oxygen-ver-badge {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
   font-family: var(--font-mono);
-  font-size: 9.5px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--surface-container-low);
-  color: var(--on-surface-variant);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
   border: 1px solid var(--outline-variant);
 }
 
+.oxygen-hero-desc {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.oxygen-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.oxygen-spec-tile {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spec-tile-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-container-high);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.spec-tile-meta {
+  min-width: 0;
+}
+
+.spec-tile-label {
+  font-size: 9.5px;
+  color: var(--on-surface-variant);
+  opacity: 0.8;
+}
+
+.spec-tile-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .avatar-badge {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -200,17 +288,32 @@ function openExternal(url) {
 }
 
 .avatar-badge.dev {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
 }
 
 .avatar-badge.inspiration {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
 }
 
 .avatar-badge.tester {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  background: var(--tertiary-container);
+  color: var(--on-tertiary-container);
+}
+
+.oxygen-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.oxygen-footer {
+  text-align: center;
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.5;
+  padding: 16px 0 24px 0;
+  font-family: var(--font-mono);
 }
 </style>
