@@ -23,13 +23,36 @@ static void on_signal(int sig) {
     g_running = 0;
 }
 
+static void async_system_cmd(const char *cmd) {
+    if (!cmd || cmd[0] == '\0') return;
+    pid_t pid = fork();
+    if (pid == 0) {
+        pid_t grandchild = fork();
+        if (grandchild == 0) {
+            int null_fd = open("/dev/null", O_RDWR);
+            if (null_fd >= 0) {
+                dup2(null_fd, STDIN_FILENO);
+                dup2(null_fd, STDOUT_FILENO);
+                dup2(null_fd, STDERR_FILENO);
+                close(null_fd);
+            }
+            execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
+            _exit(127);
+        }
+        _exit(0);
+    }
+    if (pid > 0) {
+        waitpid(pid, NULL, 0);
+    }
+}
+
 static void send_game_toast(const char *game_name) {
     if (!game_name || game_name[0] == '\0') return;
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
-        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' 'Gaming Profile Activated [%s]' >/dev/null 2>&1 &",
+        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' 'Gaming Profile Activated [%s]'",
         game_name);
-    system(cmd);
+    async_system_cmd(cmd);
 }
 
 static void init_hardware_nodes(void) {
@@ -106,6 +129,25 @@ static void init_hardware_nodes(void) {
 
     g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
     g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/schedutil", F_OK) == 0);
+
+    g_nodes.inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    if (g_nodes.inotify_fd >= 0 && g_nodes.backlight[0] != '\0') {
+        inotify_add_watch(g_nodes.inotify_fd, g_nodes.backlight, IN_MODIFY | IN_ATTRIB);
+    }
+
+    g_nodes.netlink_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
+    if (g_nodes.netlink_fd >= 0) {
+        struct sockaddr_nl nladdr;
+        memset(&nladdr, 0, sizeof(nladdr));
+        nladdr.nl_family = AF_NETLINK;
+        nladdr.nl_pid = getpid();
+        nladdr.nl_groups = 1;
+        bind(g_nodes.netlink_fd, (struct sockaddr *)&nladdr, sizeof(nladdr));
+        int flags = fcntl(g_nodes.netlink_fd, F_GETFL, 0);
+        if (flags != -1) {
+            fcntl(g_nodes.netlink_fd, F_SETFL, flags | O_NONBLOCK);
+        }
+    }
 }
 
 static void write_pid_file(void) {

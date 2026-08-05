@@ -138,21 +138,52 @@ static void process_client(int client_fd) {
 }
 
 void handle_ipc_events(int timeout_ms) {
-    if (s_server_fd < 0) {
+    struct pollfd pfds[3];
+    int nfds = 0;
+
+    if (s_server_fd >= 0) {
+        pfds[nfds].fd = s_server_fd;
+        pfds[nfds].events = POLLIN;
+        pfds[nfds].revents = 0;
+        nfds++;
+    }
+
+    if (g_nodes.inotify_fd >= 0) {
+        pfds[nfds].fd = g_nodes.inotify_fd;
+        pfds[nfds].events = POLLIN;
+        pfds[nfds].revents = 0;
+        nfds++;
+    }
+
+    if (g_nodes.netlink_fd >= 0) {
+        pfds[nfds].fd = g_nodes.netlink_fd;
+        pfds[nfds].events = POLLIN;
+        pfds[nfds].revents = 0;
+        nfds++;
+    }
+
+    if (nfds == 0) {
         usleep(timeout_ms * 1000);
         return;
     }
 
-    struct pollfd pfd;
-    pfd.fd = s_server_fd;
-    pfd.events = POLLIN;
-    pfd.revents = 0;
-
-    int ret = poll(&pfd, 1, timeout_ms);
-    if (ret > 0 && (pfd.revents & POLLIN)) {
-        int client_fd = accept(s_server_fd, NULL, NULL);
-        if (client_fd >= 0) {
-            process_client(client_fd);
+    int ret = poll(pfds, nfds, timeout_ms);
+    if (ret > 0) {
+        for (int i = 0; i < nfds; i++) {
+            if (pfds[i].revents & POLLIN) {
+                if (pfds[i].fd == s_server_fd) {
+                    int client_fd = accept(s_server_fd, NULL, NULL);
+                    if (client_fd >= 0) {
+                        process_client(client_fd);
+                    }
+                } else if (pfds[i].fd == g_nodes.inotify_fd) {
+                    char buf[256];
+                    while (read(g_nodes.inotify_fd, buf, sizeof(buf)) > 0);
+                } else if (pfds[i].fd == g_nodes.netlink_fd) {
+                    char buf[512];
+                    while (read(g_nodes.netlink_fd, buf, sizeof(buf)) > 0);
+                }
+            }
         }
     }
 }

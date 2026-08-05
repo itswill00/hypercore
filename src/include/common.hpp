@@ -13,6 +13,9 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <linux/netlink.h>
 #include <sys/inotify.h>
 #include <sys/resource.h>
 
@@ -41,6 +44,8 @@ struct hw_nodes {
     char charge_control[256];
     int  has_sugov_ext;
     int  has_schedutil;
+    int  inotify_fd;
+    int  netlink_fd;
 };
 
 struct core_state {
