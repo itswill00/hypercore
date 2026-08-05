@@ -21,7 +21,7 @@
             <Icons name="logs" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Save Bugreport</div>
+            <div class="row-title">Export Logs</div>
             <div class="row-sub">Export log & sysfs node dump (.zip)</div>
           </div>
         </div>
