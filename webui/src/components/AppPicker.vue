@@ -48,14 +48,18 @@
             <div class="row-left">
               <div class="icon-frame">
                 <img
-                  v-if="iconFor(app.pkg) && !brokenIcons[app.pkg]"
-                  :src="iconFor(app.pkg)"
+                  v-if="(app.icon || iconFor(app.pkg)) && !brokenIcons[app.pkg]"
+                  :src="app.icon || iconFor(app.pkg)"
                   style="width: 32px; height: 32px; border-radius: 10px; object-fit: cover;"
                   @error="brokenIcons[app.pkg] = true"
                   loading="lazy"
                 >
-                <div v-else class="icon-fallback">
-                  <Icons name="rocket" :size="16" />
+                <div
+                  v-else
+                  class="icon-fallback"
+                  :style="{ background: getAppGradient(app.name) }"
+                >
+                  {{ getAppInitial(app.name) }}
                 </div>
               </div>
               <div class="row-meta">
@@ -95,7 +99,6 @@ const existingPkgs = computed(() => {
 })
 
 const filtered = computed(() => {
-  
   const available = apps.value.filter(a => !existingPkgs.value.includes(a.pkg))
 
   if (!query.value.trim()) return available
@@ -107,6 +110,25 @@ const filtered = computed(() => {
 
 function iconFor(pkg) {
   return getIconUrl(pkg)
+}
+
+function getAppInitial(name) {
+  if (!name) return '?'
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
+
+function getAppGradient(name) {
+  let hash = 0
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const h1 = Math.abs(hash) % 360
+  const h2 = (h1 + 40) % 360
+  return `linear-gradient(135deg, hsl(${h1}, 70%, 45%), hsl(${h2}, 75%, 35%))`
 }
 
 function addCustom() {

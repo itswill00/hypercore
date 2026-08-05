@@ -52,8 +52,12 @@
                 @error="brokenIcons[item.pkg] = true"
                 loading="lazy"
               >
-              <div v-else class="icon-fallback">
-                <Icons name="rocket" :size="18" />
+              <div
+                v-else
+                class="icon-fallback"
+                :style="{ background: getAppGradient(item.name) }"
+              >
+                {{ getAppInitial(item.name) }}
               </div>
             </div>
             <div class="row-meta" style="min-width: 0;">
@@ -112,7 +116,7 @@
 <script setup>
 import { ref, computed, onMounted, inject } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
-import { listInstalledApps, getIconUrl } from '@/helpers/shell'
+import { listInstalledApps, getIconUrl, formatPkgName } from '@/helpers/shell'
 import Icons from '@/components/icons/Icons.vue'
 
 defineEmits(['open-picker'])
@@ -121,6 +125,7 @@ const store = useHyperStore()
 const toast = inject('toast')
 const search = ref('')
 const installedMap = ref({})
+const iconMap = ref({})
 const brokenIcons = ref({})
 const loading = ref(true)
 
@@ -128,9 +133,12 @@ async function loadInstalled() {
   loading.value = true
   try {
     const list = await listInstalledApps()
-    const map = {}
+    const nameMap = {}
+    const iMap = {}
+
     list.forEach(a => {
-      map[a.pkg] = a.name
+      nameMap[a.pkg] = a.name
+      if (a.icon) iMap[a.pkg] = a.icon
     })
 
     if (store.games && store.games.length > 0 && typeof ksu !== 'undefined' && typeof ksu.getPackagesInfo === 'function') {
@@ -139,15 +147,17 @@ async function loadInstalled() {
         const infos = JSON.parse(ksu.getPackagesInfo(JSON.stringify(pkgs)))
         if (Array.isArray(infos)) {
           infos.forEach(info => {
-            if (info && info.packageName && info.appLabel) {
-              map[info.packageName] = info.appLabel
+            if (info && info.packageName) {
+              if (info.appLabel) nameMap[info.packageName] = info.appLabel
+              if (info.icon || info.appIcon) iMap[info.packageName] = info.icon || info.appIcon
             }
           })
         }
       } catch {}
     }
 
-    installedMap.value = map
+    installedMap.value = nameMap
+    iconMap.value = iMap
   } catch {}
   loading.value = false
 }
@@ -160,12 +170,12 @@ const displayGames = computed(() => {
   if (!store.games) return []
 
   const parsed = store.games.map(item => {
-    const appName = installedMap.value[item.pkg]
+    const appName = installedMap.value[item.pkg] || formatPkgName(item.pkg)
 
     return {
       pkg: item.pkg,
       profile: item.profile,
-      name: appName || item.pkg
+      name: appName
     }
   })
 
@@ -180,7 +190,27 @@ const displayGames = computed(() => {
 })
 
 function iconFor(pkg) {
+  if (iconMap.value[pkg]) return iconMap.value[pkg]
   return getIconUrl(pkg)
+}
+
+function getAppInitial(name) {
+  if (!name) return '?'
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
+
+function getAppGradient(name) {
+  let hash = 0
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const h1 = Math.abs(hash) % 360
+  const h2 = (h1 + 40) % 360
+  return `linear-gradient(135deg, hsl(${h1}, 70%, 45%), hsl(${h2}, 75%, 35%))`
 }
 
 async function remove(pkg) {
