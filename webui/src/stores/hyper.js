@@ -428,7 +428,7 @@ export const useHyperStore = defineStore('hyper', () => {
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  touch "$f" 2>/dev/null`,
       `  if [ -f "$f" ]; then`,
-      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
+      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    echo '${pkg}:${profile}' >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
@@ -450,7 +450,7 @@ export const useHyperStore = defineStore('hyper', () => {
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
-      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
+      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
       `done`
@@ -469,7 +469,7 @@ export const useHyperStore = defineStore('hyper', () => {
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
-      `    grep -vE '^${pkg}(:|$)' "$f" > "$f.tmp" 2>/dev/null`,
+      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    echo '${pkg}:${profile}' >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
