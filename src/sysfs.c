@@ -64,9 +64,40 @@ void save_baseline_nodes(void) {
 
     sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0, sizeof(s_baseline.gov0));
     sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6, sizeof(s_baseline.gov6));
-    sysfs_read_str("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy, sizeof(s_baseline.mali_policy));
-    sysfs_read_str("/sys/class/devfreq/13000000.mali/governor", s_baseline.mali_gpu_gov, sizeof(s_baseline.mali_gpu_gov));
-    sysfs_read_str("/sys/class/devfreq/13000000.mali/polling_interval", s_baseline.mali_poll_int, sizeof(s_baseline.mali_poll_int));
+
+    const char *power_policy_nodes[] = {
+        "/sys/devices/platform/soc/13000000.mali/power_policy",
+        "/sys/devices/platform/soc/soc:mali/power_policy",
+        "/sys/class/devfreq/13000000.mali/power_policy",
+        "/sys/class/devfreq/soc:mali/power_policy",
+        NULL
+    };
+    for (int i = 0; power_policy_nodes[i]; i++) {
+        if (sysfs_read_str(power_policy_nodes[i], s_baseline.mali_policy, sizeof(s_baseline.mali_policy))) break;
+    }
+
+    const char *devfreq_gov_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/governor",
+        "/sys/class/devfreq/soc:mali/governor",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
+        NULL
+    };
+    for (int i = 0; devfreq_gov_nodes[i]; i++) {
+        if (sysfs_read_str(devfreq_gov_nodes[i], s_baseline.mali_gpu_gov, sizeof(s_baseline.mali_gpu_gov))) break;
+    }
+
+    const char *devfreq_poll_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/polling_interval",
+        "/sys/class/devfreq/soc:mali/polling_interval",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
+        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
+        NULL
+    };
+    for (int i = 0; devfreq_poll_nodes[i]; i++) {
+        if (sysfs_read_str(devfreq_poll_nodes[i], s_baseline.mali_poll_int, sizeof(s_baseline.mali_poll_int))) break;
+    }
+
     sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost, sizeof(s_baseline.migration_cost));
     sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit, sizeof(s_baseline.charge_limit));
 
@@ -78,13 +109,38 @@ void restore_baseline_nodes(void) {
 
     if (s_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0);
     if (s_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6);
-    if (s_baseline.mali_policy[0] != '\0') sysfs_write("/sys/devices/platform/soc/13000000.mali/power_policy", s_baseline.mali_policy);
-    if (s_baseline.mali_gpu_gov[0] != '\0') sysfs_write("/sys/class/devfreq/13000000.mali/governor", s_baseline.mali_gpu_gov);
+
+    const char *power_policy_nodes[] = {
+        "/sys/devices/platform/soc/13000000.mali/power_policy",
+        "/sys/devices/platform/soc/soc:mali/power_policy",
+        "/sys/class/devfreq/13000000.mali/power_policy",
+        "/sys/class/devfreq/soc:mali/power_policy",
+        NULL
+    };
+    if (s_baseline.mali_policy[0] != '\0') sysfs_write_fallback(power_policy_nodes, s_baseline.mali_policy);
+
+    const char *devfreq_gov_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/governor",
+        "/sys/class/devfreq/soc:mali/governor",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
+        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
+        NULL
+    };
+    if (s_baseline.mali_gpu_gov[0] != '\0') sysfs_write_fallback(devfreq_gov_nodes, s_baseline.mali_gpu_gov);
+
+    const char *devfreq_poll_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/polling_interval",
+        "/sys/class/devfreq/soc:mali/polling_interval",
+        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
+        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
+        NULL
+    };
     if (s_baseline.mali_poll_int[0] != '\0' && atoi(s_baseline.mali_poll_int) > 0) {
-        sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", s_baseline.mali_poll_int);
+        sysfs_write_fallback(devfreq_poll_nodes, s_baseline.mali_poll_int);
     } else {
-        sysfs_write("/sys/class/devfreq/13000000.mali/polling_interval", "50");
+        sysfs_write_fallback(devfreq_poll_nodes, "50");
     }
+
     if (s_baseline.migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost);
     if (s_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit);
 }
