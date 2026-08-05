@@ -5,17 +5,19 @@ if [ ! -d "$MOD_DIR" ]; then
     MOD_DIR="/data/adb/modules/tanzanite_hypercore"
 fi
 
+DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
+[ -z "$DATE_STR" ] && DATE_STR=$(date +"%Y%m%d_%H%M%S" 2>/dev/null)
+
 HASH=$(head -c 16 /dev/urandom 2>/dev/null | sha256sum 2>/dev/null | head -c 6)
-[ -z "$HASH" ] && HASH=$(date +%s 2>/dev/null | tail -c 7)
 [ -z "$HASH" ] && HASH="a1b2c3"
 
-ZIP_NAME="hypercore_bugreport-${HASH}.zip"
+ZIP_NAME="hypercore_bugreport-${DATE_STR}-${HASH}.zip"
 TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
 
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-# 1. Log file
+# 1. Copy Log file
 if [ -f "/sdcard/Android/hypercore.log" ]; then
     cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
 elif [ -f "$MOD_DIR/hypercore.log" ]; then
@@ -24,7 +26,7 @@ else
     touch "$TMP_DIR/hypercore.log"
 fi
 
-# 2. Device System Info (Clean key=value format)
+# 2. Device System Info
 {
     echo "module_id=$(grep '^id=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
     echo "module_version=$(grep '^version=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
@@ -43,33 +45,25 @@ fi
     echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
 } > "$TMP_DIR/device_info.txt"
 
-# 3. Clean UNIX Sysfs Structure Dump (path: value)
+# 3. Ultra-Fast Sysfs Node Dump via grep -H (Executes in ~0.5s!)
 {
-    NODE_ROOTS="
-    /sys/devices/system/cpu
-    /sys/class/devfreq
-    /sys/devices/platform/soc
-    /sys/class/thermal
-    /sys/module/ged/parameters
-    /sys/kernel/fpsgo
-    /sys/class/power_supply
-    /sys/kernel/helio-dvfsrc
-    /dev/cpuset
-    /dev/cpuctl
-    "
-
-    for root_path in $NODE_ROOTS; do
-        if [ -e "$root_path" ]; then
-            find "$root_path" -maxdepth 4 -type f 2>/dev/null | while read -r f; do
-                val=$(cat "$f" 2>/dev/null | tr '\n' ' ' | head -c 120)
-                if [ -n "$val" ]; then
-                    echo "$f: $val"
-                else
-                    echo "$f:"
-                fi
-            done
-        fi
-    done
+    grep -s -H '' \
+        /sys/devices/system/cpu/cpufreq/policy*/* \
+        /sys/devices/system/cpu/cpu*/cpufreq/* \
+        /sys/devices/system/cpu/cpuidle/* \
+        /sys/class/devfreq/*/* \
+        /sys/class/devfreq/*/*/* \
+        /sys/devices/platform/soc/*.mali/* \
+        /sys/devices/platform/soc/*.mali/devfreq/*/* \
+        /sys/class/thermal/*/* \
+        /sys/class/thermal/thermal_message/* \
+        /sys/module/ged/parameters/* \
+        /sys/kernel/fpsgo/common/* \
+        /sys/kernel/fpsgo/fbt/* \
+        /sys/class/power_supply/*/* \
+        /sys/kernel/helio-dvfsrc/* \
+        /dev/cpuset/* \
+        /dev/cpuctl/* 2>/dev/null
 } > "$TMP_DIR/sysfs_nodes.txt"
 
 # 4. Copy Game List & Module Configuration
@@ -84,7 +78,6 @@ OUT_ZIP="$TARGET_DIR/$ZIP_NAME"
     cd "$TMP_DIR" && zip -r "$OUT_ZIP" ./* >/dev/null 2>&1
 )
 
-# Backup copy into dedicated HyperCore_Bugreports folder
 mkdir -p "/sdcard/HyperCore_Bugreports"
 cp "$OUT_ZIP" "/sdcard/HyperCore_Bugreports/$ZIP_NAME" 2>/dev/null
 
