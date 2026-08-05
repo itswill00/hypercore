@@ -40,7 +40,8 @@ void load_gamelist(void) {
             char *prof_str = colon + 1;
             if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
             else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
-            else if (strcmp(prof_str, "GAMING") == 0) prof = PROFILE_Gaming;
+            else if (strcmp(prof_str, "GAMING_MOBA") == 0 || strcmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
+            else prof = PROFILE_Gaming;
         }
 
         strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);

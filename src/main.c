@@ -11,7 +11,7 @@
 #include "ipc.hpp"
 
 const char *g_profile_names[] = {
-    "Sleep", "Interactive", "Gaming"
+    "Sleep", "Interactive", "Gaming", "Gaming MOBA"
 };
 
 volatile sig_atomic_t g_running = 1;
@@ -201,11 +201,11 @@ static int get_top_app_pid(void) {
 }
 
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
-    if (current_prof < 0 || current_prof > 2) return 0;
+    if (current_prof < 0 || current_prof > 3) return 0;
 
     /* Strictly guard Gaming profile only — Interactive/Sleep are relaxed profiles
      * and should not trigger re-enforce on minor transient hardware deviations. */
-    if (current_prof == PROFILE_Gaming) {
+    if (current_prof == PROFILE_Gaming || current_prof == PROFILE_Gaming_MOBA) {
         char curr_gov[64] = "";
         if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
             size_t len = strlen(curr_gov);
@@ -361,7 +361,7 @@ int main(int argc, char *argv[]) {
             next_profile = custom_profile;
             s_last_game_profile = custom_profile;
             /* Hold ticks hanya untuk Gaming profile, bukan Interactive/Saver */
-            g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming) ? 2 : 0;
+            g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming || custom_profile == PROFILE_Gaming_MOBA) ? 2 : 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = s_last_game_profile;

@@ -1,7 +1,28 @@
 
 #include "memory.hpp"
 
+static int s_total_ram_kb = 0;
+
+static void detect_total_ram(void) {
+    if (s_total_ram_kb > 0) return;
+    FILE *f = fopen("/proc/meminfo", "r");
+    if (!f) return;
+    char line[128];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "MemTotal:", 9) == 0) {
+            char *p = line + 9;
+            while (*p && (*p < '0' || *p > '9')) p++;
+            if (*p) {
+                s_total_ram_kb = atoi(p);
+                break;
+            }
+        }
+    }
+    fclose(f);
+}
+
 void apply_memory_tuning(void) {
+    detect_total_ram();
     sysfs_write("/proc/sys/vm/swappiness", "60");
     sysfs_write("/proc/sys/vm/dirty_ratio", "15");
     sysfs_write("/proc/sys/vm/dirty_background_ratio", "5");
@@ -13,26 +34,31 @@ void apply_memory_tuning(void) {
 }
 
 void tune_memory_pressure(void) {
+    detect_total_ram();
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return;
 
-    /* Use MemAvailable only — it reflects realistic usable RAM including reclaimable caches.
-     * MemFree appears earlier in /proc/meminfo and can be much smaller, causing false pressure. */
-    int mem_free_kb = 0;
+    /* Use MemAvailable only — it reflects realistic usable RAM including reclaimable caches. */
+    int mem_avail_kb = 0;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
         if (strncmp(line, "MemAvailable:", 13) == 0) {
             char *p = line + 13;
             while (*p && (*p < '0' || *p > '9')) p++;
             if (*p) {
-                mem_free_kb = atoi(p);
+                mem_avail_kb = atoi(p);
                 break;
             }
         }
     }
     fclose(f);
 
-    if (mem_free_kb > 0 && mem_free_kb < 358400) {
+    /* Adapt threshold based on total physical RAM:
+     * Devices with < 6GB RAM (e.g. 4GB) trigger pressure relief earlier (< 450MB),
+     * while 6GB+ devices trigger at < 350MB. */
+    int pressure_threshold = (s_total_ram_kb > 0 && s_total_ram_kb < 6291456) ? 460800 : 358400;
+
+    if (mem_avail_kb > 0 && mem_avail_kb < pressure_threshold) {
         sysfs_write("/proc/sys/vm/swappiness", "80");
         sysfs_write("/proc/sys/vm/compaction_proactiveness", "50");
     } else {

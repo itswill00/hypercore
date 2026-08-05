@@ -176,11 +176,20 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
 
+            const char *dvfsrc_nodes[] = {
+                "/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/module/dvfsrc/parameters/dvfsrc_qos_mode",
+                "/sys/devices/platform/soc/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write_fallback(devfreq_poll_nodes, "50");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
+            sysfs_write_fallback(dvfsrc_nodes, "0");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
@@ -273,6 +282,14 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
 
+            const char *dvfsrc_nodes[] = {
+                "/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/module/dvfsrc/parameters/dvfsrc_qos_mode",
+                "/sys/devices/platform/soc/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write_fallback(devfreq_poll_nodes, "20");
             sysfs_write_fallback(devfreq_upthreshold_nodes, "60");
@@ -280,6 +297,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
+            sysfs_write_fallback(dvfsrc_nodes, "0");
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
@@ -308,6 +326,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             break;
         }
 
+        case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
             set_cpu_governor("performance");
             set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "0", "30000");
@@ -347,11 +366,20 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 "/sys/class/thermal/thermal_message/sport_mode",
                 NULL
             };
+            const char *dvfsrc_nodes[] = {
+                "/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                "/sys/module/dvfsrc/parameters/dvfsrc_qos_mode",
+                "/sys/devices/platform/soc/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
+                NULL
+            };
 
             sysfs_write_fallback(devfreq_gov_nodes, "performance");
             sysfs_write_fallback(devfreq_min_nodes, "674000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "always_on");
+            sysfs_write_fallback(dvfsrc_nodes, "1");
+
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
             sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
             sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
@@ -359,8 +387,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "674000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "30");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "50");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", (prof == PROFILE_Gaming_MOBA) ? "25" : "30");
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", (prof == PROFILE_Gaming_MOBA) ? "30" : "50");
             const char *gaming_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
@@ -375,7 +403,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(sconfig_nodes, "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             sysfs_write(g_nodes.touch_thp_smooth, "1");
-            sysfs_write(g_nodes.touch_edge, "1");
+            sysfs_write(g_nodes.touch_edge, (prof == PROFILE_Gaming_MOBA) ? "0" : "1");
 
             if (g_state.is_charging) {
                 int bat_temp = sysfs_read_int(g_nodes.bat_temp);
@@ -383,11 +411,11 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 else if (bat_temp > 100) bat_temp /= 10;
 
                 if (bat_temp >= 42) {
-                    sysfs_write(g_nodes.charge_control, "2"); 
+                    sysfs_write(g_nodes.charge_control, "2");
                 } else if (bat_temp >= 37) {
-                    sysfs_write(g_nodes.charge_control, "4"); 
+                    sysfs_write(g_nodes.charge_control, "4");
                 } else {
-                    sysfs_write(g_nodes.charge_control, "8"); 
+                    sysfs_write(g_nodes.charge_control, "8");
                 }
             } else {
                 sysfs_write(g_nodes.charge_control, "8");

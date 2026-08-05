@@ -199,6 +199,7 @@ const searchInput = ref(null)
 
 const profiles = [
   { value: 'GAMING', label: 'Gaming' },
+  { value: 'GAMING_MOBA', label: 'Gaming (MOBA)' },
   { value: 'INTERACTIVE', label: 'Interactive' },
   { value: 'SLEEP', label: 'Saver' }
 ]
