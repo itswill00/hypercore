@@ -21,8 +21,8 @@
             <Icons name="logs" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Save log</div>
-            <div class="row-sub">Export operational log to SD card</div>
+            <div class="row-title">Save Bugreport</div>
+            <div class="row-sub">Export log & sysfs node dump (.zip)</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
