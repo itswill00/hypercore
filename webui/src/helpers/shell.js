@@ -178,3 +178,32 @@ export function getIconUrl(pkg) {
   }
   return ''
 }
+
+export async function openExternal(url) {
+  if (!url) return
+  const cleanUrl = String(url).trim()
+
+  try {
+    if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
+      ksu.open(cleanUrl)
+      return
+    }
+  } catch (e) {}
+
+  try {
+    const res = await execCommand(`am start -a android.intent.action.VIEW -d "${cleanUrl}" 2>&1`)
+    if (res && res.includes('Starting: Intent')) {
+      return
+    }
+  } catch (e) {}
+
+  try {
+    const a = document.createElement('a')
+    a.href = cleanUrl
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } catch (e) {}
+}

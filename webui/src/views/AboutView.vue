@@ -166,17 +166,10 @@
 
 <script setup>
 import { useHyperStore } from '@/stores/hyper'
+import { openExternal } from '@/helpers/shell'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
-
-function openExternal(url) {
-  if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
-    ksu.open(url)
-  } else {
-    window.open(url, '_blank')
-  }
-}
 </script>
 
 <style scoped>
