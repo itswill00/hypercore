@@ -31,8 +31,8 @@ if [ -d "webui" ]; then
     fi
     
     echo "compiling webui..."
-    if ! (cd webui && node ./node_modules/vite/bin/vite.js build); then
-        echo "error: vite build failed"
+    if ! (cd webui && node ./node_modules/vite/bin/vite.js build && node obfuscate.js); then
+        echo "error: webui build & obfuscation failed"
         exit 1
     fi
     
