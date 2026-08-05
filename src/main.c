@@ -46,12 +46,14 @@ static void async_system_cmd(const char *cmd) {
     }
 }
 
-static void send_game_toast(const char *game_name) {
+static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
+    const char *prof_label = (prof == PROFILE_Gaming) ? "Gaming" :
+                             (prof == PROFILE_Interactive) ? "Interactive" : "Saver";
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
-        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' 'Gaming Profile Activated [%s]'",
-        game_name);
+        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' '%s Profile Active [%s]'",
+        prof_label, game_name);
     async_system_cmd(cmd);
 }
 
@@ -324,15 +326,16 @@ int main(int argc, char *argv[]) {
 
         static int       s_game_absent_ticks = 0;
         static int       s_prev_game_active  = 0;
-        static profile_t s_last_game_profile = PROFILE_Gaming; 
+        static profile_t s_last_game_profile = PROFILE_Interactive;
 
         if (game_active) {
             s_game_absent_ticks = 0;
             if (!s_prev_game_active) {
                 set_read_ahead("512");
                 g_state.launch_boost_ticks = 3;
-                send_game_toast(active_game);
-                log_info("Game", "Game Launch Boost: 512KB Read-Ahead [%s]", active_game);
+                send_game_toast(active_game, custom_profile);
+                log_info("Game", "Game Launch Boost: 512KB Read-Ahead [%s] Profile: %s",
+                         active_game, g_profile_names[custom_profile]);
                 s_prev_game_active = 1;
             }
         } else {
@@ -356,11 +359,12 @@ int main(int argc, char *argv[]) {
             g_state.gaming_hold_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
-            s_last_game_profile = custom_profile; 
-            g_state.gaming_hold_ticks = 2;
+            s_last_game_profile = custom_profile;
+            /* Hold ticks hanya untuk Gaming profile, bukan Interactive/Saver */
+            g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming) ? 2 : 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
-            next_profile = s_last_game_profile; 
+            next_profile = s_last_game_profile;
         } else {
             next_profile = PROFILE_Interactive;
         }

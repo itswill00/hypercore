@@ -199,7 +199,7 @@ const searchInput = ref(null)
 
 const profiles = [
   { value: 'GAMING', label: 'Gaming' },
-  { value: 'INTERACTIVE', label: 'Balanced' },
+  { value: 'INTERACTIVE', label: 'Interactive' },
   { value: 'SLEEP', label: 'Saver' }
 ]
 

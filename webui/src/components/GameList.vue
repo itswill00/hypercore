@@ -86,7 +86,7 @@
               class="select-md3"
             >
               <option value="GAMING">Gaming</option>
-              <option value="INTERACTIVE">Balanced</option>
+              <option value="INTERACTIVE">Interactive</option>
               <option value="SLEEP">Saver</option>
             </select>
 
