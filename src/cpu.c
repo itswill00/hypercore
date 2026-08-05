@@ -102,7 +102,7 @@ void apply_cgroup_gaming_policy(int enable) {
 
         sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
         sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
-        const char *uclamp_min = (g_state.app_boost_ticks > 0) ? "35" : "15";
+        const char *uclamp_min = (g_state.app_boost_ticks > 0) ? "25" : "0";
         sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", uclamp_min);
         sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
     }
@@ -220,9 +220,9 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
         case PROFILE_Interactive: {
             int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
-            int big_min = (g_state.app_boost_ticks > 0) ? 1600000 : 1000000;
+            int big_min = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
             set_cpu_governor(gov);
-            set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "200", "20000");
+            set_cpu_freqs(600000, FREQ_LITTLE_MAX, big_min, big_max, "1000", "20000");
             set_io_nr_requests("128");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
@@ -291,17 +291,17 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             };
 
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
-            sysfs_write_fallback(devfreq_poll_nodes, "20");
-            sysfs_write_fallback(devfreq_upthreshold_nodes, "60");
+            sysfs_write_fallback(devfreq_poll_nodes, "50");
+            sysfs_write_fallback(devfreq_upthreshold_nodes, "75");
             sysfs_write_fallback(devfreq_downdifferential_nodes, "10");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write_fallback(dvfsrc_nodes, "0");
-            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
-            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
-            sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
-            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
+            sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+            sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
+            sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
@@ -314,9 +314,9 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             };
             sysfs_write_fallback(interactive_game_mode_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "2");
-            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+            sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
-            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
+            sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "50");
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
