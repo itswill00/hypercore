@@ -182,12 +182,11 @@ onUnmounted(() => {
 
 .terminal-line {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  word-break: break-all;
-  white-space: pre-wrap;
-  padding: 3px 4px;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 6px;
   border-radius: 4px;
+  line-height: 1.45;
   transition: background 0.15s ease;
 }
 
@@ -197,9 +196,10 @@ onUnmounted(() => {
 
 .t-stamp {
   color: var(--on-surface-variant);
-  opacity: 0.45;
+  opacity: 0.5;
   font-size: 10px;
   flex-shrink: 0;
+  padding-top: 1px;
   user-select: none;
 }
 
@@ -211,6 +211,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   user-select: none;
   letter-spacing: 0.5px;
+  margin-top: 1px;
 }
 
 .lbl-info { background: rgba(160, 178, 198, 0.15); color: #a0b2c6; }
@@ -227,11 +228,15 @@ onUnmounted(() => {
   background: var(--surface-container-high);
   border-radius: 4px;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .t-text {
   color: var(--on-surface);
   flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .txt-gaming {
