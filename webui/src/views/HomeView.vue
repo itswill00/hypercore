@@ -178,105 +178,10 @@
 
       <ActionButtons />
 
-      <div class="section-title">Community &amp; Support</div>
-      <div class="md3-list-group" style="margin-bottom: 14px;">
-        <div class="md3-list-row clickable" @click="$router.push('/about')">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="heart" :size="18" />
-            </div>
-            <div class="row-meta">
-              <div class="row-title">Contributors &amp; License</div>
-              <div class="row-sub">Developer, testing team &amp; GPL v3 license</div>
-            </div>
-          </div>
-          <div class="preview-stack">
-            <span class="preview-avatar dev">ن</span>
-            <span class="preview-avatar tester">R</span>
-            <span class="preview-avatar tester">A</span>
-            <Icons name="chevron-right" :size="16" style="opacity: 0.5; margin-left: 2px;" />
-          </div>
-        </div>
-      </div>
-
-      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 4px 0 20px 0; font-family: var(--font-mono);">
+      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0; font-family: var(--font-mono);">
         Inspired by encore @Rem01Gaming
       </div>
     </div>
-
-    <!-- Contributors & Support Modal Window -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showContributorsModal" class="modal-backdrop" @click.self="showContributorsModal = false">
-          <div class="modal-window">
-            <div class="modal-header">
-              <div class="modal-title-box">
-                <div class="modal-title">Contributors &amp; support</div>
-                <div class="modal-sub">Tanzanite HyperCore team</div>
-              </div>
-              <button class="modal-close" @click="showContributorsModal = false">✕</button>
-            </div>
-
-            <div class="modal-body">
-              <div class="modal-section-title">Developer &amp; maintainer</div>
-              <div class="contributor-card">
-                <div class="contributor-left">
-                  <div class="avatar-badge dev">ن</div>
-                  <div class="contributor-info">
-                    <div class="contributor-name">@noticesa</div>
-                    <div class="contributor-role">Lead developer &amp; architect</div>
-                  </div>
-                </div>
-                <button class="action-chip" @click="openExternal('https://t.me/noticesa')">
-                  Telegram
-                </button>
-              </div>
-
-              <div class="modal-section-title" style="margin-top: 14px;">Testers &amp; feedback</div>
-              <div class="contributor-card">
-                <div class="contributor-left">
-                  <div class="avatar-badge tester">R</div>
-                  <div class="contributor-info">
-                    <div class="contributor-name">@Rafzzz182</div>
-                    <div class="contributor-role">Hardware &amp; game testing</div>
-                  </div>
-                </div>
-                <button class="action-chip" @click="openExternal('https://t.me/Rafzzz182')">
-                  Telegram
-                </button>
-              </div>
-
-              <div class="contributor-card" style="margin-top: 8px;">
-                <div class="contributor-left">
-                  <div class="avatar-badge tester">A</div>
-                  <div class="contributor-info">
-                    <div class="contributor-name">@anotherside551</div>
-                    <div class="contributor-role">Kernel &amp; thermal testing</div>
-                  </div>
-                </div>
-                <button class="action-chip" @click="openExternal('https://t.me/anotherside551')">
-                  Telegram
-                </button>
-              </div>
-
-              <div class="modal-section-title" style="margin-top: 16px;">Support development</div>
-              <div class="donate-banner">
-                <div class="donate-left">
-                  <div class="donate-icon">♡</div>
-                  <div>
-                    <div class="donate-title">Support project</div>
-                    <div class="donate-sub">If HyperCore helps you, consider buying a coffee</div>
-                  </div>
-                </div>
-                <button class="donate-btn" @click="openExternal('https://sociabuzz.com/noticesa/tribe')">
-                  Donate
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
