@@ -203,43 +203,43 @@ static int get_top_app_pid(void) {
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     if (current_prof < 0 || current_prof > 2) return 0;
 
-    char curr_gov[64] = "";
-    if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
-        size_t len = strlen(curr_gov);
-        while (len > 0 && (curr_gov[len - 1] == '\n' || curr_gov[len - 1] == '\r' || curr_gov[len - 1] == ' ')) {
-            curr_gov[--len] = '\0';
+    /* Strictly guard Gaming profile only — Interactive/Sleep are relaxed profiles
+     * and should not trigger re-enforce on minor transient hardware deviations. */
+    if (current_prof == PROFILE_Gaming) {
+        char curr_gov[64] = "";
+        if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
+            size_t len = strlen(curr_gov);
+            while (len > 0 && (curr_gov[len - 1] == '\n' || curr_gov[len - 1] == '\r' || curr_gov[len - 1] == ' ')) {
+                curr_gov[--len] = '\0';
+            }
+            if (curr_gov[0] != '\0' && strcmp(curr_gov, "performance") != 0) {
+                log_warn("Guard", "External CPU governor mutation detected [%s -> performance]! Re-enforcing...", curr_gov);
+                return 1;
+            }
         }
-        const char *expected_gov = (current_prof == PROFILE_Gaming) ? "performance" : NULL;
-        if (expected_gov && curr_gov[0] != '\0' && strcmp(curr_gov, expected_gov) != 0) {
-            log_warn("Guard", "External CPU governor mutation detected [%s -> %s]! Re-enforcing HyperCore profile...", curr_gov, expected_gov);
-            return 1;
+
+        char curr_mali[64] = "";
+        if (read_mali_power_policy(curr_mali, sizeof(curr_mali))) {
+            if (strstr(curr_mali, "always_on") == NULL) {
+                log_warn("Guard", "External Mali GPU power_policy mutation detected! Re-enforcing...");
+                return 1;
+            }
+        }
+
+        char curr_gpu_gov[64] = "";
+        if (read_mali_governor(curr_gpu_gov, sizeof(curr_gpu_gov))) {
+            if (strstr(curr_gpu_gov, "performance") == NULL) {
+                log_warn("Guard", "External Mali GPU governor mutation detected! Re-enforcing...");
+                return 1;
+            }
         }
     }
 
-    char curr_mali[64] = "";
-    if (sysfs_read_str("/sys/devices/platform/soc/13000000.mali/power_policy", curr_mali, sizeof(curr_mali))) {
-        const char *expected_mali = (current_prof == PROFILE_Gaming) ? "always_on" : "coarse_demand";
-        if (strstr(curr_mali, expected_mali) == NULL) {
-            log_warn("Guard", "External Mali GPU power_policy mutation detected! Re-enforcing HyperCore profile...");
-            return 1;
-        }
-    }
-
-    char curr_gpu_gov[64] = "";
-    if (sysfs_read_str("/sys/class/devfreq/13000000.mali/governor", curr_gpu_gov, sizeof(curr_gpu_gov))) {
-        const char *expected_gpu_gov = (current_prof == PROFILE_Gaming) ? "performance" : "simple_ondemand";
-        if (strstr(curr_gpu_gov, expected_gpu_gov) == NULL) {
-            log_warn("Guard", "External Mali GPU governor mutation detected! Re-enforcing HyperCore profile...");
-            return 1;
-        }
-    }
-
-    if (current_prof != PROFILE_Gaming) {
-        if (current_prof == PROFILE_Interactive) {
-            enforce_interactive_gpu_polling(20);
-        } else if (current_prof == PROFILE_Sleep) {
-            enforce_interactive_gpu_polling(50);
-        }
+    /* Soft enforcement for non-Gaming profiles via polling guard */
+    if (current_prof == PROFILE_Interactive) {
+        enforce_interactive_gpu_polling(20);
+    } else if (current_prof == PROFILE_Sleep) {
+        enforce_interactive_gpu_polling(50);
     }
 
     return 0;
@@ -369,7 +369,8 @@ int main(int argc, char *argv[]) {
             next_profile = PROFILE_Interactive;
         }
 
-        s_prev_game_active = game_active;
+        /* s_prev_game_active is managed inside the game_active block above
+         * with a 3-tick debounce. Do not override it here to preserve debounce. */
 
         static int s_prev_cpu_temp = 0;
         int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;

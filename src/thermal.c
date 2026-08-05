@@ -194,11 +194,16 @@ int get_true_battery_cycles(void) {
 }
 
 void fix_battery_cycle_count(void) {
+    static time_t s_last_fix_time = 0;
+    time_t now = time(NULL);
+    if (now - s_last_fix_time < 300) return;
+
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) return;
 
     int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
     if (current_cycles != true_cycles) {
+        s_last_fix_time = now;
         char buf[32];
         snprintf(buf, sizeof(buf), "%d", true_cycles);
 

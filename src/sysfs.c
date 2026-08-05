@@ -19,6 +19,16 @@ int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
     return 1;
 }
 
+int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) {
+    if (!paths || !out_buf || max_len == 0) return 0;
+    for (int i = 0; paths[i]; i++) {
+        if (paths[i][0] != '\0' && sysfs_read_str(paths[i], out_buf, max_len)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
 
@@ -48,6 +58,7 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
 }
 
 int sysfs_read_int(const char *path) {
+    if (!path || path[0] == '\0') return 0;
     int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return 0;
     char buf[32];
@@ -173,6 +184,9 @@ void update_module_prop_status(const char *status) {
     char prop_path[256];
     snprintf(prop_path, sizeof(prop_path), "%s/module.prop", g_nodes.mod_dir);
 
+    char tmp_path[270];
+    snprintf(tmp_path, sizeof(tmp_path), "%s/module.prop.tmp", g_nodes.mod_dir);
+
     FILE *f = fopen(prop_path, "r");
     if (!f) return;
 
@@ -183,7 +197,8 @@ void update_module_prop_status(const char *status) {
     }
     fclose(f);
 
-    f = fopen(prop_path, "w");
+    /* Atomic write: write to .tmp first, then rename to avoid corrupt on SIGTERM */
+    f = fopen(tmp_path, "w");
     if (!f) return;
 
     for (int i = 0; i < count; i++) {
@@ -194,4 +209,5 @@ void update_module_prop_status(const char *status) {
         }
     }
     fclose(f);
+    rename(tmp_path, prop_path);
 }

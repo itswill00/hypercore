@@ -99,11 +99,19 @@ void enforce_interactive_gpu_polling(int target_poll_ms) {
     sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
 }
 
+int read_mali_power_policy(char *out_buf, size_t max_len) {
+    return sysfs_read_str_fallback(s_mali_power_policy_nodes, out_buf, max_len);
+}
+
+int read_mali_governor(char *out_buf, size_t max_len) {
+    return sysfs_read_str_fallback(s_mali_gov_nodes, out_buf, max_len);
+}
+
 void apply_gpu_tuning(void) {
     sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
-    sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
+    sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
     sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "10");
-    sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
 
     const char *game_mode_nodes[] = {
         "/sys/module/ged/parameters/gx_game_mode",

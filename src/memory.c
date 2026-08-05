@@ -16,11 +16,13 @@ void tune_memory_pressure(void) {
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return;
 
+    /* Use MemAvailable only — it reflects realistic usable RAM including reclaimable caches.
+     * MemFree appears earlier in /proc/meminfo and can be much smaller, causing false pressure. */
     int mem_free_kb = 0;
     char line[128];
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "MemAvailable:", 13) == 0 || strncmp(line, "MemFree:", 8) == 0) {
-            char *p = line;
+        if (strncmp(line, "MemAvailable:", 13) == 0) {
+            char *p = line + 13;
             while (*p && (*p < '0' || *p > '9')) p++;
             if (*p) {
                 mem_free_kb = atoi(p);

@@ -371,11 +371,14 @@ export const useHyperStore = defineStore('hyper', () => {
 
   async function restartDaemon() {
     loading.value = true
-    
-    await execCommand(`pkill -9 -x libhypercore.so 2>/dev/null; pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/system/bin/libhypercore.so >/dev/null 2>&1 &`)
-    loading.value = false
-    setTimeout(refresh, 1500)
-    return 'Daemon restarted'
+    try {
+      await execCommand(`pkill -9 -x libhypercore.so 2>/dev/null; pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/system/bin/libhypercore.so >/dev/null 2>&1 &`)
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      await refresh()
+      return 'Daemon restarted'
+    } finally {
+      loading.value = false
+    }
   }
 
   async function exportLogs() {
@@ -431,6 +434,8 @@ export const useHyperStore = defineStore('hyper', () => {
     if (!pkg) return
 
     games.value = games.value.filter(g => g.pkg !== pkg)
+
+    import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
       `for f in ${GL_MOD} ${GL_SD}; do`,

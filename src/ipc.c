@@ -108,13 +108,8 @@ static void process_client(int client_fd) {
             sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
         }
 
-        int gpu_temp = sysfs_read_int("/sys/class/thermal/thermal_zone10/temp");
-        if (gpu_temp > 1000) gpu_temp /= 1000;
-        if (gpu_temp <= 0) gpu_temp = cpu_temp;
-
-        int chg_temp = sysfs_read_int("/sys/class/thermal/thermal_zone17/temp");
-        if (chg_temp > 1000) chg_temp /= 1000;
-        if (chg_temp <= 0) chg_temp = bat_temp;
+        int gpu_temp = cpu_temp;
+        int chg_temp = bat_temp;
 
         char json[640];
         snprintf(json, sizeof(json),
