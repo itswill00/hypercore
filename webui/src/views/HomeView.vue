@@ -180,14 +180,14 @@
 
       <div class="section-title">Community &amp; Support</div>
       <div class="md3-list-group" style="margin-bottom: 14px;">
-        <div class="md3-list-row clickable" @click="showContributorsModal = true">
+        <div class="md3-list-row clickable" @click="$router.push('/about')">
           <div class="row-left">
             <div class="icon-badge">
               <Icons name="heart" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Contributors &amp; Support</div>
-              <div class="row-sub">Developer &amp; testing team</div>
+              <div class="row-title">Contributors &amp; License</div>
+              <div class="row-sub">Developer, testing team &amp; GPL v3 license</div>
             </div>
           </div>
           <div class="preview-stack">
