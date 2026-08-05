@@ -1,10 +1,11 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
     
+    <!-- Page Header -->
     <div class="page-header">
       <div>
-        <div class="page-header-title">About Device &amp; Module</div>
-        <div class="page-header-sub">HyperCore specifications, credits &amp; license</div>
+        <div class="page-header-title">About</div>
+        <div class="page-header-sub">Module information &amp; contributors</div>
       </div>
       <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
         {{ store.moduleVersion || 'v4.3' }}
@@ -13,77 +14,77 @@
 
     <div class="content-area">
       
-      <!-- OxygenOS Style Hero Device Card -->
-      <div class="oxygen-hero-card">
-        <div class="oxygen-hero-header">
-          <div>
-            <div class="oxygen-hero-title">HyperCore</div>
-            <div class="oxygen-hero-sub">Helio G99 Hardware Tuning Engine</div>
+      <!-- Module Identity Banner -->
+      <div class="about-app-banner">
+        <div class="app-banner-icon">
+          <Icons name="chip" :size="24" />
+        </div>
+        <div class="app-banner-meta">
+          <div class="app-banner-title">HyperCore</div>
+          <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek Helio G99 Ultra</div>
+        </div>
+      </div>
+
+      <!-- System Specifications Group -->
+      <div class="section-title">Specifications</div>
+      <div class="md3-list-group">
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="chip" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Target Platform</div>
+              <div class="row-sub">MediaTek MT6789 (Helio G99 Ultra)</div>
+            </div>
           </div>
-          <div class="oxygen-ver-badge">
-            {{ store.moduleVersion || 'v4.3' }}
+          <div class="row-val">
+            <span class="badge-pill purple">MT6789</span>
           </div>
         </div>
 
-        <div class="oxygen-hero-desc">
-          Universal background daemon and kernel tuning module for MediaTek MT6789 (Helio G99 Ultra) devices running Linux Kernel 5.10.x.
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="cpu" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Kernel Engine</div>
+              <div class="row-sub">Linux {{ store.kernelVersion ? store.kernelVersion.split('-')[0] : '5.10.x' }} (aarch64)</div>
+            </div>
+          </div>
+          <div class="row-val">
+            <span class="badge-pill green">EAS / QoS</span>
+          </div>
         </div>
 
-        <!-- 2x2 Specs Grid -->
-        <div class="oxygen-spec-grid">
-          <div class="oxygen-spec-tile">
-            <div class="spec-tile-icon">
-              <Icons name="chip" :size="16" />
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="zap" :size="18" />
             </div>
-            <div class="spec-tile-meta">
-              <div class="spec-tile-label">Processor</div>
-              <div class="spec-tile-val">Helio G99 (MT6789)</div>
-            </div>
-          </div>
-
-          <div class="oxygen-spec-tile">
-            <div class="spec-tile-icon">
-              <Icons name="cpu" :size="16" />
-            </div>
-            <div class="spec-tile-meta">
-              <div class="spec-tile-label">Kernel</div>
-              <div class="spec-tile-val">{{ store.kernelVersion ? store.kernelVersion.split('-')[0] : 'Linux 5.10.x' }}</div>
+            <div class="row-meta">
+              <div class="row-title">IPC Daemon</div>
+              <div class="row-sub">Zero-overhead C Native Service</div>
             </div>
           </div>
-
-          <div class="oxygen-spec-tile">
-            <div class="spec-tile-icon">
-              <Icons name="shield" :size="16" />
-            </div>
-            <div class="spec-tile-meta">
-              <div class="spec-tile-label">Architecture</div>
-              <div class="spec-tile-val">ARM64 (aarch64)</div>
-            </div>
-          </div>
-
-          <div class="oxygen-spec-tile">
-            <div class="spec-tile-icon">
-              <Icons name="zap" :size="16" />
-            </div>
-            <div class="spec-tile-meta">
-              <div class="spec-tile-label">IPC Daemon</div>
-              <div class="spec-tile-val">C Native (0ms IPC)</div>
-            </div>
+          <div class="row-val">
+            <span class="badge-pill green">0ms IPC</span>
           </div>
         </div>
       </div>
 
-      <!-- Developer & Maintainer Section -->
+      <!-- Developer & Inspiration Group -->
       <div class="section-title">Developer &amp; Maintainer</div>
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/itswill00')">
           <div class="row-left">
-            <div class="avatar-badge dev">
+            <div class="icon-badge primary">
               <Icons name="pictogram-user" :size="18" />
             </div>
             <div class="row-meta">
               <div class="row-title">@itswill00</div>
-              <div class="row-sub">Lead Developer &amp; Architect (Telegram: @noticesa)</div>
+              <div class="row-sub">Lead Developer &amp; Architect</div>
             </div>
           </div>
           <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 10px;" @click.stop="openExternal('https://t.me/noticesa')">
@@ -93,7 +94,7 @@
 
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/Rem01Gaming')">
           <div class="row-left">
-            <div class="avatar-badge inspiration">
+            <div class="icon-badge secondary">
               <Icons name="pictogram-user" :size="18" />
             </div>
             <div class="row-meta">
@@ -107,12 +108,12 @@
         </div>
       </div>
 
-      <!-- Testing Team Section -->
-      <div class="section-title">Quality Assurance &amp; Testing</div>
+      <!-- Quality Assurance Group -->
+      <div class="section-title">Testing Team</div>
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://t.me/Rafzzz182')">
           <div class="row-left">
-            <div class="avatar-badge tester">
+            <div class="icon-badge">
               <Icons name="pictogram-user" :size="18" />
             </div>
             <div class="row-meta">
@@ -127,7 +128,7 @@
 
         <div class="md3-list-row clickable" @click="openExternal('https://t.me/anotherside551')">
           <div class="row-left">
-            <div class="avatar-badge tester">
+            <div class="icon-badge">
               <Icons name="pictogram-female" :size="18" />
             </div>
             <div class="row-meta">
@@ -141,31 +142,51 @@
         </div>
       </div>
 
-      <!-- License & Open Source Section -->
-      <div class="section-title">License &amp; Source Code</div>
-      <div class="md3-card">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">GNU General Public License v3.0</div>
-          <span class="badge-pill green" style="font-size: 10px; padding: 2px 8px;">GPL v3.0</span>
+      <!-- Source & License Group -->
+      <div class="section-title">Source &amp; License</div>
+      <div class="md3-list-group">
+        <div class="md3-list-row clickable" @click="openExternal('https://github.com/itswill00/hypercore')">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="github" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">GitHub Repository</div>
+              <div class="row-sub">Source code &amp; issue tracker</div>
+            </div>
+          </div>
+          <Icons name="chevron-right" :size="16" style="opacity: 0.4;" />
         </div>
-        <div style="font-size: 11px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 14px;">
-          HyperCore is Free Open-Source Software. You are free to redistribute and modify it under the terms of the GNU General Public License v3.0 as published by the Free Software Foundation.
+
+        <div class="md3-list-row clickable" @click="openExternal('https://t.me/noticesa')">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="about" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Telegram Channel</div>
+              <div class="row-sub">Updates &amp; community support</div>
+            </div>
+          </div>
+          <Icons name="chevron-right" :size="16" style="opacity: 0.4;" />
         </div>
-        
-        <div class="oxygen-action-grid">
-          <button class="btn-md3 btn-md3-primary" style="font-size: 11px;" @click="openExternal('https://github.com/itswill00/hypercore')">
-            <Icons name="github" :size="14" />
-            <span>GitHub Repository</span>
-          </button>
-          <button class="btn-md3 btn-md3-secondary" style="font-size: 11px;" @click="openExternal('https://t.me/noticesa')">
-            <Icons name="about" :size="14" />
-            <span>Telegram Channel</span>
-          </button>
+
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="shield" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Open Source License</div>
+              <div class="row-sub">GNU General Public License v3.0 (GPL-3.0)</div>
+            </div>
+          </div>
+          <span class="badge-pill green">GPL v3</span>
         </div>
       </div>
 
-      <div class="oxygen-footer">
-        HyperCore for MediaTek Helio G99 • Free &amp; Open Source Software
+      <div class="about-footer-text">
+        HyperCore by @itswill00 • Free &amp; Open Source Software
       </div>
 
     </div>
@@ -181,139 +202,52 @@ const store = useHyperStore()
 </script>
 
 <style scoped>
-.oxygen-hero-card {
-  background: linear-gradient(135deg, var(--surface-container-high) 0%, var(--surface-container) 100%);
-  border-radius: 20px;
-  padding: 16px;
-  margin-bottom: 14px;
-  border: 1px solid var(--surface-container-highest);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-}
-
-.oxygen-hero-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.oxygen-hero-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--on-surface);
-  letter-spacing: -0.3px;
-}
-
-.oxygen-hero-sub {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  margin-top: 1px;
-}
-
-.oxygen-ver-badge {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-}
-
-.oxygen-hero-desc {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  line-height: 1.5;
-  margin-bottom: 14px;
-}
-
-.oxygen-spec-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.oxygen-spec-tile {
-  background: var(--surface-container-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: 12px;
-  padding: 10px 12px;
+.about-app-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-container);
+  border: 1px solid var(--surface-container-high);
+  border-radius: 16px;
+  margin-bottom: 16px;
 }
 
-.spec-tile-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--surface-container-high);
-  color: var(--primary);
+.app-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.spec-tile-meta {
+.app-banner-meta {
   min-width: 0;
 }
 
-.spec-tile-label {
-  font-size: 9.5px;
-  color: var(--on-surface-variant);
-  opacity: 0.8;
-}
-
-.spec-tile-val {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--on-surface);
-  font-family: var(--font-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.avatar-badge {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.app-banner-title {
+  font-size: 16px;
   font-weight: 700;
-  font-size: 12px;
-  flex-shrink: 0;
+  color: var(--on-surface);
+  letter-spacing: -0.2px;
 }
 
-.avatar-badge.dev {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
+.app-banner-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
-.avatar-badge.inspiration {
-  background: var(--secondary-container);
-  color: var(--on-secondary-container);
-}
-
-.avatar-badge.tester {
-  background: var(--tertiary-container);
-  color: var(--on-tertiary-container);
-}
-
-.oxygen-action-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.oxygen-footer {
+.about-footer-text {
   text-align: center;
   font-size: 10px;
   color: var(--on-surface-variant);
-  opacity: 0.5;
+  opacity: 0.45;
   padding: 16px 0 24px 0;
   font-family: var(--font-mono);
 }
