@@ -243,11 +243,13 @@ async function changeProfile(pkg, profile) {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--surface-container-high);
-  color: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .select-md3 {

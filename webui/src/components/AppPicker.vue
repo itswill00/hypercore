@@ -2,57 +2,57 @@
   <Teleport to="body">
     <transition name="modal-fade" appear>
       <div class="modal-backdrop" @click.self="$emit('close')">
-        <div class="modal-card md3-picker-card">
+        <div class="modal-card picker-card">
           
           <!-- Header -->
           <div class="picker-header">
-            <div class="header-info">
-              <div class="header-title-row">
-                <div class="icon-badge primary" style="width: 28px; height: 28px;">
-                  <Icons name="plus" :size="16" />
-                </div>
-                <div class="header-title">Add Application</div>
-                <span class="badge-pill purple" style="font-size: 10px; padding: 2px 8px;">
-                  {{ availableAppsCount }} available
-                </span>
+            <div class="header-left">
+              <div class="icon-badge primary" style="width: 32px; height: 32px;">
+                <Icons name="plus" :size="16" />
               </div>
-              <div class="header-sub">Configure high-performance profiles for your apps</div>
+              <div>
+                <div class="header-title-wrap">
+                  <span class="header-title">Add Application</span>
+                  <span class="badge-pill purple">{{ availableAppsCount }} available</span>
+                </div>
+                <div class="header-sub">Configure performance profiles for your applications</div>
+              </div>
             </div>
-            <button class="btn-icon-close" title="Close" @click="$emit('close')">
-              <Icons name="close" :size="16" />
+            <button class="btn-md3 btn-md3-secondary btn-icon-only" title="Close" @click="$emit('close')">
+              <Icons name="close" :size="15" />
             </button>
           </div>
 
-          <!-- Search & Filter Controls -->
+          <!-- Controls Bar -->
           <div class="picker-controls">
             <!-- Search Bar -->
-            <div class="search-input-wrap">
-              <Icons name="search" :size="16" class="search-icon" />
+            <div class="search-wrap">
+              <Icons name="search" :size="15" class="search-icon" />
               <input
                 v-model="query"
                 type="text"
-                class="picker-search-input"
-                placeholder="Search app name or package ID (e.g. com.game)..."
+                class="input-md3 search-input"
+                placeholder="Search app name or package ID..."
                 ref="searchInput"
                 @keydown.enter="addCustom"
               >
-              <button v-if="query" class="search-clear-btn" @click="query = ''" title="Clear">
+              <button v-if="query" class="clear-btn" @click="query = ''" title="Clear">
                 <Icons name="close" :size="14" />
               </button>
             </div>
 
-            <!-- Segmented Category Tabs & Target Profile Selector -->
+            <!-- Segmented Category Tabs & Profile Selector -->
             <div class="control-row">
-              <div class="segmented-tabs">
+              <div class="segment-container">
                 <button
-                  class="tab-btn"
+                  class="segment-btn"
                   :class="{ active: activeTab === 'installed' }"
                   @click="activeTab = 'installed'"
                 >
                   Installed Apps
                 </button>
                 <button
-                  class="tab-btn"
+                  class="segment-btn"
                   :class="{ active: activeTab === 'custom' }"
                   @click="activeTab = 'custom'"
                 >
@@ -60,9 +60,8 @@
                 </button>
               </div>
 
-              <!-- Profile Choice Chips -->
-              <div class="profile-chips">
-                <span class="chips-label">Profile:</span>
+              <div class="profile-chip-group">
+                <span class="profile-chip-label">Profile:</span>
                 <button
                   v-for="p in profiles"
                   :key="p.value"
@@ -76,37 +75,36 @@
             </div>
           </div>
 
-          <!-- Main Content Body -->
+          <!-- List Body -->
           <div class="picker-body">
             
-            <!-- Tab 1: Installed Apps -->
             <template v-if="activeTab === 'installed'">
-              <div v-if="loading" class="state-message">
+              <div v-if="loading" class="empty-state">
                 <div class="spinner-sm"></div>
-                <span>Scanning installed applications...</span>
+                <span>Scanning installed packages...</span>
               </div>
 
-              <div v-else-if="filteredApps.length === 0" class="state-message">
-                <div class="icon-badge secondary" style="width: 40px; height: 40px; margin: 0 auto 10px auto;">
+              <div v-else-if="filteredApps.length === 0" class="empty-state">
+                <div class="icon-badge secondary" style="width: 40px; height: 40px; margin-bottom: 10px;">
                   <Icons name="games" :size="18" />
                 </div>
-                <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">
+                <div class="empty-title">
                   {{ query ? 'No matching apps found' : 'All installed apps already added' }}
                 </div>
-                <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 4px; max-width: 280px; margin-left: auto; margin-right: auto;">
-                  {{ query ? 'Try searching another name or switch to Custom Package tab' : 'You can enter a package ID manually via Custom Package tab' }}
+                <div class="empty-sub">
+                  {{ query ? 'Search another app or enter package ID manually' : 'You can add package IDs manually via Custom Package tab' }}
                 </div>
-                <button v-if="query.trim()" class="btn-md3 btn-md3-primary" style="margin-top: 12px; font-size: 11px;" @click="addCustom">
+                <button v-if="query.trim()" class="btn-md3 btn-md3-primary" style="margin-top: 12px;" @click="addCustom">
                   <Icons name="plus" :size="14" />
                   <span>Add "{{ query.trim() }}"</span>
                 </button>
               </div>
 
-              <div v-else class="app-list-container">
+              <div v-else class="app-list">
                 <div
                   v-for="app in filteredApps"
                   :key="app.pkg"
-                  class="md3-list-row app-item-row"
+                  class="md3-list-row clickable app-row"
                   @click="pickApp(app.pkg)"
                 >
                   <div class="row-left">
@@ -114,13 +112,13 @@
                       <img
                         v-if="(app.icon || iconFor(app.pkg)) && !brokenIcons[app.pkg]"
                         :src="app.icon || iconFor(app.pkg)"
-                        style="width: 34px; height: 34px; border-radius: 10px; object-fit: cover;"
+                        class="app-icon"
                         @error="brokenIcons[app.pkg] = true"
                         loading="lazy"
                       >
                       <div
                         v-else
-                        class="icon-fallback"
+                        class="icon-avatar"
                         :style="{ background: getAppGradient(app.name) }"
                       >
                         {{ getAppInitial(app.name) }}
@@ -133,7 +131,7 @@
                   </div>
 
                   <button
-                    class="btn-md3 btn-md3-primary btn-add-row"
+                    class="btn-md3 btn-md3-primary btn-add"
                     @click.stop="pickApp(app.pkg)"
                   >
                     <Icons name="plus" :size="13" />
@@ -143,15 +141,14 @@
               </div>
             </template>
 
-            <!-- Tab 2: Custom Package -->
             <template v-else-if="activeTab === 'custom'">
               <div class="custom-card">
-                <div class="custom-card-title">Manual Package Registration</div>
-                <div class="custom-card-desc">
-                  Enter exact Android package identifier (e.g. <code>com.miHoYo.GenshinImpact</code>) to configure custom profiling rule.
+                <div class="custom-title">Manual Package Registration</div>
+                <div class="custom-desc">
+                  Enter exact Android package identifier (e.g. <code>com.miHoYo.GenshinImpact</code>) to register custom rule.
                 </div>
 
-                <div class="custom-input-group">
+                <div class="custom-input-wrap">
                   <input
                     v-model="customPkg"
                     type="text"
@@ -281,74 +278,57 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.md3-picker-card {
+.picker-card {
   width: 92%;
-  max-width: 460px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface-container-high, #1e1e24);
-  border: 1px solid var(--surface-container-highest, #2b2b36);
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  max-width: 440px;
+  max-height: 82vh;
+  background: var(--surface-container);
+  border: 1px solid var(--surface-container-high);
+  border-radius: 20px;
 }
 
 .picker-header {
-  padding: 16px 18px 12px 18px;
+  padding: 14px 16px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--surface-container-highest, #2b2b36);
+  border-bottom: 1px solid var(--surface-container-high);
 }
 
-.header-title-row {
+.header-left {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
+.header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .header-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--on-surface, #ffffff);
+  color: var(--on-surface);
 }
 
 .header-sub {
   font-size: 11px;
-  color: var(--on-surface-variant, #a0a0b0);
-  margin-top: 3px;
-}
-
-.btn-icon-close {
-  background: var(--surface-container-highest, #2b2b36);
-  color: var(--on-surface-variant, #a0a0b0);
-  border: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-icon-close:hover {
-  background: var(--surface-container, #363646);
-  color: var(--on-surface, #ffffff);
+  color: var(--on-surface-variant);
+  margin-top: 1px;
 }
 
 .picker-controls {
-  padding: 12px 16px;
-  background: var(--surface-container-low, #16161b);
-  border-bottom: 1px solid var(--surface-container-highest, #2b2b36);
+  padding: 10px 14px;
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--surface-container-high);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.search-input-wrap {
+.search-wrap {
   position: relative;
   display: flex;
   align-items: center;
@@ -356,239 +336,194 @@ onMounted(async () => {
 
 .search-icon {
   position: absolute;
-  left: 12px;
-  color: var(--on-surface-variant, #a0a0b0);
+  left: 10px;
+  color: var(--on-surface-variant);
   pointer-events: none;
 }
 
-.picker-search-input {
-  width: 100%;
-  background: var(--surface-container-high, #1e1e24);
-  color: var(--on-surface, #ffffff);
-  border: 1px solid var(--surface-container-highest, #2b2b36);
-  border-radius: 20px;
-  padding: 8px 36px 8px 36px;
+.search-input {
+  padding-left: 32px;
+  padding-right: 30px;
+  border-radius: 10px;
   font-size: 11px;
-  outline: none;
-  transition: border-color 0.2s ease;
 }
 
-.picker-search-input:focus {
-  border-color: var(--primary, #a855f7);
-}
-
-.search-clear-btn {
+.clear-btn {
   position: absolute;
-  right: 10px;
+  right: 8px;
   background: transparent;
   border: none;
-  color: var(--on-surface-variant, #a0a0b0);
+  color: var(--on-surface-variant);
   cursor: pointer;
+  padding: 2px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 4px;
 }
 
 .control-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.segmented-tabs {
-  display: flex;
-  background: var(--surface-container-high, #1e1e24);
-  padding: 3px;
-  border-radius: 14px;
-  border: 1px solid var(--surface-container-highest, #2b2b36);
-}
-
-.tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--on-surface-variant, #a0a0b0);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.tab-btn.active {
-  background: var(--primary, #a855f7);
-  color: #ffffff;
-}
-
-.profile-chips {
+.profile-chip-group {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.chips-label {
+.profile-chip-label {
   font-size: 10px;
-  color: var(--on-surface-variant, #a0a0b0);
-  margin-right: 2px;
+  color: var(--on-surface-variant);
 }
 
 .profile-chip {
-  background: var(--surface-container-high, #1e1e24);
-  color: var(--on-surface-variant, #a0a0b0);
-  border: 1px solid var(--surface-container-highest, #2b2b36);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  border: 1px solid transparent;
   font-size: 10px;
+  font-weight: 500;
   padding: 3px 8px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .profile-chip.active {
-  background: rgba(168, 85, 247, 0.2);
-  color: var(--primary, #c084fc);
-  border-color: var(--primary, #a855f7);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border-color: var(--outline-variant);
   font-weight: 600;
 }
 
 .picker-body {
-  padding: 10px 14px;
+  padding: 8px 12px;
   overflow-y: auto;
   flex: 1;
-  scrollbar-width: thin;
 }
 
-.state-message {
-  padding: 36px 16px;
+.empty-state {
+  padding: 32px 16px;
   text-align: center;
-  font-size: 12px;
-  color: var(--on-surface-variant, #a0a0b0);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
+.empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.empty-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+}
+
 .spinner-sm {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--surface-container-highest, #2b2b36);
-  border-top-color: var(--primary, #a855f7);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface-container-highest);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.app-list-container {
+.app-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.app-item-row {
-  border-radius: 14px;
-  padding: 8px 12px;
-  background: var(--surface-container, #22222a);
+.app-row {
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: var(--surface-container-low);
   border: 1px solid transparent;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
-.app-item-row:hover {
-  background: var(--surface-container-high, #2a2a34);
-  border-color: var(--surface-container-highest, #363646);
+.app-row:hover {
+  background: var(--surface-container-high);
+  border-color: var(--outline-variant);
 }
 
 .icon-frame {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.icon-fallback {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+.app-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.icon-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   color: #ffffff;
   font-weight: 700;
   font-size: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-.row-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--on-surface, #ffffff);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.row-sub {
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  color: var(--on-surface-variant, #a0a0b0);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-add-row {
+.btn-add {
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: 11px;
   height: 28px;
   border-radius: 8px;
-  flex-shrink: 0;
-  margin-left: 8px;
 }
 
 .custom-card {
-  padding: 16px;
-  background: var(--surface-container, #22222a);
-  border-radius: 16px;
-  border: 1px solid var(--surface-container-highest, #2b2b36);
+  padding: 14px;
+  background: var(--surface-container-low);
+  border-radius: 14px;
+  border: 1px solid var(--surface-container-high);
 }
 
-.custom-card-title {
+.custom-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--on-surface, #ffffff);
-  margin-bottom: 4px;
+  color: var(--on-surface);
+  margin-bottom: 3px;
 }
 
-.custom-card-desc {
+.custom-desc {
   font-size: 11px;
-  color: var(--on-surface-variant, #a0a0b0);
-  margin-bottom: 14px;
-  line-height: 1.4;
+  color: var(--on-surface-variant);
+  margin-bottom: 12px;
 }
 
-.custom-input-group {
+.custom-input-wrap {
   display: flex;
   gap: 8px;
 }
 
 .custom-preview {
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 11px;
-  color: var(--primary, #c084fc);
-  padding: 8px 12px;
-  background: rgba(168, 85, 247, 0.1);
+  color: var(--on-primary-container);
+  padding: 6px 10px;
+  background: var(--primary-container);
   border-radius: 8px;
 }
 </style>
