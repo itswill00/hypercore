@@ -361,7 +361,7 @@ int main(int argc, char *argv[]) {
         } else if (game_active) {
             next_profile = custom_profile;
             s_last_game_profile = custom_profile;
-            /* Hold ticks hanya untuk Gaming profile, bukan Interactive/Saver */
+            /* Hold ticks for Gaming profiles only */
             g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming || custom_profile == PROFILE_Gaming_MOBA) ? 2 : 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
