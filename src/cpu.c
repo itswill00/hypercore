@@ -121,7 +121,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     (void)gpu_load;
     const char *gov = get_best_governor();
 
-    apply_cgroup_gaming_policy(prof == PROFILE_Gaming);
+    apply_cgroup_gaming_policy(prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
 
     switch (prof) {
         case PROFILE_Sleep: {

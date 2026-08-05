@@ -49,6 +49,7 @@ static void async_system_cmd(const char *cmd) {
 static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
     const char *prof_label = (prof == PROFILE_Gaming) ? "Gaming" :
+                             (prof == PROFILE_Gaming_MOBA) ? "Gaming (MOBA)" :
                              (prof == PROFILE_Interactive) ? "Interactive" : "Saver";
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
@@ -383,14 +384,14 @@ int main(int argc, char *argv[]) {
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
             g_state.app_boost_ticks != s_prev_app_boost || is_tampered ||
-            (next_profile == PROFILE_Gaming && is_gpu_heavy != s_prev_gpu_heavy)) {
+            ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
             s_prev_app_boost = g_state.app_boost_ticks;
-            const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 3) ? g_profile_names[g_state.current_profile] : "INIT";
+            const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
-                if (next_profile == PROFILE_Gaming && active_game[0] != '\0') {
-                    snprintf(status_buf, sizeof(status_buf), "Gaming (%s)", active_game);
+                if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && active_game[0] != '\0') {
+                    snprintf(status_buf, sizeof(status_buf), "%s (%s)", g_profile_names[next_profile], active_game);
                     log_state("Profiler", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
                               prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
@@ -411,7 +412,7 @@ int main(int argc, char *argv[]) {
             g_state.thermal_tier = thermal_tier;
         }
 
-        if (g_state.current_profile == PROFILE_Gaming) {
+        if (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA) {
             if (g_state.is_charging) {
                 if (bat_temp >= 42) {
                     sysfs_write(g_nodes.charge_control, "2");
@@ -440,7 +441,7 @@ int main(int argc, char *argv[]) {
         int poll_timeout_ms = 2000;
         if (next_profile == PROFILE_Sleep) {
             poll_timeout_ms = (bat_temp >= 45) ? 3000 : 8000;
-        } else if (next_profile == PROFILE_Gaming) {
+        } else if (next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 500 : 1000;
         } else if (next_profile == PROFILE_Interactive) {
             poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 1000 : 2000;
