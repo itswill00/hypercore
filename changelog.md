@@ -1,6 +1,7 @@
 # HyperCore v4.4 — Universal MT6789 Stability & Multi-OEM Release
 
 ### Key Highlights & Innovations
+- **Dynamic Hardware GPU Max Frequency Auto-Detection**: Automatically parses kernel OPP `available_frequencies` to unlock full GPU clocks on Helio G200 (1100 MHz / 1.1 GHz) while seamlessly scaling on Helio G99 / G100 (1003 MHz) with 0 hardcoded limits.
 - **Universal Multi-OEM Support (MediaTek MT6789 Family)**: Complete sysfs node fallbacks for Xiaomi, Poco, Infinix, Tecno, Realme, and Advan devices (supporting both `13000000.mali` and `soc:mali` GPU paths, `mi_thermald` and FPSGO thermal drivers, and Transsion/Infinix PMIC charge controls).
 - **Automated SHA-256 Binary & Payload Integrity Guard**: Real-time checksum verification (`verify_module_integrity`) at startup to ensure module files (`system.prop`, `service.sh`, `post-fs-data.sh`, `uninstall.sh`, `webroot/index.html`, etc.) are 100% untampered with 0 mismatches.
 - **Enhanced Adaptive Sysfs Tamper Recovery**: Dynamically detects external CPU governor, Mali power policy, or GPU devfreq governor overrides by third-party apps across all MT6789 devices and re-enforces optimal profile within 1-2 seconds.
