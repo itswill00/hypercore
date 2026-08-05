@@ -35,12 +35,13 @@ unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 ui_print "- Verifying embedded binary SHA-256 integrity..."
 chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
 if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
-    if "$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" >/dev/null 2>&1; then
+    INTEGRITY_OUT=$("$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" 2>&1)
+    if [ $? -eq 0 ]; then
         ui_print "- Embedded binary SHA-256 integrity verified successfully."
     else
         ui_print "--------------------------------------"
         ui_print "! ERROR: File tampering or corruption detected!"
-        ui_print "! SHA-256 checksums embedded inside C binary mismatch!"
+        ui_print "$INTEGRITY_OUT"
         ui_print "! Installation aborted for security."
         ui_print "--------------------------------------"
         rm -rf "$MODPATH"

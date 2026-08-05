@@ -46,16 +46,12 @@ if [ -d "webui" ]; then
 fi
 
 echo "generating sha256 checksums..."
-find . -maxdepth 2 -type f \
-    ! -path "./.*" \
-    ! -path "./webui/*" \
-    ! -path "./src/*" \
-    ! -path "./system/bin/*" \
-    ! -name "*.zip" \
-    ! -name "*.o" \
-    ! -name "build.sh" \
-    ! -name "checksums.txt" \
-    -exec sha256sum {} + | sort -k2 > checksums.txt
+rm -f checksums.txt
+for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html update.json changelog.md NOTICE.md uninstall.sh banner.jpg; do
+    if [ -f "$file" ]; then
+        sha256sum "$file" >> checksums.txt
+    fi
+done
 
 cat << 'EOF' > src/include/embedded_checksums.hpp
 #ifndef EMBEDDED_CHECKSUMS_HPP
