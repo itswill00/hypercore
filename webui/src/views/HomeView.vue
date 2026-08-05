@@ -11,7 +11,7 @@
     <div class="content-area">
       
       <!-- Home Hero Banner Card with banner.jpg Background -->
-      <div class="home-app-banner">
+      <div class="home-app-banner" :style="{ backgroundImage: `url(${bannerImg})` }">
         <div class="app-banner-overlay"></div>
         <div class="app-banner-content">
           <div class="banner-top-row">
@@ -56,6 +56,7 @@ import { useHyperStore } from '@/stores/hyper'
 import { execCommand } from '@/helpers/shell'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
+import bannerImg from '@/assets/banner.jpg'
 
 const store = useHyperStore()
 const expandedRows = ref({})
