@@ -58,34 +58,39 @@ static const char *s_mali_power_policy_nodes[] = {
 };
 
 void enforce_interactive_gpu_polling(int target_poll_ms) {
-    char poll_buf[16];
-    snprintf(poll_buf, sizeof(poll_buf), "%d", target_poll_ms);
-
-    // 1. Ensure GPU governor is simple_ondemand
-    sysfs_write_fallback(s_mali_gov_nodes, "simple_ondemand");
-
-    // 2. Enforce polling_interval across all multi-OEM candidate nodes
+    // 1. Read-Before-Write State Guard: Check if polling_interval matches target
+    int needs_enforce = 0;
     for (int i = 0; s_mali_poll_nodes[i]; i++) {
-        if (access(s_mali_poll_nodes[i], W_OK) == 0) {
+        if (access(s_mali_poll_nodes[i], R_OK) == 0) {
             int current_poll = sysfs_read_int(s_mali_poll_nodes[i]);
             if (current_poll != target_poll_ms) {
-                sysfs_write(s_mali_poll_nodes[i], poll_buf);
+                needs_enforce = 1;
             }
+            break;
         }
     }
 
-    // 3. Configure aggressive upthreshold (50%) and downdifferential (10%)
+    // 2. Check if GED frequency cap was imposed
+    int cust_upbound = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
+    if (cust_upbound > 0 && cust_upbound < 1003000) {
+        needs_enforce = 1;
+    }
+
+    // Fast-path return: 0ms overhead if hardware parameters are already optimal
+    if (!needs_enforce) return;
+
+    // Apply enforcement writes only on state mismatch
+    char poll_buf[16];
+    snprintf(poll_buf, sizeof(poll_buf), "%d", target_poll_ms);
+
+    sysfs_write_fallback(s_mali_gov_nodes, "simple_ondemand");
+    sysfs_write_fallback(s_mali_poll_nodes, poll_buf);
     sysfs_write_fallback(s_mali_upthreshold_nodes, "50");
     sysfs_write_fallback(s_mali_downdiff_nodes, "10");
-
-    // 4. Ensure frequency bounds are fully open (min 390MHz, max 1.003GHz)
     sysfs_write_fallback(s_mali_min_freq_nodes, "390000000");
     sysfs_write_fallback(s_mali_max_freq_nodes, "1003000000");
-
-    // 5. Ensure power_policy is coarse_demand
     sysfs_write_fallback(s_mali_power_policy_nodes, "coarse_demand");
 
-    // 6. Unlock MediaTek GED frequency bounds so GPU scales freely up to 1003 MHz
     sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "1003000");
     sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
     sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
