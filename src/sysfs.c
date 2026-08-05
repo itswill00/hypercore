@@ -1,8 +1,36 @@
 
 #include "sysfs.hpp"
 
+int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
+    if (!path || path[0] == '\0' || !out_buf || max_len == 0) return 0;
+    out_buf[0] = '\0';
+
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return 0;
+    ssize_t n = read(fd, out_buf, max_len - 1);
+    close(fd);
+    if (n <= 0) return 0;
+    out_buf[n] = '\0';
+
+    size_t len = strlen(out_buf);
+    while (len > 0 && (out_buf[len - 1] == '\r' || out_buf[len - 1] == '\n' || out_buf[len - 1] == ' ')) {
+        out_buf[--len] = '\0';
+    }
+    return 1;
+}
+
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
+
+    // Universal Read-Before-Write Guard:
+    // If node is readable and its current value already equals `val`, skip writing!
+    char current_val[64];
+    if (sysfs_read_str(path, current_val, sizeof(current_val))) {
+        if (strcmp(current_val, val) == 0) {
+            return; // Fast 0ms exit
+        }
+    }
+
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) return;
     write(fd, val, strlen(val));
@@ -28,24 +56,6 @@ int sysfs_read_int(const char *path) {
     if (n <= 0) return 0;
     buf[n] = '\0';
     return atoi(buf);
-}
-
-int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
-    if (!out_buf || max_len == 0) return 0;
-    out_buf[0] = '\0';
-
-    int fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) return 0;
-    ssize_t n = read(fd, out_buf, max_len - 1);
-    close(fd);
-    if (n <= 0) return 0;
-    out_buf[n] = '\0';
-
-    size_t len = strlen(out_buf);
-    while (len > 0 && (out_buf[len - 1] == '\r' || out_buf[len - 1] == '\n' || out_buf[len - 1] == ' ')) {
-        out_buf[--len] = '\0';
-    }
-    return 1;
 }
 
 static struct {
