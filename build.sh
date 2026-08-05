@@ -50,7 +50,7 @@ fi
 
 echo "generating sha256 checksums..."
 rm -f checksums.txt
-for file in module.prop system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg webroot/icon.png update.json changelog.md NOTICE.md uninstall.sh banner.jpg icon.png; do
+for file in system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg webroot/icon.png update.json changelog.md NOTICE.md uninstall.sh banner.jpg icon.png; do
     if [ -f "$file" ]; then
         sha256sum "$file" >> checksums.txt
     fi
@@ -144,9 +144,15 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
             [ -f webroot/icon.png ] && cp webroot/icon.png \$MOD_TARGET/webroot/icon.png
             [ -f icon.png ] && cp icon.png \$MOD_TARGET/icon.png
             cp module.prop \$MOD_TARGET/module.prop
+            cp system.prop \$MOD_TARGET/system.prop
+            cp service.sh \$MOD_TARGET/service.sh
+            cp post-fs-data.sh \$MOD_TARGET/post-fs-data.sh
+            cp uninstall.sh \$MOD_TARGET/uninstall.sh
             cp update.json \$MOD_TARGET/update.json
             cp changelog.md \$MOD_TARGET/changelog.md
+            cp NOTICE.md \$MOD_TARGET/NOTICE.md
             chmod 755 \$MOD_TARGET/system/bin/libhypercore.so
+            chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi
     "; then
