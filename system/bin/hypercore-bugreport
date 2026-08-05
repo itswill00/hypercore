@@ -1,0 +1,97 @@
+#!/system/bin/sh
+
+MOD_DIR="/data/adb/modules/hypercore"
+if [ ! -d "$MOD_DIR" ]; then
+    MOD_DIR="/data/adb/modules/tanzanite_hypercore"
+fi
+
+HASH=$(head -c 16 /dev/urandom 2>/dev/null | sha256sum 2>/dev/null | head -c 6)
+[ -z "$HASH" ] && HASH=$(date +%s 2>/dev/null | tail -c 7)
+[ -z "$HASH" ] && HASH="a1b2c3"
+
+ZIP_NAME="hypercore_bugreport-${HASH}.zip"
+TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
+
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+
+# 1. Log file
+if [ -f "/sdcard/Android/hypercore.log" ]; then
+    cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
+elif [ -f "$MOD_DIR/hypercore.log" ]; then
+    cp "$MOD_DIR/hypercore.log" "$TMP_DIR/hypercore.log"
+else
+    touch "$TMP_DIR/hypercore.log"
+fi
+
+# 2. Device System Info (Clean key=value format)
+{
+    echo "module_id=$(grep '^id=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
+    echo "module_version=$(grep '^version=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
+    echo "device_model=$(getprop ro.product.model 2>/dev/null)"
+    echo "brand=$(getprop ro.product.brand 2>/dev/null)"
+    echo "manufacturer=$(getprop ro.product.manufacturer 2>/dev/null)"
+    echo "platform=$(getprop ro.board.platform 2>/dev/null)"
+    echo "hardware=$(getprop ro.hardware 2>/dev/null)"
+    echo "android_version=$(getprop ro.build.version.release 2>/dev/null)"
+    echo "sdk_version=$(getprop ro.build.version.sdk 2>/dev/null)"
+    echo "fingerprint=$(getprop ro.build.fingerprint 2>/dev/null)"
+    echo "kernel=$(uname -r 2>/dev/null)"
+    echo "uname=$(uname -a 2>/dev/null)"
+    echo "selinux=$(getenforce 2>/dev/null)"
+    echo "uptime=$(uptime 2>/dev/null)"
+    echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
+} > "$TMP_DIR/device_info.txt"
+
+# 3. Clean UNIX Sysfs Structure Dump (path: value)
+{
+    NODE_ROOTS="
+    /sys/devices/system/cpu
+    /sys/class/devfreq
+    /sys/devices/platform/soc
+    /sys/class/thermal
+    /sys/module/ged/parameters
+    /sys/kernel/fpsgo
+    /sys/class/power_supply
+    /sys/kernel/helio-dvfsrc
+    /dev/cpuset
+    /dev/cpuctl
+    "
+
+    for root_path in $NODE_ROOTS; do
+        if [ -e "$root_path" ]; then
+            find "$root_path" -maxdepth 4 -type f 2>/dev/null | while read -r f; do
+                val=$(cat "$f" 2>/dev/null | tr '\n' ' ' | head -c 120)
+                if [ -n "$val" ]; then
+                    echo "$f: $val"
+                else
+                    echo "$f:"
+                fi
+            done
+        fi
+    done
+} > "$TMP_DIR/sysfs_nodes.txt"
+
+# 4. Copy Game List & Module Configuration
+[ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
+[ -f "$MOD_DIR/module.prop" ] && cp "$MOD_DIR/module.prop" "$TMP_DIR/module.prop"
+
+# 5. Compress to .zip package
+TARGET_DIR="/sdcard"
+OUT_ZIP="$TARGET_DIR/$ZIP_NAME"
+
+(
+    cd "$TMP_DIR" && zip -r "$OUT_ZIP" ./* >/dev/null 2>&1
+)
+
+# Backup copy into dedicated HyperCore_Bugreports folder
+mkdir -p "/sdcard/HyperCore_Bugreports"
+cp "$OUT_ZIP" "/sdcard/HyperCore_Bugreports/$ZIP_NAME" 2>/dev/null
+
+rm -rf "$TMP_DIR"
+
+if [ -f "$OUT_ZIP" ]; then
+    echo "$OUT_ZIP"
+else
+    echo "ERROR"
+fi
