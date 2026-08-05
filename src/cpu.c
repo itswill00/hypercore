@@ -257,8 +257,25 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
 
+            const char *devfreq_upthreshold_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/simple_ondemand/upthreshold",
+                "/sys/class/devfreq/soc:mali/simple_ondemand/upthreshold",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/upthreshold",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/upthreshold",
+                NULL
+            };
+            const char *devfreq_downdifferential_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/simple_ondemand/downdifferential",
+                "/sys/class/devfreq/soc:mali/simple_ondemand/downdifferential",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/downdifferential",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/downdifferential",
+                NULL
+            };
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
-            sysfs_write_fallback(devfreq_poll_nodes, "50");
+            sysfs_write_fallback(devfreq_poll_nodes, "20");
+            sysfs_write_fallback(devfreq_upthreshold_nodes, "60");
+            sysfs_write_fallback(devfreq_downdifferential_nodes, "10");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, "1003000000");
             sysfs_write_fallback(power_policy_nodes, "coarse_demand");
