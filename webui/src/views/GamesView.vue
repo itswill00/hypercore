@@ -31,9 +31,9 @@ const store = useHyperStore()
 const toast = inject('toast')
 const showPicker = ref(false)
 
-async function onPick(pkg) {
+async function onPick(pkg, profile = 'GAMING') {
   showPicker.value = false
-  const msg = await store.addGame(pkg)
+  const msg = await store.addGame(pkg, profile)
   if (msg && toast) toast(msg)
 }
 </script>
