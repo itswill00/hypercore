@@ -45,25 +45,60 @@ fi
     echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
 } > "$TMP_DIR/device_info.txt"
 
-# 3. Ultra-Fast Sysfs Node Dump via grep -H (Executes in ~0.5s!)
+# 3. Crash-Proof & Safe Sysfs Node Dump (Explicit Safe Paths Only, Excludes Kernel Panic Triggers)
 {
+    # CPU Scaling & Governors
     grep -s -H '' \
-        /sys/devices/system/cpu/cpufreq/policy*/* \
-        /sys/devices/system/cpu/cpu*/cpufreq/* \
-        /sys/devices/system/cpu/cpuidle/* \
-        /sys/class/devfreq/*/* \
-        /sys/class/devfreq/*/*/* \
-        /sys/devices/platform/soc/*.mali/* \
-        /sys/devices/platform/soc/*.mali/devfreq/*/* \
-        /sys/class/thermal/*/* \
-        /sys/class/thermal/thermal_message/* \
-        /sys/module/ged/parameters/* \
-        /sys/kernel/fpsgo/common/* \
-        /sys/kernel/fpsgo/fbt/* \
-        /sys/class/power_supply/*/* \
-        /sys/kernel/helio-dvfsrc/* \
-        /dev/cpuset/* \
-        /dev/cpuctl/* 2>/dev/null
+        /sys/devices/system/cpu/cpufreq/policy*/scaling_governor \
+        /sys/devices/system/cpu/cpufreq/policy*/scaling_available_governors \
+        /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq \
+        /sys/devices/system/cpu/cpufreq/policy*/scaling_min_freq \
+        /sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq \
+        /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_min_freq \
+        /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq \
+        /sys/devices/system/cpu/cpufreq/policy*/sugov_ext/* \
+        /sys/devices/system/cpu/cpufreq/policy*/schedutil/* 2>/dev/null
+
+    # Mali GPU & Devfreq
+    grep -s -H '' \
+        /sys/class/devfreq/*mali*/governor \
+        /sys/class/devfreq/*mali*/available_governors \
+        /sys/class/devfreq/*mali*/available_frequencies \
+        /sys/class/devfreq/*mali*/cur_freq \
+        /sys/class/devfreq/*mali*/min_freq \
+        /sys/class/devfreq/*mali*/max_freq \
+        /sys/class/devfreq/*mali*/polling_interval \
+        /sys/devices/platform/soc/*mali*/power_policy \
+        /sys/devices/platform/soc/*mali*/devfreq/*mali*/governor \
+        /sys/devices/platform/soc/*mali*/devfreq/*mali*/min_freq \
+        /sys/devices/platform/soc/*mali*/devfreq/*mali*/max_freq 2>/dev/null
+
+    # GED Parameters (Filtered for safe text entries)
+    grep -s -H '' /sys/module/ged/parameters/* 2>/dev/null | grep -vE 'uevent|debug|trace|panic'
+
+    # FPSGO Parameters (Safe status & control parameters only)
+    grep -s -H '' \
+        /sys/kernel/fpsgo/common/force_onoff \
+        /sys/kernel/fpsgo/fbt/boost_ta \
+        /sys/kernel/fpsgo/fbt/ultra_rescue \
+        /sys/kernel/fpsgo/fbt/light_loading_policy \
+        /sys/kernel/fpsgo/fbt/switch_idleprefer \
+        /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
+
+    # Thermal Zones & Sconfig
+    grep -s -H '' \
+        /sys/class/thermal/thermal_zone*/type \
+        /sys/class/thermal/thermal_zone*/temp \
+        /sys/class/thermal/thermal_message/sconfig \
+        /sys/class/thermal/thermal_message/sport_mode 2>/dev/null
+
+    # Battery & Interconnect DVFSRC
+    grep -s -H '' \
+        /sys/class/power_supply/*/status \
+        /sys/class/power_supply/*/capacity \
+        /sys/class/power_supply/*/temp \
+        /sys/class/power_supply/*/cycle_count \
+        /sys/kernel/helio-dvfsrc/dvfsrc_qos_mode 2>/dev/null
 } > "$TMP_DIR/sysfs_nodes.txt"
 
 # 4. Copy Game List & Module Configuration
