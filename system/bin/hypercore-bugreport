@@ -1,5 +1,8 @@
 #!/system/bin/sh
 
+# Export root manager & system PATHs
+export PATH="/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin:$PATH"
+
 MOD_DIR="/data/adb/modules/hypercore"
 if [ ! -d "$MOD_DIR" ]; then
     MOD_DIR="/data/adb/modules/tanzanite_hypercore"
@@ -11,7 +14,7 @@ DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
 HASH=$(head -c 16 /dev/urandom 2>/dev/null | sha256sum 2>/dev/null | head -c 6)
 [ -z "$HASH" ] && HASH="a1b2c3"
 
-ZIP_NAME="hypercore_bugreport-${DATE_STR}-${HASH}.zip"
+BASE_NAME="hypercore_bugreport-${DATE_STR}-${HASH}"
 TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
 
 rm -rf "$TMP_DIR"
@@ -45,9 +48,8 @@ fi
     echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
 } > "$TMP_DIR/device_info.txt"
 
-# 3. Crash-Proof & Safe Sysfs Node Dump (Explicit Safe Paths Only, Excludes Kernel Panic Triggers)
+# 3. Crash-Proof & Safe Sysfs Node Dump
 {
-    # CPU Scaling & Governors
     grep -s -H '' \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_governor \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_available_governors \
@@ -59,7 +61,6 @@ fi
         /sys/devices/system/cpu/cpufreq/policy*/sugov_ext/* \
         /sys/devices/system/cpu/cpufreq/policy*/schedutil/* 2>/dev/null
 
-    # Mali GPU & Devfreq
     grep -s -H '' \
         /sys/class/devfreq/*mali*/governor \
         /sys/class/devfreq/*mali*/available_governors \
@@ -73,10 +74,8 @@ fi
         /sys/devices/platform/soc/*mali*/devfreq/*mali*/min_freq \
         /sys/devices/platform/soc/*mali*/devfreq/*mali*/max_freq 2>/dev/null
 
-    # GED Parameters (Filtered for safe text entries)
     grep -s -H '' /sys/module/ged/parameters/* 2>/dev/null | grep -vE 'uevent|debug|trace|panic'
 
-    # FPSGO Parameters (Safe status & control parameters only)
     grep -s -H '' \
         /sys/kernel/fpsgo/common/force_onoff \
         /sys/kernel/fpsgo/fbt/boost_ta \
@@ -85,14 +84,12 @@ fi
         /sys/kernel/fpsgo/fbt/switch_idleprefer \
         /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
 
-    # Thermal Zones & Sconfig
     grep -s -H '' \
         /sys/class/thermal/thermal_zone*/type \
         /sys/class/thermal/thermal_zone*/temp \
         /sys/class/thermal/thermal_message/sconfig \
         /sys/class/thermal/thermal_message/sport_mode 2>/dev/null
 
-    # Battery & Interconnect DVFSRC
     grep -s -H '' \
         /sys/class/power_supply/*/status \
         /sys/class/power_supply/*/capacity \
@@ -105,21 +102,31 @@ fi
 [ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -f "$MOD_DIR/module.prop" ] && cp "$MOD_DIR/module.prop" "$TMP_DIR/module.prop"
 
-# 5. Compress to .zip package
-TARGET_DIR="/sdcard"
-OUT_ZIP="$TARGET_DIR/$ZIP_NAME"
+# 5. Multi-Tool Archive Creation (zip / busybox zip / tar.gz fallbacks)
+OUT_FILE=""
 
-(
-    cd "$TMP_DIR" && zip -r "$OUT_ZIP" ./* >/dev/null 2>&1
-)
+if command -v zip >/dev/null 2>&1; then
+    ( cd "$TMP_DIR" && zip -r "/sdcard/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/${BASE_NAME}.zip"
+elif command -v busybox >/dev/null 2>&1 && busybox zip --help >/dev/null 2>&1; then
+    ( cd "$TMP_DIR" && busybox zip -r "/sdcard/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/${BASE_NAME}.zip"
+fi
 
-mkdir -p "/sdcard/HyperCore_Bugreports"
-cp "$OUT_ZIP" "/sdcard/HyperCore_Bugreports/$ZIP_NAME" 2>/dev/null
+if [ -z "$OUT_FILE" ]; then
+    ( cd "$TMP_DIR" && tar -czf "/sdcard/${BASE_NAME}.tar.gz" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/${BASE_NAME}.tar.gz" ] && OUT_FILE="/sdcard/${BASE_NAME}.tar.gz"
+fi
 
-rm -rf "$TMP_DIR"
-
-if [ -f "$OUT_ZIP" ]; then
-    echo "$OUT_ZIP"
+if [ -n "$OUT_FILE" ]; then
+    mkdir -p "/sdcard/HyperCore_Bugreports" "/storage/emulated/0/HyperCore_Bugreports" 2>/dev/null
+    cp "$OUT_FILE" "/sdcard/HyperCore_Bugreports/" 2>/dev/null
+    cp "$OUT_FILE" "/storage/emulated/0/" 2>/dev/null
+    cp "$OUT_FILE" "/storage/emulated/0/HyperCore_Bugreports/" 2>/dev/null
+    am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1
+    rm -rf "$TMP_DIR"
+    echo "$OUT_FILE"
 else
+    rm -rf "$TMP_DIR"
     echo "ERROR"
 fi

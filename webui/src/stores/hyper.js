@@ -384,10 +384,10 @@ export const useHyperStore = defineStore('hyper', () => {
   async function exportLogs() {
     loading.value = true
     try {
-      const res = await execCommand(`${MOD}/system/bin/hypercore-bugreport 2>/dev/null || hypercore-bugreport 2>/dev/null`)
-      const path = (res || '').trim()
-      if (path && path.indexOf('.zip') !== -1) {
-        return `Bugreport exported to ${path}`
+      const res = await execCommand(`${MOD}/system/bin/hypercore-bugreport || hypercore-bugreport || sh ${MOD}/system/bin/hypercore-bugreport`)
+      const path = (res || '').trim().split('\n').pop()
+      if (path && path !== 'ERROR' && (path.indexOf('.zip') !== -1 || path.indexOf('.tar.gz') !== -1)) {
+        return `Bugreport saved to ${path}`
       }
       await execCommand(`cp ${LOG} /sdcard/HyperCore_log.txt 2>/dev/null`)
       return 'Log saved to /sdcard/HyperCore_log.txt'
