@@ -83,6 +83,8 @@ else
 fi
 set_perm "$MODPATH/gamelist.txt" 0 0 0644
 
-ui_print "- Daemon v4.3 installed successfully."
+VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v4.4"
+ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."
