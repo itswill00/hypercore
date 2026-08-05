@@ -14,7 +14,7 @@
           Copy
         </button>
         <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Export Bugreport ZIP" @click="saveLog">
-          Export Logs
+          Export
         </button>
         <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px; color: var(--error);" title="Clear log content" @click="clearLog">
           Clear
