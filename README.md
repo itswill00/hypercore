@@ -6,7 +6,7 @@
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
 [![Release](https://img.shields.io/badge/Release-v4.3-purple.svg)]()
 
-Tanzanite HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for MediaTek Helio G99 Ultra (MT6789 / MT6877) devices running Linux kernel 5.10.
+Tanzanite HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for Redmi Note 14 4G and MediaTek Helio G99 Ultra (MT6789) devices running Linux kernel 5.10.
 
 It is designed to eliminate micro-stutters, optimize daily touch response, manage thermal limits intelligently, and deliver high performance during gaming without unnecessary battery drain.
 
