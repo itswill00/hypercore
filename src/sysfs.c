@@ -29,6 +29,8 @@ int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) 
     return 0;
 }
 
+#include "log.hpp"
+
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
 
@@ -42,17 +44,35 @@ void sysfs_write(const char *path, const char *val) {
     }
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-    if (fd < 0) return;
+    if (fd < 0) {
+        static time_t s_last_write_err = 0;
+        time_t now = time(NULL);
+        if (now - s_last_write_err >= 10) {
+            log_warn("Sysfs", "Node write failed or inaccessible: '%s' = '%s'", path, val);
+            s_last_write_err = now;
+        }
+        return;
+    }
     write(fd, val, strlen(val));
     close(fd);
 }
 
 void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
+    int written = 0;
     for (int i = 0; paths[i]; i++) {
         if (paths[i][0] != '\0' && access(paths[i], W_OK) == 0) {
             sysfs_write(paths[i], val);
+            written = 1;
             break;
+        }
+    }
+    if (!written && paths[0] != NULL) {
+        static time_t s_last_fb_err = 0;
+        time_t now = time(NULL);
+        if (now - s_last_fb_err >= 10) {
+            log_warn("Sysfs", "All fallback candidate paths failed for payload '%s' (primary target: '%s')", val, paths[0]);
+            s_last_fb_err = now;
         }
     }
 }

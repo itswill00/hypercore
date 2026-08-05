@@ -383,9 +383,19 @@ export const useHyperStore = defineStore('hyper', () => {
 
   async function exportLogs() {
     loading.value = true
-    await execCommand(`cp ${LOG} /sdcard/HyperCore_log.txt 2>/dev/null`)
-    loading.value = false
-    return 'Log saved to /sdcard/HyperCore_log.txt'
+    try {
+      const res = await execCommand(`${MOD}/system/bin/hypercore-bugreport 2>/dev/null || hypercore-bugreport 2>/dev/null`)
+      const path = (res || '').trim()
+      if (path && path.indexOf('.zip') !== -1) {
+        return `Bugreport exported to ${path}`
+      }
+      await execCommand(`cp ${LOG} /sdcard/HyperCore_log.txt 2>/dev/null`)
+      return 'Log saved to /sdcard/HyperCore_log.txt'
+    } catch (e) {
+      return 'Failed to export bugreport'
+    } finally {
+      loading.value = false
+    }
   }
 
   async function clearLogs() {

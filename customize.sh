@@ -67,6 +67,7 @@ for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
     if [ -d "$manager_dir" ]; then
         ui_print "- Creating PATH symlink in $manager_dir"
         ln -sf "$MODPATH/system/bin/libhypercore.so" "$manager_dir/libhypercore.so" 2>/dev/null || true
+        [ -f "$MODPATH/system/bin/hypercore-bugreport" ] && ln -sf "$MODPATH/system/bin/hypercore-bugreport" "$manager_dir/hypercore-bugreport" 2>/dev/null || true
     fi
 done
 

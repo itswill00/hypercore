@@ -108,6 +108,7 @@ if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
     post-fs-data.sh \
     customize.sh \
     system/bin/libhypercore.so \
+    system/bin/hypercore-bugreport \
     webroot/index.html \
     webroot/banner.jpg \
     webroot/icon.png \
@@ -138,7 +139,9 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
             MOD_TARGET=\"/data/adb/modules/tanzanite_hypercore\"
         fi
         if [ -d \"\$MOD_TARGET\" ]; then
+            mkdir -p \$MOD_TARGET/system/bin
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
+            [ -f system/bin/hypercore-bugreport ] && cp system/bin/hypercore-bugreport \$MOD_TARGET/system/bin/hypercore-bugreport
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
             [ -f webroot/banner.jpg ] && cp webroot/banner.jpg \$MOD_TARGET/webroot/banner.jpg
             [ -f webroot/icon.png ] && cp webroot/icon.png \$MOD_TARGET/webroot/icon.png
@@ -151,7 +154,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
             cp update.json \$MOD_TARGET/update.json
             cp changelog.md \$MOD_TARGET/changelog.md
             cp NOTICE.md \$MOD_TARGET/NOTICE.md
-            chmod 755 \$MOD_TARGET/system/bin/libhypercore.so
+            chmod 755 \$MOD_TARGET/system/bin/*
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi
