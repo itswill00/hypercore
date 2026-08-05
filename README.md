@@ -1,12 +1,12 @@
-# Tanzanite HyperCore
+# HyperCore
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/SoC-MediaTek_Helio_G99_Ultra-orange.svg)]()
+[![Platform](https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg)]()
 [![Kernel](https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg)]()
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
 [![Release](https://img.shields.io/badge/Release-v4.3-purple.svg)]()
 
-Tanzanite HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for Redmi Note 14 4G and MediaTek Helio G99 Ultra (MT6789) devices running Linux kernel 5.10.
+HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
 
 It is designed to eliminate micro-stutters, optimize daily touch response, manage thermal limits intelligently, and deliver high performance during gaming without unnecessary battery drain.
 
@@ -124,7 +124,7 @@ The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl
 
 ## Requirements
 
-- **Target Hardware**: MediaTek Helio G99 Ultra (MT6789 / MT6877)
+- **Target Hardware**: MediaTek MT6789 Family
 - **Kernel**: Linux 5.10.x
 - **Environment**: Rooted via KernelSU, APatch, or Magisk
 

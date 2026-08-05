@@ -1,4 +1,4 @@
-# Tanzanite HyperCore v4.3 — Major Release & Architecture Polish
+# HyperCore v4.3 — Major Release & Architecture Polish
 
 ### Key Highlights & Innovations
 - **Consolidated 3 Lean Core Profiles (`Sleep`, `Interactive`, `Gaming`)**: Streamlined state machine to 3 core profiles. Relies on native kernel hardware thermal drivers and user-installed thermal mods without profile interference.

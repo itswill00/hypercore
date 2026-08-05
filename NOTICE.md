@@ -1,14 +1,14 @@
 # Notice & Attribution
 
-## Tanzanite HyperCore
+## HyperCore
 
-This project, **Tanzanite HyperCore**, is developed by **[@itswill00](https://github.com/itswill00)** and licensed under the **GNU General Public License v3.0**.
+This project, **HyperCore**, is developed by **[@itswill00](https://github.com/itswill00)** and licensed under the **GNU General Public License v3.0**.
 
 ---
 
 ## Attribution & Inspiration
 
-**Tanzanite HyperCore** incorporates design concepts, profiling paradigms, and structural architectural patterns inspired by **encore** created by **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
+**HyperCore** incorporates design concepts, profiling paradigms, and structural architectural patterns inspired by **encore** created by **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
 
 We express our gratitude to **@Rem01Gaming** and the **encore** project for pioneering lightweight Android kernel tuning and automated state-evaluation techniques.
 
@@ -22,5 +22,5 @@ We express our gratitude to **@Rem01Gaming** and the **encore** project for pion
 
 ## License Information
 
-- **Tanzanite HyperCore**: GNU General Public License v3.0 (see `LICENSE`)
+- **HyperCore**: GNU General Public License v3.0 (see `LICENSE`)
 - **encore**: Created by [@Rem01Gaming](https://github.com/Rem01Gaming)

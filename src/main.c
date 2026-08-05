@@ -219,7 +219,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 
 static int validate_hardware_target(void) {
     if (access("/sys/module/ged", F_OK) != 0 && access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
-        fprintf(stderr, "ERROR: Incompatible hardware target detected. HyperCore is strictly designed for MediaTek Helio G99 (Kernel 5.10.x).\n");
+        fprintf(stderr, "ERROR: Incompatible hardware target detected. HyperCore is strictly designed for MediaTek MT6789 Family (Kernel 5.10.x).\n");
         return 0;
     }
     return 1;

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Tanzanite HyperCore post-fs-data initialization script
+# HyperCore post-fs-data initialization script
 
 sysctl -w vm.swappiness=60 >/dev/null 2>&1
 sysctl -w vm.dirty_ratio=15 >/dev/null 2>&1

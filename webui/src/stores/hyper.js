@@ -48,7 +48,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
   const moduleVersion = ref('v4.3')
   const kernelVersion = ref('—')
-  const chipset = ref('MediaTek Helio G99 Ultra (MT6789)')
+  const chipset = ref('MediaTek MT6789 Family')
   const androidSdk = ref('—')
   const selinux = ref('—')
   const uptime = ref('—')

@@ -9,7 +9,7 @@
           <div class="sec-block">
             <div class="sec-title">1. Scope of system modifications</div>
             <p>
-              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, custom GPU Operating Performance Points (OPP), MediaTek GED DVFS parameters, CPU frequency governor limits, and dynamic thermal charging policies on your MediaTek Helio G99 (Kernel 5.10.x) device.
+              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, custom GPU Operating Performance Points (OPP), MediaTek GED DVFS parameters, CPU frequency governor limits, and dynamic thermal charging policies on your MediaTek MT6789 Family (Kernel 5.10.x) device.
             </p>
           </div>
 

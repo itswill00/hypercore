@@ -23,7 +23,7 @@
                 <span class="app-banner-title">HyperCore</span>
                 <span class="badge-pill purple">{{ store.moduleVersion || 'v4.3' }}</span>
               </div>
-              <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek Helio G99 Ultra</div>
+              <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
             </div>
           </div>
 

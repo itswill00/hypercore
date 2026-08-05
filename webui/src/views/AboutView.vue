@@ -21,7 +21,7 @@
         </div>
         <div class="app-banner-meta">
           <div class="app-banner-title">HyperCore</div>
-          <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek Helio G99 Ultra</div>
+          <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
         </div>
       </div>
 
@@ -206,7 +206,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Target Platform</div>
-              <div class="row-sub">MediaTek MT6789 (Helio G99 Ultra)</div>
+              <div class="row-sub">MediaTek MT6789 Family</div>
             </div>
           </div>
           <div class="row-val">
