@@ -228,21 +228,6 @@
             <span class="badge-pill green">0ms IPC</span>
           </div>
         </div>
-
-        <div class="md3-list-row clickable" @click="handleCreateShortcut">
-          <div class="row-left">
-            <div class="icon-badge">
-              <Icons name="about" :size="18" />
-            </div>
-            <div class="row-meta">
-              <div class="row-title">Launcher Shortcut</div>
-              <div class="row-sub">Pin WebUI shortcut to Android home screen</div>
-            </div>
-          </div>
-          <button class="btn-md3 btn-md3-primary" style="padding: 4px 10px; font-size: 10px;" @click.stop="handleCreateShortcut">
-            Add Shortcut
-          </button>
-        </div>
       </div>
 
       <!-- Developer & Maintainer Group -->
@@ -367,7 +352,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
-import { openExternal, createShortcut } from '@/helpers/shell'
+import { openExternal } from '@/helpers/shell'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
@@ -375,13 +360,6 @@ const expandedRows = ref({})
 
 function toggleExpand(key) {
   expandedRows.value[key] = !expandedRows.value[key]
-}
-
-function handleCreateShortcut() {
-  const ok = createShortcut()
-  if (!ok) {
-    alert('To add a launcher shortcut, long-press HyperCore in KernelSU / APatch Manager or tap 3-dots -> "Add to Home Screen".')
-  }
 }
 </script>
 
