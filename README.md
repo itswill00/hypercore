@@ -117,8 +117,8 @@ To compile the native C daemon, generate embedded checksums, build the WebUI fro
 ```
 
 The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror` and outputs the final package to:
-- `Tanzanite_HyperCore_Release/Tanzanite-HyperCore-v4.3.zip`
-- `/sdcard/HyperCore_Releases/Tanzanite-HyperCore-v4.3.zip`
+- `HyperCore_Release/HyperCore-v4.3.zip`
+- `/sdcard/HyperCore_Releases/HyperCore-v4.3.zip`
 
 ---
 

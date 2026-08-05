@@ -68,7 +68,7 @@ void load_gamelist(void) {
                 s_game_count++;
 
                 if (fw) {
-                    fprintf(fw, "%s:GAMING\n", pkg_buf);
+                    fprintf(fw, "%s\n", pkg_buf);
                 }
             }
             if (fw) fclose(fw);

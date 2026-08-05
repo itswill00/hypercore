@@ -75,7 +75,7 @@ AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|lege
 
 if [ -n "$AUTO_GAMES" ]; then
     for pkg in $AUTO_GAMES; do
-        echo "$pkg:GAMING" >> "$MODPATH/gamelist.txt"
+        echo "$pkg" >> "$MODPATH/gamelist.txt"
         ui_print "  + Auto-added game: $pkg"
     done
 else
