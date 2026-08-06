@@ -332,7 +332,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
             set_cpu_governor("performance");
-            set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "0", "30000");
+            set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "200", "30000");
             set_io_nr_requests("256");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
