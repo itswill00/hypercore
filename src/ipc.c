@@ -86,7 +86,7 @@ static void process_client(int client_fd) {
         else if (bat_temp > 100) bat_temp /= 10;
 
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-        const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 3) ?
+        const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4) ?
                                 g_profile_names[g_state.current_profile] : "Unknown";
 
         time_t now = time(NULL);
@@ -169,6 +169,8 @@ void handle_ipc_events(int timeout_ms) {
                 if (pfds[i].fd == s_server_fd) {
                     int client_fd = accept(s_server_fd, NULL, NULL);
                     if (client_fd >= 0) {
+                        int cfl = fcntl(client_fd, F_GETFL, 0);
+                        if (cfl != -1) fcntl(client_fd, F_SETFL, cfl | O_NONBLOCK);
                         process_client(client_fd);
                     }
                 } else if (pfds[i].fd == g_nodes.inotify_fd) {

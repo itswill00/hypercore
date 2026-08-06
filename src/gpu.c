@@ -161,10 +161,10 @@ void enforce_interactive_gpu_polling(int target_poll_ms) {
 
     sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
     sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
-    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "1");
-    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "1");
-    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
+    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
+    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
 }
 
 int read_mali_power_policy(char *out_buf, size_t max_len) {

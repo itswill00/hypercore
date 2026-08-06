@@ -48,9 +48,7 @@ static void async_system_cmd(const char *cmd) {
 
 static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
-    const char *prof_label = (prof == PROFILE_Gaming) ? "Gaming" :
-                             (prof == PROFILE_Gaming_MOBA) ? "Gaming (MOBA)" :
-                             (prof == PROFILE_Interactive) ? "Interactive" : "Saver";
+    const char *prof_label = (prof >= 0 && prof < 4) ? g_profile_names[prof] : "Unknown";
     char cmd[256];
     snprintf(cmd, sizeof(cmd),
         "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' '%s Profile Active [%s]'",
@@ -131,7 +129,7 @@ static void init_hardware_nodes(void) {
     }
 
     g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
-    g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/schedutil", F_OK) == 0);
+    g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/policy0/schedutil", F_OK) == 0);
 
     g_nodes.inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (g_nodes.inotify_fd >= 0 && g_nodes.backlight[0] != '\0') {
@@ -240,7 +238,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     if (current_prof == PROFILE_Interactive) {
         enforce_interactive_gpu_polling(20);
     } else if (current_prof == PROFILE_Sleep) {
-        enforce_interactive_gpu_polling(50);
+        enforce_interactive_gpu_polling(100);
     }
 
     return 0;
@@ -249,7 +247,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 #include "integrity.hpp"
 
 static int validate_hardware_target(void) {
-    if (access("/sys/module/ged", F_OK) != 0 && access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
+    if (access("/sys/module/ged", F_OK) != 0 || access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
         fprintf(stderr, "ERROR: Incompatible hardware target detected. HyperCore is strictly designed for MediaTek MT6789 Family (Kernel 5.10.x).\n");
         return 0;
     }

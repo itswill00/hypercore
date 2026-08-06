@@ -7,6 +7,9 @@ MOD_DIR="/data/adb/modules/hypercore"
 if [ ! -d "$MOD_DIR" ]; then
     MOD_DIR="/data/adb/modules/tanzanite_hypercore"
 fi
+if [ ! -d "$MOD_DIR" ]; then
+    MOD_DIR="/data/adb/modules/tanzanite_hyperflow"
+fi
 
 DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
 [ -z "$DATE_STR" ] && DATE_STR=$(date +"%Y%m%d_%H%M%S" 2>/dev/null)
@@ -106,22 +109,22 @@ fi
 OUT_FILE=""
 
 if command -v zip >/dev/null 2>&1; then
-    ( cd "$TMP_DIR" && zip -r "/sdcard/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
-    [ -f "/sdcard/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/${BASE_NAME}.zip"
+    mkdir -p "/sdcard/HyperCore_Bugreports"
+    ( cd "$TMP_DIR" && zip -r "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip"
 elif command -v busybox >/dev/null 2>&1 && busybox zip --help >/dev/null 2>&1; then
-    ( cd "$TMP_DIR" && busybox zip -r "/sdcard/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
-    [ -f "/sdcard/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/${BASE_NAME}.zip"
+    mkdir -p "/sdcard/HyperCore_Bugreports"
+    ( cd "$TMP_DIR" && busybox zip -r "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip"
 fi
 
 if [ -z "$OUT_FILE" ]; then
-    ( cd "$TMP_DIR" && tar -czf "/sdcard/${BASE_NAME}.tar.gz" ./* >/dev/null 2>&1 )
-    [ -f "/sdcard/${BASE_NAME}.tar.gz" ] && OUT_FILE="/sdcard/${BASE_NAME}.tar.gz"
+    mkdir -p "/sdcard/HyperCore_Bugreports"
+    ( cd "$TMP_DIR" && tar -czf "/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz" ./* >/dev/null 2>&1 )
+    [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz"
 fi
 
 if [ -n "$OUT_FILE" ]; then
-    mkdir -p "/sdcard/HyperCore_Bugreports" "/storage/emulated/0/HyperCore_Bugreports" 2>/dev/null
-    cp "$OUT_FILE" "/sdcard/HyperCore_Bugreports/" 2>/dev/null
-    cp "$OUT_FILE" "/storage/emulated/0/" 2>/dev/null
     cp "$OUT_FILE" "/storage/emulated/0/HyperCore_Bugreports/" 2>/dev/null
     am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1
     rm -rf "$TMP_DIR"

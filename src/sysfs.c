@@ -212,7 +212,7 @@ void update_module_prop_status(const char *status) {
 
     char lines[32][256];
     int count = 0;
-    while (fgets(lines[count], sizeof(lines[count]), f) && count < 32) {
+    while (count < 32 && fgets(lines[count], sizeof(lines[count]), f)) {
         count++;
     }
     fclose(f);
