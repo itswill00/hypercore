@@ -144,7 +144,7 @@ export const useHyperStore = defineStore('hyper', () => {
     isRefreshing = true
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
-    const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+    const cmd = `MOD="/data/adb/modules/hypercore";
 IPC=$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
 echo "PID:$(pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
@@ -349,7 +349,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
   async function flushRam() {
     loading.value = true
     try {
-      const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+      const cmd = `MOD="/data/adb/modules/hypercore";
 echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory 2>/dev/null)`
       await execCommand(cmd)
       await new Promise(resolve => setTimeout(resolve, 400))
@@ -365,7 +365,7 @@ echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/
   async function restartDaemon() {
     loading.value = true
     try {
-      const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+      const cmd = `MOD="/data/adb/modules/hypercore";
 pkill -15 -f libhypercore.so 2>/dev/null || pkill -15 -f hypercore 2>/dev/null || true;
 sleep 0.3;
 pkill -9 -f libhypercore.so 2>/dev/null || true;
@@ -376,7 +376,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       let started = false
       for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 250))
-        const check = await execCommand('MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore"; echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true')
+        const check = await execCommand('echo GET_STATUS | nc -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
         if (check && check.includes('"status":"ok"')) {
           started = true
           break

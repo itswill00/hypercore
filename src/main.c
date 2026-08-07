@@ -196,7 +196,7 @@ static int get_top_app_pid(void) {
 }
 
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
-    if (current_prof < 0 || current_prof > 3) return 0;
+    if ((int)current_prof < 0 || (int)current_prof >= 4) return 0;
 
     /* Strictly guard Gaming profile only — Interactive/Sleep are relaxed profiles
      * and should not trigger re-enforce on minor transient hardware deviations. */
@@ -407,19 +407,7 @@ int main(int argc, char *argv[]) {
             g_state.thermal_tier = thermal_tier;
         }
 
-        if (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA) {
-            if (g_state.is_charging) {
-                if (bat_temp >= 42) {
-                    sysfs_write(g_nodes.charge_control, "2");
-                } else if (bat_temp >= 37) {
-                    sysfs_write(g_nodes.charge_control, "4");
-                } else {
-                    sysfs_write(g_nodes.charge_control, "8");
-                }
-            } else {
-                sysfs_write(g_nodes.charge_control, "8");
-            }
-        } else if (g_state.current_profile == PROFILE_Interactive) {
+        if (g_state.current_profile == PROFILE_Interactive) {
             enforce_interactive_gpu_polling(50);
         }
 
