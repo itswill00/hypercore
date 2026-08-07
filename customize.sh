@@ -9,25 +9,75 @@ case "$KERNEL_VER" in
     5.10.*)
         ui_print "- Kernel 5.10.x verified. Compatible."
         ;;
-    6.12.*|6.12*)
-        ui_print "--------------------------------------"
-        ui_print "! ERROR: Unsupported Kernel 6.12 detected!"
-        ui_print "! HyperCore is strictly designed for Linux 5.10.x."
-        ui_print "! Installation aborted."
-        ui_print "--------------------------------------"
-        abort "! Incompatible kernel version: $KERNEL_VER"
-        exit 1
-        ;;
     *)
         ui_print "--------------------------------------"
         ui_print "! ERROR: Unsupported Kernel version ($KERNEL_VER)!"
-        ui_print "! HyperCore only supports Linux kernel 5.10.x."
+        ui_print "! HyperCore strictly requires Linux Kernel 5.10.x."
         ui_print "! Installation aborted."
         ui_print "--------------------------------------"
-        abort "! Incompatible kernel version: $KERNEL_VER"
+        abort "! Incompatible Kernel Version: $KERNEL_VER"
         exit 1
         ;;
 esac
+
+ui_print "- Checking Hardware Platform & MediaTek MT6789 Family nodes..."
+PLATFORM=$(getprop ro.board.platform 2>/dev/null)
+HARDWARE=$(getprop ro.hardware 2>/dev/null)
+SOC_MODEL=$(getprop ro.soc.model 2>/dev/null)
+ui_print "- Detected SoC Platform: ${PLATFORM:-$HARDWARE}"
+
+# Strict Hardware Inspection
+IS_MT6789=0
+
+# 1. Check getprop platform / hardware / soc_model
+if echo "$PLATFORM $HARDWARE $SOC_MODEL" | grep -iqE 'mt6789|helio-g99|helio-g100|helio-g200'; then
+    IS_MT6789=1
+fi
+
+# 2. Check MediaTek GED GPU Driver parameter directory
+HAS_GED=0
+if [ -d "/sys/module/ged" ]; then
+    HAS_GED=1
+fi
+
+# 3. Check ARM Mali-G57 devfreq hardware nodes
+HAS_MALI_DEVFREQ=0
+for mali_path in /sys/class/devfreq/13000000.mali /sys/class/devfreq/soc:mali /sys/devices/platform/soc/13000000.mali /sys/devices/platform/soc/soc:mali; do
+    if [ -d "$mali_path" ]; then
+        HAS_MALI_DEVFREQ=1
+        break
+    fi
+done
+
+# 4. Check MediaTek Helio DVFSRC interconnect hardware nodes
+HAS_DVFSRC=0
+for dvf_path in /sys/kernel/helio-dvfsrc /sys/devices/platform/10012000.dvfsrc /sys/module/dvfsrc; do
+    if [ -d "$dvf_path" ]; then
+        HAS_DVFSRC=1
+        break
+    fi
+done
+
+# Enforce Strict Validation: Device MUST pass at least GED + Mali Devfreq checks
+if [ $HAS_GED -eq 1 ] && [ $HAS_MALI_DEVFREQ -eq 1 ]; then
+    ui_print "- MediaTek MT6789 Family Hardware Verified (GED & Mali-G57 OK)."
+else
+    ui_print "--------------------------------------------------"
+    ui_print "! ERROR: INCOMPATIBLE HARDWARE PLATFORM DETECTED!"
+    ui_print "! Detected Platform: ${PLATFORM:-$HARDWARE}"
+    ui_print "! HyperCore is strictly designed for MediaTek MT6789 Family"
+    ui_print "! (Helio G99 / G100 / G200 with Mali-G57 GPU)."
+    ui_print "!"
+    ui_print "! Missing required hardware nodes:"
+    [ $HAS_GED -eq 0 ] && ui_print "  - Missing MediaTek GED GPU Driver (/sys/module/ged)"
+    [ $HAS_MALI_DEVFREQ -eq 0 ] && ui_print "  - Missing Mali GPU Devfreq Node (13000000.mali / soc:mali)"
+    [ $HAS_DVFSRC -eq 0 ] && ui_print "  - Missing Helio DVFSRC Interconnect (/sys/kernel/helio-dvfsrc)"
+    ui_print "!"
+    ui_print "! Installation ABORTED to protect your device."
+    ui_print "--------------------------------------------------"
+    abort "! Incompatible Chipset / Device Target"
+    exit 1
+fi
 
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
