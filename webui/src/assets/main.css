@@ -555,9 +555,10 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -565,6 +566,21 @@ html, body, #app {
   user-select: none;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+.btn-md3-sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 10.5px;
+  border-radius: 8px;
+}
+
+.btn-md3-lg {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 12px;
+  border-radius: 12px;
 }
 
 .btn-md3:active {
@@ -604,25 +620,52 @@ html, body, #app {
 }
 
 .btn-icon-only {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.btn-icon-only.btn-md3-sm {
+  width: 28px;
+  height: 28px;
 }
 
 .input-md3 {
   background: var(--surface-container-lowest);
   border: 1px solid var(--outline-variant);
   color: var(--on-surface);
-  padding: 8px 12px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--font-mono);
   outline: none;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .input-md3:focus {
+  border-color: var(--primary);
+}
+
+.select-md3 {
+  height: 32px;
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.select-md3:focus {
   border-color: var(--primary);
 }
 
@@ -634,9 +677,11 @@ html, body, #app {
 .badge-pill {
   padding: 3px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .badge-pill.green { background: rgba(129, 199, 132, 0.18); color: #81c784; }

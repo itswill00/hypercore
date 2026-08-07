@@ -6,7 +6,7 @@
         <div class="page-header-title">Detected Games</div>
         <div class="page-header-sub">Installed games configured for automated profile switching</div>
       </div>
-      <button class="btn-md3 btn-md3-primary" style="padding: 6px 12px; font-size: 11px;" @click="showPicker = true">
+      <button class="btn-md3 btn-md3-primary btn-md3-sm" @click="showPicker = true">
         <Icons name="plus" :size="14" />
         <span>Add game</span>
       </button>

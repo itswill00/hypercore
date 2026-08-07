@@ -26,7 +26,7 @@
         <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px; max-width: 260px; margin-left: auto; margin-right: auto;">
           Add installed games to automatically trigger high performance profiles when playing
         </div>
-        <button class="btn-md3 btn-md3-primary" style="margin-top: 14px; font-size: 11px;" @click="$emit('open-picker')">
+        <button class="btn-md3 btn-md3-primary btn-md3-sm" style="margin-top: 14px;" @click="$emit('open-picker')">
           <Icons name="plus" :size="14" />
           <span>Add game</span>
         </button>
@@ -92,16 +92,14 @@
             </select>
 
             <button
-              class="btn-md3 btn-md3-primary"
-              style="padding: 5px 10px; font-size: 11px; height: 30px;"
+              class="btn-md3 btn-md3-primary btn-md3-sm"
               @click="launch(item.pkg)"
             >
               <Icons name="rocket" :size="13" />
               <span>Launch</span>
             </button>
             <button
-              class="btn-md3 btn-md3-danger btn-icon-only"
-              style="width: 30px; height: 30px;"
+              class="btn-md3 btn-md3-danger btn-icon-only btn-md3-sm"
               title="Remove game"
               @click="remove(item.pkg)"
             >

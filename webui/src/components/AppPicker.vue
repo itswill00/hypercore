@@ -131,7 +131,7 @@
                   </div>
 
                   <button
-                    class="btn-md3 btn-md3-primary btn-add"
+                    class="btn-md3 btn-md3-primary btn-md3-sm btn-add"
                     @click.stop="pickApp(app.pkg)"
                   >
                     <Icons name="plus" :size="13" />

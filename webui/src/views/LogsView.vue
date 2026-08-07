@@ -7,16 +7,16 @@
         <div class="page-header-sub">History of profile switches and system events</div>
       </div>
       <div style="display: flex; gap: 6px; align-items: center;">
-        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Reset terms disclaimer" @click="resetDisclaimer">
+        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Reset terms disclaimer" @click="resetDisclaimer">
           Terms
         </button>
-        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Copy all logs" @click="copyLog">
+        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Copy all logs" @click="copyLog">
           Copy
         </button>
-        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px;" title="Export Bugreport ZIP" @click="saveLog">
+        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Export Bugreport ZIP" @click="saveLog">
           Export
         </button>
-        <button class="btn-md3 btn-md3-secondary" style="padding: 6px 10px; font-size: 11px; color: var(--error);" title="Clear log content" @click="clearLog">
+        <button class="btn-md3 btn-md3-danger btn-md3-sm" title="Clear log content" @click="clearLog">
           Clear
         </button>
       </div>

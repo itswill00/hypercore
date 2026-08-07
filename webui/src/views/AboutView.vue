@@ -243,7 +243,7 @@
               <div class="row-sub">Lead Developer &amp; Architect</div>
             </div>
           </div>
-          <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 10px;" @click.stop="openExternal('https://t.me/noticesa')">
+          <button class="btn-md3 btn-md3-secondary btn-md3-sm" @click.stop="openExternal('https://t.me/noticesa')">
             Telegram
           </button>
         </div>
@@ -258,7 +258,7 @@
               <div class="row-sub">Inspiration &amp; Architecture Concepts (encore)</div>
             </div>
           </div>
-          <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 10px;" @click.stop="openExternal('https://github.com/Rem01Gaming')">
+          <button class="btn-md3 btn-md3-secondary btn-md3-sm" @click.stop="openExternal('https://github.com/Rem01Gaming')">
             GitHub
           </button>
         </div>
@@ -277,7 +277,7 @@
               <div class="row-sub">Hardware &amp; Game Testing</div>
             </div>
           </div>
-          <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 10px;" @click.stop="openExternal('https://t.me/Rafzzz182')">
+          <button class="btn-md3 btn-md3-secondary btn-md3-sm" @click.stop="openExternal('https://t.me/Rafzzz182')">
             Telegram
           </button>
         </div>
@@ -292,7 +292,7 @@
               <div class="row-sub">HyperOS &amp; Custom ROM Testing</div>
             </div>
           </div>
-          <button class="btn-md3 btn-md3-secondary" style="padding: 4px 10px; font-size: 10px;" @click.stop="openExternal('https://t.me/anotherside551')">
+          <button class="btn-md3 btn-md3-secondary btn-md3-sm" @click.stop="openExternal('https://t.me/anotherside551')">
             Telegram
           </button>
         </div>
