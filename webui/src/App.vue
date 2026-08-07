@@ -57,6 +57,9 @@ function onTouchStart(e) {
 function onTouchEnd(e) {
   if (!e.changedTouches || e.changedTouches.length !== 1) return
 
+  /* Disable global page swipe on /logs so user can freely scroll terminal console horizontally */
+  if (route.path === '/logs') return
+
   const touchEndX = e.changedTouches[0].clientX
   const touchEndY = e.changedTouches[0].clientY
   const deltaX = touchEndX - touchStartX
