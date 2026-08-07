@@ -422,7 +422,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
 
-            sysfs_write_fallback(devfreq_gov_nodes, "performance");
+            sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write_fallback(devfreq_min_nodes, "674000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "always_on");

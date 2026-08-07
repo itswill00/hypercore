@@ -227,7 +227,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 
         char curr_gpu_gov[64] = "";
         if (read_mali_governor(curr_gpu_gov, sizeof(curr_gpu_gov))) {
-            if (strstr(curr_gpu_gov, "performance") == NULL) {
+            if (strstr(curr_gpu_gov, "simple_ondemand") == NULL && strstr(curr_gpu_gov, "performance") == NULL) {
                 log_warn("Guard", "External Mali GPU governor mutation detected! Re-enforcing...");
                 return 1;
             }
