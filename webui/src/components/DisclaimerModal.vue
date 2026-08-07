@@ -2,79 +2,56 @@
   <transition name="disclaimer-fade">
     <div v-if="visible" class="disclaimer-overlay">
       <div class="disclaimer-card">
-        <h2 class="title">Terms of use & disclaimer</h2>
-        <p class="subtitle">Universal hypercore architecture</p>
+        <h2 class="title">Terms of Use &amp; Disclaimer</h2>
+        <p class="subtitle">HyperCore Architecture &amp; System Policies</p>
 
         <div class="content-box" ref="contentBox" @scroll="handleScroll">
           <div class="sec-block">
-            <div class="sec-title">1. Scope of system modifications</div>
+            <div class="sec-title">1. Scope of System Modifications</div>
             <p>
-              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, custom GPU Operating Performance Points (OPP), MediaTek GED DVFS parameters, CPU frequency governor limits, and dynamic thermal charging policies on your MediaTek MT6789 Family (Kernel 5.10.x) device.
+              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, MediaTek GED DVFS parameters, CPU frequency governor limits, and dynamic thermal charging policies on your MediaTek MT6789 Family device.
             </p>
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">2. Complete developer release of liability</div>
+            <div class="sec-title">2. Complete Developer Release of Liability</div>
             <p>
-              All software routines, C daemon binaries, and kernel tunings are provided strictly on an <em>"as-is"</em> and <em>"as-available"</em> basis without warranties of any kind. The lead developer (<strong>@itswill00 / @noticesa</strong>) is explicitly and permanently released from any and all liability, claims, financial losses, hardware degradation, data corruption, soft reboots, bootloops, battery wear, or unexpected device malfunction arising directly or indirectly from the installation, execution, or misuse of this software.
+              All software routines, C daemon binaries, and kernel tunings are provided strictly on an <em>"as-is"</em> and <em>"as-available"</em> basis. The lead developer (<strong>@itswill00</strong>) is explicitly released from any liability, claims, data corruption, bootloops, or unexpected device malfunction arising from the installation or execution of this software.
             </p>
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">3. GPU Devfreq & MediaTek GED policies</div>
+            <div class="sec-title">3. GPU Devfreq &amp; Frame Rate Policies</div>
             <p>
-              HyperCore dynamically manages Mali-G57 GPU devfreq governors and GED frame boost parameters. While these adjustments eliminate vendor frequency caps and optimize frame delivery, operating the GPU at elevated performance states generates additional thermal output.
+              HyperCore dynamically manages Mali-G57 GPU devfreq governors and GED frame boost parameters. While these adjustments optimize frame delivery, operating the GPU at elevated performance states generates additional thermal output.
             </p>
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">4. Thermal boundaries & charging guard</div>
+            <div class="sec-title">4. Thermal Boundaries &amp; Charging Guard</div>
             <p>
-              The daemon monitors battery temperature in real time during gaming sessions and adjusts charge current limits dynamically (2A, 4A, 8A). You acknowledge that thermal guard triggers are hardware protections and attempting to manually bypass or tamper with thermal guard nodes may cause thermal throttling or accelerated battery wear.
+              The daemon monitors battery temperature in real time and adjusts charge current limits dynamically (1A, 1.8A, 2.5A). Attempting to manually bypass thermal guard nodes may cause thermal throttling or accelerated battery wear.
             </p>
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">5. System-background thread stability</div>
+            <div class="sec-title">5. System-Background Thread Stability</div>
             <p>
-              To preserve Android Binder dispatcher stability and prevent watchdog timeouts, system-background threads are strictly pinned to Little cores 0-3. Modifying these cgroup boundaries manually is unsupported and may trigger OS watchdog soft reboots.
+              To preserve Android OS stability and prevent watchdog timeouts, background threads are strictly pinned to Little cores 0-3. Modifying these cgroup boundaries manually is unsupported.
             </p>
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">6. Asynchronous memory compaction</div>
+            <div class="sec-title">6. Voluntary Operation &amp; Agreement</div>
             <p>
-              Memory management routines rely exclusively on kernel <code>kcompactd</code> proactive compaction. Synchronous writes to <code>/proc/sys/vm/compact_memory</code> are disabled to prevent kernel <code>mmap_lock</code> contention across memory zones.
+              You certify that you are operating this software voluntarily and assume personal responsibility for your device's operational stability.
             </p>
-          </div>
-
-          <div class="sec-block">
-            <div class="sec-title">7. Voluntary root operation & risk acceptance</div>
-            <p>
-              Executing root-level system daemons carries inherent risks. You certify that you are installing and operating this software voluntarily, understand the kernel-level changes being executed, and assume 100% personal responsibility for your device's operational stability and hardware integrity.
-            </p>
-          </div>
-
-          <div class="sec-block">
-            <div class="sec-title">8. Binding agreement confirmation</div>
-            <p>
-              By scrolling to the bottom of these terms and clicking "I agree & continue", you acknowledge that you have read, understood, and agreed to all 8 sections of this agreement.
-            </p>
-          </div>
-
-          <div class="scroll-completion-marker" :class="{ completed: hasScrolledToBottom }">
-            <Icons v-if="hasScrolledToBottom" name="check" :size="14" />
-            <span>{{ hasScrolledToBottom ? 'All terms read. You may now accept and proceed.' : 'Scroll further to reach the end of terms.' }}</span>
           </div>
         </div>
 
         <div class="progress-bar-bg" v-if="!hasScrolledToBottom">
           <div class="progress-bar-fill" :style="{ width: scrollProgress + '%' }"></div>
         </div>
-
-        <p v-if="!hasScrolledToBottom" class="scroll-hint">
-          Scroll down to read all terms ({{ scrollProgress }}%)
-        </p>
 
         <div class="option-row" @click="dontShowAgain = !dontShowAgain">
           <div class="checkbox-box" :class="{ checked: dontShowAgain }">
@@ -89,8 +66,7 @@
           :disabled="!hasScrolledToBottom"
           @click="acceptDisclaimer"
         >
-          <span>I agree & continue</span>
-          <Icons name="check" :size="16" />
+          <span>{{ hasScrolledToBottom ? 'I Agree & Continue' : 'Scroll down to read terms' }}</span>
         </button>
       </div>
     </div>
