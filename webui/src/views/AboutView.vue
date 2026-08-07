@@ -14,14 +14,60 @@
 
     <div class="content-area">
       
-      <!-- Module Identity Banner -->
-      <div class="about-app-banner">
-        <div class="app-banner-icon">
-          <Icons name="chip" :size="24" />
+      <!-- Module Identity Banner (Expandable Changelog) -->
+      <div
+        class="about-app-banner expandable-row clickable"
+        :class="{ 'is-expanded': expandedRows['changelog'] }"
+        @click="toggleExpand('changelog')"
+      >
+        <div class="row-header" style="padding: 0;">
+          <div class="row-left">
+            <div class="app-banner-icon">
+              <Icons name="chip" :size="24" />
+            </div>
+            <div class="app-banner-meta">
+              <div class="app-banner-title">HyperCore</div>
+              <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
+            </div>
+          </div>
+          <div class="row-val" style="margin-left: 8px;">
+            <span class="changelog-badge">Changelog</span>
+            <span class="expand-caret" :class="{ 'open': expandedRows['changelog'] }">▼</span>
+          </div>
         </div>
-        <div class="app-banner-meta">
-          <div class="app-banner-title">HyperCore</div>
-          <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
+
+        <div class="expanded-content">
+          <div class="expanded-inner" style="border-top: 1px dashed var(--outline-variant); margin-top: 12px; padding-top: 12px;">
+            <div class="changelog-timeline">
+              
+              <!-- v4.4 -->
+              <div class="changelog-release">
+                <div class="release-header">
+                  <span class="release-ver">v4.4 (Latest)</span>
+                  <span class="release-date">Current Build</span>
+                </div>
+                <ul class="changelog-bullets">
+                  <li><strong>Dynamic Hardware Limits Discovery</strong>: Auto-detect CPU/GPU min &amp; max frequencies dynamically.</li>
+                  <li><strong>Custom Governor Preservation</strong>: Preserves custom kernel developer governors (helix, sugov_ext, etc.).</li>
+                  <li><strong>Ultra-Smooth Interactive Profile</strong>: 200us CPU up-rate limit, 40ms down-rate, 55% GPU upthreshold &amp; GED smart boost.</li>
+                  <li><strong>MD3 WebUI Design System</strong>: Standardized component dimensions, edge-to-edge terminal logger, and vertical 3-dots action menu.</li>
+                </ul>
+              </div>
+
+              <!-- v4.3 -->
+              <div class="changelog-release">
+                <div class="release-header">
+                  <span class="release-ver">v4.3</span>
+                </div>
+                <ul class="changelog-bullets">
+                  <li>Implemented 0ms Non-Blocking IPC Socket Architecture.</li>
+                  <li>Added Android 14/15 HyperOS compatibility fixes.</li>
+                  <li>Optimized memory zram pressure tuning algorithm.</li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
         </div>
       </div>
 
@@ -366,18 +412,22 @@ function toggleExpand(key) {
 <style scoped>
 .about-app-banner {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   padding: 16px;
   background: var(--surface-container);
   border: 1px solid var(--surface-container-high);
   border-radius: 16px;
   margin-bottom: 16px;
+  transition: background 0.15s ease;
+}
+
+.about-app-banner:hover {
+  background: var(--surface-container-high);
 }
 
 .app-banner-icon {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   background: var(--primary-container);
   color: var(--on-primary-container);
@@ -389,6 +439,7 @@ function toggleExpand(key) {
 
 .app-banner-meta {
   min-width: 0;
+  flex: 1;
 }
 
 .app-banner-title {
@@ -402,7 +453,61 @@ function toggleExpand(key) {
   font-size: 11px;
   color: var(--on-surface-variant);
   margin-top: 2px;
-  line-height: 1.4;
+  line-height: 1.35;
+}
+
+.changelog-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  letter-spacing: 0.2px;
+}
+
+.changelog-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 2px;
+}
+
+.changelog-release {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.release-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.release-ver {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+}
+
+.release-date {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.6;
+}
+
+.changelog-bullets {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+}
+
+.changelog-bullets li {
+  margin-bottom: 2px;
 }
 
 .about-footer-text {
