@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+void detect_cpu_hardware_limits(void);
 void set_rate_limits(const char *up, const char *down);
 void apply_cpuset(void);
 void apply_cgroup_gaming_policy(int enable);

@@ -43,6 +43,11 @@ struct hw_nodes {
     char touch_thp_smooth[256];
     char touch_edge[256];
     char charge_control[256];
+    char boot_cpu_gov[64];
+    int  lit_hw_min_freq;
+    int  lit_hw_max_freq;
+    int  big_hw_min_freq;
+    int  big_hw_max_freq;
     int  has_sugov_ext;
     int  has_schedutil;
     int  inotify_fd;

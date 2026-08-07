@@ -1,8 +1,34 @@
-
 #include "cpu.hpp"
 #include "gpu.hpp"
 #include "memory.hpp"
 #include "io.hpp"
+#include "log.hpp"
+
+void detect_cpu_hardware_limits(void) {
+    /* 1. Capture boot scaling governor to preserve custom kernel developer tweaks */
+    if (g_nodes.boot_cpu_gov[0] == '\0') {
+        if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
+            strcpy(g_nodes.boot_cpu_gov, "schedutil");
+        }
+        log_info("Hardware", "Boot CPU Scaling Governor captured: '%s'", g_nodes.boot_cpu_gov);
+    }
+
+    /* 2. Read hardware min/max freq for policy0 (Little Cores) */
+    int lit_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq");
+    int lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq");
+    g_nodes.lit_hw_min_freq = (lit_min > 0) ? lit_min : 500000;
+    g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
+
+    /* 3. Read hardware min/max freq for policy6 (Big Cores) */
+    int big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq");
+    int big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
+    g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
+    g_nodes.big_hw_max_freq = (big_max > 0) ? big_max : FREQ_BIG_MAX;
+
+    log_info("Hardware", "CPU Freq Bounds - Little: [%d - %d kHz], Big: [%d - %d kHz]",
+             g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq,
+             g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq);
+}
 
 void set_rate_limits(const char *up, const char *down) {
     if (g_nodes.has_sugov_ext) {
@@ -108,18 +134,37 @@ void apply_cgroup_gaming_policy(int enable) {
     }
 }
 
-static const char *get_best_governor(void) {
+static const char *get_best_governor(profile_t prof) {
     char avail[256] = "";
-    if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors", avail, sizeof(avail))) {
+    if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors", avail, sizeof(avail))) {
+        return (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) ? "performance" : "schedutil";
+    }
+
+    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
+        if (strstr(avail, "performance")) return "performance";
+        if (strstr(avail, "prowess")) return "prowess";
+        if (strstr(avail, "impulse")) return "impulse";
+        if (strstr(avail, "blu_schedutil")) return "blu_schedutil";
+    } else {
+        /* For Interactive/Sleep: Preserve custom kernel boot governor if it's non-standard */
+        if (g_nodes.boot_cpu_gov[0] != '\0' &&
+            strcmp(g_nodes.boot_cpu_gov, "performance") != 0 &&
+            strcmp(g_nodes.boot_cpu_gov, "powersave") != 0 &&
+            strstr(avail, g_nodes.boot_cpu_gov)) {
+            return g_nodes.boot_cpu_gov;
+        }
+        if (strstr(avail, "helix_schedutil")) return "helix_schedutil";
+        if (strstr(avail, "electroutil")) return "electroutil";
         if (strstr(avail, "reflex")) return "reflex";
         if (strstr(avail, "sugov_ext")) return "sugov_ext";
     }
+
     return "schedutil";
 }
 
 void apply_profile(profile_t prof, int tier, int gpu_load) {
     (void)gpu_load;
-    const char *gov = get_best_governor();
+    const char *gov = get_best_governor(prof);
 
     apply_cgroup_gaming_policy(prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
 
@@ -127,7 +172,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         case PROFILE_Sleep: {
             g_state.app_boost_ticks = 0;
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, 1000000, 725000, 850000, "10000", "500");
+            set_cpu_freqs(g_nodes.lit_hw_min_freq, 1000000, g_nodes.big_hw_min_freq, 850000, "10000", "500");
             set_io_nr_requests("32");
             set_read_ahead("128");
             sysfs_write("/dev/cpuset/background/cpus", "0-1");
@@ -222,10 +267,10 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         }
 
         case PROFILE_Interactive: {
-            int big_max = (tier >= 3) ? 2000000 : FREQ_BIG_MAX;
+            int big_max = (tier >= 3) ? 2000000 : g_nodes.big_hw_max_freq;
             int big_min = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
             set_cpu_governor(gov);
-            set_cpu_freqs(500000, FREQ_LITTLE_MAX, big_min, big_max, "200", "40000");
+            set_cpu_freqs(g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq, big_min, big_max, "200", "40000");
             set_io_nr_requests("128");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
@@ -331,8 +376,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
-            set_cpu_governor("performance");
-            set_cpu_freqs(1400000, FREQ_LITTLE_MAX, 1800000, FREQ_BIG_MAX, "200", "30000");
+            set_cpu_governor(gov);
+            set_cpu_freqs(1400000, g_nodes.lit_hw_max_freq, 1800000, g_nodes.big_hw_max_freq, "200", "30000");
             set_io_nr_requests("256");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",

@@ -280,6 +280,7 @@ int main(int argc, char *argv[]) {
 
     log_info("Daemon", "HyperCore v4.4 started.");
 
+    detect_cpu_hardware_limits();
     apply_cpuset();
     apply_memory_tuning();
     apply_io_tuning();
