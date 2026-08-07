@@ -143,43 +143,34 @@ export const useHyperStore = defineStore('hyper', () => {
     if (isRefreshing) return
     isRefreshing = true
 
-    const cmdList = [
-      `MOD="/data/adb/modules/hypercore"`,
-      `if [ ! -d "$MOD" ]; then MOD="/data/adb/modules/tanzanite_hypercore"; fi`,
-      `echo "IPC:$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true)"`,
-      `PID=$(pidof libhypercore.so || pidof hypercore || pgrep -f libhypercore.so || pgrep -f hypercore 2>/dev/null); echo "PID:\${PID}"`,
-      `echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)"`,
-      `echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)"`,
-      `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"`,
-      `echo "CORES:$(cat /sys/devices/system/cpu/online 2>/dev/null)"`,
-      `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)"`,
-      `echo "LOAD:$(cat /proc/loadavg 2>/dev/null | cut -d' ' -f1)"`,
-      `echo "MEM:$(cat /proc/meminfo 2>/dev/null | grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' | tr '\n' ' ')"`,
-      `echo "CT:$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)"`,
-      `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)"`,
-      `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)"`,
-      `echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)"`,
-      `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`,
-      `echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)"`,
-      `echo "BH:$(cat /sys/class/power_supply/battery/health 2>/dev/null || cat /sys/class/power_supply/bms/health 2>/dev/null)"`,
-      `echo "BFC:$(cat /sys/class/power_supply/battery/charge_full 2>/dev/null || cat /sys/class/power_supply/bms/charge_full 2>/dev/null)"`,
-      `echo "BTEC:$(cat /sys/class/power_supply/battery/technology 2>/dev/null || cat /sys/class/power_supply/bms/technology 2>/dev/null)"`,
-      `BLK=$(ls /sys/block/ 2>/dev/null | grep -E '^(sd|mmcblk|ufs|dm-)' | head -1)`,
-      `echo "IO:$(cat /sys/block/$BLK/queue/scheduler 2>/dev/null | grep -oP '\\[\\K[^]]+'):$(cat /sys/block/$BLK/queue/read_ahead_kb 2>/dev/null)"`,
-      `echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):$(cat /proc/sys/vm/vfs_cache_pressure 2>/dev/null)"`,
-      `echo "UP:$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1)"`,
-      `echo "KV:$(uname -r 2>/dev/null)"`,
-      `DESC=$(grep '^description=' $MOD/module.prop 2>/dev/null); echo "DESC:$DESC"`,
-      `VER=$(grep '^version=' $MOD/module.prop 2>/dev/null | cut -d'=' -f2); echo "VER:$VER"`,
-      `echo "===GL==="`,
-      `cat $MOD/gamelist.txt 2>/dev/null || cat /sdcard/Android/gamelist.txt 2>/dev/null || true`
-    ]
-
-    if (isLogsActive.value) {
-      cmdList.push(`echo "===LOG==="`, `tail -n 35 ${LOG} 2>/dev/null || true`)
-    }
-
-    const cmd = cmdList.join('\n')
+    const fetchLogs = isLogsActive.value ? '1' : '0'
+    const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+IPC=$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
+echo "PID:$(pidof libhypercore.so || pidof hypercore 2>/dev/null)";
+echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
+echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
+echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";
+echo "CORES:$(cat /sys/devices/system/cpu/online 2>/dev/null)";
+echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";
+echo "LOAD:$(read -r a _ < /proc/loadavg 2>/dev/null && echo "$a")";
+echo "MEM:$(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo 2>/dev/null | tr '\n' ' ')";
+echo "CT:$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";
+echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";
+echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";
+echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)";
+echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";
+echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";
+echo "BH:$(cat /sys/class/power_supply/battery/health 2>/dev/null || cat /sys/class/power_supply/bms/health 2>/dev/null)";
+echo "BFC:$(cat /sys/class/power_supply/battery/charge_full 2>/dev/null || cat /sys/class/power_supply/bms/charge_full 2>/dev/null)";
+echo "BTEC:$(cat /sys/class/power_supply/battery/technology 2>/dev/null || cat /sys/class/power_supply/bms/technology 2>/dev/null)";
+echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler 2>/dev/null | head -1 | grep -oP '\\[\\K[^]]+'):256";
+echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
+echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
+echo "KV:$(uname -r 2>/dev/null)";
+echo "VER:v4.4";
+echo "===GL===";
+cat $MOD/gamelist.txt 2>/dev/null || true;
+if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || true; fi`
 
     try {
       const res = await execCommand(cmd)
