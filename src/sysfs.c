@@ -47,8 +47,8 @@ void sysfs_write(const char *path, const char *val) {
     if (fd < 0) {
         static time_t s_last_write_err = 0;
         time_t now = time(NULL);
-        if (now - s_last_write_err >= 10) {
-            log_warn("Sysfs", "Node write failed or inaccessible: '%s' = '%s'", path, val);
+        if (now - s_last_write_err >= 60) {
+            log_info("Kernel", "Vendor sysfs node skipped (target: '%s')", path);
             s_last_write_err = now;
         }
         return;
@@ -70,8 +70,8 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!written && paths[0] != NULL) {
         static time_t s_last_fb_err = 0;
         time_t now = time(NULL);
-        if (now - s_last_fb_err >= 10) {
-            log_warn("Sysfs", "All fallback candidate paths failed for payload '%s' (primary target: '%s')", val, paths[0]);
+        if (now - s_last_fb_err >= 60) {
+            log_info("Kernel", "Vendor kernel node skipped safely (target: '%s')", paths[0]);
             s_last_fb_err = now;
         }
     }
