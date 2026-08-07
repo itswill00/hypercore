@@ -365,10 +365,28 @@ echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/
   async function restartDaemon() {
     loading.value = true
     try {
-      await execCommand(`pkill -9 -x libhypercore.so 2>/dev/null; pkill -9 -x hypercore 2>/dev/null; sleep 1; nohup ${MOD}/system/bin/libhypercore.so >/dev/null 2>&1 &`)
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+pkill -15 -f libhypercore.so 2>/dev/null || pkill -15 -f hypercore 2>/dev/null || true;
+sleep 0.3;
+pkill -9 -f libhypercore.so 2>/dev/null || true;
+rm -f $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
+nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
+      await execCommand(cmd)
+
+      let started = false
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 250))
+        const check = await execCommand('MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore"; echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true')
+        if (check && check.includes('"status":"ok"')) {
+          started = true
+          break
+        }
+      }
+
       await refresh()
-      return 'Daemon restarted'
+      return started ? 'Daemon restarted & active' : 'Daemon start requested'
+    } catch (e) {
+      return 'Failed to restart daemon'
     } finally {
       loading.value = false
     }
