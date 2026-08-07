@@ -1,24 +1,38 @@
 <template>
-  <div class="logs-page-container">
+  <div class="logs-page-container" @click="closeMenu">
     
     <div class="page-header">
       <div>
         <div class="page-header-title">Activity Log</div>
         <div class="page-header-sub">History of profile switches and system events</div>
       </div>
-      <div style="display: flex; gap: 6px; align-items: center;">
-        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Reset terms disclaimer" @click="resetDisclaimer">
-          Terms
+      <div class="menu-relative-container" @click.stop>
+        <button
+          class="btn-icon-md3"
+          title="Log options"
+          @click="toggleMenu"
+          :class="{ 'active': menuOpen }"
+        >
+          <Icons name="more-vertical" :size="18" />
         </button>
-        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Copy all logs" @click="copyLog">
-          Copy
-        </button>
-        <button class="btn-md3 btn-md3-secondary btn-md3-sm" title="Export Bugreport ZIP" @click="saveLog">
-          Export
-        </button>
-        <button class="btn-md3 btn-md3-danger btn-md3-sm" title="Clear log content" @click="clearLog">
-          Clear
-        </button>
+
+        <Transition name="menu-pop">
+          <div v-if="menuOpen" class="dropdown-menu-md3">
+            <button class="menu-item" @click="handleAction(copyLog)">
+              <span>Copy All Logs</span>
+            </button>
+            <button class="menu-item" @click="handleAction(saveLog)">
+              <span>Export Bugreport</span>
+            </button>
+            <button class="menu-item" @click="handleAction(resetDisclaimer)">
+              <span>Terms Disclaimer</span>
+            </button>
+            <div class="menu-divider"></div>
+            <button class="menu-item menu-item-danger" @click="handleAction(clearLog)">
+              <span>Clear Log</span>
+            </button>
+          </div>
+        </Transition>
       </div>
     </div>
 
@@ -54,9 +68,25 @@
 <script setup>
 import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
+import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
+
+const menuOpen = ref(false)
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function closeMenu() {
+  menuOpen.value = false
+}
+
+function handleAction(fn) {
+  closeMenu()
+  fn()
+}
 
 const logContainer = ref(null)
 const autoScroll = ref(true)
@@ -288,6 +318,95 @@ onUnmounted(() => {
 .txt-start {
   color: #e2e5ec;
   font-weight: 600;
+}
+
+.menu-relative-container {
+  position: relative;
+}
+
+.btn-icon-md3 {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: var(--surface-container-high);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-md3:active,
+.btn-icon-md3.active {
+  background: var(--surface-container-highest);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: scale(0.94);
+}
+
+.dropdown-menu-md3 {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 170px;
+  background: #16181e;
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.menu-item:hover,
+.menu-item:active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.menu-item-danger {
+  color: #f87171;
+}
+
+.menu-item-danger:hover,
+.menu-item-danger:active {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--surface-container-high);
+  margin: 4px 6px;
+}
+
+.menu-pop-enter-active,
+.menu-pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.menu-pop-enter-from,
+.menu-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.92) translateY(-6px);
 }
 
 .log-line-enter-active {

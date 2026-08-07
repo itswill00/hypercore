@@ -141,6 +141,11 @@
       <circle cx="12" cy="5" r="3.2" fill="currentColor" stroke="none" />
       <path d="M10 9h4c.83 0 1.5.67 1.5 1.5l1.2 5.5c.15.68-.37 1.3-.1 1.3H14v4.2c0 .83-.67 1.5-1.5 1.5S11 22.33 11 21.5V17.3H9.4c.27 0-.25-.62-.1-1.3L10.5 10.5C10.5 9.67 10 9 10 9z" fill="currentColor" stroke="none" />
     </g>
+    <g v-else-if="name === 'more-vertical' || name === 'dots'">
+      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+    </g>
   </svg>
 </template>
 
