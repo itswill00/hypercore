@@ -413,15 +413,28 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 if (bat_temp > 1000) bat_temp /= 1000;
                 else if (bat_temp > 100) bat_temp /= 10;
 
-                if (bat_temp >= 42) {
+                if (bat_temp >= 45) {
+                    /* Thermal Protection: Suspend charging to protect battery & reduce heat */
+                    sysfs_write(g_nodes.charge_control, "0");
+                    sysfs_write("/sys/class/power_supply/battery/charging_enabled", "0");
+                    sysfs_write("/sys/class/power_supply/battery/input_suspend", "1");
+                } else if (bat_temp >= 42) {
                     sysfs_write(g_nodes.charge_control, "2");
+                    sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
+                    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
                 } else if (bat_temp >= 37) {
                     sysfs_write(g_nodes.charge_control, "4");
+                    sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
+                    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
                 } else {
                     sysfs_write(g_nodes.charge_control, "8");
+                    sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
+                    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
                 }
             } else {
                 sysfs_write(g_nodes.charge_control, "8");
+                sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
+                sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
             }
             break;
         }
