@@ -349,10 +349,12 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
   async function flushRam() {
     loading.value = true
     try {
-      await execCommand('sync; echo 3 > /proc/sys/vm/drop_caches; (echo 1 > /proc/sys/vm/compact_memory &)')
-      await new Promise(resolve => setTimeout(resolve, 600))
+      const cmd = `MOD="/data/adb/modules/hypercore"; [ ! -d "$MOD" ] && MOD="/data/adb/modules/tanzanite_hypercore";
+echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory 2>/dev/null)`
+      await execCommand(cmd)
+      await new Promise(resolve => setTimeout(resolve, 400))
       await refresh()
-      return `RAM cleared (${ramUsage.value})`
+      return `Deep RAM & Cache purge complete (${ramUsage.value})`
     } catch (e) {
       return 'Failed to clear RAM'
     } finally {

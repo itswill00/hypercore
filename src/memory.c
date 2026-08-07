@@ -1,5 +1,6 @@
 
 #include "memory.hpp"
+#include "log.hpp"
 
 static int s_total_ram_kb = 0;
 
@@ -65,4 +66,25 @@ void tune_memory_pressure(void) {
         sysfs_write("/proc/sys/vm/swappiness", "60");
         sysfs_write("/proc/sys/vm/compaction_proactiveness", "20");
     }
+}
+
+int trigger_purge_ram_cache(void) {
+    /* 1. Sync file system buffers to disk */
+    sync();
+
+    /* 2. Clear PageCache, dentries, and inodes via drop_caches (Level 3) */
+    sysfs_write("/proc/sys/vm/drop_caches", "3");
+
+    /* 3. Compact physical RAM page fragmentation */
+    sysfs_write("/proc/sys/vm/compact_memory", "1");
+
+    /* 4. Flush stale cached memory to ZRAM */
+    sysfs_write("/proc/sys/vm/stat_interval", "1");
+    sysfs_write("/proc/sys/vm/compaction_proactiveness", "50");
+
+    /* 5. Force Android lowmemorykiller / lmkd reclaim scan */
+    sysfs_write("/sys/module/lowmemorykiller/parameters/minfree", "1");
+
+    log_info("Memory", "RAM & Cache deep purge executed: drop_caches(3), compact_memory, ZRAM flush completed.");
+    return 1;
 }

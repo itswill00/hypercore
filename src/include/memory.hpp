@@ -11,6 +11,7 @@ extern "C" {
 
 void apply_memory_tuning(void);
 void tune_memory_pressure(void);
+int trigger_purge_ram_cache(void);
 
 #ifdef __cplusplus
 }

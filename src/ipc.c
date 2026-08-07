@@ -1,6 +1,7 @@
 
 #include "ipc.hpp"
 #include "sysfs.hpp"
+#include "memory.hpp"
 #include "log.hpp"
 #include "thermal.hpp"
 #include <sys/socket.h>
@@ -121,6 +122,10 @@ static void process_client(int client_fd) {
             bat_health, bat_status, bat_tech);
 
         write(client_fd, json, strlen(json));
+    } else if (strncmp(req, "PURGE_RAM", 9) == 0 || strncmp(req, "CLEAR_CACHE", 11) == 0) {
+        trigger_purge_ram_cache();
+        const char *res = "{\"status\":\"ok\",\"message\":\"RAM and Cache purged successfully\"}\n";
+        write(client_fd, res, strlen(res));
     } else if (strncmp(req, "PING", 4) == 0) {
         const char *pong = "PONG\n";
         write(client_fd, pong, strlen(pong));
