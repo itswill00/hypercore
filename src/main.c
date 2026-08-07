@@ -423,7 +423,7 @@ int main(int argc, char *argv[]) {
                 sysfs_write(g_nodes.charge_control, "8");
             }
         } else if (g_state.current_profile == PROFILE_Interactive) {
-            enforce_interactive_gpu_polling(20);
+            enforce_interactive_gpu_polling(50);
         }
 
         tune_memory_pressure();
