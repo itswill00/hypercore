@@ -8,7 +8,7 @@ done
 sleep 2
 
 # Kill previous running daemon instances cleanly using exact process name matching (-x)
-# DO NOT use 'pkill -f hypercore' because it matches 'tanzanite_hypercore' in script path!
+# DO NOT use 'pkill -f hypercore' because it matches module directory path!
 pkill -x libhypercore.so >/dev/null 2>&1
 pkill -x hypercore >/dev/null 2>&1
 

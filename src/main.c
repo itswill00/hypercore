@@ -61,10 +61,6 @@ static void init_hardware_nodes(void) {
 
     if (access("/data/adb/modules/hypercore", F_OK) == 0) {
         strcpy(g_nodes.mod_dir, "/data/adb/modules/hypercore");
-    } else if (access("/data/adb/modules/tanzanite_hypercore", F_OK) == 0) {
-        strcpy(g_nodes.mod_dir, "/data/adb/modules/tanzanite_hypercore");
-    } else if (access("/data/adb/modules/tanzanite_hyperflow", F_OK) == 0) {
-        strcpy(g_nodes.mod_dir, "/data/adb/modules/tanzanite_hyperflow");
     } else {
         strcpy(g_nodes.mod_dir, "/sdcard/Android");
     }

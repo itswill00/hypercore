@@ -35,7 +35,6 @@ done
 # Clean up symlinks & lock files
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
 rm -f /data/adb/modules/hypercore/.hypercore_lock 2>/dev/null
-rm -f /data/adb/modules/tanzanite_hypercore/.hypercore_lock 2>/dev/null
 rm -f /data/local/tmp/.hypercore_lock 2>/dev/null
 rm -f /sdcard/Android/.hypercore_lock 2>/dev/null
 rm -f /sdcard/Android/hypercore.log 2>/dev/null

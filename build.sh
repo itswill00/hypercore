@@ -135,9 +135,6 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     if su -c "
         pkill -9 -x libhypercore.so 2>/dev/null || true
         MOD_TARGET=\"/data/adb/modules/hypercore\"
-        if [ ! -d \"\$MOD_TARGET\" ]; then
-            MOD_TARGET=\"/data/adb/modules/tanzanite_hypercore\"
-        fi
         if [ -d \"\$MOD_TARGET\" ]; then
             mkdir -p \$MOD_TARGET/system/bin
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
