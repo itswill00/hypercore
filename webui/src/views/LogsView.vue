@@ -1,5 +1,5 @@
 <template>
-  <div style="height: 100%; display: flex; flex-direction: column;">
+  <div class="logs-page-container">
     
     <div class="page-header">
       <div>
@@ -22,33 +22,31 @@
       </div>
     </div>
 
-    <div class="content-area" style="display: flex; flex-direction: column; height: 100%; gap: 8px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 2px;">
-        <span style="font-size: 12px; color: var(--on-surface-variant); font-weight: 500;">Console output</span>
-        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--on-surface-variant); opacity: 0.6;">
-          {{ parsedLogs.length }} entries
-        </span>
-      </div>
+    <div class="console-sub-bar">
+      <span class="sub-bar-title">Console output</span>
+      <span class="sub-bar-count">
+        {{ parsedLogs.length }} entries
+      </span>
+    </div>
 
-      <div
-        ref="logContainer"
-        class="terminal-box"
-        @scroll="handleScroll"
-      >
-        <TransitionGroup name="log-line" tag="div">
-          <div
-            v-for="(item, idx) in parsedLogs"
-            :key="idx"
-            class="terminal-line"
-            :style="{ '--i': Math.min(idx, 8) }"
-          >
-            <span class="t-stamp" v-if="item.stamp">{{ item.stamp }}</span>
-            <span v-if="item.level" class="t-level" :class="item.levelClass">{{ item.level }}</span>
-            <span v-if="item.tag" class="t-tag">{{ item.tag }}</span>
-            <span class="t-text" :class="item.textClass">{{ item.msg }}</span>
-          </div>
-        </TransitionGroup>
-      </div>
+    <div
+      ref="logContainer"
+      class="terminal-viewport"
+      @scroll="handleScroll"
+    >
+      <TransitionGroup name="log-line" tag="div" class="terminal-content">
+        <div
+          v-for="(item, idx) in parsedLogs"
+          :key="idx"
+          class="terminal-line"
+          :style="{ '--i': Math.min(idx, 8) }"
+        >
+          <span class="t-stamp" v-if="item.stamp">{{ item.stamp }}</span>
+          <span v-if="item.level" class="t-level" :class="item.levelClass">{{ item.level }}</span>
+          <span v-if="item.tag" class="t-tag">{{ item.tag }}</span>
+          <span class="t-text" :class="item.textClass">{{ item.msg }}</span>
+        </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -167,36 +165,75 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.terminal-box {
+.logs-page-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #08080a;
+}
+
+.console-sub-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #0d0e12;
+  border-bottom: 1px solid var(--surface-container-high);
+}
+
+.sub-bar-title {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.sub-bar-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--on-surface-variant);
+  opacity: 0.6;
+}
+
+.terminal-viewport {
   flex: 1;
-  background: #0b0b0e;
-  border: 1px solid var(--surface-container-high);
-  border-radius: 12px;
-  padding: 12px;
+  background: #070709;
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
   overflow-y: auto;
   box-sizing: border-box;
+  padding: 8px 12px calc(72px + var(--window-inset-bottom, 0px)) 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-container-highest) transparent;
+}
+
+.terminal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .terminal-line {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-radius: 4px;
   line-height: 1.45;
-  transition: background 0.15s ease;
+  transition: background 0.12s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .terminal-line:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .t-stamp {
   color: var(--on-surface-variant);
-  opacity: 0.5;
+  opacity: 0.45;
   font-size: 10px;
   flex-shrink: 0;
   padding-top: 1px;
