@@ -236,7 +236,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 
     /* Soft enforcement for non-Gaming profiles via polling guard */
     if (current_prof == PROFILE_Interactive) {
-        enforce_interactive_gpu_polling(20);
+        enforce_interactive_gpu_polling(50);
     } else if (current_prof == PROFILE_Sleep) {
         enforce_interactive_gpu_polling(100);
     }
