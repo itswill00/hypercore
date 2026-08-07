@@ -401,6 +401,13 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
                 NULL
             };
+            const char *devfreq_poll_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/polling_interval",
+                "/sys/class/devfreq/soc:mali/polling_interval",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
+                NULL
+            };
             const char *power_policy_nodes[] = {
                 "/sys/devices/platform/soc/13000000.mali/power_policy",
                 "/sys/devices/platform/soc/soc:mali/power_policy",
@@ -423,6 +430,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             };
 
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
+            sysfs_write_fallback(devfreq_poll_nodes, "20");
             sysfs_write_fallback(devfreq_min_nodes, "674000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
             sysfs_write_fallback(power_policy_nodes, "always_on");
