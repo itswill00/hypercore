@@ -7,7 +7,7 @@
         <div class="page-header-title">About Device</div>
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
-      <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
+      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
         {{ store.moduleVersion || 'v4.4' }}
       </span>
     </div>
@@ -27,7 +27,7 @@
 
       <!-- Device Status Group -->
       <div class="section-title">Device Status</div>
-      <div class="md3-list-group" style="margin-bottom: 14px;">
+      <div class="md3-list-group">
         
         <!-- Thermal Row -->
         <div
@@ -54,7 +54,7 @@
               <div class="stat-grid-2">
                 <div class="stat-box">
                   <div class="stat-lbl">CPU temp</div>
-                  <div class="stat-num" :class="store.tempColor">{{ store.cpuTemp }}°C</div>
+                  <div class="stat-num">{{ store.cpuTemp }}°C</div>
                 </div>
                 <div class="stat-box">
                   <div class="stat-lbl">Battery temp</div>
@@ -70,7 +70,7 @@
                 </div>
                 <div class="stat-box">
                   <div class="stat-lbl">Thermal tier</div>
-                  <div class="stat-num" :class="store.thermalColor">{{ store.thermalTier }}</div>
+                  <div class="stat-num">{{ store.thermalTier }}</div>
                 </div>
                 <div class="stat-box">
                   <div class="stat-lbl">Power guard</div>
@@ -136,7 +136,7 @@
 
       <!-- Hardware & System Group -->
       <div class="section-title">Hardware &amp; System</div>
-      <div class="md3-list-group" style="margin-bottom: 14px;">
+      <div class="md3-list-group">
         
         <!-- Chipset Row -->
         <div
@@ -210,7 +210,7 @@
             </div>
           </div>
           <div class="row-val">
-            <span class="badge-pill purple">MT6789</span>
+            <span class="badge-pill">MT6789</span>
           </div>
         </div>
 
@@ -225,7 +225,7 @@
             </div>
           </div>
           <div class="row-val">
-            <span class="badge-pill green">0ms IPC</span>
+            <span class="badge-pill">0ms IPC</span>
           </div>
         </div>
       </div>
@@ -235,7 +235,7 @@
       <div class="md3-list-group">
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/itswill00')">
           <div class="row-left">
-            <div class="icon-badge primary">
+            <div class="icon-badge">
               <Icons name="pictogram-user" :size="18" />
             </div>
             <div class="row-meta">
@@ -250,7 +250,7 @@
 
         <div class="md3-list-row clickable" @click="openExternal('https://github.com/Rem01Gaming')">
           <div class="row-left">
-            <div class="icon-badge secondary">
+            <div class="icon-badge">
               <Icons name="pictogram-user" :size="18" />
             </div>
             <div class="row-meta">
@@ -337,7 +337,7 @@
               <div class="row-sub">GNU General Public License v3.0 (GPL-3.0)</div>
             </div>
           </div>
-          <span class="badge-pill green">GPL v3</span>
+          <span class="badge-pill">GPL v3</span>
         </div>
       </div>
 
