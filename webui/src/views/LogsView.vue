@@ -203,6 +203,7 @@ onUnmounted(() => {
   font-size: 11px;
   line-height: 1.5;
   overflow-y: auto;
+  overflow-x: auto;
   box-sizing: border-box;
   padding: 8px 12px calc(72px + var(--window-inset-bottom, 0px)) 12px;
   scrollbar-width: thin;
@@ -213,17 +214,18 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: max-content;
 }
 
 .terminal-line {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   padding: 3px 6px;
   border-radius: 4px;
   line-height: 1.45;
   transition: background 0.12s ease;
-  width: 100%;
+  white-space: nowrap;
   box-sizing: border-box;
 }
 
@@ -270,10 +272,8 @@ onUnmounted(() => {
 
 .t-text {
   color: var(--on-surface);
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
-  white-space: pre-wrap;
+  white-space: nowrap;
+  word-break: normal;
 }
 
 .txt-gaming {
