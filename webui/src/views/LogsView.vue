@@ -214,9 +214,8 @@ onUnmounted(() => {
 .sub-bar-title {
   font-size: 11px;
   color: var(--on-surface-variant);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .sub-bar-count {
