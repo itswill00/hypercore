@@ -410,32 +410,19 @@ int main(int argc, char *argv[]) {
             g_state.thermal_tier = thermal_tier;
         }
 
-        if (g_state.is_charging) {
-            if (bat_temp >= 45) {
-                /* Thermal Protection: Suspend charging to protect battery & reduce heat */
-                sysfs_write(g_nodes.charge_control, "0");
-                sysfs_write("/sys/class/power_supply/battery/charging_enabled", "0");
-                sysfs_write("/sys/class/power_supply/battery/input_suspend", "1");
-            } else if (bat_temp >= 42) {
-                sysfs_write(g_nodes.charge_control, "2");
-                sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
-                sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
-            } else if (bat_temp >= 37) {
-                sysfs_write(g_nodes.charge_control, "4");
-                sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
-                sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
+        if (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA) {
+            if (g_state.is_charging) {
+                if (bat_temp >= 42) {
+                    sysfs_write(g_nodes.charge_control, "2");
+                } else if (bat_temp >= 37) {
+                    sysfs_write(g_nodes.charge_control, "4");
+                } else {
+                    sysfs_write(g_nodes.charge_control, "8");
+                }
             } else {
                 sysfs_write(g_nodes.charge_control, "8");
-                sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
-                sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
             }
-        } else {
-            sysfs_write(g_nodes.charge_control, "8");
-            sysfs_write("/sys/class/power_supply/battery/charging_enabled", "1");
-            sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
-        }
-
-        if (g_state.current_profile == PROFILE_Interactive) {
+        } else if (g_state.current_profile == PROFILE_Interactive) {
             enforce_interactive_gpu_polling(20);
         }
 
