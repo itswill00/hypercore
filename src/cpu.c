@@ -175,12 +175,18 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_cpu_freqs(g_nodes.lit_hw_min_freq, 1000000, g_nodes.big_hw_min_freq, 850000, "10000", "500");
             set_io_nr_requests("32");
             set_read_ahead("128");
-            sysfs_write("/dev/cpuset/background/cpus", "0-1");
-            sysfs_write("/dev/cpuset/system-background/cpus", "0-1");
-            sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "20");
-            sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "30");
+            /* [C-2 FIX] NEVER restrict system-background to < Little cores 0-3.
+             * AudioFlinger, SensorService, InputReader, and all hardware HAL helper
+             * threads run inside system-background cgroup. Capping cpus to 0-1 or
+             * uclamp.max to 30 starves Binder threads, causing system_server Watchdog
+             * timeouts and force reboots. See GEMINI.md §4.1. */
+            sysfs_write("/dev/cpuset/background/cpus", "0-3");
+            /* system-background/cpus intentionally NOT restricted in Sleep profile */
+            sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "30");
+            sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
             sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");
             sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "40");
+
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
                 "/sys/class/devfreq/soc:mali/governor",

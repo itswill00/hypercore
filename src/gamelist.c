@@ -166,25 +166,34 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         fclose(fp);
     }
 
-    FILE *pp = popen("dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp'", "r");
-    if (pp) {
-        char dump_buf[512];
-        while (fgets(dump_buf, sizeof(dump_buf), pp)) {
-            for (int i = 0; i < s_game_count; i++) {
-                if (s_games[i][0] != '\0' && strstr(dump_buf, s_games[i]) != NULL) {
-                    pclose(pp);
-                    if (out_game_name && max_len > 0) {
-                        strncpy(out_game_name, s_games[i], max_len - 1);
-                        out_game_name[max_len - 1] = '\0';
+    /* [C-4 FIX] popen("dumpsys window") requires fork+exec+Binder IPC to
+     * WindowManagerService which can block 50-200ms. Rate-limit to once per
+     * 3 seconds so it does not consume 40% of the gaming poll budget. */
+    static time_t s_last_dumpsys = 0;
+    time_t now_ds = time(NULL);
+    if (now_ds - s_last_dumpsys >= 3) {
+        s_last_dumpsys = now_ds;
+        /* -m2 terminates grep (and the pipe) after 2 matching lines found */
+        FILE *pp = popen("dumpsys window 2>/dev/null | grep -m2 -E 'mCurrentFocus|mFocusedApp'", "r");
+        if (pp) {
+            char dump_buf[512];
+            while (fgets(dump_buf, sizeof(dump_buf), pp)) {
+                for (int i = 0; i < s_game_count; i++) {
+                    if (s_games[i][0] != '\0' && strstr(dump_buf, s_games[i]) != NULL) {
+                        pclose(pp);
+                        if (out_game_name && max_len > 0) {
+                            strncpy(out_game_name, s_games[i], max_len - 1);
+                            out_game_name[max_len - 1] = '\0';
+                        }
+                        if (out_profile) {
+                            *out_profile = s_profiles[i];
+                        }
+                        return 1;
                     }
-                    if (out_profile) {
-                        *out_profile = s_profiles[i];
-                    }
-                    return 1;
                 }
             }
+            pclose(pp);
         }
-        pclose(pp);
     }
 
     return 0;
