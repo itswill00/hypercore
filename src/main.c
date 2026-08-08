@@ -204,15 +204,36 @@ static int is_screen_on(void) {
 }
 
 static int get_top_app_pid(void) {
-    FILE *f = fopen("/dev/cpuset/top-app/tasks", "r");
-    if (!f) return 0;
-    char line[32];
-    int pid = 0;
-    if (fgets(line, sizeof(line), f)) {
-        pid = atoi(line);
+    /* [H-5 FIX] /dev/cpuset/top-app/tasks contains ALL thread PIDs from
+     * every process in top-app, including system_server Binder workers and
+     * kernel threads. Reading only the first line risks getting a wrong PID
+     * which causes false-positive app transition boost ticks.
+     * Fix: try cgroup.procs first (unique PIDs only), skip PIDs <= 100
+     * (kernel/system range), and validate via /proc/PID/cmdline existence. */
+    const char *sources[] = {
+        "/dev/cpuset/top-app/cgroup.procs",
+        "/dev/cpuset/top-app/tasks",
+        NULL
+    };
+    for (int s = 0; sources[s]; s++) {
+        FILE *f = fopen(sources[s], "r");
+        if (!f) continue;
+        char line[32];
+        int pid = 0;
+        while (fgets(line, sizeof(line), f)) {
+            int candidate = atoi(line);
+            if (candidate <= 100) continue; /* skip kernel/low-system range */
+            char cpath[64];
+            snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", candidate);
+            if (access(cpath, F_OK) == 0) {
+                pid = candidate;
+                break;
+            }
+        }
+        fclose(f);
+        if (pid > 0) return pid;
     }
-    fclose(f);
-    return pid;
+    return 0;
 }
 
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
@@ -438,6 +459,7 @@ int main(int argc, char *argv[]) {
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {
             rotate_log();
+            log_reopen(); /* refresh persistent fd after rotate */
             s_rotate_counter = 0;
         }
 

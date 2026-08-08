@@ -203,18 +203,37 @@ void fix_battery_cycle_count(void) {
     if (true_cycles <= 0) return;
 
     int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (current_cycles != true_cycles) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%d", true_cycles);
+    if (current_cycles == true_cycles) return;
 
-        chmod("/sys/class/power_supply/battery/cycle_count", 0664);
-        sysfs_write("/sys/class/power_supply/battery/cycle_count", buf);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", true_cycles);
 
-        chmod("/sys/class/power_supply/battery/auth_dev_batt_cycle", 0664);
-        sysfs_write("/sys/class/power_supply/battery/auth_dev_batt_cycle", buf);
-        log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
+    /* [H-4 FIX] Do NOT chmod sysfs nodes. chmod on sysfs is not persistent —
+     * the kernel resets permissions from driver attributes on next access.
+     * On some kernels chmod succeeds but has zero kernel-side effect.
+     * Worse, chmod 0664 opens write access to non-root UIDs — a security hole.
+     * Instead, attempt direct write() and log clearly if the node is read-only. */
+    int fd = open("/sys/class/power_supply/battery/cycle_count", O_WRONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        ssize_t w = write(fd, buf, strlen(buf));
+        close(fd);
+        if (w > 0) {
+            log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
+        } else {
+            log_warn("Battery", "cycle_count write failed (errno=%d) — node may be read-only", errno);
+        }
+    } else {
+        log_warn("Battery", "cycle_count open failed (errno=%d) — PMIC driver may not support writes", errno);
+    }
+
+    /* auth_dev_batt_cycle is vendor-specific; attempt silently, no chmod */
+    fd = open("/sys/class/power_supply/battery/auth_dev_batt_cycle", O_WRONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        write(fd, buf, strlen(buf));
+        close(fd);
     }
 }
+
 
 
 

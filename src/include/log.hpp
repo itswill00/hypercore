@@ -17,6 +17,7 @@ extern "C" {
 
 void log_write(log_level_t level, const char *tag, const char *fmt, ...);
 void rotate_log(void);
+void log_reopen(void);
 
 #define log_info(tag, fmt, ...)  log_write(LOG_LEVEL_Info, tag, fmt, ##__VA_ARGS__)
 #define log_state(tag, fmt, ...) log_write(LOG_LEVEL_State, tag, fmt, ##__VA_ARGS__)
