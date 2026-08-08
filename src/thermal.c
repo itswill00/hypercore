@@ -242,12 +242,23 @@ void fix_battery_cycle_count(void) {
     if (now - s_last_fix_time < 300) return;
     s_last_fix_time = now;
 
+    /* Device-specific hardware safety guard:
+     * Only perform cycle count correction if the MT6366/MT6358 PMIC gauge node
+     * or the HuaQin charger manager node exists on this specific device.
+     * On other devices, skip forced cycle correction to avoid modifying non-matching sysfs nodes. */
+    const char *spec_pmic_src = "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count";
+    const char *spec_hq_dest  = "/sys/devices/platform/hq_chg_manager/power_supply/battery/cycle_count";
+
+    if (access(spec_pmic_src, F_OK) != 0 && access(spec_hq_dest, F_OK) != 0) {
+        return;
+    }
+
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) return;
 
     /* Destination nodes to update with true cycle count */
     const char *dest_nodes[] = {
-        "/sys/devices/platform/hq_chg_manager/power_supply/battery/cycle_count",
+        spec_hq_dest,
         "/sys/class/power_supply/battery/cycle_count",
         "/sys/class/power_supply/battery/auth_dev_batt_cycle",
         NULL
