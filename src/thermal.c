@@ -4,6 +4,17 @@
 #include "log.hpp"
 
 void scan_thermal_zones(void) {
+    /* [M-3 FIX] readdir() order is non-deterministic. The original first-match
+     * approach could pick a zone whose type contains "soc" but represents the
+     * entire SoC envelope (10-15 degC cooler than CPU cores), causing thermal
+     * tier under-estimation during gaming. Use score-based selection: more
+     * specific zone type names get higher scores, ensuring the best candidate
+     * is chosen regardless of readdir() ordering. */
+    char best_cpu_path[256] = "";
+    char best_bat_path[256] = "";
+    int  best_cpu_score = 0;
+    int  best_bat_score = 0;
+
     DIR *d = opendir("/sys/class/thermal");
     if (d) {
         struct dirent *ent;
@@ -18,24 +29,48 @@ void scan_thermal_zones(void) {
             char type[64];
             ssize_t n = read(fd, type, sizeof(type) - 1);
             close(fd);
-
             if (n <= 0) continue;
             type[n] = '\0';
 
             char temp_path[256];
             snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", ent->d_name);
             int val = sysfs_read_int(temp_path);
+            if (val <= 0) continue;
 
-            if (val > 0) {
-                if (g_nodes.cpu_temp[0] == '\0' && (strstr(type, "cpu") || strstr(type, "soc") || strstr(type, "CPU"))) {
-                    snprintf(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "%s", temp_path);
-                }
-                if (g_nodes.bat_temp[0] == '\0' && (strstr(type, "bat") || strstr(type, "battery"))) {
-                    snprintf(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "%s", temp_path);
-                }
+            /* Score CPU thermal zone candidates — higher = more specific */
+            int cpu_score = 0;
+            if (strstr(type, "cpu-0"))        cpu_score = 12;
+            else if (strstr(type, "cpu0"))     cpu_score = 11;
+            else if (strstr(type, "cpu-1"))    cpu_score = 10;
+            else if (strstr(type, "cpu"))      cpu_score = 8;
+            else if (strstr(type, "CPU"))      cpu_score = 7;
+            else if (strstr(type, "soc-max"))  cpu_score = 6;
+            else if (strstr(type, "soc"))      cpu_score = 4;
+
+            if (cpu_score > best_cpu_score) {
+                best_cpu_score = cpu_score;
+                strncpy(best_cpu_path, temp_path, sizeof(best_cpu_path) - 1);
+            }
+
+            /* Score battery thermal zone candidates */
+            int bat_score = 0;
+            if (strstr(type, "battery"))  bat_score = 10;
+            else if (strstr(type, "bat")) bat_score = 8;
+
+            if (bat_score > best_bat_score) {
+                best_bat_score = bat_score;
+                strncpy(best_bat_path, temp_path, sizeof(best_bat_path) - 1);
             }
         }
         closedir(d);
+    }
+
+    if (best_cpu_path[0] != '\0') {
+        strncpy(g_nodes.cpu_temp, best_cpu_path, sizeof(g_nodes.cpu_temp) - 1);
+        log_info("Thermal", "CPU thermal zone selected (score=%d): %s", best_cpu_score, g_nodes.cpu_temp);
+    }
+    if (best_bat_path[0] != '\0') {
+        strncpy(g_nodes.bat_temp, best_bat_path, sizeof(g_nodes.bat_temp) - 1);
     }
 
     if (g_nodes.cpu_temp[0] == '\0') {
@@ -46,6 +81,7 @@ void scan_thermal_zones(void) {
         strcpy(g_nodes.bat_temp, access("/sys/class/thermal/thermal_zone25/temp", F_OK) == 0 ?
                "/sys/class/thermal/thermal_zone25/temp" : "/sys/class/thermal/thermal_zone1/temp");
     }
+
 
     if (access("/sys/class/power_supply/battery/status", F_OK) == 0) {
         strcpy(g_nodes.bat_status, "/sys/class/power_supply/battery/status");

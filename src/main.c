@@ -284,8 +284,18 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 #include "integrity.hpp"
 
 static int validate_hardware_target(void) {
-    if (access("/sys/module/ged", F_OK) != 0 || access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0) {
-        fprintf(stderr, "ERROR: Incompatible hardware target detected. HyperCore is strictly designed for MediaTek MT6789 Family (Kernel 5.10.x).\n");
+    /* [Minor-2 FIX] /sys/module/ged exists on ALL MediaTek devices (G85, G88,
+     * G96, Dimensity 700, etc.), not just MT6789. Add policy6 check: MT6789
+     * is a 6+2 bi-cluster (policy0=Little 0-5, policy6=Big 6-7). Single-cluster
+     * MTK devices only have policy0. Also check /sys/kernel/fpsgo which confirms
+     * the GED+FPSGO software stack specific to MT6789 family kernel 5.10.x. */
+    if (access("/sys/module/ged", F_OK) != 0 ||
+        access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0 ||
+        access("/sys/devices/system/cpu/cpufreq/policy6", F_OK) != 0 ||
+        access("/sys/kernel/fpsgo", F_OK) != 0) {
+        fprintf(stderr, "ERROR: Incompatible hardware target detected. "
+                "HyperCore is strictly designed for MediaTek MT6789 Family "
+                "(bi-cluster policy0+policy6, GED+FPSGO, Kernel 5.10.x).\n");
         return 0;
     }
     return 1;
@@ -473,6 +483,15 @@ int main(int argc, char *argv[]) {
         }
 
         handle_ipc_events(poll_timeout_ms);
+
+        /* [M-1] Consume screen/uevent flags set by inotify/netlink handler.
+         * If backlight changed, the next loop starts immediately (timeout=0)
+         * so is_screen_on() re-evaluates without waiting up to 8s. */
+        if (g_screen_changed) {
+            g_screen_changed = 0;
+            /* next iteration will re-check is_screen_on() at top of loop */
+        }
+        g_uevent_received = 0;
     }
 
     log_info("Daemon", "HyperCore daemon stopped. Restoring ROM baseline nodes...");

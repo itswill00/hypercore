@@ -63,13 +63,22 @@ void load_gamelist(void) {
                 }
                 if (pkg_buf[0] == '\0') continue;
 
+                /* [M-2 FIX] Dedup check: skip packages already in the list.
+                 * Without this, repeated load_gamelist() calls (triggered by
+                 * inotify) appended duplicate entries to gamelist.txt. */
+                int already_exists = 0;
+                for (int d = 0; d < s_game_count; d++) {
+                    if (strcmp(s_games[d], pkg_buf) == 0) { already_exists = 1; break; }
+                }
+                if (already_exists) continue;
+
                 strncpy(s_games[s_game_count], pkg_buf, PKG_NAME_LEN - 1);
                 s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
                 s_profiles[s_game_count] = PROFILE_Gaming;
                 s_game_count++;
 
                 if (fw) {
-                    fprintf(fw, "%s\n", pkg_buf);
+                    fprintf(fw, "%s:GAMING\n", pkg_buf);
                 }
             }
             if (fw) fclose(fw);
