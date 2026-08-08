@@ -109,6 +109,7 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: calc(58px + var(--window-inset-top, 0px));
 }
 
 .page-header-title {
