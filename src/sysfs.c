@@ -31,6 +31,24 @@ int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) 
 
 #include "log.hpp"
 
+/* [H-1 FIX] Per-path error throttle table.
+ * A single shared static timestamp caused one failing path to suppress
+ * error logs for ALL other paths for 60 seconds. Use a small hash table
+ * so each unique path gets its own independent 60-second cooldown. */
+#define SYSFS_ERR_SLOTS 16
+static struct { const char *path; time_t last_err; } s_err_tbl[SYSFS_ERR_SLOTS];
+
+static int sysfs_should_log_err(const char *path) {
+    time_t now = time(NULL);
+    unsigned h = 0;
+    for (const char *p = path; *p; p++) h = h * 31u + (unsigned char)*p;
+    int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
+    if (s_err_tbl[slot].path == path && now - s_err_tbl[slot].last_err < 60) return 0;
+    s_err_tbl[slot].path = path;
+    s_err_tbl[slot].last_err = now;
+    return 1;
+}
+
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
 
@@ -45,11 +63,8 @@ void sysfs_write(const char *path, const char *val) {
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
-        static time_t s_last_write_err = 0;
-        time_t now = time(NULL);
-        if (now - s_last_write_err >= 60) {
-            log_info("Kernel", "Vendor sysfs node skipped (target: '%s')", path);
-            s_last_write_err = now;
+        if (sysfs_should_log_err(path)) {
+            log_info("Kernel", "Vendor sysfs node skipped (errno=%d, target: '%s')", errno, path);
         }
         return;
     }
@@ -208,7 +223,12 @@ void update_module_prop_status(const char *status) {
     snprintf(tmp_path, sizeof(tmp_path), "%s/module.prop.tmp", g_nodes.mod_dir);
 
     FILE *f = fopen(prop_path, "r");
-    if (!f) return;
+    if (!f) {
+        /* [H-3 FIX] Reset cache so next call retries immediately instead of
+         * being throttled for 30 seconds while the file was temporarily locked. */
+        s_last_status[0] = '\0';
+        return;
+    }
 
     char lines[32][256];
     int count = 0;
@@ -221,13 +241,22 @@ void update_module_prop_status(const char *status) {
     f = fopen(tmp_path, "w");
     if (!f) return;
 
+    int write_ok = 1;
     for (int i = 0; i < count; i++) {
         if (strncmp(lines[i], "description=", 12) == 0) {
-            fprintf(f, "description=[Active: %s] Smart kernel optimizer & gaming daemon for MT6789 Family.\n", status);
+            if (fprintf(f, "description=[Active: %s] Smart kernel optimizer & gaming daemon for MT6789 Family.\n", status) < 0)
+                write_ok = 0;
         } else {
-            fputs(lines[i], f);
+            if (fputs(lines[i], f) == EOF) write_ok = 0;
         }
     }
     fclose(f);
-    rename(tmp_path, prop_path);
+
+    /* [H-3 FIX] Only rename if the tmp write completed successfully.
+     * Guards against partial rename if daemon is killed mid-write. */
+    if (write_ok) {
+        rename(tmp_path, prop_path);
+    } else {
+        unlink(tmp_path); /* clean up stale .tmp on write failure */
+    }
 }
