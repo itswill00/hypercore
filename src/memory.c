@@ -75,16 +75,21 @@ int trigger_purge_ram_cache(void) {
     /* 2. Clear PageCache, dentries, and inodes via drop_caches (Level 3) */
     sysfs_write("/proc/sys/vm/drop_caches", "3");
 
-    /* 3. Compact physical RAM page fragmentation */
-    sysfs_write("/proc/sys/vm/compact_memory", "1");
+    /* 3. Async RAM compaction via kcompactd — DO NOT write compact_memory directly.
+     *    Writing 1 to compact_memory triggers SYNCHRONOUS kernel compaction which
+     *    acquires mmap_lock across all zones, freezing ALL userland threads into
+     *    uninterruptible sleep (D-state) for 200–800ms on LPDDR4X devices.
+     *    This can trigger system_server Watchdog ANR and soft reboots.
+     *    Instead, raise compaction_proactiveness to let kcompactd handle it
+     *    asynchronously without holding any userland-visible locks. */
+    sysfs_write("/proc/sys/vm/compaction_proactiveness", "60");
 
     /* 4. Flush stale cached memory to ZRAM */
     sysfs_write("/proc/sys/vm/stat_interval", "1");
-    sysfs_write("/proc/sys/vm/compaction_proactiveness", "50");
 
     /* 5. Force Android lowmemorykiller / lmkd reclaim scan */
     sysfs_write("/sys/module/lowmemorykiller/parameters/minfree", "1");
 
-    log_info("Memory", "RAM & Cache deep purge executed: drop_caches(3), compact_memory, ZRAM flush completed.");
+    log_info("Memory", "RAM & Cache deep purge executed: drop_caches(3), async kcompactd triggered (compaction_proactiveness=60).");
     return 1;
 }

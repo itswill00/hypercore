@@ -25,25 +25,45 @@ static void on_signal(int sig) {
 
 static void async_system_cmd(const char *cmd) {
     if (!cmd || cmd[0] == '\0') return;
+
     pid_t pid = fork();
+    if (pid < 0) {
+        /* fork failed — log and bail, do not proceed */
+        log_warn("Async", "fork() failed: %s (cmd skipped: %.48s)", strerror(errno), cmd);
+        return;
+    }
+
     if (pid == 0) {
+        /* Middle child: close all inherited FDs except stdio so grandchild
+         * does not inherit daemon's IPC socket, inotify fd, log fd, etc.
+         * Do this BEFORE second fork so grandchild inherits a clean table. */
+        long max_fd = sysconf(_SC_OPEN_MAX);
+        if (max_fd < 0 || max_fd > 1024) max_fd = 256;
+        for (long fd = STDERR_FILENO + 1; fd < max_fd; fd++) close((int)fd);
+
         pid_t grandchild = fork();
         if (grandchild == 0) {
-            int null_fd = open("/dev/null", O_RDWR);
+            /* Grandchild: detach from daemon's session and process group */
+            setsid();
+
+            int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
             if (null_fd >= 0) {
                 dup2(null_fd, STDIN_FILENO);
                 dup2(null_fd, STDOUT_FILENO);
                 dup2(null_fd, STDERR_FILENO);
-                close(null_fd);
+                /* Only close if it wasn't already one of the standard slots */
+                if (null_fd > STDERR_FILENO) close(null_fd);
             }
             execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
             _exit(127);
         }
-        _exit(0);
+        /* Middle child exits immediately so grandchild is adopted by init/PID-1
+         * and will not become a zombie relative to the daemon. */
+        _exit((grandchild < 0) ? 1 : 0);
     }
-    if (pid > 0) {
-        waitpid(pid, NULL, 0);
-    }
+
+    /* Parent: reap the middle child (fast _exit, no blocking) */
+    waitpid(pid, NULL, 0);
 }
 
 static void send_game_toast(const char *game_name, profile_t prof) {
