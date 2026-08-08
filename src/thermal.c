@@ -206,22 +206,29 @@ int get_true_battery_cycles(void) {
     load_cycle_tracker();
 
     int base_cycles = 0;
-    int cycle_count = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (cycle_count > 0) {
-        base_cycles = (cycle_count > 1000) ? (cycle_count / 16) : cycle_count;
-    } else {
-        int fg_raw = sysfs_read_int("/sys/class/power_supply/battery/fg1_cycle");
-        if (fg_raw > 0) {
-            base_cycles = (fg_raw > 1000) ? (fg_raw / 16) : fg_raw;
-        } else {
-            int auth_cycles = sysfs_read_int("/sys/class/power_supply/battery/auth_dev_batt_cycle");
-            if (auth_cycles > 0) {
-                base_cycles = (auth_cycles > 1000) ? (auth_cycles / 16) : auth_cycles;
-            } else {
-                int bms_cycles = sysfs_read_int("/sys/class/power_supply/bms/cycle_count");
-                if (bms_cycles > 0) {
-                    base_cycles = (bms_cycles > 1000) ? (bms_cycles / 16) : bms_cycles;
+
+    /* Hardware PMIC MT6366/MT6358 FG Gauge node (HuaQin / MTK MT6789) */
+    const char *hw_gauge_nodes[] = {
+        "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count",
+        "/sys/class/power_supply/bms/cycle_count",
+        "/sys/class/power_supply/battery/cycle_count",
+        "/sys/class/power_supply/battery/fg1_cycle",
+        "/sys/class/power_supply/battery/auth_dev_batt_cycle",
+        NULL
+    };
+
+    for (int i = 0; hw_gauge_nodes[i]; i++) {
+        if (access(hw_gauge_nodes[i], F_OK) == 0) {
+            int val = sysfs_read_int(hw_gauge_nodes[i]);
+            if (val > 0) {
+                /* Hardware PMIC node (index 0) returns exact unscaled cycle count.
+                 * Legacy sysfs nodes > 1000 may require /16 scaling. */
+                if (val > 1000 && i > 0) {
+                    base_cycles = val / 16;
+                } else {
+                    base_cycles = val;
                 }
+                break;
             }
         }
     }
@@ -238,35 +245,35 @@ void fix_battery_cycle_count(void) {
     int true_cycles = get_true_battery_cycles();
     if (true_cycles <= 0) return;
 
-    int current_cycles = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
-    if (current_cycles == true_cycles) return;
+    /* Destination nodes to update with true cycle count */
+    const char *dest_nodes[] = {
+        "/sys/devices/platform/hq_chg_manager/power_supply/battery/cycle_count",
+        "/sys/class/power_supply/battery/cycle_count",
+        "/sys/class/power_supply/battery/auth_dev_batt_cycle",
+        NULL
+    };
 
     char buf[32];
     snprintf(buf, sizeof(buf), "%d", true_cycles);
 
-    /* [H-4 FIX] Do NOT chmod sysfs nodes. chmod on sysfs is not persistent —
-     * the kernel resets permissions from driver attributes on next access.
-     * On some kernels chmod succeeds but has zero kernel-side effect.
-     * Worse, chmod 0664 opens write access to non-root UIDs — a security hole.
-     * Instead, attempt direct write() and log clearly if the node is read-only. */
-    int fd = open("/sys/class/power_supply/battery/cycle_count", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        ssize_t w = write(fd, buf, strlen(buf));
-        close(fd);
-        if (w > 0) {
-            log_info("Battery", "Battery cycle count calibrated to %d cycles", true_cycles);
-        } else {
-            log_warn("Battery", "cycle_count write failed (errno=%d) — node may be read-only", errno);
-        }
-    } else {
-        log_warn("Battery", "cycle_count open failed (errno=%d) — PMIC driver may not support writes", errno);
-    }
+    for (int i = 0; dest_nodes[i]; i++) {
+        if (access(dest_nodes[i], F_OK) == 0) {
+            int current_val = sysfs_read_int(dest_nodes[i]);
+            if (current_val == true_cycles) continue;
 
-    /* auth_dev_batt_cycle is vendor-specific; attempt silently, no chmod */
-    fd = open("/sys/class/power_supply/battery/auth_dev_batt_cycle", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        write(fd, buf, strlen(buf));
-        close(fd);
+            int fd = open(dest_nodes[i], O_WRONLY | O_CLOEXEC);
+            if (fd >= 0) {
+                ssize_t w = write(fd, buf, strlen(buf));
+                close(fd);
+                if (w > 0) {
+                    log_info("Battery", "Synced battery cycle count (%d cycles) to %s", true_cycles, dest_nodes[i]);
+                } else {
+                    log_warn("Battery", "Failed to write cycle count to %s (errno=%d)", dest_nodes[i], errno);
+                }
+            } else {
+                log_warn("Battery", "Failed to open %s (errno=%d)", dest_nodes[i], errno);
+            }
+        }
     }
 }
 
