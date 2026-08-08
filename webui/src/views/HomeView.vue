@@ -6,6 +6,9 @@
         <div class="page-header-title">HyperCore</div>
         <div class="page-header-sub">by aerichandesu@noticesa</div>
       </div>
+      <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
+        {{ store.moduleVersion || 'v4.4' }}
+      </span>
     </div>
 
     <div class="content-area">

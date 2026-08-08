@@ -1,7 +1,7 @@
 # Build artifacts and compiled binaries
 hypercore
 libhypercore.so
-system/bin/
+system/bin/libhypercore.so
 *.so
 *.zip
 *.tmp
@@ -14,7 +14,13 @@ src/include/embedded_checksums.hpp
 webroot/index.html
 webui/dist/
 webui/node_modules/
+webui/.vite/
 
-# OS generated files
+# OS & Editor generated files
 .DS_Store
 Thumbs.db
+*.swp
+*.bak
+.vscode/
+.idea/
+
