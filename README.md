@@ -2,8 +2,9 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg)]()
+[![Chipset](https://img.shields.io/badge/Chipset-G99%20%7C%20G100%20%7C%20G200-red.svg)]()
 [![Kernel](https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg)]()
-[![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
+[![Architecture](https://img.shields.io/badge/Arch-ARM64-lightgrey.svg)]()
 [![Release](https://img.shields.io/badge/Release-v4.4-purple.svg)]()
 
 HyperCore is a lightweight background daemon and kernel tuning module tailored for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
