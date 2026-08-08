@@ -154,7 +154,7 @@ echo "CORES:$(cat /sys/devices/system/cpu/online 2>/dev/null)";
 echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";
 echo "LOAD:$(read -r a _ < /proc/loadavg 2>/dev/null && echo "$a")";
 echo "MEM:$(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo 2>/dev/null | tr '\n' ' ')";
-echo "CT:$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";
+echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";
 echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";
 echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";
 echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)";
@@ -349,8 +349,12 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
   async function flushRam() {
     loading.value = true
     try {
+      // Primary: request daemon via IPC (daemon handles this safely without compact_memory)
+      // Fallback: drop_caches only — DO NOT write compact_memory directly;
+      // it triggers synchronous kernel compaction that freezes all userland threads
+      // (200-800ms D-state) and can cause ANR/soft reboot. See daemon C-1 fix.
       const cmd = `MOD="/data/adb/modules/hypercore";
-echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches; echo 1 > /proc/sys/vm/compact_memory 2>/dev/null)`
+echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; echo 60 > /proc/sys/vm/compaction_proactiveness 2>/dev/null || true)`
       await execCommand(cmd)
       await new Promise(resolve => setTimeout(resolve, 400))
       await refresh()
