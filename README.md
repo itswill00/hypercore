@@ -1,19 +1,27 @@
-# HyperCore
+<p align="center">
+  <img src="banner.png" alt="HyperCore Banner" width="100%">
+</p>
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg)]()
-[![Chipset](https://img.shields.io/badge/Chipset-G99%20%7C%20G100%20%7C%20G200-red.svg)]()
-[![Kernel](https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg)]()
-[![Architecture](https://img.shields.io/badge/Arch-ARM64-lightgrey.svg)]()
-[![Release](https://img.shields.io/badge/Release-v4.4-purple.svg)]()
+<h1 align="center">HyperCore</h1>
 
-HyperCore is a lightweight background daemon and kernel tuning module tailored for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL_v3-blue.svg" alt="License: GPL v3"></a>
+  <img src="https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Chipset-G99%20%7C%20G100%20%7C%20G200-red.svg" alt="Chipset">
+  <img src="https://img.shields.io/badge/Kernel-Linux_5.10.x-green.svg" alt="Kernel">
+  <img src="https://img.shields.io/badge/Arch-ARM64-lightgrey.svg" alt="Architecture">
+  <img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20APatch%20%7C%20Magisk-brightgreen.svg" alt="Root">
+  <img src="https://img.shields.io/badge/Language-C99%20%7C%20Vue%203-blueviolet.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Release-v4.4-purple.svg" alt="Release">
+</p>
 
-It optimizes touch latency, manages thermal limits, and improves frame stability during gaming without excessive power consumption.
-
-*Inspired by encore @Rem01Gaming*
+<p align="center">
+  <i>A lightweight background daemon and kernel tuning module tailored for MediaTek MT6789 Family devices.</i><br>
+  <i>Inspired by encore @Rem01Gaming</i>
+</p>
 
 ---
+
 
 ## Overview
 
