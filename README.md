@@ -6,45 +6,44 @@
 [![Architecture](https://img.shields.io/badge/Arch-ARM64-red.svg)]()
 [![Release](https://img.shields.io/badge/Release-v4.4-purple.svg)]()
 
-HyperCore is a lightweight, zero-overhead background daemon and kernel tuning module tailored specifically for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
+HyperCore is a lightweight background daemon and kernel tuning module tailored for MediaTek MT6789 Family devices running Linux kernel 5.10.x.
 
-It is designed to eliminate micro-stutters, optimize daily touch response, manage thermal limits intelligently, and deliver high performance during gaming without unnecessary battery drain.
+It optimizes touch latency, manages thermal limits, and improves frame stability during gaming without excessive power consumption.
 
-*Inspired By encore @Rem01Gaming*
+*Inspired by encore @Rem01Gaming*
 
 ---
 
 ## Overview
 
-Android smartphones often suffer from aggressive CPU downclocking between frame renders, leading to dropped frames during gaming or UI micro-stutters while scrolling. HyperCore runs a lightweight native C daemon in the background that dynamically adjusts CPU governor rate limits, GPU frequency floors, interconnect memory bandwidth, storage read-ahead queues, and thermal limits based on real-time workloads.
+Android devices often experience frame drops or scrolling stutters due to conservative CPU/GPU scaling and governor delays. HyperCore runs a native C daemon in the background to dynamically tune CPU governor parameters, GPU frequency limits, memory interconnect bandwidth, storage read-ahead queues, and thermal limits based on workload state.
 
 ---
 
 ## Key Features
 
 <details>
-<summary><b>✨ Click to expand / collapse Key Features list (18+ Optimizations &amp; Features)</b></summary>
+<summary><b>✨ Click to expand / collapse Key Features list</b></summary>
 
 <br>
 
-- **Universal Read-Before-Write Guard**: Eliminates sysfs I/O thrashing with 0.0001ms fast-path checks on all CPU, GPU, Memory, IO, Cgroup, and Thermal sysfs writes.
-- **Event-Driven Screen & Battery Watcher (`inotify` & `netlink`)**: Integrates Linux `inotify` on screen backlight and Linux `NETLINK_KOBJECT_UEVENT` kernel socket for instant 0ms latency transitions with 0% CPU wakeups during sleep.
-- **Non-Blocking Asynchronous Command Engine (`async_system_cmd`)**: Executes system shell calls via POSIX double-forking, ensuring the main daemon loop thread never stalls (0ms interruption).
-- **Smart Automated Adaptive Engine**: Zero-intervention background daemon that automatically evaluates active workloads, screen lock states, and foreground apps without requiring manual mode toggles.
-- **Fast PID Caching**: High-efficiency game detection path with 0.001ms latency and sub-process prefix matching (`com.package:child`), inspired by `encore`.
-- **Anti-Root & Anti-Cheat Stealth Binary (`libhypercore.so`)**: Disguised native daemon executable to prevent detection by banking apps and game anti-cheats (Tencent ACE / MTP).
-- **UNIX Domain Socket IPC (0ms Latency)**: Non-blocking IPC socket server (`hypercore.sock`) for instant JSON telemetry updates (`status`, `cpu_temp`, `bat_temp`, `gpu_temp`, `chg_temp`, `battery_cycles`, `bat_health`) to the WebUI.
-- **Mali GPU Devfreq Governor & 674 MHz Floor**: Automatically switches GPU Devfreq governor (`/sys/class/devfreq/13000000.mali/governor` or `/sys/class/devfreq/soc:mali/governor`) to `performance` and locks a 674 MHz minimum frequency floor during active gaming sessions, eliminating GPU frequency drops under heavy loads.
-- **MediaTek DVFSRC Interconnect Boost**: Unlocks LPDDR4X RAM throughput up to 4.266 GHz during active gaming sessions (`dvfsrc_qos_mode = 1`) to eliminate memory bandwidth bottlenecks.
-- **Dynamic Thermal Charging Guard**: 3-stage thermal charging current guard (`charge_control` = 2, 4, 8) based on battery temperature (≥42°C restricted to 2A, ≥37°C restricted to 4A, <37°C full 8A fast charging).
-- **MediaTek DRM Screen Off Detection**: Accurate display state monitoring via MediaTek DRM backlight drivers, ensuring the device enters deep sleep (`PROFILE_SLEEP`) immediately when locked.
-- **MediaTek FPSGO `ultra_rescue` & `boost_ta`**: Instant 0ms touch acceleration and frame-drop rescue bursts during heavy 3D combat.
-- **Kernel Auto Self-Recovery Guard**: Detects unauthorized sysfs mutations by third-party kernel tweak apps or rogue scripts (e.g., CPU governor, Mali GPU power policy, or GPU devfreq governor overrides) and automatically re-enforces HyperCore's optimal configuration within 1-2 seconds.
-- **Foreground App Transition & Gesture Boost Engine**: Detects active app switches (e.g. TikTok to Instagram or MIUI Launcher) and injects a 1.5s burst (1.6 GHz Big core floor, 35% uclamp, 384KB read-ahead) for 120 FPS stutter-free app switching animations.
-- **Calibrated `sugov_ext` / `reflex` Governor Scaling**: Auto-detects custom kernel `reflex` governor or sets `sugov_ext` up-rate limit (`200 µs`) for 0ms touch response and down-rate limit (`20,000 µs`) for 60/90/120 Hz smooth scrolling.
-- **Hardware IRQ Subdirectory Pinning**: Scans Linux kernel `/proc/irq/<irq>/` subdirectories to pin Mali GPU, DSI Display, and FocalTech Touchscreen interrupts directly to Cortex-A76 Big Cores (CPU 6–7) for low-latency interrupt handling.
-- **Embedded Binary SHA-256 Self-Integrity Check**: Verifies binary and module file checksums on startup to detect tampering or corruption (`libhypercore.so --verify-integrity`).
-- **Human-Centric Material Design 3 WebUI**: Integrated KernelSU / APatch / Magisk WebUI featuring active profile hero badge, natural English titles, ultra-compact micro-tile status cards, instant 120 FPS accordion transitions, real-time RAM cache flushing, Base64 data URL inlining, and native Telegram intent launcher bridge.
+- **Read-Before-Write Sysfs Cache**: Prevents unnecessary sysfs file writes by verifying existing values before writing.
+- **Event-Driven Screen & Battery Watcher (`inotify` & `netlink`)**: Monitors display state via `inotify` on backlight nodes and battery events via kernel `netlink` sockets for immediate state transitions.
+- **Non-Blocking Execution Engine**: Uses POSIX process management (`async_system_cmd`) to keep the main daemon loop non-blocking.
+- **Automated Profile Switcher**: Evaluates foreground applications, screen state, and system load automatically without manual intervention.
+- **PID Caching Game Detector**: Fast package lookup and PID caching with sub-process matching (`com.package:child`).
+- **UNIX Domain Socket Telemetry (IPC)**: Provides a non-blocking domain socket server (`hypercore.sock`) serving JSON telemetry (`status`, `cpu_temp`, `bat_temp`, `gpu_temp`, `chg_temp`, `battery_cycles`) to the WebUI.
+- **Mali GPU Devfreq Management**: Sets GPU devfreq governor (`simple_ondemand` / `performance`) and frequency floors according to the active profile.
+- **MediaTek DVFSRC Bandwidth Optimization**: Adjusts interconnect memory bandwidth limits (`dvfsrc_qos_mode`) during gaming workloads.
+- **Thermal Charging Protection**: Adjusts battery charging current limits based on real-time temperature thresholds to prevent overheating while charging.
+- **Display State Sleep Integration**: Detects display sleep state to lower scaling limits when the device is locked.
+- **MediaTek FPSGO & GED Integration**: Configures FPSGO and GED boost parameters for frame stabilization during heavy graphics rendering.
+- **Configuration Re-enforcement**: Periodically verifies and restores intended governor settings if external scripts modify them.
+- **Foreground App Burst**: Applies short frequency and read-ahead boosts during application launch and switching.
+- **Governor Rate Tuning**: Configures `sugov_ext` / `schedutil` up and down rate limits for responsive frequency scaling.
+- **Interrupt Pinning**: Directs GPU, display, and touch interrupts to Cortex-A76 Big Cores (CPU 6–7) for lower latency.
+- **SHA-256 Integrity Verification**: Self-verifies daemon binary and module files on startup (`libhypercore.so --verify-integrity`).
+- **Material Design 3 WebUI**: Integrated WebUI for KernelSU / APatch / Magisk providing status monitoring, profile selection, log viewing, and RAM cleanup tools.
 
 </details>
 
@@ -52,7 +51,7 @@ Android smartphones often suffer from aggressive CPU downclocking between frame 
 
 ## Operational Profiles
 
-The daemon evaluates device metrics using an adaptive loop (500 ms – 8000 ms) and applies one of three consolidated core operational profiles:
+The daemon evaluates system state periodically (500 ms – 8000 ms) and applies one of three operational profiles:
 
 | Profile | Target Workload | Little Cores (0–5) | Big Cores (6–7) | GPU Devfreq Gov | GPU Floor | Power Policy | Interconnect Bandwidth |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -62,9 +61,9 @@ The daemon evaluates device metrics using an adaptive loop (500 ms – 8000 ms) 
 
 ---
 
-## Non-Interfering Thermal Hardware Coexistence
+## Thermal Management & Hardware Coexistence
 
-HyperCore relies on native kernel hardware thermal drivers and Xiaomi `sconfig = 10` Game Turbo thermal mode for throttling. The daemon dynamically adjusts 3-stage thermal charging current limits while allowing hardware HALs and vendor thermal drivers to maintain safe thermal limits.
+HyperCore works alongside native kernel hardware thermal drivers. The daemon manages battery thermal charging protection while allowing hardware HALs and vendor thermal policies to enforce thermal safety limits.
 
 ---
 
@@ -73,19 +72,19 @@ HyperCore relies on native kernel hardware thermal drivers and Xiaomi `sconfig =
 ```text
 src/
 ├── include/
-│   ├── common.hpp             # Common data structures and profile definitions
-│   ├── cpu.hpp                # Governor rate limits and CPU scaling
-│   ├── embedded_checksums.hpp # Embedded SHA-256 checksum definitions (generated)
-│   ├── gamelist.hpp           # Top-app game detector and PID cache manager
-│   ├── gpu.hpp                # MediaTek GED, FPSGO, and Mali power policy tuning
-│   ├── integrity.hpp          # Binary self-integrity verification header
+│   ├── common.hpp             # Data structures and profile definitions
+│   ├── cpu.hpp                # CPU scaling and governor rate limits
+│   ├── embedded_checksums.hpp # Generated SHA-256 checksum definitions
+│   ├── gamelist.hpp           # Game package detector and PID cache
+│   ├── gpu.hpp                # MediaTek GED, FPSGO, and Mali GPU settings
+│   ├── integrity.hpp          # Binary integrity check header
 │   ├── io.hpp                 # Storage queue and IRQ affinity tuning
-│   ├── ipc.hpp                # Non-blocking UNIX domain socket IPC header
-│   ├── log.hpp                # Structured logging header & level macros
-│   ├── memory.hpp             # Virtual memory and ZRAM parameters
-│   ├── sha256.hpp             # Lightweight SHA-256 calculation header
+│   ├── ipc.hpp                # UNIX domain socket IPC header
+│   ├── log.hpp                # Logging macros and functions
+│   ├── memory.hpp             # Memory and ZRAM tuning
+│   ├── sha256.hpp             # SHA-256 calculation header
 │   ├── sysfs.hpp              # Non-blocking sysfs file I/O helpers
-│   └── thermal.hpp            # Thermal zone scanning and tier calculations
+│   └── thermal.hpp            # Thermal zone scanning and tier detection
 ├── cpu.c
 ├── gamelist.c
 ├── gpu.c
@@ -104,7 +103,7 @@ src/
 
 ## Game List Configuration (`gamelist.txt`)
 
-You can manage your game list directly through the WebUI or by editing `/data/adb/modules/hypercore/gamelist.txt`. Installed games are automatically auto-detected during installation.
+You can manage configured games via the WebUI or by editing `/data/adb/modules/hypercore/gamelist.txt`.
 
 Example `gamelist.txt`:
 
@@ -120,13 +119,13 @@ com.dts.freefireth:GAMING
 
 ## Building from Source
 
-To compile the native C daemon, generate embedded checksums, build the WebUI frontend, and package the release ZIP module:
+To compile the native C daemon, generate embedded checksums, build the WebUI frontend, and create the release package:
 
 ```bash
 ./build.sh
 ```
 
-The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl,--gc-sections -Wall -Wextra -Werror` and outputs the final package to:
+Output files:
 - `HyperCore_Release/HyperCore-v4.4.zip`
 - `/sdcard/HyperCore_Releases/HyperCore-v4.4.zip`
 
@@ -134,7 +133,7 @@ The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl
 
 ## Requirements
 
-- **Target Hardware**: MediaTek MT6789 Family
+- **Platform**: MediaTek MT6789 Family
 - **Kernel**: Linux 5.10.x
 - **Environment**: Rooted via KernelSU, APatch, or Magisk
 
@@ -145,4 +144,4 @@ The script compiles the daemon using `clang -O3 -flto -s -fvisibility=hidden -Wl
 This project is licensed under the **GNU General Public License v3.0**. See `LICENSE` and `NOTICE.md` for details.
 
 Developed by **[@itswill00](https://github.com/itswill00)**.  
-Inspired By encore **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
+Inspired by encore **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
