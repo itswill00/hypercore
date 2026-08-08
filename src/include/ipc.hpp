@@ -8,9 +8,14 @@
 extern "C" {
 #endif
 
-int init_ipc_socket(void);
+int  init_ipc_socket(void);
 void close_ipc_socket(void);
 void handle_ipc_events(int timeout_ms);
+
+/* Set by handle_ipc_events() when backlight inotify or netlink uevent fires.
+ * Main loop should read and reset these after each handle_ipc_events() call. */
+extern volatile int g_screen_changed;
+extern volatile int g_uevent_received;
 
 #ifdef __cplusplus
 }

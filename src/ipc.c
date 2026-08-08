@@ -137,6 +137,13 @@ static void process_client(int client_fd) {
     close(client_fd);
 }
 
+/* [M-1 FIX] Flags set by inotify/netlink handlers so the main loop can
+ * react immediately to screen-state changes without waiting for the full
+ * poll_timeout. Declared volatile because they are written here and read
+ * in the main daemon loop. */
+volatile int g_screen_changed = 0;
+volatile int g_uevent_received = 0;
+
 void handle_ipc_events(int timeout_ms) {
     struct pollfd pfds[3];
     int nfds = 0;
@@ -179,11 +186,20 @@ void handle_ipc_events(int timeout_ms) {
                         process_client(client_fd);
                     }
                 } else if (pfds[i].fd == g_nodes.inotify_fd) {
-                    char buf[256];
-                    while (read(g_nodes.inotify_fd, buf, sizeof(buf)) > 0);
+                    /* [M-1 FIX] Drain the inotify queue AND signal main loop.
+                     * Previously events were drained silently. Now we set
+                     * g_screen_changed so the next loop iteration re-evaluates
+                     * is_screen_on() immediately instead of waiting up to 8s. */
+                    char ev_buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+                    while (read(g_nodes.inotify_fd, ev_buf, sizeof(ev_buf)) > 0) {
+                        g_screen_changed = 1;
+                    }
                 } else if (pfds[i].fd == g_nodes.netlink_fd) {
-                    char buf[512];
-                    while (read(g_nodes.netlink_fd, buf, sizeof(buf)) > 0);
+                    /* Drain netlink uevent queue and flag for main loop */
+                    char nl_buf[512];
+                    while (read(g_nodes.netlink_fd, nl_buf, sizeof(nl_buf)) > 0) {
+                        g_uevent_received = 1;
+                    }
                 }
             }
         }

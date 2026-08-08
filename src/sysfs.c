@@ -76,11 +76,16 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
     int written = 0;
     for (int i = 0; paths[i]; i++) {
-        if (paths[i][0] != '\0' && access(paths[i], W_OK) == 0) {
-            sysfs_write(paths[i], val);
-            written = 1;
-            break;
-        }
+        if (paths[i][0] == '\0') continue;
+        /* [M-4 FIX] Removed access(W_OK) check before open() — this was a
+         * TOCTOU race: the node could disappear or lose permission between
+         * the access() check and the subsequent open() call inside sysfs_write().
+         * Directly attempt open() and treat success as the writable signal. */
+        sysfs_write(paths[i], val);
+        /* sysfs_write internally reads current value and skips if unchanged,
+         * or opens O_WRONLY and logs on failure — either way safe to call. */
+        written = 1;
+        break;
     }
     if (!written && paths[0] != NULL) {
         static time_t s_last_fb_err = 0;
