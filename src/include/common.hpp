@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <linux/netlink.h>
 #include <sys/inotify.h>
