@@ -1,4 +1,4 @@
-# HyperCore v4.5 — Battery Sync Optimization & Bug Fix Release
+# HyperCore v4.5.0 — Battery Sync Optimization & Bug Fix Release
 
 ### Key Highlights & Fixes
 - **Battery Cycle Sync Optimization**: Implemented state-based tracking (`s_last_synced_cycles`) in `fix_battery_cycle_count()` to prevent redundant periodic writes and eliminate repetitive log entries for protected/write-only sysfs nodes (`/sys/class/power_supply/battery/auth_dev_batt_cycle`).
