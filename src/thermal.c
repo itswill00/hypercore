@@ -238,6 +238,7 @@ int get_true_battery_cycles(void) {
 
 void fix_battery_cycle_count(void) {
     static time_t s_last_fix_time = 0;
+    static int s_last_synced_cycles[4] = {-1, -1, -1, -1};
     time_t now = time(NULL);
     if (now - s_last_fix_time < 300) return;
     s_last_fix_time = now;
@@ -270,13 +271,17 @@ void fix_battery_cycle_count(void) {
     for (int i = 0; dest_nodes[i]; i++) {
         if (access(dest_nodes[i], F_OK) == 0) {
             int current_val = sysfs_read_int(dest_nodes[i]);
-            if (current_val == true_cycles) continue;
+            if (current_val == true_cycles || s_last_synced_cycles[i] == true_cycles) {
+                s_last_synced_cycles[i] = true_cycles;
+                continue;
+            }
 
             int fd = open(dest_nodes[i], O_WRONLY | O_CLOEXEC);
             if (fd >= 0) {
                 ssize_t w = write(fd, buf, strlen(buf));
                 close(fd);
                 if (w > 0) {
+                    s_last_synced_cycles[i] = true_cycles;
                     log_info("Battery", "Synced battery cycle count (%d cycles) to %s", true_cycles, dest_nodes[i]);
                 } else {
                     log_warn("Battery", "Failed to write cycle count to %s (errno=%d)", dest_nodes[i], errno);

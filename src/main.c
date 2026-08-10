@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
     write_pid_file();
     init_ipc_socket();
 
-    log_info("Daemon", "HyperCore v4.4 started.");
+    log_info("Daemon", "HyperCore v4.5 started.");
 
     detect_cpu_hardware_limits();
     apply_cpuset();
