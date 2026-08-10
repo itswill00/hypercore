@@ -13,7 +13,7 @@
               <div>
                 <div class="header-title-wrap">
                   <span class="header-title">Add Application</span>
-                  <span class="badge-pill purple">{{ availableAppsCount }} available</span>
+                  <span class="badge-pill">{{ availableAppsCount }} available</span>
                 </div>
                 <div class="header-sub">Configure performance profiles for your applications</div>
               </div>

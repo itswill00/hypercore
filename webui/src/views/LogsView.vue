@@ -282,10 +282,13 @@ onUnmounted(() => {
   margin-top: 1px;
 }
 
-.lbl-info { background: rgba(160, 178, 198, 0.15); color: #a0b2c6; }
-.lbl-state { background: rgba(226, 229, 236, 0.15); color: #e2e5ec; }
-.lbl-warn { background: rgba(210, 200, 176, 0.15); color: #d2c8b0; }
-.lbl-error { background: rgba(229, 115, 115, 0.15); color: #e57373; }
+.lbl-info,
+.lbl-state,
+.lbl-warn,
+.lbl-error {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f2f5;
+}
 
 .t-tag {
   font-size: 9px;
@@ -305,17 +308,10 @@ onUnmounted(() => {
   word-break: normal;
 }
 
-.txt-gaming {
-  color: #a0b2c6;
-  font-weight: 600;
-}
-
-.txt-thermal {
-  color: #d2c8b0;
-}
-
+.txt-gaming,
+.txt-thermal,
 .txt-start {
-  color: #e2e5ec;
+  color: var(--on-surface);
   font-weight: 600;
 }
 

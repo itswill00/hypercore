@@ -42,10 +42,10 @@
   --error-container: #422628;
   --on-error-container: #f5d4d2;
 
-  --green: #81c784;
-  --amber: #ffb74d;
-  --red: #e57373;
-  --blue: #a0b2c6;
+  --green: #f0f2f5;
+  --amber: #f0f2f5;
+  --red: #f0f2f5;
+  --blue: #b0b4c0;
 
   --font-sans: "Roboto", "MiSans", "HarmonyOS Sans", "Google Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -686,10 +686,10 @@ html, body, #app {
   border-color: var(--primary);
 }
 
-.c-green { color: var(--green); }
-.c-amber { color: var(--amber); }
-.c-red { color: var(--red); }
-.c-blue { color: var(--blue); }
+.c-green { color: var(--on-surface); }
+.c-amber { color: var(--on-surface); }
+.c-red { color: var(--on-surface); }
+.c-blue { color: var(--on-surface-variant); }
 
 .badge-pill {
   padding: 3px 8px;
@@ -699,12 +699,18 @@ html, body, #app {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.badge-pill.green { background: rgba(129, 199, 132, 0.18); color: #81c784; }
-.badge-pill.red { background: rgba(229, 115, 115, 0.18); color: #e57373; }
-.badge-pill.amber { background: rgba(255, 183, 77, 0.18); color: #ffb74d; }
-.badge-pill.purple { background: rgba(208, 188, 255, 0.18); color: #d0bcff; }
+.badge-pill.green,
+.badge-pill.red,
+.badge-pill.amber {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
 
 .modal-backdrop {
   position: fixed;
