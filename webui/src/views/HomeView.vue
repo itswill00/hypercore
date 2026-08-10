@@ -7,7 +7,7 @@
         <div class="page-header-sub">by aerichandesu@noticesa</div>
       </div>
       <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.4' }}
+        {{ store.moduleVersion || 'v4.5' }}
       </span>
     </div>
 
@@ -24,7 +24,7 @@
             <div class="banner-title-group">
               <div class="banner-title-line">
                 <span class="app-banner-title">HyperCore</span>
-                <span class="badge-pill purple">{{ store.moduleVersion || 'v4.4' }}</span>
+                <span class="badge-pill purple">{{ store.moduleVersion || 'v4.5' }}</span>
               </div>
               <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
             </div>
