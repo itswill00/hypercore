@@ -472,13 +472,20 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 if (bat_temp > 1000) bat_temp /= 1000;
                 else if (bat_temp > 100) bat_temp /= 10;
 
+                static int s_chg_level = 8;
                 if (bat_temp >= 42) {
-                    sysfs_write(g_nodes.charge_control, "2");
-                } else if (bat_temp >= 37) {
-                    sysfs_write(g_nodes.charge_control, "4");
-                } else {
-                    sysfs_write(g_nodes.charge_control, "8");
+                    s_chg_level = 2;
+                } else if (bat_temp >= 37 && s_chg_level != 2) {
+                    s_chg_level = 4;
+                } else if (s_chg_level == 2 && bat_temp <= 39) {
+                    s_chg_level = (bat_temp >= 37) ? 4 : 8;
+                } else if (s_chg_level == 4 && bat_temp <= 35) {
+                    s_chg_level = 8;
                 }
+
+                char chg_buf[16];
+                snprintf(chg_buf, sizeof(chg_buf), "%d", s_chg_level);
+                sysfs_write(g_nodes.charge_control, chg_buf);
             } else {
                 sysfs_write(g_nodes.charge_control, "8");
             }
