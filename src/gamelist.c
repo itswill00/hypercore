@@ -14,11 +14,17 @@ static int       s_inotify_fd = -1;
 void load_gamelist(void) {
     s_game_count = 0;
     char path[256];
-    snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
 
-    FILE *f = fopen(path, "r");
-    if (!f) {
-        f = fopen("/sdcard/Android/gamelist.txt", "r");
+    FILE *f = fopen("/data/adb/hypercore/gamelist.txt", "r");
+    if (f) {
+        snprintf(path, sizeof(path), "/data/adb/hypercore/gamelist.txt");
+    } else {
+        snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
+        f = fopen(path, "r");
+        if (!f) {
+            f = fopen("/sdcard/Android/gamelist.txt", "r");
+            if (f) snprintf(path, sizeof(path), "/sdcard/Android/gamelist.txt");
+        }
     }
     if (!f) return;
 
@@ -90,6 +96,8 @@ void load_gamelist(void) {
 void init_gamelist_watcher(void) {
     s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (s_inotify_fd < 0) return;
+
+    inotify_add_watch(s_inotify_fd, "/data/adb/hypercore/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
 
     char path[256];
     snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);

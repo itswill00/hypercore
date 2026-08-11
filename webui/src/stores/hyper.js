@@ -4,6 +4,7 @@ import { execCommand, sanitize, isKSU } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/hypercore'
 const LOG = '/sdcard/Android/hypercore.log'
+const GL_PERM = '/data/adb/hypercore/gamelist.txt'
 const GL_MOD = `${MOD}/gamelist.txt`
 const GL_SD = '/sdcard/Android/gamelist.txt'
 
@@ -46,7 +47,7 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v4.5.0')
+  const moduleVersion = ref('v4.4')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
   const androidSdk = ref('—')
@@ -145,7 +146,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
+IPC=$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -U /data/adb/hypercore/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -U /data/local/tmp/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
 echo "PID:$(pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
@@ -167,10 +168,10 @@ echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
-echo "VER:$(grep '^version=' $MOD/module.prop 2>/dev/null | cut -d= -f2 || echo 'v4.5.0')";
+echo "VER:v4.5.0";
 echo "===GL===";
-cat $MOD/gamelist.txt 2>/dev/null || true;
-if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || true; fi`
+cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
+if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`
 
     try {
       const res = await execCommand(cmd)
@@ -440,7 +441,8 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
-      `for f in ${GL_MOD} ${GL_SD}; do`,
+      `mkdir -p /data/adb/hypercore 2>/dev/null`,
+      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
       `  touch "$f" 2>/dev/null`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
@@ -463,7 +465,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
-      `for f in ${GL_MOD} ${GL_SD}; do`,
+      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
@@ -482,7 +484,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     }
 
     const cmd = [
-      `for f in ${GL_MOD} ${GL_SD}; do`,
+      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    echo '${pkg}:${profile}' >> "$f.tmp"`,

@@ -1,4 +1,15 @@
-# HyperCore v4.5.0 — Battery Sync Optimization & Bug Fix Release
+# HyperCore v4.5.1 — Persistent Data Architecture & Safety Maintenance Release
+
+### Key Highlights & Fixes
+- **Persistent Gamelist Preservation**: Package lists and custom gaming profiles are now preserved in `/data/adb/hypercore/gamelist.txt` outside `$MODPATH`. Module updates will never reset user-added games.
+- **Auto-Merge & Deduplication**: Module installer automatically merges pre-existing user games during updates with package deduplication.
+- **Stateful Thermal Hysteresis**: Added thermal hysteresis buffer for gaming charge control (42/39°C and 37/35°C thresholds) to prevent PMIC thermal thrashing.
+- **OLED / AOD Screen State Protection**: Added secondary DRM and Framebuffer blank state checks to `is_screen_on()` to prevent false sleep profile triggers on OLED displays with AOD.
+- **Multi-Path IPC & Logging Fallbacks**: Enforced ext4/f2fs filesystem fallback paths (`/data/adb/hypercore/`) for UNIX domain sockets (`AF_UNIX`) and log file outputs.
+
+---
+
+# HyperCore v4.5 — Battery Sync Optimization & Bug Fix Release
 
 ### Key Highlights & Fixes
 - **Battery Cycle Sync Optimization**: Implemented state-based tracking (`s_last_synced_cycles`) in `fix_battery_cycle_count()` to prevent redundant periodic writes and eliminate repetitive log entries for protected/write-only sysfs nodes (`/sys/class/power_supply/battery/auth_dev_batt_cycle`).
