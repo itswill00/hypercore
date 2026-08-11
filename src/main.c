@@ -81,8 +81,11 @@ static void init_hardware_nodes(void) {
 
     if (access("/data/adb/modules/hypercore", F_OK) == 0) {
         strcpy(g_nodes.mod_dir, "/data/adb/modules/hypercore");
+    } else if (access("/data/adb", F_OK) == 0) {
+        mkdir("/data/adb/hypercore", 0755);
+        strcpy(g_nodes.mod_dir, "/data/adb/hypercore");
     } else {
-        strcpy(g_nodes.mod_dir, "/sdcard/Android");
+        strcpy(g_nodes.mod_dir, "/data/local/tmp");
     }
 
     snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.mod_dir);
