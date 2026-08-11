@@ -49,7 +49,10 @@ void scan_thermal_zones(void) {
 
             if (cpu_score > best_cpu_score) {
                 best_cpu_score = cpu_score;
+                /* [BUG-14 FIX] strncpy does NOT null-terminate when src len >= dst size.
+                 * Add explicit null-termination to prevent reading past buffer end. */
                 strncpy(best_cpu_path, temp_path, sizeof(best_cpu_path) - 1);
+                best_cpu_path[sizeof(best_cpu_path) - 1] = '\0';
             }
 
             /* Score battery thermal zone candidates */
@@ -60,6 +63,7 @@ void scan_thermal_zones(void) {
             if (bat_score > best_bat_score) {
                 best_bat_score = bat_score;
                 strncpy(best_bat_path, temp_path, sizeof(best_bat_path) - 1);
+                best_bat_path[sizeof(best_bat_path) - 1] = '\0';
             }
         }
         closedir(d);
@@ -67,10 +71,12 @@ void scan_thermal_zones(void) {
 
     if (best_cpu_path[0] != '\0') {
         strncpy(g_nodes.cpu_temp, best_cpu_path, sizeof(g_nodes.cpu_temp) - 1);
+        g_nodes.cpu_temp[sizeof(g_nodes.cpu_temp) - 1] = '\0';
         log_info("Thermal", "CPU thermal zone selected (score=%d): %s", best_cpu_score, g_nodes.cpu_temp);
     }
     if (best_bat_path[0] != '\0') {
         strncpy(g_nodes.bat_temp, best_bat_path, sizeof(g_nodes.bat_temp) - 1);
+        g_nodes.bat_temp[sizeof(g_nodes.bat_temp) - 1] = '\0';
     }
 
     if (g_nodes.cpu_temp[0] == '\0') {

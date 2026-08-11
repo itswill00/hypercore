@@ -109,10 +109,43 @@ static void process_client(int client_fd) {
             sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
         }
 
-        int gpu_temp = cpu_temp;
-        int chg_temp = bat_temp;
+        /* [BUG-10 FIX] gpu_temp and chg_temp were previously hardcoded to
+         * cpu_temp and bat_temp respectively. Read from actual thermal nodes.
+         * MT6789 GPU thermal zone is typically near thermal_zone30+ (ged/gpufreq).
+         * Charger temperature is from PMIC/charger thermal zone if present.
+         * Fall back to cpu_temp / bat_temp if the dedicated nodes are absent. */
+        int gpu_temp = 0;
+        const char *gpu_therm_nodes[] = {
+            "/sys/class/thermal/thermal_zone30/temp",
+            "/sys/class/thermal/thermal_zone28/temp",
+            "/sys/class/thermal/thermal_zone26/temp",
+            NULL
+        };
+        for (int gi = 0; gpu_therm_nodes[gi]; gi++) {
+            int v = sysfs_read_int(gpu_therm_nodes[gi]);
+            if (v > 0) { gpu_temp = (v > 1000) ? v / 1000 : v; break; }
+        }
+        if (gpu_temp <= 0) gpu_temp = cpu_temp;
 
-        char json[640];
+        int chg_temp = 0;
+        const char *chg_therm_nodes[] = {
+            "/sys/class/power_supply/mtk-master-charger/temp",
+            "/sys/class/power_supply/charger/temp",
+            "/sys/class/power_supply/battery/temp_ambient",
+            NULL
+        };
+        for (int ci = 0; chg_therm_nodes[ci]; ci++) {
+            int v = sysfs_read_int(chg_therm_nodes[ci]);
+            if (v > 0) { chg_temp = (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v; break; }
+        }
+        if (chg_temp <= 0) chg_temp = bat_temp;
+
+        /* [BUG-9 FIX] Expand json buffer 640→1024 bytes. The old 640-byte buffer
+         * could be exceeded when sysfs string fields (bat_health, bat_status,
+         * bat_tech) returned long values, causing snprintf to truncate the JSON
+         * string mid-field, producing invalid JSON that silently broke the WebUI
+         * parser and dropped all telemetry. 1024 bytes provides safe headroom. */
+        char json[1024];
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
@@ -195,8 +228,12 @@ void handle_ipc_events(int timeout_ms) {
                         g_screen_changed = 1;
                     }
                 } else if (pfds[i].fd == g_nodes.netlink_fd) {
-                    /* Drain netlink uevent queue and flag for main loop */
-                    char nl_buf[512];
+                    /* [BUG-8 FIX] Drain netlink uevent queue and flag for main loop.
+                     * Android kernel uevent datagrams can be 800–2048 bytes.
+                     * The old nl_buf[512] caused EMSGSIZE on many events, silently
+                     * dropping battery/USB plug events and delaying screen-state
+                     * reactions by up to the full poll timeout. Use 2048 bytes. */
+                    char nl_buf[2048];
                     while (read(g_nodes.netlink_fd, nl_buf, sizeof(nl_buf)) > 0) {
                         g_uevent_received = 1;
                     }

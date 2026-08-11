@@ -26,39 +26,50 @@ void load_gamelist(void) {
             if (f) snprintf(path, sizeof(path), "/sdcard/Android/gamelist.txt");
         }
     }
-    if (!f) return;
 
-    char line[256];
-    while (fgets(line, sizeof(line), f) && s_game_count < MAX_GAMES) {
-        
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n' || line[len - 1] == ' ')) {
-            line[--len] = '\0';
+    /* [BUG-7 FIX] Old code: `if (!f) return;` — this early return prevented
+     * the auto-detection block below from ever running when gamelist.txt did
+     * not yet exist (e.g. fresh install). The auto-detect only ran when the
+     * file existed but was empty, which is rarely the case.
+     * Fix: continue into the parsing section only if f is valid, then fall
+     * through to auto-detection regardless. The `path` variable is now always
+     * set to the persistent preferred location so auto-detected games are
+     * written to the correct file. */
+    if (!path[0]) snprintf(path, sizeof(path), "/data/adb/hypercore/gamelist.txt");
+
+    if (f) {
+        char line[256];
+        while (fgets(line, sizeof(line), f) && s_game_count < MAX_GAMES) {
+
+            size_t len = strlen(line);
+            while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n' || line[len - 1] == ' ')) {
+                line[--len] = '\0';
+            }
+
+            if (line[0] == '#' || line[0] == '\0') continue;
+
+            char *colon = strchr(line, ':');
+            profile_t prof = PROFILE_Gaming;
+
+            if (colon) {
+                *colon = '\0';
+                char *prof_str = colon + 1;
+                if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
+                else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
+                else if (strcmp(prof_str, "GAMING_MOBA") == 0 || strcmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
+                else prof = PROFILE_Gaming;
+            }
+
+            strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
+            s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
+            s_profiles[s_game_count] = prof;
+            s_game_count++;
         }
-        
-        if (line[0] == '#' || line[0] == '\0') continue;
-
-        char *colon = strchr(line, ':');
-        profile_t prof = PROFILE_Gaming;
-
-        if (colon) {
-            *colon = '\0';
-            char *prof_str = colon + 1;
-            if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
-            else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
-            else if (strcmp(prof_str, "GAMING_MOBA") == 0 || strcmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
-            else prof = PROFILE_Gaming;
-        }
-
-        strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
-        s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
-        s_profiles[s_game_count] = prof;
-        s_game_count++;
+        fclose(f);
     }
-    fclose(f);
 
     if (s_game_count == 0) {
-        FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom'", "r");
+        FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom'", "r");
         if (pp) {
             char pkg_buf[128];
             FILE *fw = fopen(path, "a");
@@ -93,9 +104,22 @@ void load_gamelist(void) {
     }
 }
 
+
 void init_gamelist_watcher(void) {
     s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (s_inotify_fd < 0) return;
+
+    /* [BUG-17 FIX] inotify_add_watch() fails with ENOENT if the target file
+     * does not yet exist. This caused the watch to never be established on
+     * fresh installs where gamelist.txt hasn't been created yet. Ensure the
+     * persistent gamelist file exists before adding the watch. The touch-like
+     * open(O_CREAT|O_WRONLY|O_EXCL) only creates if absent; fails silently
+     * if it already exists, which is the desired behavior. */
+    {
+        int touch_fd = open("/data/adb/hypercore/gamelist.txt",
+                            O_CREAT | O_WRONLY | O_CLOEXEC, 0644);
+        if (touch_fd >= 0) close(touch_fd);
+    }
 
     inotify_add_watch(s_inotify_fd, "/data/adb/hypercore/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
 

@@ -69,10 +69,34 @@ static void async_system_cmd(const char *cmd) {
 static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
     const char *prof_label = (prof >= 0 && prof < 4) ? g_profile_names[prof] : "Unknown";
-    char cmd[256];
+
+    /* [BUG-5 FIX] game_name is an Android package name from gamelist.txt.
+     * Package names can theoretically contain characters like single-quote,
+     * dollar sign, backtick, or semicolons which would allow arbitrary shell
+     * command execution when interpolated into the cmd string. Escape all
+     * single-quotes in game_name by replacing ' with '\'' (close quote,
+     * literal quote, reopen quote) before embedding in the shell string. */
+    char safe_name[256];
+    int si = 0;
+    for (int gi = 0; game_name[gi] && si < (int)sizeof(safe_name) - 5; gi++) {
+        if (game_name[gi] == '\'') {
+            /* Escape: end single-quote, insert literal quote, reopen */
+            if (si + 4 < (int)sizeof(safe_name)) {
+                safe_name[si++] = '\'';
+                safe_name[si++] = '\\';
+                safe_name[si++] = '\'';
+                safe_name[si++] = '\'';
+            }
+        } else {
+            safe_name[si++] = game_name[gi];
+        }
+    }
+    safe_name[si] = '\0';
+
+    char cmd[512];
     snprintf(cmd, sizeof(cmd),
         "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' '%s Profile Active [%s]'",
-        prof_label, game_name);
+        prof_label, safe_name);
     async_system_cmd(cmd);
 }
 
@@ -517,6 +541,17 @@ int main(int argc, char *argv[]) {
     restore_baseline_nodes();
     update_module_prop_status("Stopped");
     close_ipc_socket();
+    /* [BUG-6 FIX] inotify_fd and netlink_fd are opened in init_hardware_nodes()
+     * but were never closed on daemon exit, causing fd leaks. Close them here
+     * during the cleanup sequence before returning from main(). */
+    if (g_nodes.inotify_fd >= 0) {
+        close(g_nodes.inotify_fd);
+        g_nodes.inotify_fd = -1;
+    }
+    if (g_nodes.netlink_fd >= 0) {
+        close(g_nodes.netlink_fd);
+        g_nodes.netlink_fd = -1;
+    }
     remove_pid_file();
     return 0;
 }
