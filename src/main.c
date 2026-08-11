@@ -180,27 +180,43 @@ static void remove_pid_file(void) {
 }
 
 static int is_screen_on(void) {
+    int bl_val = -1;
     if (g_nodes.backlight[0] != '\0' && access(g_nodes.backlight, F_OK) == 0) {
-        int val = sysfs_read_int(g_nodes.backlight);
-        return val > 0;
-    }
-
-    const char *bl_paths[] = {
-        "/sys/class/leds/lcd-backlight/brightness",
-        "/sys/class/backlight/panel0-backlight/brightness",
-        "/sys/class/backlight/lcd-backlight/brightness",
-        "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
-        NULL
-    };
-    for (int i = 0; bl_paths[i]; i++) {
-        if (access(bl_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.backlight, bl_paths[i]);
-            int val = sysfs_read_int(bl_paths[i]);
-            return val > 0;
+        bl_val = sysfs_read_int(g_nodes.backlight);
+    } else {
+        const char *bl_paths[] = {
+            "/sys/class/leds/lcd-backlight/brightness",
+            "/sys/class/backlight/panel0-backlight/brightness",
+            "/sys/class/backlight/lcd-backlight/brightness",
+            "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
+            NULL
+        };
+        for (int i = 0; bl_paths[i]; i++) {
+            if (access(bl_paths[i], F_OK) == 0) {
+                strcpy(g_nodes.backlight, bl_paths[i]);
+                bl_val = sysfs_read_int(bl_paths[i]);
+                break;
+            }
         }
     }
 
-    return 1;
+    if (bl_val > 0) return 1;
+
+    /* Secondary DRM / Framebuffer blank state check for OLED / AOD edge cases */
+    const char *blank_paths[] = {
+        "/sys/class/graphics/fb0/blank",
+        "/sys/class/drm/card0-DSI-1/dpms",
+        NULL
+    };
+    for (int b = 0; blank_paths[b]; b++) {
+        if (access(blank_paths[b], F_OK) == 0) {
+            int blank_val = sysfs_read_int(blank_paths[b]);
+            /* FB_BLANK_UNBLANK is 0. If blank_val == 0, screen is active */
+            if (blank_val == 0) return 1;
+        }
+    }
+
+    return (bl_val > 0);
 }
 
 static int get_top_app_pid(void) {
