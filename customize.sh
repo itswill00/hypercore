@@ -79,8 +79,27 @@ else
     exit 1
 fi
 
+ui_print "- Preserving existing user gamelist.txt..."
+PRESERVE_GL="/tmp/hypercore_gamelist_bak.txt"
+rm -f "$PRESERVE_GL"
+if [ -f "/data/adb/hypercore/gamelist.txt" ]; then
+    cp -f "/data/adb/hypercore/gamelist.txt" "$PRESERVE_GL"
+elif [ -f "/data/adb/modules/hypercore/gamelist.txt" ]; then
+    cp -f "/data/adb/modules/hypercore/gamelist.txt" "$PRESERVE_GL"
+fi
+
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
+
+mkdir -p /data/adb/hypercore
+
+if [ -f "$PRESERVE_GL" ]; then
+    ui_print "- Merging preserved user gamelist entries..."
+    cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: '!seen[$1]++' > /data/adb/hypercore/gamelist.txt
+    rm -f "$PRESERVE_GL"
+else
+    cp -f "$MODPATH/gamelist.txt" /data/adb/hypercore/gamelist.txt 2>/dev/null || touch /data/adb/hypercore/gamelist.txt
+fi
 
 ui_print "- Verifying embedded binary SHA-256 integrity..."
 chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
@@ -126,12 +145,16 @@ AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|lege
 
 if [ -n "$AUTO_GAMES" ]; then
     for pkg in $AUTO_GAMES; do
-        echo "$pkg" >> "$MODPATH/gamelist.txt"
-        ui_print "  + Auto-added game: $pkg"
+        if ! grep -q -E "^${pkg}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
+            echo "$pkg" >> /data/adb/hypercore/gamelist.txt
+            ui_print "  + Auto-added game: $pkg"
+        fi
     done
 else
     ui_print "  (No installed games auto-detected, gamelist ready for manual entries)"
 fi
+cp -f /data/adb/hypercore/gamelist.txt "$MODPATH/gamelist.txt" 2>/dev/null || true
+set_perm /data/adb/hypercore/gamelist.txt 0 0 0644
 set_perm "$MODPATH/gamelist.txt" 0 0 0644
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
