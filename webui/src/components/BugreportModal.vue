@@ -19,9 +19,10 @@
             v-model="note"
             class="note-input"
             placeholder="e.g. Gaming profile not applying on MLBB, CPU stays at min freq..."
-            rows="4"
+            rows="3"
             maxlength="500"
             :disabled="generating"
+            @focus="onInputFocus"
           ></textarea>
           <div class="char-count">{{ note.length }}/500</div>
 
@@ -117,6 +118,14 @@ function reset() {
   stepIdx.value = 0
 }
 
+function onInputFocus(e) {
+  setTimeout(() => {
+    if (e?.target) {
+      e.target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, 250)
+}
+
 function shortPath(p) {
   if (!p) return ''
   const parts = p.split('/')
@@ -169,6 +178,8 @@ onUnmounted(() => {
 .modal-backdrop {
   position: fixed;
   inset: 0;
+  height: 100dvh;
+  max-height: 100dvh;
   background: rgba(10, 11, 13, 0.78);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -176,6 +187,9 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @media (min-width: 480px) {
@@ -188,10 +202,12 @@ onUnmounted(() => {
   background: var(--surface-container-high, #26272e);
   border: 1px solid var(--outline-variant, #383a42);
   border-radius: 24px 24px 0 0;
-  padding: 20px;
+  padding: 18px 20px 20px;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-  max-height: 92vh;
+  max-height: calc(100dvh - 30px);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: auto;
 }
 
 @media (min-width: 480px) {
