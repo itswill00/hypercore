@@ -233,9 +233,13 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.UP) {
         const parsedSec = Math.floor(parseFloat(kv.UP.trim()))
         if (parsedSec > 0) {
-          uptimeSec.value = parsedSec
-          uptime.value = fmtUptime(parsedSec)
-          startUptimeTicker()
+          if (!uptimeInterval) {
+            // First time: seed the counter from /proc/uptime and start the ticker
+            uptimeSec.value = parsedSec
+            uptime.value = fmtUptime(parsedSec)
+            startUptimeTicker()
+          }
+          // If ticker is already running, leave it alone — it increments per second on its own
         }
       }
 
