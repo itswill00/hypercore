@@ -8,7 +8,7 @@
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.5.5' }}
+        {{ store.moduleVersion || 'v4.5.6' }}
       </span>
     </div>
 
@@ -41,7 +41,7 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">v4.5.5 (Latest)</span>
+                  <span class="release-ver">v4.5.6 (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
                   <li><strong>Security Audit</strong>: Replaced <code>popen(sha256sum)</code> with native C99 SHA-256 implementation, eliminating command injection vulnerability.</li>

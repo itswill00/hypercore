@@ -1,3 +1,12 @@
+# HyperCore v4.5.6 — Interactive Bug Report & Diagnostic Suite Release
+
+### Key Highlights & Innovations
+- **Interactive Bug Report Modal**: Added a dedicated Bug Report dialog in WebUI with an optional user note text field (up to 500 chars), transparent "What's Included" breakdown, animated multi-step progress feedback, and tap-to-copy file path functionality.
+- **Richer System & Kernel Diagnostics**: Extended `hypercore-bugreport` with process snapshots (`ps` top CPU consumers + hypercore daemon state), 200-line logcat tail (filtered for hypercore & kernel events), cpuset configuration dump (`top-app`, `foreground`, `background`), DRM/FB screen state metrics, and root manager environment detection (KernelSU / APatch / Magisk).
+- **Persistent Data & Log Fallbacks**: Full fallback chain for diagnostic data retrieval supporting `/data/adb/hypercore/` persistent storage paths.
+
+---
+
 # HyperCore v4.5.5 — Security Audit & Correctness Hardening Release
 
 ### Key Highlights & Fixes
