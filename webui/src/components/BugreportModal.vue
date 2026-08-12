@@ -1,8 +1,8 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="show" class="modal-backdrop" :class="{ 'keyboard-focused': isFocused }" @click.self="close">
-        <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="br-title">
+      <div v-if="show" class="modal-backdrop" @click.self="close">
+        <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="br-title" @click.stop>
 
           <!-- Header -->
           <div class="modal-header">
@@ -22,8 +22,6 @@
             rows="3"
             maxlength="500"
             :disabled="generating"
-            @focus="onInputFocus"
-            @blur="onInputBlur"
           ></textarea>
           <div class="char-count">{{ note.length }}/500</div>
 
@@ -88,7 +86,6 @@ const note = ref('')
 const generating = ref(false)
 const resultPath = ref('')
 const stepIdx = ref(0)
-const isFocused = ref(false)
 let stepTimer = null
 
 const generatingSteps = [
@@ -118,19 +115,6 @@ function reset() {
   note.value = ''
   resultPath.value = ''
   stepIdx.value = 0
-}
-
-function onInputFocus(e) {
-  isFocused.value = true
-  setTimeout(() => {
-    if (e?.target) {
-      e.target.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }
-  }, 100)
-}
-
-function onInputBlur() {
-  isFocused.value = false
 }
 
 function shortPath(p) {
@@ -192,28 +176,11 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(12px);
   z-index: 999;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  transition: align-items 0.2s ease, padding 0.2s ease;
-}
-
-/* Keyboard active layout: shift modal sheet to top of screen */
-.modal-backdrop.keyboard-focused {
-  align-items: flex-start !important;
-  padding-top: 12px !important;
-}
-
-.modal-backdrop.keyboard-focused .modal-window {
-  margin-top: 0 !important;
-  border-radius: 20px !important;
-  max-height: calc(100dvh - 24px) !important;
-}
-
-@media (min-width: 480px) {
-  .modal-backdrop { align-items: center; padding: 20px; }
+  padding: 16px;
 }
 
 .modal-window {
@@ -221,17 +188,13 @@ onUnmounted(() => {
   max-width: 440px;
   background: var(--surface-container-high, #26272e);
   border: 1px solid var(--outline-variant, #383a42);
-  border-radius: 24px 24px 0 0;
+  border-radius: 20px;
   padding: 18px 20px 20px;
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-  max-height: calc(100dvh - 30px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  max-height: calc(100dvh - 32px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  margin-top: auto;
-}
-
-@media (min-width: 480px) {
-  .modal-window { border-radius: 24px; }
+  margin: auto;
 }
 
 .modal-header {
