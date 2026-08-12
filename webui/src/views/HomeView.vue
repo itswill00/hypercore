@@ -40,6 +40,21 @@
             <div class="banner-chip">
               <span>Thermal: {{ store.thermalTier }}</span>
             </div>
+            <div class="banner-chip" v-if="store.cpuTemp > 0">
+              <span>CPU: {{ store.cpuTemp }}°C{{ store.cpuGov && store.cpuGov !== '—' ? ` · ${store.cpuGov}` : '' }}</span>
+            </div>
+            <div class="banner-chip" v-if="store.gpuInfo && store.gpuInfo !== '—'">
+              <span>GPU: {{ store.gpuInfo }}</span>
+            </div>
+            <div class="banner-chip" v-if="store.ramUsage && store.ramUsage !== '—'">
+              <span>RAM: {{ store.ramUsage }}{{ store.ramPercent > 0 ? ` (${store.ramPercent}%)` : '' }}</span>
+            </div>
+            <div class="banner-chip" v-if="store.batStatus === 'Charging'">
+              <span>{{ store.thermalGuardState }}</span>
+            </div>
+            <div class="banner-chip" v-if="store.uptime && store.uptime !== '—'">
+              <span>Up: {{ store.uptime }}</span>
+            </div>
           </div>
         </div>
       </div>
