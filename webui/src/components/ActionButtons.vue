@@ -35,7 +35,7 @@
           </div>
           <div class="row-meta">
             <div class="row-title">Restart daemon</div>
-            <div class="row-sub">Relaunch background service</div>
+            <div class="row-sub">Relaunch daemon service</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />

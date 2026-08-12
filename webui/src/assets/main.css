@@ -686,11 +686,6 @@ html, body, #app {
   border-color: var(--primary);
 }
 
-.c-green { color: var(--on-surface); }
-.c-amber { color: var(--on-surface); }
-.c-red { color: var(--on-surface); }
-.c-blue { color: var(--on-surface-variant); }
-
 .badge-pill {
   padding: 3px 8px;
   border-radius: 12px;
@@ -699,14 +694,6 @@ html, body, #app {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--on-surface);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.badge-pill.green,
-.badge-pill.red,
-.badge-pill.amber {
   background: rgba(255, 255, 255, 0.08);
   color: var(--on-surface);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -735,21 +722,6 @@ html, body, #app {
   overflow: hidden;
   border: 1px solid var(--surface-bright);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
-}
-
-.page-fade-enter-active,
-.page-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
-.page-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 
 .modal-fade-enter-active,

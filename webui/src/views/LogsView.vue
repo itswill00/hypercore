@@ -62,6 +62,8 @@
         </div>
       </TransitionGroup>
     </div>
+
+    <BugreportModal :show="showBugreport" @close="showBugreport = false" />
   </div>
 </template>
 
@@ -69,11 +71,13 @@
 import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
+import BugreportModal from '@/components/BugreportModal.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
 
 const menuOpen = ref(false)
+const showBugreport = ref(false)
 
 function toggleMenu() {
   menuOpen.value = !menuOpen.value
@@ -158,9 +162,8 @@ async function copyLog() {
   }
 }
 
-async function saveLog() {
-  const msg = await store.exportLogs()
-  if (toast) toast(msg)
+function saveLog() {
+  showBugreport.value = true
 }
 
 async function clearLog() {

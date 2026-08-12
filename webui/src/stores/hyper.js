@@ -47,11 +47,9 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v4.4')
+  const moduleVersion = ref('v4.5.6')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
-  const androidSdk = ref('—')
-  const selinux = ref('—')
   const uptime = ref('—')
   const uptimeSec = ref(0)
   let uptimeInterval = null
@@ -67,24 +65,6 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   const isRunning = computed(() => daemonPid.value.length > 0)
-
-  const thermalColor = computed(() => {
-    if (thermalTier.value.includes('3')) return 'c-red'
-    if (thermalTier.value.includes('2') || thermalTier.value.includes('1')) return 'c-amber'
-    return 'c-green'
-  })
-
-  const tempColor = computed(() => {
-    if (cpuTemp.value >= 75 || batTemp.value >= 53) return 'c-red'
-    if (cpuTemp.value >= 58 || batTemp.value >= 44) return 'c-amber'
-    return ''
-  })
-
-  const batColor = computed(() => {
-    if (batStatus.value === 'Charging') return 'c-green'
-    if (parseInt(batLevel.value) <= 15) return 'c-red'
-    return ''
-  })
 
   function normTemp(raw) {
     const v = parseInt(raw || 0)
@@ -202,19 +182,6 @@ export const useHyperStore = defineStore('hyper', () => {
   function stopCardPolling() {
     if (cpuGpuInterval) { clearInterval(cpuGpuInterval); cpuGpuInterval = null }
     if (ramBatInterval) { clearInterval(ramBatInterval); ramBatInterval = null }
-  }
-
-  async function fetchDeviceInfo() {
-    try {
-      const [kv, sdk, se] = await Promise.all([
-        execCommand('uname -r -m 2>/dev/null'),
-        execCommand('getprop ro.build.version.sdk 2>/dev/null'),
-        execCommand('getenforce 2>/dev/null')
-      ])
-      if (kv) kernelVersion.value = kv.trim()
-      if (sdk) androidSdk.value = `API ${sdk.trim()}`
-      if (se) selinux.value = se.trim()
-    } catch {}
   }
 
   async function refresh() {
@@ -609,9 +576,9 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     games, logs, loading,
-    moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
-    isRunning, thermalColor, tempColor, batColor,
-    fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
+    moduleVersion, kernelVersion, chipset, uptime,
+    isRunning,
+    refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
     addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker,
     startCardPolling, stopCardPolling
   }
