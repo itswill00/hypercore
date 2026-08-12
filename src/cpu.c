@@ -383,7 +383,11 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
             set_cpu_governor(gov);
-            set_cpu_freqs(1400000, g_nodes.lit_hw_max_freq, 1800000, g_nodes.big_hw_max_freq, "200", "30000");
+            /* Keep min scaling bounds at hardware minimums so CPU drops to idle when unneeded.
+             * Instant 0us up_rate_limit_us provides zero-lag ramp-up on load. */
+            set_cpu_freqs(g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq,
+                          g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq,
+                          "0", "30000");
             set_io_nr_requests("256");
             const char *devfreq_gov_nodes[] = {
                 "/sys/class/devfreq/13000000.mali/governor",
@@ -414,6 +418,13 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
                 NULL
             };
+            const char *devfreq_upthreshold_nodes[] = {
+                "/sys/class/devfreq/13000000.mali/simple_ondemand/upthreshold",
+                "/sys/class/devfreq/soc:mali/simple_ondemand/upthreshold",
+                "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/upthreshold",
+                "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/upthreshold",
+                NULL
+            };
             const char *power_policy_nodes[] = {
                 "/sys/devices/platform/soc/13000000.mali/power_policy",
                 "/sys/devices/platform/soc/soc:mali/power_policy",
@@ -437,9 +448,10 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
 
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
             sysfs_write_fallback(devfreq_poll_nodes, "20");
-            sysfs_write_fallback(devfreq_min_nodes, "674000000");
+            sysfs_write_fallback(devfreq_upthreshold_nodes, "50");
+            sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
-            sysfs_write_fallback(power_policy_nodes, "always_on");
+            sysfs_write_fallback(power_policy_nodes, "coarse_demand");
             sysfs_write_fallback(dvfsrc_nodes, "1");
 
             sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "1");
@@ -448,7 +460,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "1");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
-            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "674000");
+            sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
             sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", (prof == PROFILE_Gaming_MOBA) ? "25" : "30");
             sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", (prof == PROFILE_Gaming_MOBA) ? "30" : "50");
             const char *gaming_game_mode_nodes[] = {
