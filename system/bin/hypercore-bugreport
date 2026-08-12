@@ -11,6 +11,9 @@ if [ ! -d "$MOD_DIR" ]; then
     MOD_DIR="/data/adb/modules/tanzanite_hyperflow"
 fi
 
+# Optional user note passed as first argument
+USER_NOTE="${1:-}"
+
 DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
 [ -z "$DATE_STR" ] && DATE_STR=$(date +"%Y%m%d_%H%M%S" 2>/dev/null)
 
@@ -23,39 +26,64 @@ TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-# 1. Copy Log file
+# 1. User note (from WebUI description field)
+if [ -n "$USER_NOTE" ]; then
+    printf '%s\n' "$USER_NOTE" > "$TMP_DIR/user_note.txt"
+else
+    echo "(no description provided)" > "$TMP_DIR/user_note.txt"
+fi
+
+# 2. Copy Log file (with fallback chain)
 if [ -f "/sdcard/Android/hypercore.log" ]; then
     cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
+elif [ -f "/data/adb/hypercore/hypercore.log" ]; then
+    cp "/data/adb/hypercore/hypercore.log" "$TMP_DIR/hypercore.log"
 elif [ -f "$MOD_DIR/hypercore.log" ]; then
     cp "$MOD_DIR/hypercore.log" "$TMP_DIR/hypercore.log"
 else
     touch "$TMP_DIR/hypercore.log"
 fi
 
-# 2. Device System Info
+# 3. Device & Module Info
 {
+    echo "=== Module ==="
     echo "module_id=$(grep '^id=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
     echo "module_version=$(grep '^version=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
-    echo "device_model=$(getprop ro.product.model 2>/dev/null)"
+    echo ""
+    echo "=== Device ==="
+    echo "model=$(getprop ro.product.model 2>/dev/null)"
     echo "brand=$(getprop ro.product.brand 2>/dev/null)"
     echo "manufacturer=$(getprop ro.product.manufacturer 2>/dev/null)"
     echo "platform=$(getprop ro.board.platform 2>/dev/null)"
     echo "hardware=$(getprop ro.hardware 2>/dev/null)"
-    echo "android_version=$(getprop ro.build.version.release 2>/dev/null)"
-    echo "sdk_version=$(getprop ro.build.version.sdk 2>/dev/null)"
+    echo "android=$(getprop ro.build.version.release 2>/dev/null)"
+    echo "sdk=$(getprop ro.build.version.sdk 2>/dev/null)"
     echo "fingerprint=$(getprop ro.build.fingerprint 2>/dev/null)"
     echo "kernel=$(uname -r 2>/dev/null)"
     echo "uname=$(uname -a 2>/dev/null)"
     echo "selinux=$(getenforce 2>/dev/null)"
     echo "uptime=$(uptime 2>/dev/null)"
     echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
+    echo ""
+    echo "=== Root Manager ==="
+    if [ -d "/data/adb/ksu" ]; then
+        echo "root=KernelSU"
+        echo "ksu_version=$(cat /data/adb/ksu/version 2>/dev/null || echo unknown)"
+    elif [ -d "/data/adb/ap" ]; then
+        echo "root=APatch"
+    elif command -v magisk >/dev/null 2>&1; then
+        echo "root=Magisk"
+        echo "magisk_version=$(magisk -v 2>/dev/null)"
+    else
+        echo "root=unknown"
+    fi
 } > "$TMP_DIR/device_info.txt"
 
-# 3. Crash-Proof & Safe Sysfs Node Dump
+# 4. Crash-Proof Sysfs Node Dump
 {
+    echo "=== CPU Freq Policy ==="
     grep -s -H '' \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_governor \
-        /sys/devices/system/cpu/cpufreq/policy*/scaling_available_governors \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_min_freq \
         /sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq \
@@ -64,48 +92,99 @@ fi
         /sys/devices/system/cpu/cpufreq/policy*/sugov_ext/* \
         /sys/devices/system/cpu/cpufreq/policy*/schedutil/* 2>/dev/null
 
+    echo ""
+    echo "=== GPU (Mali) ==="
     grep -s -H '' \
         /sys/class/devfreq/*mali*/governor \
-        /sys/class/devfreq/*mali*/available_governors \
-        /sys/class/devfreq/*mali*/available_frequencies \
         /sys/class/devfreq/*mali*/cur_freq \
         /sys/class/devfreq/*mali*/min_freq \
         /sys/class/devfreq/*mali*/max_freq \
         /sys/class/devfreq/*mali*/polling_interval \
-        /sys/devices/platform/soc/*mali*/power_policy \
-        /sys/devices/platform/soc/*mali*/devfreq/*mali*/governor \
-        /sys/devices/platform/soc/*mali*/devfreq/*mali*/min_freq \
-        /sys/devices/platform/soc/*mali*/devfreq/*mali*/max_freq 2>/dev/null
+        /sys/devices/platform/soc/*mali*/power_policy 2>/dev/null
 
+    echo ""
+    echo "=== GED / FPSGO ==="
     grep -s -H '' /sys/module/ged/parameters/* 2>/dev/null | grep -vE 'uevent|debug|trace|panic'
-
     grep -s -H '' \
         /sys/kernel/fpsgo/common/force_onoff \
         /sys/kernel/fpsgo/fbt/boost_ta \
         /sys/kernel/fpsgo/fbt/ultra_rescue \
-        /sys/kernel/fpsgo/fbt/light_loading_policy \
-        /sys/kernel/fpsgo/fbt/switch_idleprefer \
         /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
 
+    echo ""
+    echo "=== Thermal Zones ==="
     grep -s -H '' \
         /sys/class/thermal/thermal_zone*/type \
         /sys/class/thermal/thermal_zone*/temp \
         /sys/class/thermal/thermal_message/sconfig \
         /sys/class/thermal/thermal_message/sport_mode 2>/dev/null
 
+    echo ""
+    echo "=== Battery / Power ==="
     grep -s -H '' \
         /sys/class/power_supply/*/status \
         /sys/class/power_supply/*/capacity \
         /sys/class/power_supply/*/temp \
         /sys/class/power_supply/*/cycle_count \
+        /sys/class/power_supply/*/current_now \
+        /sys/class/power_supply/*/voltage_now \
         /sys/kernel/helio-dvfsrc/dvfsrc_qos_mode 2>/dev/null
+
+    echo ""
+    echo "=== Screen State ==="
+    grep -s -H '' \
+        /sys/class/leds/lcd-backlight/brightness \
+        /sys/class/graphics/fb0/blank \
+        /sys/class/drm/card0-DSI-1/dpms 2>/dev/null
+
+    echo ""
+    echo "=== Cpuset ==="
+    grep -s -H '' \
+        /dev/cpuset/foreground/cpus \
+        /dev/cpuset/background/cpus \
+        /dev/cpuset/system-background/cpus \
+        /dev/cpuset/top-app/cpus 2>/dev/null
 } > "$TMP_DIR/sysfs_nodes.txt"
 
-# 4. Copy Game List & Module Configuration
-[ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
+# 5. Process snapshot — hypercore daemon & top-app
+{
+    echo "=== HyperCore Processes ==="
+    ps -A 2>/dev/null | grep -E 'hypercore|libhyper' | grep -v grep || \
+        ps 2>/dev/null | grep -E 'hypercore|libhyper' | grep -v grep
+
+    echo ""
+    echo "=== Top 15 CPU Consumers ==="
+    ps -A -o pid,ppid,%cpu,%mem,name 2>/dev/null | head -n 16 || \
+        ps -o pid,%cpu,%mem,args 2>/dev/null | head -n 16
+
+    echo ""
+    echo "=== Foreground Activity ==="
+    dumpsys activity top 2>/dev/null | grep -E 'ACTIVITY|mCurrentFocus' | head -n 5 || \
+        dumpsys window windows 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 4
+} > "$TMP_DIR/processes.txt"
+
+# 6. Logcat tail (last 200 lines, filter to hypercore + kernel warnings)
+{
+    echo "=== Logcat (last 200 lines — hypercore & kernel) ==="
+    logcat -d -t 200 2>/dev/null | grep -E 'hypercore|libhypercore|kernel|W |E ' | tail -n 200 || \
+        logcat -d 2>/dev/null | tail -n 200
+} > "$TMP_DIR/logcat_tail.txt"
+
+# 7. Copy Game List & Module Config
+[ -f "/data/adb/hypercore/gamelist.txt" ] && cp "/data/adb/hypercore/gamelist.txt" "$TMP_DIR/gamelist.txt"
+[ -z "$(cat "$TMP_DIR/gamelist.txt" 2>/dev/null)" ] && \
+    [ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -f "$MOD_DIR/module.prop" ] && cp "$MOD_DIR/module.prop" "$TMP_DIR/module.prop"
 
-# 5. Multi-Tool Archive Creation (zip / busybox zip / tar.gz fallbacks)
+# 8. Write manifest
+{
+    echo "HyperCore Bug Report"
+    echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
+    echo "Files:"
+    ls -lh "$TMP_DIR/" 2>/dev/null
+} > "$TMP_DIR/manifest.txt"
+
+# 9. Multi-Tool Archive Creation (zip / busybox zip / tar.gz fallbacks)
 OUT_FILE=""
 
 if command -v zip >/dev/null 2>&1; then

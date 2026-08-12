@@ -9,20 +9,20 @@
           </div>
           <div class="row-meta">
             <div class="row-title">Clear RAM cache</div>
-            <div class="row-sub">Compact memory & drop caches</div>
+            <div class="row-sub">Compact memory &amp; drop caches</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
 
-      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="saveLog">
+      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="openBugreport">
         <div class="row-left">
           <div class="icon-badge secondary">
             <Icons name="logs" :size="18" />
           </div>
           <div class="row-meta">
-            <div class="row-title">Export Logs</div>
-            <div class="row-sub">Export log & sysfs node dump (.zip)</div>
+            <div class="row-title">Bug Report</div>
+            <div class="row-sub">Collect logs, sysfs &amp; device snapshot</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -54,16 +54,21 @@
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
       </div>
     </div>
+
+    <BugreportModal :show="showBugreport" @close="showBugreport = false" />
   </div>
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { ref, inject } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
+import BugreportModal from '@/components/BugreportModal.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
+
+const showBugreport = ref(false)
 
 async function flush() {
   if (store.loading) return
@@ -79,10 +84,9 @@ async function restart() {
   if (toast) toast(msg)
 }
 
-async function saveLog() {
+function openBugreport() {
   if (store.loading) return
-  const msg = await store.exportLogs()
-  if (toast) toast(msg)
+  showBugreport.value = true
 }
 
 function addShortcut() {

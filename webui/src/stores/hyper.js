@@ -397,18 +397,22 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     }
   }
 
-  async function exportLogs() {
+  async function exportLogs(note = '') {
     loading.value = true
     try {
-      const res = await execCommand(`${MOD}/system/bin/hypercore-bugreport || hypercore-bugreport || sh ${MOD}/system/bin/hypercore-bugreport`)
+      const safeNote = sanitize(note).replace(/'/g, '').slice(0, 500)
+      const noteArg = safeNote ? `'${safeNote}'` : ''
+      const cmd = `${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null \
+        || sh ${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null`
+      const res = await execCommand(cmd)
       const path = (res || '').trim().split('\n').pop()
       if (path && path !== 'ERROR' && (path.indexOf('.zip') !== -1 || path.indexOf('.tar.gz') !== -1)) {
-        return `Bugreport saved to ${path}`
+        return path
       }
       await execCommand(`cp ${LOG} /sdcard/HyperCore_log.txt 2>/dev/null`)
-      return 'Log saved to /sdcard/HyperCore_log.txt'
+      return '/sdcard/HyperCore_log.txt'
     } catch (e) {
-      return 'Failed to export bugreport'
+      return ''
     } finally {
       loading.value = false
     }
