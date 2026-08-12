@@ -43,7 +43,14 @@ static int sysfs_should_log_err(const char *path) {
     unsigned h = 0;
     for (const char *p = path; *p; p++) h = h * 31u + (unsigned char)*p;
     int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
-    if (s_err_tbl[slot].path == path && now - s_err_tbl[slot].last_err < 60) return 0;
+    /* [BUG-3 FIX] Compare string contents with strcmp(), NOT pointer address.
+     * The previous `== path` only matched if the exact same string literal
+     * pointer was passed twice; any other buffer holding the same path string
+     * (e.g. a stack array snprintf'd with the same path) would bypass throttle,
+     * causing log spam. Also handle NULL safely. */
+    if (s_err_tbl[slot].path != NULL &&
+        strcmp(s_err_tbl[slot].path, path) == 0 &&
+        now - s_err_tbl[slot].last_err < 60) return 0;
     s_err_tbl[slot].path = path;
     s_err_tbl[slot].last_err = now;
     return 1;
@@ -74,20 +81,25 @@ void sysfs_write(const char *path, const char *val) {
 
 void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
-    int written = 0;
+    /* [BUG-2 FIX] The old code had `break` unconditionally after calling
+     * sysfs_write(paths[0]), so fallback nodes [1], [2]... were NEVER tried.
+     * Since sysfs_write() returns void (no success/failure signal), we must
+     * probe open(O_WRONLY) ourselves to determine if a node is writable before
+     * calling sysfs_write(). This preserves the Read-Before-Write Guard inside
+     * sysfs_write while correctly iterating through candidates. */
     for (int i = 0; paths[i]; i++) {
-        if (paths[i][0] == '\0') continue;
-        /* [M-4 FIX] Removed access(W_OK) check before open() — this was a
-         * TOCTOU race: the node could disappear or lose permission between
-         * the access() check and the subsequent open() call inside sysfs_write().
-         * Directly attempt open() and treat success as the writable signal. */
-        sysfs_write(paths[i], val);
-        /* sysfs_write internally reads current value and skips if unchanged,
-         * or opens O_WRONLY and logs on failure — either way safe to call. */
-        written = 1;
-        break;
+        if (!paths[i] || paths[i][0] == '\0') continue;
+        /* Probe write-ability without TOCTOU: open then close immediately.
+         * If open succeeds, the node is present & writable — use it. */
+        int probe_fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+        if (probe_fd >= 0) {
+            close(probe_fd);
+            sysfs_write(paths[i], val);
+            return; /* first writable node wins */
+        }
     }
-    if (!written && paths[0] != NULL) {
+    /* All candidates exhausted — throttled log */
+    if (paths[0] != NULL) {
         static time_t s_last_fb_err = 0;
         time_t now = time(NULL);
         if (now - s_last_fb_err >= 60) {

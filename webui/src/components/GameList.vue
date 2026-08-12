@@ -9,7 +9,7 @@
         placeholder="Search configured games..."
         style="flex: 1; border-radius: 20px; padding: 6px 14px; font-size: 11px;"
       >
-      <span class="badge-pill purple" style="flex-shrink: 0; padding: 4px 10px;">
+      <span class="badge-pill" style="flex-shrink: 0; padding: 4px 10px;">
         {{ displayGames.length }} {{ displayGames.length === 1 ? 'app' : 'apps' }}
       </span>
     </div>

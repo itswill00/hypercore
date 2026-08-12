@@ -6,8 +6,8 @@
         <div class="page-header-title">HyperCore</div>
         <div class="page-header-sub">by aerichandesu@noticesa</div>
       </div>
-      <span class="badge-pill purple" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.4' }}
+      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
+        {{ store.moduleVersion || 'v4.5.5' }}
       </span>
     </div>
 
@@ -24,7 +24,7 @@
             <div class="banner-title-group">
               <div class="banner-title-line">
                 <span class="app-banner-title">HyperCore</span>
-                <span class="badge-pill purple">{{ store.moduleVersion || 'v4.4' }}</span>
+                <span class="badge-pill">{{ store.moduleVersion || 'v4.5.5' }}</span>
               </div>
               <div class="app-banner-sub">Universal Kernel Optimizer for MediaTek MT6789 Family</div>
             </div>
@@ -116,16 +116,11 @@ async function openExternal(url) {
   transform: scale(0.88);
 }
 
-.avatar-badge.dev {
-  background: rgba(113, 107, 168, 0.22);
-  color: #b8b3e8;
-  border: 1px solid rgba(113, 107, 168, 0.3);
-}
-
+.avatar-badge.dev,
 .avatar-badge.tester {
-  background: rgba(160, 178, 198, 0.14);
-  color: #a0b2c6;
-  border: 1px solid rgba(160, 178, 198, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f2f5;
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .role-chip {
@@ -138,14 +133,11 @@ async function openExternal(url) {
   flex-shrink: 0;
 }
 
-.role-chip.dev {
-  background: rgba(113, 107, 168, 0.18);
-  color: #b8b3e8;
-}
-
+.role-chip.dev,
 .role-chip.tester {
-  background: rgba(160, 178, 198, 0.12);
-  color: #8fa0b0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f2f5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .donate-card {
@@ -337,7 +329,7 @@ async function openExternal(url) {
 .modal-section-title {
   font-size: 11px;
   font-weight: 600;
-  color: var(--blue, #a0b2c6);
+  color: var(--on-surface-variant, #b0b4c0);
   opacity: 0.9;
   margin-bottom: 8px;
 }

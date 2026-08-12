@@ -8,7 +8,7 @@
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.4' }}
+        {{ store.moduleVersion || 'v4.5.5' }}
       </span>
     </div>
 
@@ -41,13 +41,17 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">v4.4 (Latest)</span>
+                  <span class="release-ver">v4.5.5 (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Dynamic Hardware Limits Discovery</strong>: Auto-detect CPU/GPU min &amp; max frequencies dynamically.</li>
-                  <li><strong>Custom Governor Preservation</strong>: Preserves custom kernel developer governors (helix, sugov_ext, etc.).</li>
-                  <li><strong>Ultra-Smooth Interactive Profile</strong>: 200us CPU up-rate limit, 40ms down-rate, 55% GPU upthreshold &amp; GED smart boost.</li>
-                  <li><strong>MD3 WebUI Design System</strong>: Standardized component dimensions, edge-to-edge terminal logger, and vertical 3-dots action menu.</li>
+                  <li><strong>Security Audit</strong>: Replaced <code>popen(sha256sum)</code> with native C99 SHA-256 implementation, eliminating command injection vulnerability.</li>
+                  <li><strong>Sysfs Fallback Fix</strong>: Fixed <code>sysfs_write_fallback</code> that always stopped at the first path — multi-OEM fallback nodes now work correctly.</li>
+                  <li><strong>Netlink Buffer</strong>: Expanded uevent buffer from 512 to 2048 bytes, preventing silent battery/USB event drops on Android kernel.</li>
+                  <li><strong>Game Auto-Detection</strong>: Fixed early-return bug in <code>load_gamelist()</code> that prevented auto-detection on fresh installs.</li>
+                  <li><strong>IPC Improvements</strong>: JSON response buffer expanded (640→1024), GPU/charger temperatures now read from real thermal nodes.</li>
+                  <li><strong>WebUI Hardening</strong>: Fixed <code>pkill -f</code> → <code>pkill -x</code>, sanitized <code>updateGameProfile()</code> inputs, dynamic version from <code>module.prop</code>.</li>
+                  <li><strong>Thread Safety</strong>: Replaced <code>localtime()</code> with <code>localtime_r()</code> in log subsystem.</li>
+                  <li><strong>Resource Cleanup</strong>: <code>inotify_fd</code> and <code>netlink_fd</code> now properly closed on daemon shutdown.</li>
                 </ul>
               </div>
             </div>

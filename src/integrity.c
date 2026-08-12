@@ -11,8 +11,14 @@ int verify_module_integrity(const char *mod_dir) {
     size_t count = sizeof(g_embedded_checksums) / sizeof(g_embedded_checksums[0]);
 
     if (count == 0) {
-        log_warn("Security", "No embedded checksums present in binary segment.");
-        return 0;
+        /* [BUG-15 FIX] An empty checksum array previously returned 0 (success),
+         * effectively bypassing all integrity checks silently. This is a logic
+         * error: if there are no checksums embedded, we cannot verify anything,
+         * which is itself a verification failure — not a pass.
+         * Return non-zero to signal the installer to abort and the daemon log to
+         * report a security warning clearly. */
+        log_warn("Security", "No embedded checksums present — integrity verification skipped (treat as failure).");
+        return 1;
     }
 
     for (size_t i = 0; i < count; i++) {

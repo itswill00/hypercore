@@ -1,3 +1,20 @@
+# HyperCore v4.5.5 — Security Audit & Correctness Hardening Release
+
+### Key Highlights & Fixes
+- **[CRITICAL] Native SHA-256 Engine**: Completely replaced `popen("sha256sum '%s'")` with a self-contained native C99 SHA-256 implementation. The old approach had a command injection vulnerability — any filepath containing a single-quote character could execute arbitrary shell commands with root privileges. Zero attack surface remains.
+- **[CRITICAL] Sysfs Fallback Fully Restored**: `sysfs_write_fallback()` has had an unconditional `break` after the first path since v4.2, meaning fallback nodes for multi-OEM hardware (Infinix, Tecno, Realme, Advan) were **never tried**. This is now fully corrected — the function probes each path with `open(O_WRONLY)` and moves to the next if the node is absent or unwritable.
+- **[HIGH] Game Auto-Detection on Fresh Install**: Fixed `load_gamelist()` early return that prevented `pm list packages` auto-detection from running unless `gamelist.txt` already existed. On fresh installs, game detection now works correctly and the file is created at the right persistent path.
+- **[HIGH] Netlink Uevent Buffer Expanded (512→2048 bytes)**: Android kernel uevent datagrams can reach 800–2048 bytes. The old 512-byte buffer caused `EMSGSIZE` truncation, silently dropping battery plug/unplug and USB events.
+- **[HIGH] Thread-Safe Logging**: Replaced `localtime()` with `localtime_r()` in the log subsystem. The old function used a shared static buffer that could be overwritten by concurrent calls from daemon threads.
+- **[HIGH] FD Leak Fixed**: `inotify_fd` and `netlink_fd` were opened at daemon start but never closed on exit. Both are now properly closed in the shutdown cleanup sequence.
+- **[MEDIUM] Real GPU & Charger Temperatures**: IPC `GET_STATUS` was returning CPU temp as GPU temp and battery temp as charger temp. Now reads from actual MT6789 thermal zones (zone26/28/30 for GPU, PMIC charger nodes) with fallback.
+- **[MEDIUM] IPC JSON Buffer Expanded (640→1024 bytes)**: Prevents JSON truncation that produced invalid JSON and silently broke all WebUI telemetry parsing.
+- **[MEDIUM] WebUI Security Hardening**: `updateGameProfile()` now sanitizes both `pkg` and `profile` before shell interpolation — matching the pattern already used by `addGame()` / `removeGame()`. Fixed `pkill -f` → `pkill -x` (exact process name match) to prevent accidentally killing unrelated processes.
+- **[LOW] Compiler Type-Safety**: Added `__attribute__((format(printf,3,4)))` to `log_write()` declaration, enabling compile-time format string checking across all call sites.
+- **[LOW] inotify Watch on Non-Existent File**: `inotify_add_watch()` no longer silently fails on fresh installs where `gamelist.txt` hasn't been created yet — the file is now created before the watch is registered.
+
+---
+
 # HyperCore v4.5.1 — Persistent Data Architecture & Safety Maintenance Release
 
 ### Key Highlights & Fixes

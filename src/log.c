@@ -39,11 +39,21 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    struct tm *tm_info = localtime(&tv.tv_sec);
+    /* [BUG-4 FIX] localtime() returns a pointer to a shared static buffer —
+     * NOT thread-safe and can be overwritten by concurrent calls (e.g. from
+     * async_system_cmd grandchild or signal handlers). Use localtime_r()
+     * which fills a caller-provided struct tm with no shared state.
+     * Also guard against NULL return (can happen if tv.tv_sec is invalid). */
+    struct tm tm_buf;
+    struct tm *tm_info = localtime_r(&tv.tv_sec, &tm_buf);
 
     char tbuf[32];
-    size_t tlen = strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", tm_info);
-    snprintf(tbuf + tlen, sizeof(tbuf) - tlen, ".%03d", (int)(tv.tv_usec / 1000));
+    if (!tm_info) {
+        snprintf(tbuf, sizeof(tbuf), "0000-00-00 00:00:00.000");
+    } else {
+        size_t tlen = strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", tm_info);
+        snprintf(tbuf + tlen, sizeof(tbuf) - tlen, ".%03d", (int)(tv.tv_usec / 1000));
+    }
 
     const char *lvl_str = (level >= 0 && level <= LOG_LEVEL_Error) ? s_level_names[level] : "Info ";
     const char *tag_str = (tag && tag[0] != '\0') ? tag : "System";

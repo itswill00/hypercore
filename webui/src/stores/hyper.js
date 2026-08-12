@@ -168,7 +168,7 @@ echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
-echo "VER:v4.5.0";
+echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v4.5.5)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`
@@ -371,9 +371,14 @@ echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/
     loading.value = true
     try {
       const cmd = `MOD="/data/adb/modules/hypercore";
-pkill -15 -f libhypercore.so 2>/dev/null || pkill -15 -f hypercore 2>/dev/null || true;
+// [BUG-11 FIX] Use pkill -x (exact process name match) instead of pkill -f.
+// pkill -f matches the full command line including the module directory path,
+// which can accidentally kill unrelated processes that have 'hypercore' in
+// their arguments. service.sh explicitly warns against pkill -f. -x matches
+// only processes whose argv[0] basename exactly equals 'libhypercore.so'.
+pkill -15 -x libhypercore.so 2>/dev/null || true;
 sleep 0.3;
-pkill -9 -f libhypercore.so 2>/dev/null || true;
+pkill -9 -x libhypercore.so 2>/dev/null || true;
 rm -f $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
 nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       await execCommand(cmd)
@@ -481,7 +486,16 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     return `Removed ${pkg}`
   }
 
-  function updateGameProfile(pkg, profile) {
+  function updateGameProfile(rawPkg, rawProfile) {
+    /* [BUG-12 FIX] Sanitize both pkg and profile before shell interpolation.
+     * The old code used the raw pkg/profile strings directly in the awk and echo
+     * shell commands, allowing an attacker-controlled package name or profile
+     * string to inject shell metacharacters (semicolons, backticks, $(...)).
+     * Apply the same sanitize() as addGame() / removeGame(). */
+    const pkg = sanitize(rawPkg).split(':')[0].trim()
+    const profile = sanitize(rawProfile).toUpperCase().replace(/[^A-Z_]/g, '')
+    if (!pkg || !profile) return
+
     const existing = games.value.find(g => g.pkg === pkg)
     if (existing) {
       existing.profile = profile

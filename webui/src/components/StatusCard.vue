@@ -67,7 +67,7 @@ const heroBadgeClass = computed(() => {
 .developer-sub {
   font-size: 10px;
   font-weight: 500;
-  color: var(--primary, #a0c4ff);
+  color: var(--on-surface-variant, #b0b4c0);
   opacity: 0.85;
 }
 
@@ -96,27 +96,12 @@ const heroBadgeClass = computed(() => {
   user-select: none;
 }
 
-.profile-hero-badge.is-interactive {
-  background: rgba(160, 178, 198, 0.14);
-  color: #a0b2c6;
-  border: 1px solid rgba(160, 178, 198, 0.24);
-}
-
-.profile-hero-badge.is-gaming {
-  background: rgba(184, 179, 232, 0.16);
-  color: #b8b3e8;
-  border: 1px solid rgba(184, 179, 232, 0.3);
-}
-
-.profile-hero-badge.is-sleep {
-  background: rgba(210, 200, 176, 0.14);
-  color: #d2c8b0;
-  border: 1px solid rgba(210, 200, 176, 0.22);
-}
-
+.profile-hero-badge.is-interactive,
+.profile-hero-badge.is-gaming,
+.profile-hero-badge.is-sleep,
 .profile-hero-badge.is-stopped {
-  background: rgba(229, 115, 115, 0.14);
-  color: #e57373;
-  border: 1px solid rgba(229, 115, 115, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface, #f0f2f5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 </style>
