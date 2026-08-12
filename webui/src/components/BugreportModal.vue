@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="show" class="modal-backdrop" @click.self="close">
+      <div v-if="show" class="modal-backdrop" :class="{ 'keyboard-focused': isFocused }" @click.self="close">
         <div class="modal-window" role="dialog" aria-modal="true" aria-labelledby="br-title">
 
           <!-- Header -->
@@ -23,6 +23,7 @@
             maxlength="500"
             :disabled="generating"
             @focus="onInputFocus"
+            @blur="onInputBlur"
           ></textarea>
           <div class="char-count">{{ note.length }}/500</div>
 
@@ -87,6 +88,7 @@ const note = ref('')
 const generating = ref(false)
 const resultPath = ref('')
 const stepIdx = ref(0)
+const isFocused = ref(false)
 let stepTimer = null
 
 const generatingSteps = [
@@ -119,11 +121,16 @@ function reset() {
 }
 
 function onInputFocus(e) {
+  isFocused.value = true
   setTimeout(() => {
     if (e?.target) {
       e.target.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
-  }, 250)
+  }, 100)
+}
+
+function onInputBlur() {
+  isFocused.value = false
 }
 
 function shortPath(p) {
@@ -190,6 +197,19 @@ onUnmounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  transition: align-items 0.2s ease, padding 0.2s ease;
+}
+
+/* Keyboard active layout: shift modal sheet to top of screen */
+.modal-backdrop.keyboard-focused {
+  align-items: flex-start !important;
+  padding-top: 12px !important;
+}
+
+.modal-backdrop.keyboard-focused .modal-window {
+  margin-top: 0 !important;
+  border-radius: 20px !important;
+  max-height: calc(100dvh - 24px) !important;
 }
 
 @media (min-width: 480px) {
