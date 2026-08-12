@@ -267,6 +267,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_game_mode, "0");
+            sysfs_write(g_nodes.touch_sensitivity, "0");
             sysfs_write(g_nodes.touch_edge, "0");
             sysfs_write(g_nodes.charge_control, "8");
             break;
@@ -375,6 +377,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
             sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_game_mode, "0");
+            sysfs_write(g_nodes.touch_sensitivity, "0");
             sysfs_write(g_nodes.touch_edge, "0");
             sysfs_write(g_nodes.charge_control, "8");
             break;
@@ -446,8 +450,16 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
                 NULL
             };
 
+            const char *poll_ms = (tier == 0) ? "20" : (tier == 1 ? "30" : "45");
+            const char *dvfs_thresh = (prof == PROFILE_Gaming_MOBA) ?
+                (tier == 0 ? "25" : (tier == 1 ? "30" : "35")) :
+                (tier == 0 ? "30" : (tier == 1 ? "35" : "40"));
+            const char *dvfs_margin = (prof == PROFILE_Gaming_MOBA) ?
+                (tier == 0 ? "30" : (tier == 1 ? "35" : "40")) :
+                (tier == 0 ? "50" : (tier == 1 ? "40" : "30"));
+
             sysfs_write_fallback(devfreq_gov_nodes, "simple_ondemand");
-            sysfs_write_fallback(devfreq_poll_nodes, "20");
+            sysfs_write_fallback(devfreq_poll_nodes, poll_ms);
             sysfs_write_fallback(devfreq_upthreshold_nodes, "50");
             sysfs_write_fallback(devfreq_min_nodes, "390000000");
             sysfs_write_fallback(devfreq_max_nodes, get_max_gpu_freq_hz());
@@ -461,8 +473,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
             sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
             sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "390000");
-            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", (prof == PROFILE_Gaming_MOBA) ? "25" : "30");
-            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", (prof == PROFILE_Gaming_MOBA) ? "30" : "50");
+            sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", dvfs_thresh);
+            sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", dvfs_margin);
             const char *gaming_game_mode_nodes[] = {
                 "/sys/module/ged/parameters/gx_game_mode",
                 "/sys/module/ged/parameters/gx_boost_on",
@@ -477,6 +489,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write_fallback(sconfig_nodes, "10");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
             sysfs_write(g_nodes.touch_thp_smooth, "1");
+            sysfs_write(g_nodes.touch_game_mode, "1");
+            sysfs_write(g_nodes.touch_sensitivity, "1");
             sysfs_write(g_nodes.touch_edge, (prof == PROFILE_Gaming_MOBA) ? "0" : "1");
 
             if (g_state.is_charging) {

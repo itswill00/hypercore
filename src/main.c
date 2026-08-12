@@ -156,6 +156,32 @@ static void init_hardware_nodes(void) {
         }
     }
 
+    const char *gm_paths[] = {
+        "/sys/class/touch/touch_dev/touch_thp_game",
+        "/sys/class/touch/touch_dev/game_mode",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_game_mode",
+        NULL
+    };
+    for (int i = 0; gm_paths[i]; i++) {
+        if (access(gm_paths[i], F_OK) == 0) {
+            strcpy(g_nodes.touch_game_mode, gm_paths[i]);
+            break;
+        }
+    }
+
+    const char *sens_paths[] = {
+        "/sys/class/touch/touch_dev/sensitivity",
+        "/sys/class/touch/touch_dev/touch_sensitivity",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_sensitivity",
+        NULL
+    };
+    for (int i = 0; sens_paths[i]; i++) {
+        if (access(sens_paths[i], F_OK) == 0) {
+            strcpy(g_nodes.touch_sensitivity, sens_paths[i]);
+            break;
+        }
+    }
+
     const char *chg_paths[] = {
         "/sys/class/power_supply/battery/constant_charge_current_max",
         "/sys/class/power_supply/battery/charge_control_limit",
@@ -470,6 +496,26 @@ int main(int argc, char *argv[]) {
         static int s_prev_app_boost = 0;
         int is_gpu_heavy = (gpu_load >= 20);
         int is_tampered = check_and_recover_sysfs_tampering(g_state.current_profile);
+
+        static int s_prev_gpu_load = 0;
+        int gpu_spike = (gpu_load - s_prev_gpu_load >= 30);
+        s_prev_gpu_load = gpu_load;
+
+        if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && (gpu_spike || temp_delta >= 4)) {
+            if (g_state.jitter_rescue_ticks == 0) {
+                g_state.jitter_rescue_ticks = 2;
+                sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
+                sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
+                log_warn("Jitter", "Frame-spike detected (GPU %d%%, ΔT %d°C) -> Ultra-Rescue Burst activated", gpu_load, temp_delta);
+            }
+        }
+
+        if (g_state.jitter_rescue_ticks > 0) {
+            g_state.jitter_rescue_ticks--;
+            if (g_state.jitter_rescue_ticks == 0) {
+                sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
+            }
+        }
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
             g_state.app_boost_ticks != s_prev_app_boost || is_tampered ||

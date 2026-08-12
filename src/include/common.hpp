@@ -43,6 +43,8 @@ struct hw_nodes {
     char backlight[256];
     char touch_thp_smooth[256];
     char touch_edge[256];
+    char touch_game_mode[256];
+    char touch_sensitivity[256];
     char charge_control[256];
     char boot_cpu_gov[64];
     int  lit_hw_min_freq;
@@ -63,6 +65,7 @@ struct core_state {
     int gaming_hold_ticks;
     int launch_boost_ticks;
     int app_boost_ticks;
+    int jitter_rescue_ticks;
     int prev_load;
     int is_charging;
 };
