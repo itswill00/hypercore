@@ -41,7 +41,7 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">v4.5.6 (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v4.5.6' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
                   <li><strong>Security Audit</strong>: Replaced <code>popen(sha256sum)</code> with native C99 SHA-256 implementation, eliminating command injection vulnerability.</li>
@@ -223,7 +223,7 @@
           </div>
           <div class="expanded-content">
             <div class="expanded-inner" style="white-space: normal; word-break: break-word;">
-              Version: {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux 5.10.x' }}<br/>
+              Version: {{ store.kernelVersion && store.kernelVersion !== '—' ? store.kernelVersion : 'Linux' }}<br/>
               Optimizations: EAS Scheduler, Helio DVFSRC QoS Enabled
             </div>
           </div>
@@ -239,12 +239,12 @@
               <Icons name="chip" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Target Platform</div>
-              <div class="row-sub">MediaTek MT6789 Family</div>
+              <div class="row-title">Module Build</div>
+              <div class="row-sub">Magisk / KernelSU / APatch Compatible</div>
             </div>
           </div>
           <div class="row-val">
-            <span class="badge-pill">MT6789</span>
+            <span class="badge-pill">Universal</span>
           </div>
         </div>
 
