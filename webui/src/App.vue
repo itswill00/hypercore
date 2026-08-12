@@ -102,6 +102,7 @@ function startPolling() {
   if (refreshInterval) return
   store.refresh()
   refreshInterval = setInterval(() => store.refresh(), 3000)
+  store.startCardPolling()
 }
 
 function stopPolling() {
@@ -109,6 +110,7 @@ function stopPolling() {
     clearInterval(refreshInterval)
     refreshInterval = null
   }
+  store.stopCardPolling()
 }
 
 function handleVisibilityChange() {

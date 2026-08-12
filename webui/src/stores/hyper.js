@@ -127,6 +127,83 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
+  // --- Dedicated lightweight polling intervals ---
+  let cpuGpuInterval = null
+  let ramBatInterval = null
+
+  async function pollCpuGpu() {
+    try {
+      const res = await execCommand(
+        `echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";` +
+        `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";` +
+        `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";`
+      )
+      if (!res) return
+      const kv = {}
+      res.trim().split('\n').forEach(line => {
+        const i = line.indexOf(':')
+        if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
+      })
+      if (kv.CT) cpuTemp.value = normTemp(kv.CT)
+      if (kv.GOV) cpuGov.value = kv.GOV.trim()
+      if (kv.GPU) {
+        const p = kv.GPU.split(':')
+        gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
+      }
+    } catch {}
+  }
+
+  async function pollRamBat() {
+    try {
+      const res = await execCommand(
+        `echo "MEM:$(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo 2>/dev/null | tr '\\n' ' ')";` +
+        `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";` +
+        `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";` +
+        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";`
+      )
+      if (!res) return
+      const kv = {}
+      res.trim().split('\n').forEach(line => {
+        const i = line.indexOf(':')
+        if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
+      })
+      if (kv.MEM) {
+        const m = kv.MEM.match(/MemTotal:\s*(\d+)\s*kB.*MemAvailable:\s*(\d+)\s*kB/)
+        if (m) {
+          const tot = Math.round(parseInt(m[1]) / 1024)
+          const avail = Math.round(parseInt(m[2]) / 1024)
+          const used = tot - avail
+          ramPercent.value = Math.round((used / tot) * 100)
+          ramUsage.value = `${(used / 1024).toFixed(1)} GB / ${(tot / 1024).toFixed(1)} GB (${ramPercent.value}%)`
+        }
+      }
+      if (kv.BS) batStatus.value = kv.BS.trim()
+      if (kv.BT) batTemp.value = normTemp(kv.BT)
+      if (kv.BC) {
+        const rawCurr = Math.abs(parseInt(kv.BC || 0))
+        if (rawCurr > 0) {
+          const ma = Math.round(rawCurr > 10000 ? rawCurr / 1000 : rawCurr)
+          const sign = batStatus.value === 'Charging' ? '+' : '-'
+          batRate.value = `${sign}${ma} mA`
+        }
+      }
+    } catch {}
+  }
+
+  function startCardPolling() {
+    if (!cpuGpuInterval) {
+      cpuGpuInterval = setInterval(pollCpuGpu, 3000)
+    }
+    if (!ramBatInterval) {
+      ramBatInterval = setInterval(pollRamBat, 5000)
+    }
+  }
+
+  function stopCardPolling() {
+    if (cpuGpuInterval) { clearInterval(cpuGpuInterval); cpuGpuInterval = null }
+    if (ramBatInterval) { clearInterval(ramBatInterval); ramBatInterval = null }
+  }
+
   async function fetchDeviceInfo() {
     try {
       const [kv, sdk, se] = await Promise.all([
@@ -535,6 +612,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     moduleVersion, kernelVersion, chipset, androidSdk, selinux, uptime,
     isRunning, thermalColor, tempColor, batColor,
     fetchDeviceInfo, refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
-    addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker
+    addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker,
+    startCardPolling, stopCardPolling
   }
 })
