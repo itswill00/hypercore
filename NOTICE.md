@@ -1,26 +1,22 @@
-# Notice & Attribution
+# Notice & Credits
 
-## HyperCore
-
-This project, **HyperCore**, is developed by **[@itswill00](https://github.com/itswill00)** and licensed under the **GNU General Public License v3.0**.
-
----
-
-## Attribution & Inspiration
-
-**HyperCore** incorporates design concepts, profiling paradigms, and structural architectural patterns inspired by **encore** created by **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
-
-We express our gratitude to **@Rem01Gaming** and the **encore** project for pioneering lightweight Android kernel tuning and automated state-evaluation techniques.
-
-### Referenced & Inspired Concepts:
-- **Smart Automated Adaptive Engine**: Zero-intervention background state evaluation without requiring manual mode toggles.
-- **Fast PID Caching & Prefix Matching**: Sub-process package matching with 0.001ms fast-path in-memory validation.
-- **Consolidated 3-Profile Engine Architecture**: Lean state machine (`SLEEP`, `INTERACTIVE`, `GAMING`).
-- **Pure Package Game List**: Clean line-by-line package configuration management.
+## Project & License
+**HyperCore** is developed & maintained by **[@itswill00](https://github.com/itswill00)**.
+Licensed under **GNU General Public License v3.0 (GPL-3.0)**.
 
 ---
 
-## License Information
+## Acknowledgments & Inspiration
+Architectural patterns, state profiling paradigms, and lightweight kernel tuning concepts in **HyperCore** are inspired by **encore** by **[@Rem01Gaming](https://github.com/Rem01Gaming)**.
 
-- **HyperCore**: GNU General Public License v3.0 (see `LICENSE`)
-- **encore**: Created by [@Rem01Gaming](https://github.com/Rem01Gaming)
+### Key Inspired Concepts:
+- **Zero-Intervention Engine**: Background state evaluation without manual mode toggling.
+- **Fast-Path Package Matching**: Sub-millisecond process lookups and foreground package tracking.
+- **Lean Profile Architecture**: State machine for `SLEEP`, `INTERACTIVE`, `GAMING`, and `GAMING MOBA`.
+- **Declarative Gamelist**: Line-by-line package configuration system (`gamelist.txt`).
+
+---
+
+## Licenses & Copyright
+- **HyperCore**: GPL-3.0 © 2026 @itswill00
+- **encore**: Copyright © @Rem01Gaming
