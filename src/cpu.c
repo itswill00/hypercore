@@ -376,7 +376,7 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "1");
             sysfs_write_fallback(sconfig_nodes, "0");
             sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
-            sysfs_write(g_nodes.touch_thp_smooth, "0");
+            sysfs_write(g_nodes.touch_thp_smooth, "1");
             sysfs_write(g_nodes.touch_game_mode, "0");
             sysfs_write(g_nodes.touch_sensitivity, "0");
             sysfs_write(g_nodes.touch_edge, "0");
