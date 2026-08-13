@@ -506,7 +506,13 @@ int main(int argc, char *argv[]) {
                 g_state.jitter_rescue_ticks = 2;
                 sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
                 sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-                log_warn("Jitter", "Frame-spike detected (GPU %d%%, ΔT %d°C) -> Ultra-Rescue Burst activated", gpu_load, temp_delta);
+
+                static time_t s_last_jitter_log = 0;
+                time_t now = time(NULL);
+                if (now - s_last_jitter_log >= 5) {
+                    log_warn("Jitter", "Frame-spike detected (GPU %d%%, ΔT %d°C) -> Ultra-Rescue Burst activated", gpu_load, temp_delta);
+                    s_last_jitter_log = now;
+                }
             }
         }
 
