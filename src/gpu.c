@@ -125,7 +125,6 @@ const char *get_max_gpu_freq_khz(void) {
 void enforce_interactive_gpu_polling(int target_poll_ms) {
     detect_max_gpu_freq();
 
-    // 1. Read-Before-Write State Guard: Check if polling_interval matches target
     int needs_enforce = 0;
     for (int i = 0; s_mali_poll_nodes[i]; i++) {
         if (access(s_mali_poll_nodes[i], R_OK) == 0) {
@@ -137,14 +136,12 @@ void enforce_interactive_gpu_polling(int target_poll_ms) {
         }
     }
 
-    // 2. Check if GED frequency cap was imposed below detected hardware max
     int cust_upbound = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
     int max_khz = atoi(get_max_gpu_freq_khz());
     if (cust_upbound > 0 && cust_upbound < max_khz) {
         needs_enforce = 1;
     }
 
-    // Fast-path return: 0ms overhead if hardware parameters are already optimal
     if (!needs_enforce) return;
 
     // Apply enforcement writes only on state mismatch

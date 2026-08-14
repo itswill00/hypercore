@@ -27,14 +27,6 @@ void load_gamelist(void) {
         }
     }
 
-    /* [BUG-7 FIX] Old code: `if (!f) return;` — this early return prevented
-     * the auto-detection block below from ever running when gamelist.txt did
-     * not yet exist (e.g. fresh install). The auto-detect only ran when the
-     * file existed but was empty, which is rarely the case.
-     * Fix: continue into the parsing section only if f is valid, then fall
-     * through to auto-detection regardless. The `path` variable is now always
-     * set to the persistent preferred location so auto-detected games are
-     * written to the correct file. */
     if (!path[0]) snprintf(path, sizeof(path), "/data/adb/hypercore/gamelist.txt");
 
     if (f) {
@@ -80,9 +72,7 @@ void load_gamelist(void) {
                 }
                 if (pkg_buf[0] == '\0') continue;
 
-                /* [M-2 FIX] Dedup check: skip packages already in the list.
-                 * Without this, repeated load_gamelist() calls (triggered by
-                 * inotify) appended duplicate entries to gamelist.txt. */
+                /* Skip duplicate packages */
                 int already_exists = 0;
                 for (int d = 0; d < s_game_count; d++) {
                     if (strcmp(s_games[d], pkg_buf) == 0) { already_exists = 1; break; }
@@ -109,12 +99,7 @@ void init_gamelist_watcher(void) {
     s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (s_inotify_fd < 0) return;
 
-    /* [BUG-17 FIX] inotify_add_watch() fails with ENOENT if the target file
-     * does not yet exist. This caused the watch to never be established on
-     * fresh installs where gamelist.txt hasn't been created yet. Ensure the
-     * persistent gamelist file exists before adding the watch. The touch-like
-     * open(O_CREAT|O_WRONLY|O_EXCL) only creates if absent; fails silently
-     * if it already exists, which is the desired behavior. */
+    /* Ensure watch file exists before inotify_add_watch to prevent ENOENT */
     {
         int touch_fd = open("/data/adb/hypercore/gamelist.txt",
                             O_CREAT | O_WRONLY | O_CLOEXEC, 0644);
@@ -207,9 +192,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         fclose(fp);
     }
 
-    /* [C-4 FIX] popen("dumpsys window") requires fork+exec+Binder IPC to
-     * WindowManagerService which can block 50-200ms. Rate-limit to once per
-     * 3 seconds so it does not consume 40% of the gaming poll budget. */
+    /* Rate-limit dumpsys window fallback scan to 3s to avoid Binder IPC overhead */
     static time_t s_last_dumpsys = 0;
     time_t now_ds = time(NULL);
     if (now_ds - s_last_dumpsys >= 3) {

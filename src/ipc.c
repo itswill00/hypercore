@@ -43,10 +43,7 @@ int init_ipc_socket(void) {
         return -1;
     }
 
-    /* [W3 FIX] Socket was chmod 0666 (world-readable/writable), allowing any
-     * app with /data/adb/ access to send PURGE_RAM or read hardware telemetry
-     * without going through the root manager. Set to 0600 (root r/w only).
-     * WebUI is unaffected: ksu.exec() runs commands as root. */
+    /* Restrict socket permissions to root (0600) */
     chmod(s_sock_path, 0600);
 
     if (listen(s_server_fd, 5) < 0) {
@@ -113,11 +110,7 @@ static void process_client(int client_fd) {
             sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
         }
 
-        /* [BUG-10 FIX] gpu_temp and chg_temp were previously hardcoded to
-         * cpu_temp and bat_temp respectively. Read from actual thermal nodes.
-         * MT6789 GPU thermal zone is typically near thermal_zone30+ (ged/gpufreq).
-         * Charger temperature is from PMIC/charger thermal zone if present.
-         * Fall back to cpu_temp / bat_temp if the dedicated nodes are absent. */
+        /* Read dedicated GPU and charger thermal zones with CPU/battery fallback */
         int gpu_temp = 0;
         const char *gpu_therm_nodes[] = {
             "/sys/class/thermal/thermal_zone30/temp",
@@ -144,11 +137,6 @@ static void process_client(int client_fd) {
         }
         if (chg_temp <= 0) chg_temp = bat_temp;
 
-        /* [BUG-9 FIX] Expand json buffer 640→1024 bytes. The old 640-byte buffer
-         * could be exceeded when sysfs string fields (bat_health, bat_status,
-         * bat_tech) returned long values, causing snprintf to truncate the JSON
-         * string mid-field, producing invalid JSON that silently broke the WebUI
-         * parser and dropped all telemetry. 1024 bytes provides safe headroom. */
         char json[1024];
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
@@ -174,10 +162,7 @@ static void process_client(int client_fd) {
     close(client_fd);
 }
 
-/* [M-1 FIX] Flags set by inotify/netlink handlers so the main loop can
- * react immediately to screen-state changes without waiting for the full
- * poll_timeout. Declared volatile because they are written here and read
- * in the main daemon loop. */
+/* Event flags set by inotify/netlink handlers to trigger immediate main-loop evaluation */
 volatile int g_screen_changed = 0;
 volatile int g_uevent_received = 0;
 
@@ -223,20 +208,12 @@ void handle_ipc_events(int timeout_ms) {
                         process_client(client_fd);
                     }
                 } else if (pfds[i].fd == g_nodes.inotify_fd) {
-                    /* [M-1 FIX] Drain the inotify queue AND signal main loop.
-                     * Previously events were drained silently. Now we set
-                     * g_screen_changed so the next loop iteration re-evaluates
-                     * is_screen_on() immediately instead of waiting up to 8s. */
                     char ev_buf[sizeof(struct inotify_event) + NAME_MAX + 1];
                     while (read(g_nodes.inotify_fd, ev_buf, sizeof(ev_buf)) > 0) {
                         g_screen_changed = 1;
                     }
                 } else if (pfds[i].fd == g_nodes.netlink_fd) {
-                    /* [BUG-8 FIX] Drain netlink uevent queue and flag for main loop.
-                     * Android kernel uevent datagrams can be 800–2048 bytes.
-                     * The old nl_buf[512] caused EMSGSIZE on many events, silently
-                     * dropping battery/USB plug events and delaying screen-state
-                     * reactions by up to the full poll timeout. Use 2048 bytes. */
+                    /* Read kernel uevents (up to 2048 bytes) and flag screen/power change */
                     char nl_buf[2048];
                     while (read(g_nodes.netlink_fd, nl_buf, sizeof(nl_buf)) > 0) {
                         g_uevent_received = 1;

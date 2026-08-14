@@ -31,10 +31,7 @@ int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) 
 
 #include "log.hpp"
 
-/* [H-1 FIX] Per-path error throttle table.
- * A single shared static timestamp caused one failing path to suppress
- * error logs for ALL other paths for 60 seconds. Use a small hash table
- * so each unique path gets its own independent 60-second cooldown. */
+/* Per-path error log throttling */
 #define SYSFS_ERR_SLOTS 16
 static struct { const char *path; time_t last_err; } s_err_tbl[SYSFS_ERR_SLOTS];
 
@@ -43,11 +40,6 @@ static int sysfs_should_log_err(const char *path) {
     unsigned h = 0;
     for (const char *p = path; *p; p++) h = h * 31u + (unsigned char)*p;
     int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
-    /* [BUG-3 FIX] Compare string contents with strcmp(), NOT pointer address.
-     * The previous `== path` only matched if the exact same string literal
-     * pointer was passed twice; any other buffer holding the same path string
-     * (e.g. a stack array snprintf'd with the same path) would bypass throttle,
-     * causing log spam. Also handle NULL safely. */
     if (s_err_tbl[slot].path != NULL &&
         strcmp(s_err_tbl[slot].path, path) == 0 &&
         now - s_err_tbl[slot].last_err < 60) return 0;
@@ -59,12 +51,11 @@ static int sysfs_should_log_err(const char *path) {
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
 
-    // Universal Read-Before-Write Guard:
-    // If node is readable and its current value already equals `val`, skip writing!
+    /* Skip write if node value already matches target value */
     char current_val[64];
     if (sysfs_read_str(path, current_val, sizeof(current_val))) {
         if (strcmp(current_val, val) == 0) {
-            return; // Fast 0ms exit
+            return;
         }
     }
 
@@ -81,28 +72,17 @@ void sysfs_write(const char *path, const char *val) {
 
 void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
-    /* [BUG-2 FIX] The old code had `break` unconditionally after calling
-     * sysfs_write(paths[0]), so fallback nodes [1], [2]... were NEVER tried.
-     * Since sysfs_write() returns void (no success/failure signal), we must
-     * probe open(O_WRONLY) ourselves to determine if a node is writable before
-     * calling sysfs_write(). This preserves the Read-Before-Write Guard inside
-     * sysfs_write while correctly iterating through candidates. */
+    /* Probe open(O_WRONLY) to write first available path in fallback list */
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
-        /* Probe write-ability without TOCTOU: open then close immediately.
-         * If open succeeds, the node is present & writable — use it. */
         int probe_fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
         if (probe_fd >= 0) {
             close(probe_fd);
             sysfs_write(paths[i], val);
-            return; /* first writable node wins */
+            return;
         }
     }
-    /* [P1-A FIX] All candidates exhausted — per-path throttled log.
-     * The old code used a single shared `s_last_fb_err` timestamp: one failing
-     * path suppressed ALL other fallback error logs for 60 seconds, destroying
-     * diagnostic visibility on devices with multiple missing vendor nodes.
-     * Fix: use the same SYSFS_ERR_SLOTS hash table approach as sysfs_write(). */
+    /* Per-path throttled log when all fallback candidates fail */
     if (paths[0] != NULL) {
         time_t now = time(NULL);
         unsigned h = 0;
@@ -250,8 +230,6 @@ void update_module_prop_status(const char *status) {
 
     FILE *f = fopen(prop_path, "r");
     if (!f) {
-        /* [H-3 FIX] Reset cache so next call retries immediately instead of
-         * being throttled for 30 seconds while the file was temporarily locked. */
         s_last_status[0] = '\0';
         return;
     }
@@ -263,7 +241,7 @@ void update_module_prop_status(const char *status) {
     }
     fclose(f);
 
-    /* Atomic write: write to .tmp first, then rename to avoid corrupt on SIGTERM */
+    /* Atomic write via temp file rename */
     f = fopen(tmp_path, "w");
     if (!f) return;
 
@@ -278,11 +256,9 @@ void update_module_prop_status(const char *status) {
     }
     fclose(f);
 
-    /* [H-3 FIX] Only rename if the tmp write completed successfully.
-     * Guards against partial rename if daemon is killed mid-write. */
     if (write_ok) {
         rename(tmp_path, prop_path);
     } else {
-        unlink(tmp_path); /* clean up stale .tmp on write failure */
+        unlink(tmp_path);
     }
 }

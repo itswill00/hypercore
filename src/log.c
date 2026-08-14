@@ -11,24 +11,18 @@ static const char *s_level_names[] = {
     "Error"
 };
 
-/* [H-2 FIX] Persistent log fd — opened once, reused across all log calls.
- * Eliminates 10-20 fopen/fclose syscalls per daemon loop iteration which
- * prevented CPU deep-idle C-states and added unnecessary filesystem journal
- * pressure. O_APPEND ensures each write() is atomic up to PIPE_BUF bytes.
- * O_CLOEXEC prevents log fd from leaking into forked children. */
+/* Persistent log file descriptor to eliminate open/close I/O overhead */
 static int s_log_fd = -1;
 
 static void ensure_log_open(void) {
     if (s_log_fd >= 0) return;
     s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
     if (s_log_fd < 0) {
-        /* Fallback if /sdcard/Android is unmounted or restricted */
         s_log_fd = open("/data/adb/hypercore/hypercore.log", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
     }
 }
 
 void log_reopen(void) {
-    /* Call this after rotate_log() to refresh fd pointing to new file */
     if (s_log_fd >= 0) { close(s_log_fd); s_log_fd = -1; }
     ensure_log_open();
 }
@@ -39,11 +33,7 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    /* [BUG-4 FIX] localtime() returns a pointer to a shared static buffer —
-     * NOT thread-safe and can be overwritten by concurrent calls (e.g. from
-     * async_system_cmd grandchild or signal handlers). Use localtime_r()
-     * which fills a caller-provided struct tm with no shared state.
-     * Also guard against NULL return (can happen if tv.tv_sec is invalid). */
+    /* Reentrant localtime_r for thread safety */
     struct tm tm_buf;
     struct tm *tm_info = localtime_r(&tv.tv_sec, &tm_buf);
 
@@ -58,9 +48,7 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
     const char *lvl_str = (level >= 0 && level <= LOG_LEVEL_Error) ? s_level_names[level] : "Info ";
     const char *tag_str = (tag && tag[0] != '\0') ? tag : "System";
 
-    /* Build entire log line into a single buffer, then write() once.
-     * A single write() call on an O_APPEND fd is atomic on Linux for sizes
-     * up to the pipe buffer limit (4096 bytes), preventing interleaved output. */
+    /* Format line into single buffer for atomic O_APPEND write */
     char line[512];
     int hlen = snprintf(line, sizeof(line), "[%s] [%s] [%-8s] ", tbuf, lvl_str, tag_str);
     if (hlen < 0 || hlen >= (int)sizeof(line)) return;
@@ -83,7 +71,6 @@ void rotate_log(void) {
     struct stat st;
     if (stat(LOG_PATH, &st) != 0 || st.st_size <= 102400) return;
 
-    /* Close persistent fd before touching the file */
     if (s_log_fd >= 0) { close(s_log_fd); s_log_fd = -1; }
 
     #define MAX_RING_LINES 250
@@ -103,8 +90,7 @@ void rotate_log(void) {
     }
     fclose(in);
 
-    /* [H-2 FIX] Write to .tmp then rename — avoids total log loss if daemon
-     * is killed between the fopen("w") truncate and writing the ring buffer. */
+    /* Atomic rotate: write to temp file then rename */
     char tmp_path[256];
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", LOG_PATH);
 

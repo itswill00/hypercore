@@ -419,11 +419,6 @@ echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/
     loading.value = true
     try {
       const cmd = `MOD="/data/adb/modules/hypercore";
-// [BUG-11 FIX] Use pkill -x (exact process name match) instead of pkill -f.
-// pkill -f matches the full command line including the module directory path,
-// which can accidentally kill unrelated processes that have 'hypercore' in
-// their arguments. service.sh explicitly warns against pkill -f. -x matches
-// only processes whose argv[0] basename exactly equals 'libhypercore.so'.
 pkill -15 -x libhypercore.so 2>/dev/null || true;
 sleep 0.3;
 pkill -9 -x libhypercore.so 2>/dev/null || true;
@@ -453,8 +448,6 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   async function exportLogs(note = '') {
     loading.value = true
     try {
-      /* [W4 FIX] Strip $, backtick, and backslash after sanitize() to prevent
-       * shell variable expansion when the note is embedded in the command arg. */
       const safeNote = sanitize(note)
         .replace(/[$`\\]/g, '')
         .replace(/'/g, '')
@@ -540,11 +533,6 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   }
 
   function updateGameProfile(rawPkg, rawProfile) {
-    /* [BUG-12 FIX] Sanitize both pkg and profile before shell interpolation.
-     * The old code used the raw pkg/profile strings directly in the awk and echo
-     * shell commands, allowing an attacker-controlled package name or profile
-     * string to inject shell metacharacters (semicolons, backticks, $(...)).
-     * Apply the same sanitize() as addGame() / removeGame(). */
     const pkg = sanitize(rawPkg).split(':')[0].trim()
     const profile = sanitize(rawProfile).toUpperCase().replace(/[^A-Z_]/g, '')
     if (!pkg || !profile) return

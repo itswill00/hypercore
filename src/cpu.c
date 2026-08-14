@@ -5,7 +5,6 @@
 #include "log.hpp"
 
 void detect_cpu_hardware_limits(void) {
-    /* 1. Capture boot scaling governor to preserve custom kernel developer tweaks */
     if (g_nodes.boot_cpu_gov[0] == '\0') {
         if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
             strcpy(g_nodes.boot_cpu_gov, "schedutil");
@@ -13,13 +12,11 @@ void detect_cpu_hardware_limits(void) {
         log_info("Hardware", "Boot CPU Scaling Governor captured: '%s'", g_nodes.boot_cpu_gov);
     }
 
-    /* 2. Read hardware min/max freq for policy0 (Little Cores) */
     int lit_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq");
     int lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq");
     g_nodes.lit_hw_min_freq = (lit_min > 0) ? lit_min : 500000;
     g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
 
-    /* 3. Read hardware min/max freq for policy6 (Big Cores) */
     int big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq");
     int big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
     g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
@@ -146,7 +143,6 @@ static const char *get_best_governor(profile_t prof) {
         if (strstr(avail, "impulse")) return "impulse";
         if (strstr(avail, "blu_schedutil")) return "blu_schedutil";
     } else {
-        /* For Interactive/Sleep: Preserve custom kernel boot governor if it's non-standard */
         if (g_nodes.boot_cpu_gov[0] != '\0' &&
             strcmp(g_nodes.boot_cpu_gov, "performance") != 0 &&
             strcmp(g_nodes.boot_cpu_gov, "powersave") != 0 &&
@@ -175,13 +171,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
             set_cpu_freqs(g_nodes.lit_hw_min_freq, 1000000, g_nodes.big_hw_min_freq, 850000, "10000", "500");
             set_io_nr_requests("32");
             set_read_ahead("128");
-            /* [C-2 FIX] NEVER restrict system-background to < Little cores 0-3.
-             * AudioFlinger, SensorService, InputReader, and all hardware HAL helper
-             * threads run inside system-background cgroup. Capping cpus to 0-1 or
-             * uclamp.max to 30 starves Binder threads, causing system_server Watchdog
-             * timeouts and force reboots. See GEMINI.md §4.1. */
+            /* Keep system-background on cores 0-3 without uclamp restrictions to prevent watchdog ANR */
             sysfs_write("/dev/cpuset/background/cpus", "0-3");
-            /* system-background/cpus intentionally NOT restricted in Sleep profile */
             sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "30");
             sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
             sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");

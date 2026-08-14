@@ -28,22 +28,18 @@ static void async_system_cmd(const char *cmd) {
 
     pid_t pid = fork();
     if (pid < 0) {
-        /* fork failed — log and bail, do not proceed */
         log_warn("Async", "fork() failed: %s (cmd skipped: %.48s)", strerror(errno), cmd);
         return;
     }
 
     if (pid == 0) {
-        /* Middle child: close all inherited FDs except stdio so grandchild
-         * does not inherit daemon's IPC socket, inotify fd, log fd, etc.
-         * Do this BEFORE second fork so grandchild inherits a clean table. */
+        /* Close inherited FDs before second fork to prevent socket leaks to grandchild */
         long max_fd = sysconf(_SC_OPEN_MAX);
         if (max_fd < 0 || max_fd > 1024) max_fd = 256;
         for (long fd = STDERR_FILENO + 1; fd < max_fd; fd++) close((int)fd);
 
         pid_t grandchild = fork();
         if (grandchild == 0) {
-            /* Grandchild: detach from daemon's session and process group */
             setsid();
 
             int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
@@ -51,18 +47,15 @@ static void async_system_cmd(const char *cmd) {
                 dup2(null_fd, STDIN_FILENO);
                 dup2(null_fd, STDOUT_FILENO);
                 dup2(null_fd, STDERR_FILENO);
-                /* Only close if it wasn't already one of the standard slots */
                 if (null_fd > STDERR_FILENO) close(null_fd);
             }
             execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
             _exit(127);
         }
-        /* Middle child exits immediately so grandchild is adopted by init/PID-1
-         * and will not become a zombie relative to the daemon. */
+        /* Double-fork: middle child exits so grandchild is adopted by init */
         _exit((grandchild < 0) ? 1 : 0);
     }
 
-    /* Parent: reap the middle child (fast _exit, no blocking) */
     waitpid(pid, NULL, 0);
 }
 
@@ -70,17 +63,11 @@ static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
     const char *prof_label = (prof >= 0 && prof < 4) ? g_profile_names[prof] : "Unknown";
 
-    /* [BUG-5 FIX] game_name is an Android package name from gamelist.txt.
-     * Package names can theoretically contain characters like single-quote,
-     * dollar sign, backtick, or semicolons which would allow arbitrary shell
-     * command execution when interpolated into the cmd string. Escape all
-     * single-quotes in game_name by replacing ' with '\'' (close quote,
-     * literal quote, reopen quote) before embedding in the shell string. */
+    /* Escape single quotes to prevent injection in shell notification command */
     char safe_name[256];
     int si = 0;
     for (int gi = 0; game_name[gi] && si < (int)sizeof(safe_name) - 5; gi++) {
         if (game_name[gi] == '\'') {
-            /* Escape: end single-quote, insert literal quote, reopen */
             if (si + 4 < (int)sizeof(safe_name)) {
                 safe_name[si++] = '\'';
                 safe_name[si++] = '\\';
@@ -271,7 +258,7 @@ static int is_screen_on(void) {
         if (blank_val >  0) return 0; /* FB_BLANK_POWERDOWN etc -> screen OFF */
     }
 
-    // (b) DRM DPMS -- read as string, compare "On" explicitly
+    // Read DRM DPMS as string since string nodes return 0 for sysfs_read_int
     {
         const char *dpms_paths[] = {
             "/sys/class/drm/card0-DSI-1/dpms",
@@ -283,8 +270,8 @@ static int is_screen_on(void) {
             if (access(dpms_paths[d], F_OK) == 0) {
                 char dpms_buf[16] = "";
                 if (sysfs_read_str(dpms_paths[d], dpms_buf, sizeof(dpms_buf))) {
-                    if (strcmp(dpms_buf, "On") == 0) return 1;  /* screen ON */
-                    return 0; /* "Off", "Standby", "Suspend" -> screen OFF */
+                    if (strcmp(dpms_buf, "On") == 0) return 1;
+                    return 0;
                 }
             }
         }
@@ -294,12 +281,7 @@ static int is_screen_on(void) {
 }
 
 static int get_top_app_pid(void) {
-    /* [H-5 FIX] /dev/cpuset/top-app/tasks contains ALL thread PIDs from
-     * every process in top-app, including system_server Binder workers and
-     * kernel threads. Reading only the first line risks getting a wrong PID
-     * which causes false-positive app transition boost ticks.
-     * Fix: try cgroup.procs first (unique PIDs only), skip PIDs <= 100
-     * (kernel/system range), and validate via /proc/PID/cmdline existence. */
+    /* Prefer cgroup.procs over tasks to filter out system_server thread workers */
     const char *sources[] = {
         "/dev/cpuset/top-app/cgroup.procs",
         "/dev/cpuset/top-app/tasks",
@@ -312,7 +294,7 @@ static int get_top_app_pid(void) {
         int pid = 0;
         while (fgets(line, sizeof(line), f)) {
             int candidate = atoi(line);
-            if (candidate <= 100) continue; /* skip kernel/low-system range */
+            if (candidate <= 100) continue;
             char cpath[64];
             snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", candidate);
             if (access(cpath, F_OK) == 0) {
@@ -329,8 +311,7 @@ static int get_top_app_pid(void) {
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     if ((int)current_prof < 0 || (int)current_prof >= 4) return 0;
 
-    /* Strictly guard Gaming profile only — Interactive/Sleep are relaxed profiles
-     * and should not trigger re-enforce on minor transient hardware deviations. */
+    /* Re-enforce hardware state on external sysfs mutation during Gaming */
     if (current_prof == PROFILE_Gaming || current_prof == PROFILE_Gaming_MOBA) {
         char curr_gov[64] = "";
         if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
@@ -361,7 +342,6 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
         }
     }
 
-    /* Soft enforcement for non-Gaming profiles via polling guard */
     if (current_prof == PROFILE_Interactive) {
         enforce_interactive_gpu_polling(50);
     } else if (current_prof == PROFILE_Sleep) {
@@ -374,11 +354,7 @@ static int check_and_recover_sysfs_tampering(profile_t current_prof) {
 #include "integrity.hpp"
 
 static int validate_hardware_target(void) {
-    /* [Minor-2 FIX] /sys/module/ged exists on ALL MediaTek devices (G85, G88,
-     * G96, Dimensity 700, etc.), not just MT6789. Add policy6 check: MT6789
-     * is a 6+2 bi-cluster (policy0=Little 0-5, policy6=Big 6-7). Single-cluster
-     * MTK devices only have policy0. Also check /sys/kernel/fpsgo which confirms
-     * the GED+FPSGO software stack specific to MT6789 family kernel 5.10.x. */
+    /* Verify MT6789 bi-cluster topology (policy0 + policy6) and GED/FPSGO stack */
     if (access("/sys/module/ged", F_OK) != 0 ||
         access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0 ||
         access("/sys/devices/system/cpu/cpufreq/policy6", F_OK) != 0 ||
@@ -497,7 +473,6 @@ int main(int argc, char *argv[]) {
         } else if (game_active) {
             next_profile = custom_profile;
             s_last_game_profile = custom_profile;
-            /* Hold ticks for Gaming profiles only */
             g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming || custom_profile == PROFILE_Gaming_MOBA) ? 2 : 0;
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
@@ -505,9 +480,6 @@ int main(int argc, char *argv[]) {
         } else {
             next_profile = PROFILE_Interactive;
         }
-
-        /* s_prev_game_active is managed inside the game_active block above
-         * with a 3-tick debounce. Do not override it here to preserve debounce. */
 
         static int s_prev_cpu_temp = 0;
         int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;
@@ -585,7 +557,7 @@ int main(int argc, char *argv[]) {
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {
             rotate_log();
-            log_reopen(); /* refresh persistent fd after rotate */
+            log_reopen();
             s_rotate_counter = 0;
         }
 
@@ -600,12 +572,8 @@ int main(int argc, char *argv[]) {
 
         handle_ipc_events(poll_timeout_ms);
 
-        /* [M-1] Consume screen/uevent flags set by inotify/netlink handler.
-         * If backlight changed, the next loop starts immediately (timeout=0)
-         * so is_screen_on() re-evaluates without waiting up to 8s. */
         if (g_screen_changed) {
             g_screen_changed = 0;
-            /* next iteration will re-check is_screen_on() at top of loop */
         }
         g_uevent_received = 0;
     }
@@ -614,9 +582,7 @@ int main(int argc, char *argv[]) {
     restore_baseline_nodes();
     update_module_prop_status("Stopped");
     close_ipc_socket();
-    /* [BUG-6 FIX] inotify_fd and netlink_fd are opened in init_hardware_nodes()
-     * but were never closed on daemon exit, causing fd leaks. Close them here
-     * during the cleanup sequence before returning from main(). */
+
     if (g_nodes.inotify_fd >= 0) {
         close(g_nodes.inotify_fd);
         g_nodes.inotify_fd = -1;

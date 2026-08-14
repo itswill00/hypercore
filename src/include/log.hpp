@@ -15,10 +15,7 @@ typedef enum {
 extern "C" {
 #endif
 
-/* [BUG-16 FIX] __attribute__((format(printf,3,4))) enables compile-time
- * type-checking of format string vs variadic arguments. Without it, a
- * wrong format specifier (e.g. passing int where %s expected) compiles
- * silently and crashes at runtime. Arg 3 is fmt, arg 4 starts varargs. */
+/* Enable compile-time printf format string checking for log_write */
 void log_write(log_level_t level, const char *tag, const char *fmt, ...)
     __attribute__((format(printf, 3, 4)));
 void rotate_log(void);
