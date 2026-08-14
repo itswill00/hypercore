@@ -308,47 +308,17 @@ static int get_top_app_pid(void) {
     return 0;
 }
 
+static int is_process_alive(int pid) {
+    if (pid <= 0) return 0;
+    if (kill(pid, 0) != 0 && errno == ESRCH) return 0;
+    char cpath[64];
+    snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", pid);
+    return (access(cpath, F_OK) == 0);
+}
+
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     if ((int)current_prof < 0 || (int)current_prof >= 4) return 0;
-
-    /* Re-enforce hardware state on external sysfs mutation during Gaming */
-    if (current_prof == PROFILE_Gaming || current_prof == PROFILE_Gaming_MOBA) {
-        char curr_gov[64] = "";
-        if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
-            size_t len = strlen(curr_gov);
-            while (len > 0 && (curr_gov[len - 1] == '\n' || curr_gov[len - 1] == '\r' || curr_gov[len - 1] == ' ')) {
-                curr_gov[--len] = '\0';
-            }
-            if (curr_gov[0] != '\0' && strcmp(curr_gov, "performance") != 0) {
-                log_warn("Guard", "External CPU governor mutation detected [%s -> performance]! Re-enforcing...", curr_gov);
-                return 1;
-            }
-        }
-
-        char curr_mali[64] = "";
-        if (read_mali_power_policy(curr_mali, sizeof(curr_mali))) {
-            if (strstr(curr_mali, "always_on") == NULL) {
-                log_warn("Guard", "External Mali GPU power_policy mutation detected! Re-enforcing...");
-                return 1;
-            }
-        }
-
-        char curr_gpu_gov[64] = "";
-        if (read_mali_governor(curr_gpu_gov, sizeof(curr_gpu_gov))) {
-            if (strstr(curr_gpu_gov, "simple_ondemand") == NULL && strstr(curr_gpu_gov, "performance") == NULL) {
-                log_warn("Guard", "External Mali GPU governor mutation detected! Re-enforcing...");
-                return 1;
-            }
-        }
-    }
-
-    if (current_prof == PROFILE_Interactive) {
-        enforce_interactive_gpu_polling(50);
-    } else if (current_prof == PROFILE_Sleep) {
-        enforce_interactive_gpu_polling(100);
-    }
-
-    return 0;
+    return audit_active_profile_state(current_prof, g_state.thermal_tier);
 }
 
 #include "integrity.hpp"
@@ -439,9 +409,11 @@ int main(int argc, char *argv[]) {
 
         static int       s_game_absent_ticks = 0;
         static int       s_prev_game_active  = 0;
+        static int       s_last_game_pid     = 0;
         static profile_t s_last_game_profile = PROFILE_Interactive;
 
         if (game_active) {
+            s_last_game_pid = current_top_pid;
             s_game_absent_ticks = 0;
             if (!s_prev_game_active) {
                 set_read_ahead("512");
@@ -452,9 +424,17 @@ int main(int argc, char *argv[]) {
                 s_prev_game_active = 1;
             }
         } else {
-            s_game_absent_ticks++;
-            if (s_game_absent_ticks >= 3) {
+            /* Process death detection: if game PID terminated, immediately force return to Interactive */
+            if (s_prev_game_active && (s_last_game_pid <= 0 || !is_process_alive(s_last_game_pid))) {
+                s_game_absent_ticks = 3;
+                g_state.gaming_hold_ticks = 0;
                 s_prev_game_active = 0;
+                log_info("Game", "Foreground game process death detected -> Immediate atomic rollback to Interactive");
+            } else {
+                s_game_absent_ticks++;
+                if (s_game_absent_ticks >= 3) {
+                    s_prev_game_active = 0;
+                }
             }
         }
 

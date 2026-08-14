@@ -16,6 +16,8 @@ void apply_cgroup_gaming_policy(int enable);
 void set_cpu_governor(const char *gov);
 void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate);
 void apply_profile(profile_t prof, int tier, int gpu_load);
+int audit_active_profile_state(profile_t active_prof, int tier);
+void reset_to_interactive_baseline(void);
 
 #ifdef __cplusplus
 }
