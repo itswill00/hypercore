@@ -190,7 +190,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(echo GET_STATUS | nc -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -U /data/adb/hypercore/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -U /data/local/tmp/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
+IPC=$(echo GET_STATUS | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/local/tmp/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
 echo "PID:$(pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
@@ -434,7 +434,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       let started = false
       for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 250))
-        const check = await execCommand('echo GET_STATUS | nc -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
+        const check = await execCommand('echo GET_STATUS | nc -w 2 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
         if (check && check.includes('"status":"ok"')) {
           started = true
           break
@@ -453,7 +453,12 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   async function exportLogs(note = '') {
     loading.value = true
     try {
-      const safeNote = sanitize(note).replace(/'/g, '').slice(0, 500)
+      /* [W4 FIX] Strip $, backtick, and backslash after sanitize() to prevent
+       * shell variable expansion when the note is embedded in the command arg. */
+      const safeNote = sanitize(note)
+        .replace(/[$`\\]/g, '')
+        .replace(/'/g, '')
+        .slice(0, 500)
       const noteArg = safeNote ? `'${safeNote}'` : ''
       const cmd = `${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null \
         || sh ${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null`

@@ -43,7 +43,11 @@ int init_ipc_socket(void) {
         return -1;
     }
 
-    chmod(s_sock_path, 0666);
+    /* [W3 FIX] Socket was chmod 0666 (world-readable/writable), allowing any
+     * app with /data/adb/ access to send PURGE_RAM or read hardware telemetry
+     * without going through the root manager. Set to 0600 (root r/w only).
+     * WebUI is unaffected: ksu.exec() runs commands as root. */
+    chmod(s_sock_path, 0600);
 
     if (listen(s_server_fd, 5) < 0) {
         log_error("Ipc", "Failed to listen on socket: %s", strerror(errno));

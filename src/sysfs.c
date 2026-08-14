@@ -98,13 +98,22 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
             return; /* first writable node wins */
         }
     }
-    /* All candidates exhausted — throttled log */
+    /* [P1-A FIX] All candidates exhausted — per-path throttled log.
+     * The old code used a single shared `s_last_fb_err` timestamp: one failing
+     * path suppressed ALL other fallback error logs for 60 seconds, destroying
+     * diagnostic visibility on devices with multiple missing vendor nodes.
+     * Fix: use the same SYSFS_ERR_SLOTS hash table approach as sysfs_write(). */
     if (paths[0] != NULL) {
-        static time_t s_last_fb_err = 0;
         time_t now = time(NULL);
-        if (now - s_last_fb_err >= 60) {
+        unsigned h = 0;
+        for (const char *p = paths[0]; *p; p++) h = h * 31u + (unsigned char)*p;
+        int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
+        if (s_err_tbl[slot].path == NULL ||
+            strcmp(s_err_tbl[slot].path, paths[0]) != 0 ||
+            now - s_err_tbl[slot].last_err >= 60) {
+            s_err_tbl[slot].path     = paths[0];
+            s_err_tbl[slot].last_err = now;
             log_info("Kernel", "Vendor kernel node skipped safely (target: '%s')", paths[0]);
-            s_last_fb_err = now;
         }
     }
 }

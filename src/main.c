@@ -255,17 +255,38 @@ static int is_screen_on(void) {
 
     if (bl_val > 0) return 1;
 
-    /* Secondary DRM / Framebuffer blank state check for OLED / AOD edge cases */
-    const char *blank_paths[] = {
-        "/sys/class/graphics/fb0/blank",
-        "/sys/class/drm/card0-DSI-1/dpms",
-        NULL
-    };
-    for (int b = 0; blank_paths[b]; b++) {
-        if (access(blank_paths[b], F_OK) == 0) {
-            int blank_val = sysfs_read_int(blank_paths[b]);
-            /* FB_BLANK_UNBLANK is 0. If blank_val == 0, screen is active */
-            if (blank_val == 0) return 1;
+    // [P1-C FIX] Secondary screen state check -- two separate paths:
+    // (a) /sys/class/graphics/fb0/blank  -- integer: 0 = unblank (screen ON)
+    // (b) /sys/class/drm/card0-DSI-N/dpms -- STRING: "On"/"Off"/"Standby"
+    //     sysfs_read_int(dpms) always returns 0 since atoi("On") == atoi("Off") == 0,
+    //     causing the old check (blank_val == 0 -> return 1) to always fire,
+    //     making the device never enter PROFILE_Sleep on DRM-based panels.
+    //     NOTE: Do NOT use card0-DSI-* glob inside a block comment -- the star-slash
+    //     sequence prematurely closes the comment and causes compile errors.
+
+    // (a) Framebuffer blank -- integer check
+    if (access("/sys/class/graphics/fb0/blank", F_OK) == 0) {
+        int blank_val = sysfs_read_int("/sys/class/graphics/fb0/blank");
+        if (blank_val == 0) return 1; /* FB_BLANK_UNBLANK = 0 -> screen ON */
+        if (blank_val >  0) return 0; /* FB_BLANK_POWERDOWN etc -> screen OFF */
+    }
+
+    // (b) DRM DPMS -- read as string, compare "On" explicitly
+    {
+        const char *dpms_paths[] = {
+            "/sys/class/drm/card0-DSI-1/dpms",
+            "/sys/class/drm/card0-DSI-2/dpms",
+            "/sys/class/drm/card0/card0-DSI-1/dpms",
+            NULL
+        };
+        for (int d = 0; dpms_paths[d]; d++) {
+            if (access(dpms_paths[d], F_OK) == 0) {
+                char dpms_buf[16] = "";
+                if (sysfs_read_str(dpms_paths[d], dpms_buf, sizeof(dpms_buf))) {
+                    if (strcmp(dpms_buf, "On") == 0) return 1;  /* screen ON */
+                    return 0; /* "Off", "Standby", "Suspend" -> screen OFF */
+                }
+            }
         }
     }
 

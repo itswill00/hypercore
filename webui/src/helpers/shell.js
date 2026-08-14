@@ -38,6 +38,10 @@ export function execCommand(cmd) {
 }
 
 export function sanitize(s) {
+  /* [W1 FIX] Previously only stripped non-alphanumeric chars except ._:-
+   * The $ character was NOT stripped, allowing shell variable expansion
+   * (e.g. $HOME, $(reboot)) when the sanitized string was embedded in
+   * awk -v or echo shell commands. Explicitly strip $ and backtick. */
   return String(s).replace(/[^a-zA-Z0-9._:\-]/g, '').trim()
 }
 
