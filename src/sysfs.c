@@ -31,19 +31,26 @@ int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) 
 
 #include "log.hpp"
 
-/* Per-path error log throttling */
+/* Per-path error log throttling table with static storage to prevent dangling pointers */
 #define SYSFS_ERR_SLOTS 16
-static struct { const char *path; time_t last_err; } s_err_tbl[SYSFS_ERR_SLOTS];
+static struct {
+    char path[128];
+    time_t last_err;
+} s_err_tbl[SYSFS_ERR_SLOTS];
 
 static int sysfs_should_log_err(const char *path) {
+    if (!path || path[0] == '\0') return 0;
     time_t now = time(NULL);
     unsigned h = 0;
     for (const char *p = path; *p; p++) h = h * 31u + (unsigned char)*p;
     int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
-    if (s_err_tbl[slot].path != NULL &&
+
+    if (s_err_tbl[slot].path[0] != '\0' &&
         strcmp(s_err_tbl[slot].path, path) == 0 &&
         now - s_err_tbl[slot].last_err < 60) return 0;
-    s_err_tbl[slot].path = path;
+
+    strncpy(s_err_tbl[slot].path, path, sizeof(s_err_tbl[slot].path) - 1);
+    s_err_tbl[slot].path[sizeof(s_err_tbl[slot].path) - 1] = '\0';
     s_err_tbl[slot].last_err = now;
     return 1;
 }
@@ -51,10 +58,19 @@ static int sysfs_should_log_err(const char *path) {
 void sysfs_write(const char *path, const char *val) {
     if (!path || path[0] == '\0' || !val) return;
 
+    /* Trim trailing newlines and whitespace from input value copy */
+    char clean_val[64];
+    strncpy(clean_val, val, sizeof(clean_val) - 1);
+    clean_val[sizeof(clean_val) - 1] = '\0';
+    size_t vlen = strlen(clean_val);
+    while (vlen > 0 && (clean_val[vlen - 1] == '\r' || clean_val[vlen - 1] == '\n' || clean_val[vlen - 1] == ' ')) {
+        clean_val[--vlen] = '\0';
+    }
+
     /* Skip write if node value already matches target value */
     char current_val[64];
     if (sysfs_read_str(path, current_val, sizeof(current_val))) {
-        if (strcmp(current_val, val) == 0) {
+        if (strcmp(current_val, clean_val) == 0) {
             return;
         }
     }
@@ -66,13 +82,12 @@ void sysfs_write(const char *path, const char *val) {
         }
         return;
     }
-    write(fd, val, strlen(val));
+    write(fd, clean_val, strlen(clean_val));
     close(fd);
 }
 
 void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
-    /* Probe open(O_WRONLY) to write first available path in fallback list */
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
         int probe_fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
@@ -82,17 +97,8 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
             return;
         }
     }
-    /* Per-path throttled log when all fallback candidates fail */
     if (paths[0] != NULL) {
-        time_t now = time(NULL);
-        unsigned h = 0;
-        for (const char *p = paths[0]; *p; p++) h = h * 31u + (unsigned char)*p;
-        int slot = (int)(h & (SYSFS_ERR_SLOTS - 1));
-        if (s_err_tbl[slot].path == NULL ||
-            strcmp(s_err_tbl[slot].path, paths[0]) != 0 ||
-            now - s_err_tbl[slot].last_err >= 60) {
-            s_err_tbl[slot].path     = paths[0];
-            s_err_tbl[slot].last_err = now;
+        if (sysfs_should_log_err(paths[0])) {
             log_info("Kernel", "Vendor kernel node skipped safely (target: '%s')", paths[0]);
         }
     }
