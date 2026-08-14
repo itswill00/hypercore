@@ -1,3 +1,13 @@
+# HyperCore v4.5.7 — Unified Profile Matrix & State Determinism Release
+
+### Key Highlights & Innovations
+- **Unified Profile Matrix & Deterministic State Machine**: Centralized all sysfs/procfs node parameters into a 100% symmetric `profile_matrix_t` matrix across all 4 system profiles (`Sleep`, `Interactive`, `Gaming`, `Gaming MOBA`), eliminating all residual state leakage during profile transitions.
+- **Instant Process Death Rollback**: Implemented immediate PID/cmdline process health checking for foreground games, executing atomic 0ms rollback to `PROFILE_Interactive` on game crash or exit.
+- **Dangling Pointer & sysfs Guard Fixes**: Resolved pointer lifetime issue in sysfs error logging table and normalized string value trimming in Read-Before-Write comparisons.
+- **IRQ Affinity Fallback Handling**: Added fallback masks for offlined CPU cores when tuning MediaTek GPU, DSI, and touch digitizer IRQs.
+
+---
+
 # HyperCore v4.5.6 — Interactive Bug Report & Diagnostic Suite Release
 
 ### Key Highlights & Innovations

@@ -7,7 +7,7 @@
         <div class="page-header-sub">by @itswill00</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.5.6' }}
+        {{ store.moduleVersion || 'v4.5.7' }}
       </span>
     </div>
 

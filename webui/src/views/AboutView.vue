@@ -8,7 +8,7 @@
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.5.6' }}
+        {{ store.moduleVersion || 'v4.5.7' }}
       </span>
     </div>
 
@@ -41,17 +41,13 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v4.5.6' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v4.5.7' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Security Audit</strong>: Replaced <code>popen(sha256sum)</code> with native C99 SHA-256 implementation, eliminating command injection vulnerability.</li>
-                  <li><strong>Sysfs Fallback Fix</strong>: Fixed <code>sysfs_write_fallback</code> that always stopped at the first path — multi-OEM fallback nodes now work correctly.</li>
-                  <li><strong>Netlink Buffer</strong>: Expanded uevent buffer from 512 to 2048 bytes, preventing silent battery/USB event drops on Android kernel.</li>
-                  <li><strong>Game Auto-Detection</strong>: Fixed early-return bug in <code>load_gamelist()</code> that prevented auto-detection on fresh installs.</li>
-                  <li><strong>IPC Improvements</strong>: JSON response buffer expanded (640→1024), GPU/charger temperatures now read from real thermal nodes.</li>
-                  <li><strong>WebUI Hardening</strong>: Fixed <code>pkill -f</code> → <code>pkill -x</code>, sanitized <code>updateGameProfile()</code> inputs, dynamic version from <code>module.prop</code>.</li>
-                  <li><strong>Thread Safety</strong>: Replaced <code>localtime()</code> with <code>localtime_r()</code> in log subsystem.</li>
-                  <li><strong>Resource Cleanup</strong>: <code>inotify_fd</code> and <code>netlink_fd</code> now properly closed on daemon shutdown.</li>
+                  <li><strong>Unified Profile Matrix &amp; Deterministic State Machine</strong>: Fully centralized all sysfs/procfs node parameters into a 100% symmetric matrix across all 4 profiles, guaranteeing zero residual state leakage during profile transitions.</li>
+                  <li><strong>Instant Process Death Rollback</strong>: Implemented immediate PID/cmdline process health checking for foreground games, executing atomic 0ms rollback to Interactive profile on game crash or exit.</li>
+                  <li><strong>Dangling Pointer &amp; sysfs Guard Fixes</strong>: Resolved pointer lifetime issue in sysfs error logging table and normalized string value trimming in Read-Before-Write comparisons.</li>
+                  <li><strong>IRQ Affinity Fallback Handling</strong>: Added fallback masks for offlined CPU cores when tuning MediaTek GPU, DSI, and touch digitizer IRQs.</li>
                 </ul>
               </div>
             </div>

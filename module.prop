@@ -1,7 +1,7 @@
 id=hypercore
 name=HyperCore
-version=v4.5.6
-versionCode=4560
+version=v4.5.7
+versionCode=4570
 author=@itswill00
 description=Universal kernel optimizer & hardware daemon for MediaTek MT6789 Family (Kernel 5.10.x). Inspired by encore @Rem01Gaming.
 updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
