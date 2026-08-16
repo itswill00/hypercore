@@ -46,7 +46,7 @@
               <span>GPU: {{ store.gpuInfo }}</span>
             </div>
             <div class="banner-chip" v-if="store.ramUsage && store.ramUsage !== '—'">
-              <span>RAM: {{ store.ramUsage }}{{ store.ramPercent > 0 ? ` (${store.ramPercent}%)` : '' }}</span>
+              <span>RAM: {{ store.ramUsage }}</span>
             </div>
             <div class="banner-chip" v-if="store.batStatus === 'Charging'">
               <span>{{ store.thermalGuardState }}</span>
