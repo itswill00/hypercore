@@ -18,7 +18,13 @@ void detect_cpu_hardware_limits(void) {
     g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
 
     int big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq");
+    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_min_freq");
+    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_min_freq");
+
     int big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
+    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_max_freq");
+    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_max_freq");
+
     g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
     g_nodes.big_hw_max_freq = (big_max > 0) ? big_max : FREQ_BIG_MAX;
 
@@ -39,6 +45,18 @@ static const char *s_policy0_down_rate_nodes[] = {
     "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
     NULL
 };
+static const char *s_policy4_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
+    NULL
+};
+static const char *s_policy4_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
+    NULL
+};
 static const char *s_policy6_up_rate_nodes[] = {
     "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
     "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
@@ -51,12 +69,28 @@ static const char *s_policy6_down_rate_nodes[] = {
     "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
     NULL
 };
+static const char *s_policy7_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
+    NULL
+};
+static const char *s_policy7_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
+    NULL
+};
 
 void set_rate_limits(const char *up, const char *down) {
     sysfs_write_fallback(s_policy0_up_rate_nodes, up);
     sysfs_write_fallback(s_policy0_down_rate_nodes, down);
+    sysfs_write_fallback(s_policy4_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy4_down_rate_nodes, down);
     sysfs_write_fallback(s_policy6_up_rate_nodes, up);
     sysfs_write_fallback(s_policy6_down_rate_nodes, down);
+    sysfs_write_fallback(s_policy7_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy7_down_rate_nodes, down);
 }
 
 static const char *s_cpuset_bg_cpus_nodes[] = {
@@ -178,9 +212,14 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
     }
 
     snprintf(buf, sizeof(buf), "%d", min_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq", buf);
+
     snprintf(buf, sizeof(buf), "%d", max_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq", buf);
 
     for (int i = 6; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
@@ -198,7 +237,9 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
 void set_cpu_governor(const char *gov) {
     char path[256];
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_governor", gov);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_governor", gov);
 
     for (int i = 0; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
