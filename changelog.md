@@ -1,3 +1,13 @@
+# HyperCore v4.5.9 — Unified Kernel & Multi-Platform Architecture Release
+
+### Key Highlights & Innovations
+- **Dual-Kernel Architecture (Kernel 5.10 & 6.12 GKI)**: Unified C Daemon fallback architecture supporting both Linux 5.10 (cgroup v1) and Linux 6.12 GKI (cgroup v2 `/sys/fs/cgroup/...`, `cpuset.cpus`, `cpu.weight`, `cpu.uclamp`).
+- **Multi-Cluster CPU Scaling**: Dynamic fallback support for 2-cluster and 3-cluster SoC configurations (`policy0`, `policy4`, `policy6`, `policy7`).
+- **NVMe Storage & Modern I/O**: Expanded I/O block scanner for NVMe storage controllers (`nvme`) alongside UFS and MMC.
+- **Unified Zip Package Naming**: Automated build pipeline output: `HyperCore-v4.5.9-Unified.zip`.
+
+---
+
 # HyperCore v4.5.7 — Unified Profile Matrix & State Determinism Release
 
 ### Key Highlights & Innovations
