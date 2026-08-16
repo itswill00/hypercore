@@ -47,7 +47,7 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v4.5.6')
+  const moduleVersion = ref('v4.5.9')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
   const uptime = ref('—')

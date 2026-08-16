@@ -1,5 +1,6 @@
 
 #include "ipc.hpp"
+#include "cpu.hpp"
 #include "sysfs.hpp"
 #include "memory.hpp"
 #include "log.hpp"
@@ -147,6 +148,21 @@ static void process_client(int client_fd) {
             bat_health, bat_status, bat_tech);
 
         write(client_fd, json, strlen(json));
+    } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
+        const char *pname = req + 12;
+        profile_t new_prof = PROFILE_Interactive;
+        if (strncasecmp(pname, "SLEEP", 5) == 0) new_prof = PROFILE_Sleep;
+        else if (strncasecmp(pname, "GAMING_MOBA", 11) == 0 || strncasecmp(pname, "MOBA", 4) == 0) new_prof = PROFILE_Gaming_MOBA;
+        else if (strncasecmp(pname, "GAMING", 6) == 0) new_prof = PROFILE_Gaming;
+        else if (strncasecmp(pname, "INTERACTIVE", 11) == 0) new_prof = PROFILE_Interactive;
+
+        apply_profile(new_prof, g_state.thermal_tier, 0);
+        g_state.current_profile = new_prof;
+        log_state("Ipc", "Manual profile switch via IPC -> %s", g_profile_names[new_prof]);
+
+        char res[256];
+        snprintf(res, sizeof(res), "{\"status\":\"ok\",\"message\":\"Profile switched to %s\"}\n", g_profile_names[new_prof]);
+        write(client_fd, res, strlen(res));
     } else if (strncmp(req, "PURGE_RAM", 9) == 0 || strncmp(req, "CLEAR_CACHE", 11) == 0) {
         trigger_purge_ram_cache();
         const char *res = "{\"status\":\"ok\",\"message\":\"RAM and Cache purged successfully\"}\n";

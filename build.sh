@@ -13,7 +13,7 @@ if [ ! -f "module.prop" ]; then
 fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
-ZIP_OUT="HyperCore-${VERSION}.zip"
+ZIP_OUT="HyperCore-${VERSION}-Unified.zip"
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 

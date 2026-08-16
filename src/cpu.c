@@ -18,7 +18,13 @@ void detect_cpu_hardware_limits(void) {
     g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
 
     int big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq");
+    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_min_freq");
+    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_min_freq");
+
     int big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
+    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_max_freq");
+    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_max_freq");
+
     g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
     g_nodes.big_hw_max_freq = (big_max > 0) ? big_max : FREQ_BIG_MAX;
 
@@ -27,28 +33,160 @@ void detect_cpu_hardware_limits(void) {
              g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq);
 }
 
+static const char *s_policy0_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
+    NULL
+};
+static const char *s_policy0_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
+    NULL
+};
+static const char *s_policy4_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
+    NULL
+};
+static const char *s_policy4_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
+    NULL
+};
+static const char *s_policy6_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
+    NULL
+};
+static const char *s_policy6_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
+    NULL
+};
+static const char *s_policy7_up_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
+    NULL
+};
+static const char *s_policy7_down_rate_nodes[] = {
+    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us",
+    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
+    NULL
+};
+
 void set_rate_limits(const char *up, const char *down) {
-    if (g_nodes.has_sugov_ext) {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", up);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", down);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", up);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", down);
-    }
-    if (g_nodes.has_schedutil) {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us", up);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us", down);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us", up);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us", down);
-    }
+    sysfs_write_fallback(s_policy0_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy0_down_rate_nodes, down);
+    sysfs_write_fallback(s_policy4_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy4_down_rate_nodes, down);
+    sysfs_write_fallback(s_policy6_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy6_down_rate_nodes, down);
+    sysfs_write_fallback(s_policy7_up_rate_nodes, up);
+    sysfs_write_fallback(s_policy7_down_rate_nodes, down);
 }
 
+static const char *s_cpuset_bg_cpus_nodes[] = {
+    "/dev/cpuset/background/cpus",
+    "/sys/fs/cgroup/background/cpuset.cpus",
+    "/sys/fs/cgroup/background/cpus",
+    "/sys/fs/cgroup/system/background/cpuset.cpus",
+    "/sys/fs/cgroup/system/background/cpus",
+    NULL
+};
+
+static const char *s_cpuset_sys_bg_cpus_nodes[] = {
+    "/dev/cpuset/system-background/cpus",
+    "/sys/fs/cgroup/system-background/cpuset.cpus",
+    "/sys/fs/cgroup/system-background/cpus",
+    "/sys/fs/cgroup/system/sys-background/cpuset.cpus",
+    "/sys/fs/cgroup/system/sys-background/cpus",
+    NULL
+};
+
+static const char *s_cpuset_top_app_cpus_nodes[] = {
+    "/dev/cpuset/top-app/cpus",
+    "/sys/fs/cgroup/top-app/cpuset.cpus",
+    "/sys/fs/cgroup/top-app/cpus",
+    "/sys/fs/cgroup/top-app.slice/cpuset.cpus",
+    "/sys/fs/cgroup/top-app.slice/cpus",
+    NULL
+};
+
+static const char *s_cpuset_fg_cpus_nodes[] = {
+    "/dev/cpuset/foreground/cpus",
+    "/sys/fs/cgroup/foreground/cpuset.cpus",
+    "/sys/fs/cgroup/foreground/cpus",
+    "/sys/fs/cgroup/app.slice/cpuset.cpus",
+    "/sys/fs/cgroup/app.slice/cpus",
+    NULL
+};
+
+static const char *s_cpuctl_bg_shares_nodes[] = {
+    "/dev/cpuctl/background/cpu.shares",
+    "/sys/fs/cgroup/background/cpu.shares",
+    "/sys/fs/cgroup/background/cpu.weight",
+    "/sys/fs/cgroup/system/background/cpu.weight",
+    "/sys/fs/cgroup/system/background/cpu.shares",
+    NULL
+};
+
+static const char *s_cpuctl_bg_uclamp_min_nodes[] = {
+    "/dev/cpuctl/background/cpu.uclamp.min",
+    "/sys/fs/cgroup/background/cpu.uclamp.min",
+    "/sys/fs/cgroup/system/background/cpu.uclamp.min",
+    NULL
+};
+
+static const char *s_cpuctl_bg_uclamp_max_nodes[] = {
+    "/dev/cpuctl/background/cpu.uclamp.max",
+    "/sys/fs/cgroup/background/cpu.uclamp.max",
+    "/sys/fs/cgroup/system/background/cpu.uclamp.max",
+    NULL
+};
+
+static const char *s_cpuctl_sys_bg_uclamp_max_nodes[] = {
+    "/dev/cpuctl/system-background/cpu.uclamp.max",
+    "/sys/fs/cgroup/system-background/cpu.uclamp.max",
+    "/sys/fs/cgroup/system/sys-background/cpu.uclamp.max",
+    NULL
+};
+
+static const char *s_cpuctl_top_app_shares_nodes[] = {
+    "/dev/cpuctl/top-app/cpu.shares",
+    "/sys/fs/cgroup/top-app/cpu.shares",
+    "/sys/fs/cgroup/top-app/cpu.weight",
+    "/sys/fs/cgroup/top-app.slice/cpu.weight",
+    "/sys/fs/cgroup/top-app.slice/cpu.shares",
+    NULL
+};
+
+static const char *s_cpuctl_top_app_uclamp_min_nodes[] = {
+    "/dev/cpuctl/top-app/cpu.uclamp.min",
+    "/sys/fs/cgroup/top-app/cpu.uclamp.min",
+    "/sys/fs/cgroup/top-app.slice/cpu.uclamp.min",
+    NULL
+};
+
+static const char *s_cpuctl_top_app_uclamp_max_nodes[] = {
+    "/dev/cpuctl/top-app/cpu.uclamp.max",
+    "/sys/fs/cgroup/top-app/cpu.uclamp.max",
+    "/sys/fs/cgroup/top-app.slice/cpu.uclamp.max",
+    NULL
+};
+
 void apply_cpuset(void) {
-    if (access("/dev/cpuset", F_OK) == 0) {
-        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
-        sysfs_write("/dev/cpuset/foreground/cpus", "0-7");
-        sysfs_write("/dev/cpuset/background/cpus", "0-3");
-        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
-    }
+    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
+    sysfs_write_fallback(s_cpuset_fg_cpus_nodes, "0-7");
+    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
+    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
 
     sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
     sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
@@ -74,9 +212,14 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
     }
 
     snprintf(buf, sizeof(buf), "%d", min_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq", buf);
+
     snprintf(buf, sizeof(buf), "%d", max_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq", buf);
 
     for (int i = 6; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
@@ -94,7 +237,9 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
 void set_cpu_governor(const char *gov) {
     char path[256];
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_governor", gov);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_governor", gov);
 
     for (int i = 0; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
@@ -104,30 +249,30 @@ void set_cpu_governor(const char *gov) {
 
 void apply_cgroup_gaming_policy(int enable) {
     if (enable) {
-        sysfs_write("/dev/cpuset/background/cpus", "0-3");
-        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
-        sysfs_write("/dev/cpuctl/background/cpu.shares", "256");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "40");
-        sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
+        sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
+        sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
+        sysfs_write_fallback(s_cpuctl_bg_shares_nodes, "256");
+        sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, "0");
+        sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, "40");
+        sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, "max");
 
-        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
-        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "2048");
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "50");
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+        sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
+        sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, "2048");
+        sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, "50");
+        sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, "max");
     } else {
-        sysfs_write("/dev/cpuset/background/cpus", "0-3");
-        sysfs_write("/dev/cpuset/system-background/cpus", "0-3");
-        sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
-        sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
-        sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
+        sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
+        sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
+        sysfs_write_fallback(s_cpuctl_bg_shares_nodes, "1024");
+        sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, "0");
+        sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, "max");
+        sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, "max");
 
-        sysfs_write("/dev/cpuset/top-app/cpus", "0-7");
-        sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+        sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
+        sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, "1024");
         const char *uclamp_min = (g_state.app_boost_ticks > 0) ? "25" : "0";
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", uclamp_min);
-        sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+        sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, uclamp_min);
+        sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, "max");
     }
 }
 
@@ -164,6 +309,7 @@ static const char *s_devfreq_gov_nodes[] = {
     "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
     "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
     "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/governor",
+    "/sys/devices/platform/soc/13fbf000.gpufreq/governor",
     NULL
 };
 
@@ -172,6 +318,7 @@ static const char *s_devfreq_min_nodes[] = {
     "/sys/class/devfreq/soc:mali/min_freq",
     "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
     "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
+    "/sys/devices/platform/soc/13fbf000.gpufreq/min_freq",
     NULL
 };
 
@@ -180,6 +327,7 @@ static const char *s_devfreq_max_nodes[] = {
     "/sys/class/devfreq/soc:mali/max_freq",
     "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
     "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
+    "/sys/devices/platform/soc/13fbf000.gpufreq/max_freq",
     NULL
 };
 
@@ -188,22 +336,7 @@ static const char *s_devfreq_poll_nodes[] = {
     "/sys/class/devfreq/soc:mali/polling_interval",
     "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
     "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
-    NULL
-};
-
-static const char *s_devfreq_upthreshold_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/simple_ondemand/upthreshold",
-    "/sys/class/devfreq/soc:mali/simple_ondemand/upthreshold",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/upthreshold",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/upthreshold",
-    NULL
-};
-
-static const char *s_devfreq_downdiff_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/simple_ondemand/downdifferential",
-    "/sys/class/devfreq/soc:mali/simple_ondemand/downdifferential",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/downdifferential",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/downdifferential",
+    "/sys/devices/platform/soc/13fbf000.gpufreq/polling_interval",
     NULL
 };
 
@@ -212,6 +345,8 @@ static const char *s_power_policy_nodes[] = {
     "/sys/devices/platform/soc/soc:mali/power_policy",
     "/sys/class/devfreq/13000000.mali/power_policy",
     "/sys/class/devfreq/soc:mali/power_policy",
+    "/sys/devices/platform/13000000.mali/power_policy",
+    "/sys/devices/platform/soc/13fbf000.gpufreq/power_policy",
     NULL
 };
 
@@ -342,6 +477,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->devfreq_downdiff = "15";
             m->devfreq_min_freq = "390000000";
             m->devfreq_max_freq = "390000000";
+            m->power_policy = "coarse_demand";
 
             m->dvfsrc_qos = "0";
 
@@ -373,8 +509,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->lit_max_freq = g_nodes.lit_hw_max_freq;
             m->big_min_freq = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
             m->big_max_freq = (tier >= 3) ? 2000000 : g_nodes.big_hw_max_freq;
-            m->up_rate_limit = "200";
-            m->down_rate_limit = "40000";
+            m->up_rate_limit = "1000";
+            m->down_rate_limit = "10000";
 
             m->nr_requests = "128";
             m->read_ahead = (g_state.app_boost_ticks > 0) ? "384" : "256";
@@ -387,7 +523,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->top_app_uclamp_max = "max";
 
             m->devfreq_poll_ms = "50";
-            m->devfreq_upthresh = "65";
+            m->devfreq_upthresh = "70";
             m->devfreq_downdiff = "20";
             m->devfreq_min_freq = "390000000";
             m->devfreq_max_freq = max_gpu_hz;
@@ -510,22 +646,20 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     set_io_nr_requests(m.nr_requests);
     set_read_ahead(m.read_ahead);
 
-    sysfs_write("/dev/cpuset/background/cpus", m.bg_cpus);
-    sysfs_write("/dev/cpuset/system-background/cpus", m.sys_bg_cpus);
-    sysfs_write("/dev/cpuset/top-app/cpus", m.top_app_cpus);
+    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, m.bg_cpus);
+    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, m.sys_bg_cpus);
+    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, m.top_app_cpus);
 
-    sysfs_write("/dev/cpuctl/background/cpu.shares", m.bg_shares);
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", m.bg_uclamp_min);
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", m.bg_uclamp_max);
-    sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", m.sys_bg_uclamp_max);
-    sysfs_write("/dev/cpuctl/top-app/cpu.shares", m.top_app_shares);
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", m.top_app_uclamp_min);
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", m.top_app_uclamp_max);
+    sysfs_write_fallback(s_cpuctl_bg_shares_nodes, m.bg_shares);
+    sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, m.bg_uclamp_min);
+    sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, m.bg_uclamp_max);
+    sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, m.sys_bg_uclamp_max);
+    sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, m.top_app_shares);
+    sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, m.top_app_uclamp_min);
+    sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, m.top_app_uclamp_max);
 
     sysfs_write_fallback(s_devfreq_gov_nodes, m.devfreq_gov);
     sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
-    sysfs_write_fallback(s_devfreq_upthreshold_nodes, m.devfreq_upthresh);
-    sysfs_write_fallback(s_devfreq_downdiff_nodes, m.devfreq_downdiff);
     sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
     sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
