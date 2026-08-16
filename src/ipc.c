@@ -239,3 +239,41 @@ void handle_ipc_events(int timeout_ms) {
         }
     }
 }
+
+void update_status_json_file(void) {
+    const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4)
+                           ? g_profile_names[g_state.current_profile] : "Interactive";
+
+    int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+    if (cpu_temp > 1000) cpu_temp /= 1000;
+
+    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+    if (bat_temp > 1000) bat_temp /= 1000;
+    else if (bat_temp > 100) bat_temp /= 10;
+
+    int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
+
+    char json[512];
+    snprintf(json, sizeof(json),
+        "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d}\n",
+        getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
+        g_state.is_charging, gpu_load);
+
+    const char *paths[] = {
+        "/data/adb/modules/hypercore/status.json",
+        "/data/adb/hypercore/status.json",
+        NULL
+    };
+
+    for (int i = 0; paths[i]; i++) {
+        char tmp[300];
+        snprintf(tmp, sizeof(tmp), "%s.tmp", paths[i]);
+        FILE *f = fopen(tmp, "w");
+        if (f) {
+            fputs(json, f);
+            fclose(f);
+            rename(tmp, paths[i]);
+        }
+    }
+}

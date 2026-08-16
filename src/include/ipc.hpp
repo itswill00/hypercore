@@ -11,6 +11,7 @@ extern "C" {
 int  init_ipc_socket(void);
 void close_ipc_socket(void);
 void handle_ipc_events(int timeout_ms);
+void update_status_json_file(void);
 
 /* Set by handle_ipc_events() when backlight inotify or netlink uevent fires.
  * Main loop should read and reset these after each handle_ipc_events() call. */

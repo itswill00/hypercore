@@ -107,7 +107,6 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
-  // --- Dedicated lightweight polling intervals ---
   let cpuGpuInterval = null
   let ramBatInterval = null
 
@@ -116,7 +115,9 @@ export const useHyperStore = defineStore('hyper', () => {
       const res = await execCommand(
         `echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";` +
         `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";` +
-        `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";`
+        `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";` +
+        `echo "STAT:$(cat /data/adb/modules/hypercore/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null)";` +
+        `echo "PID:$(cat /data/adb/modules/hypercore/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)"`
       )
       if (!res) return
       const kv = {}
@@ -130,6 +131,16 @@ export const useHyperStore = defineStore('hyper', () => {
         const p = kv.GPU.split(':')
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
       }
+      if (kv.STAT && kv.STAT.includes('"status":"ok"')) {
+        try {
+          const s = JSON.parse(kv.STAT.substring(kv.STAT.indexOf('{')))
+          if (s.pid) daemonPid.value = String(s.pid).split(' ')[0]
+          if (s.profile) activeProfile.value = s.profile
+          if (typeof s.thermal_tier !== 'undefined') thermalTier.value = `Tier ${s.thermal_tier}`
+        } catch {}
+      } else if (kv.PID && kv.PID.trim().length > 0) {
+        daemonPid.value = kv.PID.trim().split(' ')[0]
+      }
     } catch {}
   }
 
@@ -139,7 +150,7 @@ export const useHyperStore = defineStore('hyper', () => {
         `echo "MEM:$(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo 2>/dev/null | tr '\\n' ' ')";` +
         `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";` +
         `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";` +
-        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";`
+        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`
       )
       if (!res) return
       const kv = {}
@@ -190,8 +201,8 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(echo GET_STATUS | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/local/tmp/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
-echo "PID:$(pidof libhypercore.so || pidof hypercore 2>/dev/null)";
+IPC=$(cat $MOD/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_STATUS | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
+echo "PID:$(cat $MOD/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";
@@ -212,7 +223,7 @@ echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
-echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v4.5.6)";
+echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v4.5.9)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`
@@ -239,18 +250,20 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       let ipcSetThermal = false
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
         try {
-          const ipcData = JSON.parse(kv.IPC)
-          daemonPid.value = String(ipcData.pid || '')
-          activeProfile.value = ipcData.profile || '—'
-          thermalTier.value = `Tier ${ipcData.thermal_tier}`
+          const ipcData = JSON.parse(kv.IPC.substring(kv.IPC.indexOf('{')))
+          if (ipcData.pid) daemonPid.value = String(ipcData.pid).split(' ')[0]
+          if (ipcData.profile) activeProfile.value = ipcData.profile
+          if (typeof ipcData.thermal_tier !== 'undefined') thermalTier.value = `Tier ${ipcData.thermal_tier}`
           if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
           if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
           ipcSetThermal = true
         } catch {}
-      } else {
-        
-        daemonPid.value = (kv.PID || '').trim()
+      }
+      
+      if (!ipcSetThermal) {
+        const rawPid = (kv.PID || '').trim().split(' ')[0]
+        if (rawPid && rawPid.length > 0) daemonPid.value = rawPid
 
         const desc = kv.DESC || ''
         const m = desc.match(/\[Active:\s*([^\]]+)\]/)
