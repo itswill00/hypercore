@@ -36,13 +36,6 @@
       </div>
     </div>
 
-    <div class="console-sub-bar">
-      <span class="sub-bar-title">Console output</span>
-      <span class="sub-bar-count">
-        {{ parsedLogs.length }} entries
-      </span>
-    </div>
-
     <div
       ref="logContainer"
       class="terminal-viewport"
@@ -203,29 +196,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: #08080a;
-}
-
-.console-sub-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background: #0d0e12;
-  border-bottom: 1px solid var(--surface-container-high);
-}
-
-.sub-bar-title {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  font-weight: 500;
-  letter-spacing: 0.2px;
-}
-
-.sub-bar-count {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--on-surface-variant);
-  opacity: 0.6;
 }
 
 .terminal-viewport {
