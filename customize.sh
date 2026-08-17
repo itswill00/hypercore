@@ -145,7 +145,7 @@ set_perm /data/adb/hypercore/gamelist.txt 0 0 0644
 set_perm "$MODPATH/gamelist.txt" 0 0 0644
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v4.5.9"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.0.0"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

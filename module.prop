@@ -1,9 +1,6 @@
 id=hypercore
 name=HyperCore
-version=v4.5.9
-versionCode=4590
+version=v6.0.0
+versionCode=6000
 author=@itswill00
-description=Universal kernel optimizer & hardware daemon for MediaTek MT6789 Family (Kernel 5.10.x). Inspired by encore @Rem01Gaming.
-updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
-banner=banner.jpg
-
+description=Universal Dual-Kernel (Kernel 5.10-6.12 GKI) Performance & Thermal Optimizer for MediaTek MT6789 (Helio G99/G100/G200) with Material Design 3 WebUI.

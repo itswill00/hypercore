@@ -3,7 +3,7 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v4.5.9 (Build 4590)
+ Version        : v6.0.0 (Build 6000)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
