@@ -252,13 +252,14 @@ void update_status_json_file(void) {
     else if (bat_temp > 100) bat_temp /= 10;
 
     int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
+    int bat_cycles = get_true_battery_cycles();
 
     char json[512];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
-        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d}\n",
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d}\n",
         getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
-        g_state.is_charging, gpu_load);
+        g_state.is_charging, gpu_load, bat_cycles);
 
     const char *paths[] = {
         "/data/adb/modules/hypercore/status.json",

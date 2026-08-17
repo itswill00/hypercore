@@ -137,6 +137,7 @@ export const useHyperStore = defineStore('hyper', () => {
           if (s.pid) daemonPid.value = String(s.pid).split(' ')[0]
           if (s.profile) activeProfile.value = s.profile
           if (typeof s.thermal_tier !== 'undefined') thermalTier.value = `Tier ${s.thermal_tier}`
+          if (s.battery_cycles && parseInt(s.battery_cycles) > 0) batteryCycles.value = parseInt(s.battery_cycles)
         } catch {}
       } else if (kv.PID && kv.PID.trim().length > 0) {
         daemonPid.value = kv.PID.trim().split(' ')[0]
@@ -150,7 +151,8 @@ export const useHyperStore = defineStore('hyper', () => {
         `echo "MEM:$(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo 2>/dev/null | tr '\\n' ' ')";` +
         `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";` +
         `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";` +
-        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`
+        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";` +
+        `echo "CYC:$(cat /sys/class/power_supply/battery/cycle_count 2>/dev/null || cat /sys/class/power_supply/battery/auth_dev_batt_cycle 2>/dev/null || cat /sys/class/power_supply/bms/cycle_count 2>/dev/null)"`
       )
       if (!res) return
       const kv = {}
@@ -178,6 +180,7 @@ export const useHyperStore = defineStore('hyper', () => {
           batRate.value = `${sign}${ma} mA`
         }
       }
+      if (kv.CYC && parseInt(kv.CYC) > 0) batteryCycles.value = parseInt(kv.CYC)
     } catch {}
   }
 
