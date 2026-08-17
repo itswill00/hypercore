@@ -77,8 +77,8 @@ void sysfs_write(const char *path, const char *val) {
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0) {
-        if (sysfs_should_log_err(path)) {
-            log_info("Kernel", "Vendor sysfs node skipped (errno=%d, target: '%s')", errno, path);
+        if (errno != ENOENT && sysfs_should_log_err(path)) {
+            log_info("Kernel", "Vendor sysfs node access error (errno=%d, target: '%s')", errno, path);
         }
         return;
     }
@@ -95,11 +95,6 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
             close(probe_fd);
             sysfs_write(paths[i], val);
             return;
-        }
-    }
-    if (paths[0] != NULL) {
-        if (sysfs_should_log_err(paths[0])) {
-            log_info("Kernel", "Vendor kernel node skipped safely (target: '%s')", paths[0]);
         }
     }
 }
