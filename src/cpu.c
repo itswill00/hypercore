@@ -555,6 +555,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
 
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
+            m->devfreq_gov = "performance";
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->lit_max_freq = g_nodes.lit_hw_max_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
