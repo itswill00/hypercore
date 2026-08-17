@@ -1,0 +1,314 @@
+================================================================================
+                       DOCUMENTATION & TECHNICAL SPECIFICATION
+                                   HYPERCORE MODULE
+================================================================================
+ Module Name    : HyperCore
+ Version        : v4.5.9 (Build 4590)
+ Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
+ Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
+ Author         : @itswill00 (aerichandesu@noticesa)
+ Inspiration    : encore @Rem01Gaming
+ Release ZIP    : HyperCore-v4.5.9-Unified.zip
+================================================================================
+
+DAFTAR ISI (TABLE OF CONTENTS)
+--------------------------------------------------------------------------------
+1. RINGKASAN MODUL & PRINSIP DESAIN
+2. STRUKTUR DIREKTORI & BERKAS REPOSITORI
+3. ARSITEKTUR C DAEMON (NATIVE COMPONENT - libhypercore.so)
+   3.1. Main Loop & Lifecycle (main.c)
+   3.2. Universal Dual-Kernel Sysfs I/O (sysfs.c)
+   3.3. CPU Frequency & Uclamp Manager (cpu.c)
+   3.4. Mali GPU & MediaTek GED Driver Manager (gpu.c)
+   3.5. Thermal Mitigation System (thermal.c)
+   3.6. Auto Game Detector & Process Scanner (gamelist.c)
+   3.7. UNIX Domain Socket IPC & Telemetry Storage (ipc.c)
+   3.8. Storage I/O Queue & Memory Optimization (io.c & memory.c)
+   3.9. SHA-256 Binary Integrity Verification (integrity.c & sha256.c)
+   3.10. Logging System (log.c)
+4. LOGIKA & PERILAKU PROFIL KINERJA (PERFORMANCE PROFILES)
+5. ARSITEKTUR DASHBOARD WEBUI (VUE 3 + PINIA SINGLEFILE SPA)
+   5.1. Telemetry Store Resilience (webui/src/stores/hyper.js)
+   5.2. Material Design 3 Monochrome Interface
+6. SIKLUS HIDUP & KEAMANAN SCRIPT INSTALLER
+   6.1. Script Instalasi (customize.sh)
+   6.2. Script Boot Completion (service.sh)
+   6.3. Post FS Data (post-fs-data.sh) & Uninstaller (uninstall.sh)
+7. ALUR BUILD & DEPLOYMENT AUTOMATION (build.sh)
+8. DAFTAR PERATURAN & ATURAN PENGEMBANGAN (.rules)
+
+================================================================================
+1. RINGKASAN MODUL & PRINSIP DESAIN
+================================================================================
+HyperCore adalah modul optimasi performa dan manajemen daya tingkat kernel yang
+dirancang khusus untuk perangkat Android berprosesor MediaTek MT6789 Family 
+(Helio G99, G100, dan G200). Modul ini bekerja secara dinamis melalui native C
+daemon (libhypercore.so) yang berjalan di latar belakang sebagai layanan root.
+
+PRINSIP UTAMA HYPERCORE:
+1. TANPA LOCKING FREKUENSI (NO FREQUENCY LOCKING):
+   HyperCore dilarang keras mengunci frekuensi CPU atau GPU pada angka statis.
+   Semua frekuensi harus tetap bergerak secara dinamis sesuai beban kerja dan
+   kebijakan governor (`sugov_ext` / `schedutil`) untuk mencegah overheat dan
+   boros baterai.
+2. DUAL-KERNEL GKI COMPATIBILITY:
+   Mendukung penuh arsitektur Kernel 5.10, 5.15, 6.1, 6.6, hingga 6.12 GKI 
+   (Android 12 hingga Android 16) dengan sistem fallback sysfs otomatis.
+3. KEAMANAN HARDWARE & MITIGASI SUHU (THERMAL SAFETY):
+   Dilengkapi sistem deteksi suhu multi-sensor (CPU, GPU, Baterai, Charger)
+   dengan 4 tingkat mitigasi thermal otomatis (Tier 0 hingga Tier 3).
+4. WEBUI DASHBOARD RESILIENT & ELEGANT:
+   WebUI berbasis Vue 3 + Pinia berkonsep Material Design 3 Monokromatis tanpa
+   flicker status daemon.
+
+================================================================================
+2. STRUKTUR DIREKTORI & BERKAS REPOSITORI
+================================================================================
+HyperCore_Module/
+├── customize.sh                 # Script instalasi Magisk/KSU/APatch
+├── service.sh                   # Script peluncuran daemon saat boot completed
+├── post-fs-data.sh              # Inisialisasi direktori data awal
+├── uninstall.sh                 # Pembersihan total saat modul dihapus
+├── module.prop                  # Metadata modul (versi, ID, deskripsi)
+├── system.prop                  # System properties tambahan
+├── gamelist.txt                 # Daftar paket aplikasi game default
+├── build.sh                     # Script kompilasi C & WebUI Vue 3
+├── .rules                       # Aturan proyek & invariants pengkodean
+├── src/                         # Source code C daemon
+│   ├── main.c                   # Entry point & main loop daemon
+│   ├── sysfs.c                  # Driver I/O sysfs/procfs universal
+│   ├── cpu.c                    # Manajemen CPU cluster, governor, & uclamp
+│   ├── gpu.c                    # Driver Mali GPU & MediaTek GED
+│   ├── thermal.c                # Sistem mitigasi suhu 4 Tier
+│   ├── gamelist.c               # Detector game latar depan (foreground)
+│   ├── ipc.c                    # Socket UNIX Domain & JSON status generator
+│   ├── io.c                     # Optimasi I/O block queue storage
+│   ├── memory.c                 # Optimasi VM & Memory management
+│   ├── integrity.c              # Verifikasi checksum binary
+│   ├── sha256.c                 # Algoritma SHA-256 native
+│   ├── log.c                    # Logger sistem modul
+│   └── include/                 # Header files C (.hpp / .h)
+│       ├── common.hpp           # Struct global (hw_nodes, core_state)
+│       ├── cpu.hpp, gpu.hpp, thermal.hpp, ipc.hpp, dll.
+└── webui/                       # Source code WebUI Dashboard (Vue 3)
+    ├── src/
+    │   ├── App.vue              # Main App layout & navigation
+    │   ├── views/               # Halaman utama (Home, Games, Logs, About)
+    │   ├── components/          # Komponen UI (StatusCard, ActionButtons, dll)
+    │   └── stores/hyper.js      # State management & polling telemetri
+
+================================================================================
+3. ARSITEKTUR C DAEMON (NATIVE COMPONENT - libhypercore.so)
+================================================================================
+
+3.1. Main Loop & Lifecycle (src/main.c)
+- Fungsi `main()` menginisialisasi node hardware melalui `init_hw_nodes()`.
+- Mengatur signal handler (`SIGTERM`, `SIGINT`, `SIGPIPE`) agar daemon dapat
+  dihentikan secara bersih tanpa menyisakan zombie process atau lock file.
+- Membuka socket IPC pada thread terpisah (`init_ipc_socket()`).
+- Menjalankan loop utama (`while(1)`) dengan interval 1 detik (`sleep(1)`):
+  * Memindai status pengisian daya baterai (Netlink / sysfs battery status).
+  * Menjalankan `scan_foreground_game()` untuk mendeteksi apakah game sedang berjalan.
+  * Menjalankan `update_thermal_mitigation()` untuk menghitung suhu terbaru.
+  * Menjalankan `update_status_json_file()` untuk menulis `/data/adb/modules/hypercore/status.json`.
+  * Menerapkan profil kinerja secara dinamis jika ada perubahan kondisi.
+
+3.2. Universal Dual-Kernel Sysfs I/O (src/sysfs.c)
+Fungsi `sysfs_write_fallback(const char *const paths[], const char *val)`:
+- Menerima array dari beberapa jalur sysfs/procfs alternatif (misalnya path Cgroup v1
+  `/dev/cpuset/top-app/cpus` dan Cgroup v2 `/sys/fs/cgroup/top-app/cpuset.cpus`).
+- Menguji keberadaan file satu per satu secara berurutan.
+- Jika file ditemukan dan dapat ditulis, nilai dimasukkan dan fungsi mengembalikan angka 1 (sukses).
+- Ini menjamin transparansi 100% pada Kernel 5.10 (Cgroup v1) maupun Kernel 6.12 (Cgroup v2).
+- Dilengkapi fungsi pembantu aman `sysfs_read_int()`, `sysfs_read_str()`, dan `sysfs_write_str()`.
+
+3.3. CPU Frequency & Uclamp Manager (src/cpu.c)
+- Fungsi `apply_cpu_profile(profile_t profile)`:
+  Mendukung arsitektur multi-cluster CPU (policy0 untuk Little cores 0-5, policy4/policy6
+  untuk Big cores 6-7, serta policy7 jika ada Prime core).
+- Mengatur governor CPU ke `sugov_ext` (MediaTek custom governor) atau `schedutil`.
+- Penyetelan Util Clamp (uclamp):
+  * `cpu.uclamp.min`: Mengatur batas minimum utilisasi CPU agar aplikasi/game langsung
+    mendapat dorongan performa tanpa lag awal.
+  * `cpu.uclamp.max`: Mengatur batas maksimum utilisasi CPU saat mode Sleep/Thermal Tier 3.
+- Rate-Limit Tuning:
+  Menyesuaikan `up_rate_limit_us` (default 1000us di Gaming) dan `down_rate_limit_us`
+  pada driver cpufreq agar CPU merespons lonjakan beban dengan sangat cepat.
+
+3.4. Mali GPU & MediaTek GED Driver Manager (src/gpu.c)
+- Fungsi `apply_gpu_profile(profile_t profile)`:
+  Mengontrol GPU Mali melalui devfreq sysfs (`/sys/class/devfreq/13000000.mali` atau
+  `/sys/class/devfreq/soc:mali`) dan modul driver GED MediaTek (`/sys/module/ged/parameters/`).
+- Polling Interval GPU set pada 30ms untuk pemindaian beban GPU yang sangat cepat.
+- Parameter GED yang diatur per profil:
+  * `gpu_bottom_freq`: Batas frekuensi terendah GPU (misal 390MHz/520MHz saat Gaming).
+  * `boost_gpu_enable`: Mengaktifkan boost GPU otomatis dari driver MediaTek.
+  * `ged_smart_boost`: Fitur pintar MediaTek untuk mengalokasikan daya GPU sesuai FPS.
+  * `gx_game_mode`: Mengaktifkan mode game khusus pada driver GED.
+
+3.5. Thermal Mitigation System (src/thermal.c)
+Sistem mitigasi suhu menggunakan algoritma 4 Tier dinamis berdasarkan suhu tertinggi:
+
++--------+------------------+-------------------------------------------------------+
+| Tier   | Rentang Suhu     | Tindakan Mitigasi                                     |
++--------+------------------+-------------------------------------------------------+
+| Tier 0 | < 42°C (Normal)  | Profil Kinerja Penuh (Full Performance Unthrottled)   |
+| Tier 1 | 42°C - 45°C      | Mild Mitigation: Penurunan uclamp min CPU & GPU floor |
+| Tier 2 | 45°C - 48°C      | Moderate Mitigation: Batas frekuensi puncak CPU Big   |
+| Tier 3 | > 48°C (Critical)| Emergency Mitigation: Penurunan paksa ke profil Sleep |
++--------+------------------+-------------------------------------------------------+
+
+Suhu diukur secara kontinu dari sensor CPU (`thermal_zone16`/`thermal_zone0`), Baterai,
+GPU (`thermal_zone30`), dan Charger (`mtk-master-charger`).
+
+3.6. Auto Game Detector & Process Scanner (src/gamelist.c)
+- Membaca berkas daftar game dari `/data/adb/hypercore/gamelist.txt`.
+- Memindai jendela aplikasi/game yang sedang aktif di latar depan (*foreground window*).
+- Jika nama paket aplikasi yang berjalan cocok dengan entri di `gamelist.txt`, daemon
+  secara otomatis mengalihkan profil aktif ke `Gaming` atau `Gaming MOBA`.
+- Saat game ditutup atau pengguna kembali ke launcher, profil otomatis kembali ke `Interactive`.
+
+3.7. UNIX Domain Socket IPC & Telemetry Storage (src/ipc.c)
+- Membuka socket UNIX Domain di `/data/adb/modules/hypercore/hypercore.sock`.
+- Menerima dan memproses perintah IPC dari WebUI / Command Line:
+  * `GET_STATUS` : Mengembalikan JSON status telemetri lengkap.
+  * `GET_PROFILE` : Mengembalikan nama profil yang sedang aktif.
+  * `SET_PROFILE:<name>` : Mengubah profil secara manual (Sleep, Interactive, Gaming, Gaming_MOBA).
+  * `ADD_GAME:<pkg>` : Menambahkan paket game baru ke `gamelist.txt`.
+  * `REMOVE_GAME:<pkg>` : Menghapus paket game dari `gamelist.txt`.
+- Fungsi `update_status_json_file()`:
+  Menulis data JSON status secara atomic ke berkas `/data/adb/modules/hypercore/status.json`
+  dan `/data/adb/hypercore/status.json` pada setiap tick 1 detik. Penulisan menggunakan
+  teknik berkas sementara (`.tmp`) lalu di-rename secara atomic untuk mencegah WebUI
+  membaca berkas yang belum selesai ditulis.
+
+3.8. Storage I/O Queue & Memory Optimization (src/io.c & src/memory.c)
+- Optimasi I/O Block Storage:
+  Mengatur `read_ahead_kb` ke 256KB, mengaktifkan `rq_affinity=2`, mematikan `iostats` (0)
+  untuk mengurangi overhead CPU pada perangkat penyimpanan UFS / MMC.
+- Optimasi Memory / VM Subsystem:
+  Mengatur `vm.swappiness=60`, `vm.dirty_ratio=15`, `vm.vfs_cache_pressure=100`, dan
+  `vm.page-cluster=0` untuk efisiensi alokasi RAM & ZRAM.
+
+3.9. SHA-256 Binary Integrity Verification (src/integrity.c & src/sha256.c)
+- Daemon C dilengkapi kode algoritma SHA-256 independen.
+- Saat instalasi (`customize.sh`), executable `libhypercore.so` dipanggil dengan argumen
+  `--verify-integrity`. Daemon akan menghitung hash SHA-256 dari berkas-berkas modul
+  dan membandingkannya dengan `checksums.txt` untuk memastikan tidak ada modifikasi/tampering.
+
+3.10. Logging System (src/log.c)
+- Mencatat seluruh aktivitas modul, perubahan profil, dan peringatan suhu ke berkas
+  `/sdcard/Android/hypercore.log`.
+- Dilengkapi mekanisme rotasi berkas otomatis agar ukuran log tidak membengkak.
+
+================================================================================
+4. LOGIKA & PERILAKU PROFIL KINERJA (PERFORMANCE PROFILES)
+================================================================================
+
+1. SLEEP (IDLE / BATTERY SAVER):
+   - Diaktifkan saat layar mati atau perangkat tidak digunakan.
+   - Governor CPU diset ke mode paling hemat energi.
+   - uclamp min diset ke 0, uclamp max dibatasi untuk menekan konsumsi daya.
+   - Frekuensi GPU diturunkan ke nilai minimum hardware (misal 130MHz/260MHz).
+
+2. INTERACTIVE (BALANCED / DAILY USE):
+   - Profil default untuk penggunaan sehari-hari (media sosial, browsing, UI).
+   - Governor CPU `sugov_ext` / `schedutil` bekerja secara seimbang.
+   - uclamp min diset sedang (10-20%) agar perpindahan aplikasi terasa mulus tanpa lag.
+   - GPU berada pada skala frekuensi dinamis normal.
+
+3. GAMING (HIGH PERFORMANCE):
+   - Diaktifkan otomatis saat game biasa dibuka.
+   - uclamp min CPU dinaikkan (30-50%) untuk menjamin framerate stabil.
+   - Rate-limit cpufreq dipercepat (`up_rate_limit_us=1000`).
+   - GED GPU bottom frequency dinaikkan (390MHz/520MHz) dan `gx_game_mode=1`.
+
+4. GAMING MOBA (ULTRA LOW-LATENCY PERFORMANCE):
+   - Diaktifkan khusus untuk game MOBA / Kompetitif (Mobile Legends, Wild Rift, PUBG).
+   - uclamp min CPU diset ke tingkat maksimum aman (60-80%).
+   - GPU bottom frequency diset ke tingkat tertinggi (650MHz/800MHz).
+   - DVFSRC QoS dinaikkan untuk latensi bus memori RAM terendah.
+
+================================================================================
+5. ARSITEKTUR DASHBOARD WEBUI (VUE 3 + PINIA SINGLEFILE SPA)
+================================================================================
+
+5.1. Telemetry Store Resilience (webui/src/stores/hyper.js)
+- Menggunakan Pinia Store (`useHyperStore`) untuk manajemen state WebUI.
+- Polling Telemetri Terpisah:
+  * `pollCpuGpu()` : Berjalan setiap 1 detik untuk memperbarui suhu CPU/GPU, governor,
+                     dan status daemon.
+  * `pollRamBat()` : Berjalan setiap 2 detik untuk memperbarui status baterai dan RAM.
+  * `pollCards()`  : Berjalan setiap 3 detik untuk telemetri tambahan.
+- MULTI-TIER RESILIENCE LOGIC:
+  WebUI membaca status daemon melalui hirarki berikut:
+  1. Membaca berkas atomic `/data/adb/modules/hypercore/status.json`.
+  2. Jika file tidak ada, mencoba membaca IPC socket (`GET_STATUS`).
+  3. Jika IPC socket gagal sementara, PID lama tetap **DI-RETAIN** (`daemonPid` tidak
+     dikosongkan). Hal ini mencegah status WebUI berganti menjadi `Standby` atau `:-`.
+
+5.2. Material Design 3 Monochrome Interface
+- Seluruh antarmuka WebUI dirancang dengan standar Material Design 3 (MD3) Monokromatis.
+- Tidak menggunakan warna-warni generik/mencolok; menggunakan palet warna monokrom
+  gelap (`--surface-container`, `--on-surface`, `--outline-variant`) yang sangat modern.
+- Komponen Utama WebUI:
+  * `HomeView.vue`   : Hero card status daemon PID, profil aktif, suhu, frekuensi CPU/GPU.
+  * `GamesView.vue`  : Manajer daftar game (tambah/hapus game manual & picker aplikasi).
+  * `LogsView.vue`   : Tampilan log real-time daemon HyperCore.
+  * `AboutView.vue`  : Informasi versi modul, pengembang (@itswill00), dan pengekspor bug report.
+
+================================================================================
+6. SIKLUS HIDUP & KEAMANAN SCRIPT INSTALLER
+================================================================================
+
+6.1. Script Instalasi (customize.sh)
+- Verifikasi Kernel: Memeriksa kompatibilitas Linux Kernel 5.10, 5.15, 6.1, 6.6, dan 6.12 GKI.
+- Verifikasi Hardware: Memeriksa keberadaan node hardware MediaTek MT6789 (GED & Mali GPU).
+  Jika bukan MT6789, instalasi dihentikan (*abort*).
+- Upgrade Daemon Kill Guard: Menutup daemon lama (`libhypercore.so`) dan menghapus file socket/PID
+  sebelum ekstraksi ZIP dilakukan, mencegah file terunci (*binary locked*).
+- Preservasi Data User: Mengamankan `gamelist.txt` lama milik user dan menggabungkannya (*merge*)
+  secara otomatis dengan daftar default.
+- Auto Game Detection: Memindai game yang sudah terinstal di perangkat (`pm list packages`) dan
+  otomatis menambahkannya ke `gamelist.txt`.
+- Verifikasi SHA-256: Menguji keutuhan checksum executable `libhypercore.so`.
+- Symlink PATH: Membuat symlink di `/data/adb/ksu/bin`, `/data/adb/ap/bin`, dan `/data/adb/modules/bin`.
+
+6.2. Script Boot Completion (service.sh)
+- Menunggu hingga properti sistem `sys.boot_completed == 1`.
+- Memastikan direktori `/data/adb/hypercore` siap.
+- Universal ROM Shield: Menonaktifkan script tweaking/thermal lain yang berpotensi konflik
+  di direktori `/data/adb/service.d/` dan `/data/adb/post-fs-data.d/`.
+- Launch & Retry Guard: Memanggil executable `libhypercore.so`. Jika PID tidak terdeteksi dalam
+  1 detik, otomatis melakukan peluncuran ulang dengan `nohup`.
+
+6.3. Post FS Data (post-fs-data.sh) & Uninstaller (uninstall.sh)
+- `post-fs-data.sh`: Menyiapkan direktori `/data/adb/hypercore` sebelum filesystem di-mount.
+- `uninstall.sh`: Menghentikan daemon C, menghapus socket, PID file, dan membersihkan seluruh
+  symlink modul saat pengguna menghapus modul dari Root Manager.
+
+================================================================================
+7. ALUR BUILD & DEPLOYMENT AUTOMATION (build.sh)
+================================================================================
+Proses kompilasi dan otomatisasi dilakukan melalui script `build.sh`:
+1. Kompilasi WebUI Vue 3: Menjalankan `npm run build` di direktori `webui/` menggunakan Vite
+   dan `vite-plugin-singlefile` untuk menghasilkan 1 berkas `webroot/index.html`.
+2. Generasi Checksum SHA-256: Memperbarui berkas `checksums.txt` dan membuat header C
+   `embedded_checksums.hpp`.
+3. Kompilasi Daemon C: Mengompilasi seluruh file `.c` di `src/` menggunakan Clang NDK/Termux
+   (`aarch64-linux-android-clang`) dengan flag optimasi `-O3 -flto -s`.
+4. Packaging ZIP: Mengemas seluruh berkas modul ke paket rilis `HyperCore-${VERSION}-Unified.zip`
+   di direktori release.
+5. Auto Deploy (`--deploy`): Jika argumen `--deploy` diberikan, script otomatis memasang
+   binary baru ke direktori modul aktif `/data/adb/modules/hypercore/` dan merestart daemon.
+
+================================================================================
+8. DAFTAR PERATURAN & ATURAN PENGEMBANGAN (.rules)
+================================================================================
+1. ATURAN TANPA FREQ LOCKING: Dilarang keras mengunci frekuensi CPU/GPU pada angka statis.
+2. HARDWARE TARGET: Khusus MediaTek MT6789 Family (Helio G99 / G100 / G200 dengan Mali GPU).
+3. GKI FALLBACK RULES: Penulisan node Cgroup/uclamp WAJIB menggunakan `sysfs_write_fallback`.
+4. WEBUI AESTHETICS: Menggunakan estetika MD3 Monokromatis elegan (Dark mode).
+5. POLLING FREKUENSI GPU: Interval polling scaling GPU ditetapkan tepat 30ms.
+6. HAK CIPTA & KREDIT: Pengembang utama `@itswill00` (`aerichandesu@noticesa`), Kredit inspirasi `encore @Rem01Gaming`.
+================================================================================
