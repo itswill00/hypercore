@@ -4,6 +4,10 @@ import vue from '@vitejs/plugin-vue'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 export default defineConfig({
+  define: {
+    '__VUE_PROD_DEVTOOLS__': false,
+    '__VUE_PROD_HYDRATION_MISMATCH_DETAILS__': false
+  },
   plugins: [
     vue(),
     viteSingleFile()
@@ -15,10 +19,18 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
+    cssCodeSplit: false,
     minify: 'terser',
     terserOptions: {
-      compress: { drop_console: true, passes: 2 },
-      format: { comments: false }
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        passes: 3,
+        pure_funcs: ['console.log', 'console.info', 'console.debug']
+      },
+      format: {
+        comments: false
+      }
     }
   }
 })
