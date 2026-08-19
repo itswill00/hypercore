@@ -533,7 +533,7 @@ int main(int argc, char *argv[]) {
         tune_memory_pressure();
         fix_battery_cycle_count();
         track_charging_cycles(g_state.is_charging);
-        update_status_json_file();
+        update_status_json_file(cpu_temp, bat_temp);
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {
