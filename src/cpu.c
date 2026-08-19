@@ -712,6 +712,10 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
     sysfs_write(g_nodes.charge_control, m.charge_control);
+
+    /* Re-apply IRQ affinity on every profile transition:
+     * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
+    apply_irq_tuning(prof);
 }
 
 int audit_active_profile_state(profile_t active_prof, int tier) {

@@ -368,7 +368,7 @@ int main(int argc, char *argv[]) {
     apply_memory_tuning();
     apply_io_tuning();
     apply_gpu_tuning();
-    apply_irq_tuning();
+    apply_irq_tuning(PROFILE_Interactive);
     load_gamelist();
     init_gamelist_watcher();
 
