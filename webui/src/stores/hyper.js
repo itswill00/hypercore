@@ -47,7 +47,7 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v4.5.9')
+  const moduleVersion = ref('v6.0.0')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
   const uptime = ref('—')
@@ -186,10 +186,12 @@ export const useHyperStore = defineStore('hyper', () => {
 
   function startCardPolling() {
     if (!cpuGpuInterval) {
-      cpuGpuInterval = setInterval(pollCpuGpu, 3000)
+      /* Guard: skip poll tick if a full refresh() is already in flight to avoid
+       * stale partial data overwriting values refresh() is currently updating */
+      cpuGpuInterval = setInterval(() => { if (!isRefreshing) pollCpuGpu() }, 3000)
     }
     if (!ramBatInterval) {
-      ramBatInterval = setInterval(pollRamBat, 5000)
+      ramBatInterval = setInterval(() => { if (!isRefreshing) pollRamBat() }, 5000)
     }
   }
 
