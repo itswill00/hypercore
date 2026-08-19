@@ -4,6 +4,9 @@
 #include "io.hpp"
 #include "log.hpp"
 
+/* Forward declaration — defined later in this file as a static function */
+static const char *get_best_governor(profile_t prof);
+
 void detect_cpu_hardware_limits(void) {
     if (g_nodes.boot_cpu_gov[0] == '\0') {
         if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
