@@ -70,7 +70,12 @@ void apply_io_tuning(void) {
     closedir(d);
 }
 
-void apply_irq_tuning(void) {
+void apply_irq_tuning(profile_t prof) {
+    /* Gaming: pin GPU/touch IRQs to big cores (CPU 6-7, mask 0xc0) for lowest latency.
+     * Other profiles: allow all cores (mask 0xff) to avoid IRQ starvation on little cores. */
+    const char *affinity_mask = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA)
+                                ? "c0" : "ff";
+
     DIR *dir = opendir("/proc/irq");
     if (!dir) return;
 
@@ -102,7 +107,7 @@ void apply_irq_tuning(void) {
         if (matched) {
             char aff_path[256];
             snprintf(aff_path, sizeof(aff_path), "/proc/irq/%d/smp_affinity", irq);
-            sysfs_write(aff_path, "c0");
+            sysfs_write(aff_path, affinity_mask);
         }
     }
     closedir(dir);

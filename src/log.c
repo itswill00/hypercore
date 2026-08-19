@@ -69,7 +69,7 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
 
 void rotate_log(void) {
     struct stat st;
-    if (stat(LOG_PATH, &st) != 0 || st.st_size <= 102400) return;
+    if (stat(LOG_PATH, &st) != 0 || st.st_size <= 524288) return; /* rotate at 512 KB */
 
     if (s_log_fd >= 0) { close(s_log_fd); s_log_fd = -1; }
 

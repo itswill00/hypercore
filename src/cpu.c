@@ -4,6 +4,9 @@
 #include "io.hpp"
 #include "log.hpp"
 
+/* Forward declaration — defined later in this file as a static function */
+static const char *get_best_governor(profile_t prof);
+
 void detect_cpu_hardware_limits(void) {
     if (g_nodes.boot_cpu_gov[0] == '\0') {
         if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
@@ -31,6 +34,19 @@ void detect_cpu_hardware_limits(void) {
     log_info("Hardware", "CPU Freq Bounds - Little: [%d - %d kHz], Big: [%d - %d kHz]",
              g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq,
              g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq);
+
+    /* Pre-cache best governor strings for each profile class so get_best_governor()
+     * doesn't re-read scaling_available_governors on every profile transition. */
+    if (g_nodes.cached_gov_perf[0] == '\0') {
+        const char *gp = get_best_governor(PROFILE_Gaming);
+        strncpy(g_nodes.cached_gov_perf, gp, sizeof(g_nodes.cached_gov_perf) - 1);
+        g_nodes.cached_gov_perf[sizeof(g_nodes.cached_gov_perf) - 1] = '\0';
+        const char *gb = get_best_governor(PROFILE_Interactive);
+        strncpy(g_nodes.cached_gov_balanced, gb, sizeof(g_nodes.cached_gov_balanced) - 1);
+        g_nodes.cached_gov_balanced[sizeof(g_nodes.cached_gov_balanced) - 1] = '\0';
+        log_info("Hardware", "CPU Governor cache: perf='%s' balanced='%s'",
+                 g_nodes.cached_gov_perf, g_nodes.cached_gov_balanced);
+    }
 }
 
 static const char *s_policy0_up_rate_nodes[] = {
@@ -277,6 +293,14 @@ void apply_cgroup_gaming_policy(int enable) {
 }
 
 static const char *get_best_governor(profile_t prof) {
+    /* Use cached value if available (populated at startup by detect_cpu_hardware_limits) */
+    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
+        if (g_nodes.cached_gov_perf[0] != '\0') return g_nodes.cached_gov_perf;
+    } else {
+        if (g_nodes.cached_gov_balanced[0] != '\0') return g_nodes.cached_gov_balanced;
+    }
+
+    /* Fallback: read sysfs (only happens before detect_cpu_hardware_limits completes) */
     char avail[256] = "";
     if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors", avail, sizeof(avail))) {
         return (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) ? "performance" : "schedutil";
@@ -691,6 +715,10 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
     sysfs_write(g_nodes.charge_control, m.charge_control);
+
+    /* Re-apply IRQ affinity on every profile transition:
+     * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
+    apply_irq_tuning(prof);
 }
 
 int audit_active_profile_state(profile_t active_prof, int tier) {

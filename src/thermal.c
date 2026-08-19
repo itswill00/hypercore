@@ -183,6 +183,8 @@ void track_charging_cycles(int is_charging) {
         current_cap = sysfs_read_int("/sys/class/power_supply/bms/capacity");
     }
 
+    int full_cycle_completed = 0;
+
     if (is_charging && s_prev_cap_for_cycle > 0 && current_cap > s_prev_cap_for_cycle) {
         int delta = current_cap - s_prev_cap_for_cycle;
         if (delta > 0 && delta <= 50) {
@@ -192,11 +194,20 @@ void track_charging_cycles(int is_charging) {
                 s_added_cycles += new_added;
                 s_accumulated_pct -= (float)(new_added * 100);
                 log_info("Battery", "Dynamic full charge cycle reached! Total added cycles: %d", s_added_cycles);
+                full_cycle_completed = 1; /* force immediate save on full cycle */
             }
-            save_cycle_tracker();
         }
     }
     s_prev_cap_for_cycle = current_cap;
+
+    /* Defer disk writes: save every 5 minutes OR when a full cycle just completed.
+     * Previously saved on every 1% increment during charging — unnecessary I/O. */
+    static time_t s_last_save_time = 0;
+    time_t now = time(NULL);
+    if (full_cycle_completed || (now - s_last_save_time >= 300)) {
+        save_cycle_tracker();
+        s_last_save_time = now;
+    }
 }
 
 int get_true_battery_cycles(void) {
