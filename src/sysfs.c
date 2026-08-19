@@ -88,12 +88,32 @@ void sysfs_write(const char *path, const char *val) {
 
 void sysfs_write_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
+
+    /* Trim value once here to avoid repeated trimming inside sysfs_write */
+    char clean_val[64];
+    strncpy(clean_val, val, sizeof(clean_val) - 1);
+    clean_val[sizeof(clean_val) - 1] = '\0';
+    size_t vlen = strlen(clean_val);
+    while (vlen > 0 && (clean_val[vlen - 1] == '\r' || clean_val[vlen - 1] == '\n' || clean_val[vlen - 1] == ' '))
+        clean_val[--vlen] = '\0';
+
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
-        int probe_fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-        if (probe_fd >= 0) {
-            close(probe_fd);
-            sysfs_write(paths[i], val);
+
+        /* Read current value first; if already matching, skip write entirely */
+        char current_val[64];
+        if (sysfs_read_str(paths[i], current_val, sizeof(current_val))) {
+            if (strcmp(current_val, clean_val) == 0) return; /* node exists, value already set */
+        } else {
+            /* sysfs_read_str failed — node may not exist, skip to next candidate */
+            continue;
+        }
+
+        /* Open once and write directly — no redundant probe open/close cycle */
+        int fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+        if (fd >= 0) {
+            write(fd, clean_val, vlen);
+            close(fd);
             return;
         }
     }
