@@ -47,6 +47,8 @@ struct hw_nodes {
     char touch_sensitivity[256];
     char charge_control[256];
     char boot_cpu_gov[64];
+    char cached_gov_perf[64];    /* best governor for Gaming/MOBA profiles, cached at startup */
+    char cached_gov_balanced[64];/* best governor for Interactive/Sleep profiles, cached at startup */
     int  lit_hw_min_freq;
     int  lit_hw_max_freq;
     int  big_hw_min_freq;
