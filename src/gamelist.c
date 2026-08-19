@@ -8,11 +8,14 @@ static char      s_games[MAX_GAMES][PKG_NAME_LEN];
 static profile_t s_profiles[MAX_GAMES];
 static int       s_game_count = 0;
 static int       s_inotify_fd = -1;
-
+/* Pre-computed package name lengths — cached across calls, invalidated on reload */
+static size_t    s_pkg_lens[MAX_GAMES];
+static int       s_lens_cached = 0;
 
 
 void load_gamelist(void) {
     s_game_count = 0;
+    s_lens_cached = 0; /* invalidate pkg_len cache on every reload */
     char path[256];
 
     FILE *f = fopen("/data/adb/hypercore/gamelist.txt", "r");
@@ -151,12 +154,20 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         if (!fp) continue;
 
         char line_str[32];
-        int read_count = 0;
+        int pid_scanned = 0;
 
-        while (fgets(line_str, sizeof(line_str), fp) && read_count < 250) {
+        /* Pre-compute package name lengths once — avoids strlen() inside the hot N*M loop */
+        if (!s_lens_cached) {
+            for (int i = 0; i < s_game_count; i++)
+                s_pkg_lens[i] = strlen(s_games[i]);
+            s_lens_cached = 1;
+        }
+
+        /* Cap at 64 PIDs: the real foreground process appears near the top of cgroup.procs */
+        while (fgets(line_str, sizeof(line_str), fp) && pid_scanned < 64) {
             int pid = atoi(line_str);
             if (pid <= 0) continue;
-            read_count++;
+            pid_scanned++;
 
             char cmdpath[64];
             snprintf(cmdpath, sizeof(cmdpath), "/proc/%d/cmdline", pid);
@@ -171,7 +182,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
             cmdline[n] = '\0';
 
             for (int i = 0; i < s_game_count; i++) {
-                size_t pkg_len = strlen(s_games[i]);
+                size_t pkg_len = s_pkg_lens[i];
                 if (pkg_len == 0) continue;
 
                 if (strncmp(cmdline, s_games[i], pkg_len) == 0 &&
