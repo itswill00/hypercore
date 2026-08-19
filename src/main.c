@@ -468,7 +468,15 @@ int main(int argc, char *argv[]) {
         static int s_prev_gpu_heavy = -1;
         static int s_prev_app_boost = 0;
         int is_gpu_heavy = (gpu_load >= 20);
-        int is_tampered = check_and_recover_sysfs_tampering(g_state.current_profile);
+
+        /* Rate-limit anti-tamper audit to every 5 ticks (≈5s) to avoid reading
+         * 3 sysfs nodes per second just for governor/GPU policy verification. */
+        static int s_audit_tick = 0;
+        int is_tampered = 0;
+        if (++s_audit_tick >= 5) {
+            s_audit_tick = 0;
+            is_tampered = check_and_recover_sysfs_tampering(g_state.current_profile);
+        }
 
         static int s_prev_gpu_load = 0;
         int gpu_spike = (gpu_load - s_prev_gpu_load >= 30);
