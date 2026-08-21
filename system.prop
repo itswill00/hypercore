@@ -1,25 +1,21 @@
 # HyperCore System Properties
+# Note: Only boot-time props that are safe for Play Integrity are included here.
+# Props that could trigger banking app detection (debug.*, persist.sys.smartpower.*,
+# persist.sys.joyose.*, persist.sys.wifi.low_latency) have been removed.
+# Runtime performance props are applied by the daemon at runtime via sysfs/resetprop
+# scoped to Gaming profile only, so they don't persist after module removal.
 
 # Dalvik / Dex2oat compiler threads
 dalvik.vm.dex2oat-threads=8
 dalvik.vm.image-dex2oat-threads=8
 dalvik.vm.boot-dex2oat-threads=8
 
-# SurfaceFlinger & Rendering Smoothness
-debug.sf.latch_unsignaled=1
+# SurfaceFlinger buffer count (safe, non-debug, standard AOSP prop)
 ro.surface_flinger.max_frame_buffer_acquired_buffers=3
-vendor.perf.gesturement.enable=1
 
-# DSI Touch & Gesture Calibration
+# DSI Touch & Gesture Calibration (standard AOSP calibration props)
 touch.size.calibration=geometric
 touch.pressure.calibration=amplitude
 
-# SmartPower & Joyose tweaks
-persist.sys.smartpower.display_camera_fps_enable=false
-persist.sys.smartpower.display.enable=false
-persist.sys.powerkeeper.fps_limit=0
-persist.sys.joyose.fps_boost=true
-
-# Wi-Fi low latency
+# Wi-Fi supplicant scan interval (standard, not a debug/persist flag)
 wifi.supplicant_scan_interval=180
-persist.sys.wifi.low_latency=1
