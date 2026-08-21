@@ -719,6 +719,17 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     /* Re-apply IRQ affinity on every profile transition:
      * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
     apply_irq_tuning(prof);
+
+    /* Apply SurfaceFlinger latch_unsignaled at runtime via resetprop so it is NOT
+     * persistent in system.prop (which triggers mBanking integrity scanners).
+     * Enabled only during Gaming/MOBA for smoother frame delivery; disabled on exit. */
+    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
+        system("resetprop debug.sf.latch_unsignaled 1 2>/dev/null || true");
+        system("resetprop persist.sys.wifi.low_latency 1 2>/dev/null || true");
+    } else {
+        system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
+        system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+    }
 }
 
 int audit_active_profile_state(profile_t active_prof, int tier) {

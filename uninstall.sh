@@ -36,5 +36,6 @@ done
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
 rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid 2>/dev/null
 rm -f /data/local/tmp/.hypercore_lock /data/local/tmp/hypercore.sock /data/local/tmp/hypercore.pid 2>/dev/null
+rm -f /dev/hypercore.sock 2>/dev/null
 rm -f /sdcard/Android/.hypercore_lock 2>/dev/null
 rm -f /sdcard/Android/hypercore.log /data/adb/hypercore/hypercore.log 2>/dev/null

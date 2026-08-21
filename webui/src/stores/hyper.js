@@ -206,7 +206,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(cat $MOD/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_STATUS | nc -w 1 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
+IPC=$(cat $MOD/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_STATUS | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
 echo "PID:$(cat $MOD/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
@@ -421,7 +421,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       // it triggers synchronous kernel compaction that freezes all userland threads
       // (200-800ms D-state) and can cause ANR/soft reboot. See daemon C-1 fix.
       const cmd = `MOD="/data/adb/modules/hypercore";
-echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; echo 60 > /proc/sys/vm/compaction_proactiveness 2>/dev/null || true)`
+echo PURGE_RAM | nc -U /dev/hypercore.sock 2>/dev/null || echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; echo 60 > /proc/sys/vm/compaction_proactiveness 2>/dev/null || true)`
       await execCommand(cmd)
       await new Promise(resolve => setTimeout(resolve, 400))
       await refresh()
@@ -440,14 +440,14 @@ echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/
 pkill -15 -x libhypercore.so 2>/dev/null || true;
 sleep 0.3;
 pkill -9 -x libhypercore.so 2>/dev/null || true;
-rm -f $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
+rm -f /dev/hypercore.sock $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
 nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       await execCommand(cmd)
 
       let started = false
       for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 250))
-        const check = await execCommand('echo GET_STATUS | nc -w 2 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
+        const check = await execCommand('echo GET_STATUS | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
         if (check && check.includes('"status":"ok"')) {
           started = true
           break

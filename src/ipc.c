@@ -17,7 +17,11 @@ static time_t s_start_time = 0;
 int init_ipc_socket(void) {
     s_start_time = time(NULL);
 
-    snprintf(s_sock_path, sizeof(s_sock_path), "%s/hypercore.sock", g_nodes.mod_dir);
+    /* Use /dev/hypercore.sock as primary socket path.
+     * /dev/ is the standard POSIX location for IPC sockets and is NOT
+     * in the /data/adb/ root-manager zone that banking app scanners target.
+     * A backward-compat symlink is created at the old mod_dir path. */
+    snprintf(s_sock_path, sizeof(s_sock_path), "/dev/hypercore.sock");
 
     s_server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (s_server_fd < 0) {
@@ -55,6 +59,16 @@ int init_ipc_socket(void) {
     }
 
     log_info("Ipc", "Socket IPC server listening at %s", s_sock_path);
+
+    /* Create backward-compat symlinks at legacy paths so older WebUI nc commands
+     * and external scripts that reference the old /data/adb/ path still work.
+     * These are symlinks only — the actual socket is in /dev/ (scanner-safe). */
+    char legacy_mod[300], legacy_data[300];
+    snprintf(legacy_mod,  sizeof(legacy_mod),  "%s/hypercore.sock", g_nodes.mod_dir);
+    snprintf(legacy_data, sizeof(legacy_data), "/data/adb/hypercore/hypercore.sock");
+    unlink(legacy_mod);  symlink(s_sock_path, legacy_mod);
+    unlink(legacy_data); symlink(s_sock_path, legacy_data);
+
     return 0;
 }
 
@@ -65,6 +79,12 @@ void close_ipc_socket(void) {
     }
     if (s_sock_path[0] != '\0') {
         unlink(s_sock_path);
+        /* Clean up backward-compat symlinks too */
+        char legacy_mod[300], legacy_data[300];
+        snprintf(legacy_mod,  sizeof(legacy_mod),  "%s/hypercore.sock", g_nodes.mod_dir);
+        snprintf(legacy_data, sizeof(legacy_data), "/data/adb/hypercore/hypercore.sock");
+        unlink(legacy_mod);
+        unlink(legacy_data);
     }
 }
 
