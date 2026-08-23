@@ -1,6 +1,6 @@
 {
-  "version": "v6.1.0",
-  "versionCode": 6100,
-  "zipUrl": "https://github.com/itswill00/hypercore/releases/download/v6.1.0/HyperCore-v6.1.0-Unified.zip",
+  "version": "v6.1.1",
+  "versionCode": 6110,
+  "zipUrl": "https://github.com/itswill00/hypercore/releases/download/v6.1.1/HyperCore-v6.1.1-Unified.zip",
   "changelog": "https://raw.githubusercontent.com/itswill00/hypercore/main/changelog.md"
 }
