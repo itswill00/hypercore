@@ -1,3 +1,13 @@
+# HyperCore v6.1.1 — Early Boot Maintenance Release
+
+## What's Changed
+
+### 🔧 Fixes & Enhancements
+- **Metadata**: Restored missing `updateJson` property in `module.prop` for Magisk, KernelSU, and APatch auto-updater support.
+- **Early-Boot Execution**: Enhanced `post-fs-data.sh` with direct `/proc/sys/vm/` procfs writes and sysctl fallbacks, guaranteeing 100% execution reliability across all Android 12-16 GKI environments.
+
+---
+
 # HyperCore v6.1.0 — Performance Optimization & mBanking Compatibility
 
 ## What's Changed
