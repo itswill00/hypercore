@@ -4,4 +4,5 @@ version=v6.1.0
 versionCode=6100
 author=@itswill00
 description=Universal Dual-Kernel (Kernel 5.10-6.12 GKI) Performance & Thermal Optimizer for MediaTek MT6789 (Helio G99/G100/G200) with Material Design 3 WebUI.
+updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
 banner=banner.jpg
