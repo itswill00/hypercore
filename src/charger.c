@@ -59,7 +59,7 @@ static int load_charge_mode_conf(void) {
     int mode = CHARGE_MODE_OEM;
     if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
     fclose(f);
-    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_BYPASS) mode = CHARGE_MODE_OEM;
+    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_VIOLENT) mode = CHARGE_MODE_OEM;
     return mode;
 }
 
