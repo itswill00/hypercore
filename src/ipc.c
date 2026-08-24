@@ -168,7 +168,7 @@ static void process_client(int client_fd) {
             getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
             bat_health, bat_status, bat_tech,
-            g_state.charge_mode, charge_mode_name(g_state.charge_mode),
+            g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.charge_mode_thermal_override);
 
         write(client_fd, json, strlen(json));
@@ -201,6 +201,13 @@ static void process_client(int client_fd) {
             write(client_fd, err, strlen(err));
         } else {
             set_charge_mode(mode);
+            int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+            int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+            if (cpu_temp > 1000) cpu_temp /= 1000;
+            if (bat_temp > 1000) bat_temp /= 1000;
+            else if (bat_temp > 100) bat_temp /= 10;
+            update_status_json_file(cpu_temp, bat_temp);
+
             char res[256];
             snprintf(res, sizeof(res),
                 "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\"}\n",
@@ -215,7 +222,7 @@ static void process_client(int client_fd) {
         snprintf(res, sizeof(res),
             "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
             "\"charge_thermal_override\":%d,\"bat_temp\":%d}\n",
-            g_state.charge_mode, charge_mode_name(g_state.charge_mode),
+            g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.charge_mode_thermal_override, bat_temp);
         write(client_fd, res, strlen(res));
     } else {
@@ -296,12 +303,15 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
     int bat_cycles = get_true_battery_cycles();
 
-    char json[512];
+    char json[1024];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
-        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d}\n",
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
+        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"charge_thermal_override\":%d}\n",
         getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
-        g_state.is_charging, gpu_load, bat_cycles);
+        g_state.is_charging, gpu_load, bat_cycles,
+        g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
+        g_state.charge_mode_thermal_override);
 
     const char *paths[] = {
         "/data/adb/modules/hypercore/status.json",

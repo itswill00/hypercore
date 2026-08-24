@@ -431,7 +431,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       const res = await execCommand(
         `echo "CC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";` +
         `echo "CV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";` +
-        `echo "CM:$(echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true)"`
+        `echo "CM:$(cat /data/adb/modules/hypercore/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || true)"`
       )
       if (!res) return
       const kv = {}
@@ -447,7 +447,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         const rawUv = parseInt(kv.CV || 0)
         chargeVoltMv.value = rawUv > 10000 ? Math.round(rawUv / 1000) : rawUv
       }
-      /* Parse GET_CHARGE_MODE IPC response */
+      /* Parse charge_mode from status.json or GET_CHARGE_MODE IPC response */
       if (kv.CM && kv.CM.includes('"status":"ok"')) {
         try {
           const cm = JSON.parse(kv.CM.substring(kv.CM.indexOf('{')))

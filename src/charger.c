@@ -127,6 +127,7 @@ void init_charge_control(void) {
 
     /* Load persisted user choice from disk */
     s_user_charge_mode = load_charge_mode_conf();
+    g_state.user_charge_mode = s_user_charge_mode;
     g_state.charge_mode = s_user_charge_mode;
     g_state.charge_mode_thermal_override = 0;
 
@@ -139,6 +140,8 @@ void init_charge_control(void) {
 
 void enforce_charge_mode(void) {
     if (!s_nodes_available) return;
+
+    g_state.user_charge_mode = s_user_charge_mode;
 
     /* In OEM mode we do nothing — full ROM control, no interference. */
     if (s_user_charge_mode == CHARGE_MODE_OEM) {
@@ -210,6 +213,7 @@ void enforce_charge_mode(void) {
     apply_effective_mode(effective_mode);
 
     /* Update global state */
+    g_state.user_charge_mode = s_user_charge_mode;
     g_state.charge_mode = effective_mode;
     g_state.charge_mode_thermal_override = override_active;
 }
@@ -225,6 +229,7 @@ void set_charge_mode(int mode) {
     }
 
     s_user_charge_mode = mode;
+    g_state.user_charge_mode = mode;
     g_state.charge_mode_thermal_override = 0; /* clear any active override */
     save_charge_mode_conf(mode);
 
