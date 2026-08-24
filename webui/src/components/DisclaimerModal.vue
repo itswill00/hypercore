@@ -28,9 +28,9 @@
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">4. Thermal Boundaries &amp; Battery Telemetry</div>
+            <div class="sec-title">4. Thermal Boundaries &amp; Battery Safety</div>
             <p>
-              The daemon monitors battery temperature in real time for system thermal profiling. Charging current limits and fast-charging thermal safety are left 100% to stock OEM hardware drivers.
+              The daemon monitors battery temperature continuously for system thermal profiling. Charging current limits and fast-charging thermal safety are left 100% to stock OEM hardware drivers.
             </p>
           </div>
 

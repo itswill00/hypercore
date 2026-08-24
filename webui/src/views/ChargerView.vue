@@ -53,7 +53,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Power &amp; Battery State</div>
-              <div class="row-sub">Live battery telemetry &amp; sensor metrics</div>
+              <div class="row-sub">Current flow, voltage &amp; battery stats</div>
             </div>
           </div>
           <div class="row-val">
