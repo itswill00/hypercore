@@ -20,8 +20,8 @@
 
 /* Level values written to charge_control_limit per mode */
 #define LIMIT_FAST     0
-#define LIMIT_BALANCED 5
-#define LIMIT_SAFE     10
+#define LIMIT_BALANCED 8
+#define LIMIT_SAFE     12
 
 /* Safety thresholds */
 #define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: drop to SAFE                       */

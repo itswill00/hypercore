@@ -246,7 +246,7 @@ const modes = [
     badgeClass: 'secondary',
     estCurrent: '~1,900 – 2,000 mA',
     estPower: '~7.5 W',
-    nodeVal: 'limit = 5',
+    nodeVal: 'limit = 8',
     guardNote: 'Auto <45°C'
   },
   {
@@ -258,7 +258,7 @@ const modes = [
     badgeClass: 'tertiary',
     estCurrent: '~1,000 – 1,050 mA',
     estPower: '~4.0 W',
-    nodeVal: 'limit = 10',
+    nodeVal: 'limit = 12',
     guardNote: 'Always Safe'
   },
   {
