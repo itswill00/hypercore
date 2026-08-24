@@ -7,15 +7,30 @@
         <div class="page-header-title">Charger Control</div>
         <div class="page-header-sub">Charging speed, thermal guard &amp; bypass mode</div>
       </div>
-      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
+      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;" :style="!store.chargerSupported ? 'background: var(--surface-container-highest); color: var(--on-surface-variant);' : ''">
         {{ activeModeName }}
       </span>
     </div>
 
     <div class="content-area">
 
+      <!-- Device Unsupported Warning Banner -->
+      <div v-if="!store.chargerSupported" class="md3-banner" style="background: var(--surface-container-high); border-color: var(--outline-variant); margin-bottom: 14px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div class="icon-badge secondary">
+            <Icons name="shield" :size="20" />
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--on-surface); margin-bottom: 2px;">Your device does not support this function properly</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); line-height: 1.4;">
+              Required hardware charger nodes (/sys/class/power_supply/battery/charge_control_limit) were not detected on this kernel interface. Control features have been safely disabled.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Thermal Override Alert Banner -->
-      <div v-if="store.chargeModeOverride" class="md3-banner" style="background: var(--error-container); color: var(--on-error-container); border-color: var(--error); margin-bottom: 14px;">
+      <div v-else-if="store.chargeModeOverride" class="md3-banner" style="background: var(--error-container); color: var(--on-error-container); border-color: var(--error); margin-bottom: 14px;">
         <div style="display: flex; align-items: flex-start; gap: 12px;">
           <div class="icon-badge" style="background: rgba(0,0,0,0.2); color: inherit;">
             <Icons name="thermal" :size="20" />
@@ -81,8 +96,9 @@
           class="md3-list-row expandable-row clickable"
           :class="{
             'is-expanded': expandedRows[m.id],
-            'selected-mode': store.chargeMode === m.id,
-            'violent-mode-row': m.id === 5 && store.chargeMode === 5
+            'selected-mode': store.chargerSupported && store.chargeMode === m.id,
+            'violent-mode-row': m.id === 5 && store.chargeMode === 5 && store.chargerSupported,
+            'disabled-mode-row': !store.chargerSupported
           }"
           @click="onSelectMode(m.id)"
         >
@@ -97,7 +113,10 @@
               </div>
             </div>
             <div class="row-val">
-              <span v-if="store.chargeMode === m.id" class="badge-pill" :style="m.id === 5 ? 'background: var(--error-container); color: var(--on-error-container); border-color: var(--error); font-weight: 700;' : 'background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);'">
+              <span v-if="!store.chargerSupported" class="badge-pill">
+                Unsupported
+              </span>
+              <span v-else-if="store.chargeMode === m.id" class="badge-pill" :style="m.id === 5 ? 'background: var(--error-container); color: var(--on-error-container); border-color: var(--error); font-weight: 700;' : 'background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);'">
                 Active
               </span>
               <span v-else class="badge-pill">Select</span>
@@ -260,6 +279,7 @@ const modes = [
 ]
 
 const activeModeName = computed(() => {
+  if (!store.chargerSupported) return 'Unsupported'
   const m = modes.find(x => x.id === store.chargeMode)
   return m ? m.name : 'OEM Stock'
 })
@@ -288,6 +308,10 @@ function toggleExpand(id) {
 }
 
 function onSelectMode(id) {
+  if (!store.chargerSupported) {
+    if (toast) toast('Your device does not support this function properly')
+    return
+  }
   if (id === 5) {
     showViolentModal.value = true
   } else {
@@ -331,5 +355,10 @@ onUnmounted(() => {
 
 .violent-mode-row {
   border-left-color: var(--error) !important;
+}
+
+.disabled-mode-row {
+  opacity: 0.45;
+  cursor: not-allowed !important;
 }
 </style>

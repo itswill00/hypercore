@@ -136,9 +136,11 @@ void init_charge_control(void) {
     if (access(CHG_LIMIT_NODE, F_OK) != 0 && access(CHG_SUSPEND_NODE, F_OK) != 0) {
         log_warn("Charger", "charge_control_limit not found — charger control disabled");
         s_nodes_available = 0;
+        g_state.charger_supported = 0;
         return;
     }
     s_nodes_available = 1;
+    g_state.charger_supported = 1;
 
     /* Load persisted user choice from disk */
     s_user_charge_mode = load_charge_mode_conf();

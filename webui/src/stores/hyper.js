@@ -42,8 +42,9 @@ export const useHyperStore = defineStore('hyper', () => {
   const batTech = ref('Li-poly')
 
   /* Charger Control */
-  const chargeMode = ref(0)              /* CHARGE_MODE_* (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass) */
+  const chargeMode = ref(0)              /* CHARGE_MODE_* (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent) */
   const chargeModeOverride = ref(false)  /* true = daemon overrode user choice due to heat */
+  const chargerSupported = ref(true)     /* true = device has required charger sysfs nodes */
   const chargeCurrentMa = ref(0)         /* real-time mA from current_now */
   const chargeVoltMv = ref(0)            /* real-time mV from voltage_now */
 
@@ -275,6 +276,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
           if (typeof ipcData.charge_mode !== 'undefined') chargeMode.value = ipcData.charge_mode
           if (typeof ipcData.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!ipcData.charge_thermal_override
+          if (typeof ipcData.charger_supported !== 'undefined') chargerSupported.value = !!ipcData.charger_supported
           ipcSetThermal = true
         } catch {}
       }
@@ -453,6 +455,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           const cm = JSON.parse(kv.CM.substring(kv.CM.indexOf('{')))
           if (typeof cm.charge_mode !== 'undefined') chargeMode.value = cm.charge_mode
           if (typeof cm.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!cm.charge_thermal_override
+          if (typeof cm.charger_supported !== 'undefined') chargerSupported.value = !!cm.charger_supported
         } catch {}
       }
     } catch {}
@@ -650,7 +653,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
-    chargeMode, chargeModeOverride, chargeCurrentMa, chargeVoltMv,
+    chargeMode, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,

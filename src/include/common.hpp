@@ -78,9 +78,10 @@ struct core_state {
     int jitter_rescue_ticks;
     int prev_load;
     int is_charging;
-    int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass) */
-    int charge_mode;                  /* CHARGE_MODE_* currently active on hardware (effective mode)          */
-    int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat                */
+    int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent) */
+    int charge_mode;                  /* CHARGE_MODE_* currently active on hardware (effective mode)                      */
+    int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat                            */
+    int charger_supported;            /* 1 = hardware sysfs charger control nodes detected, 0 = unsupported               */
 };
 
 extern volatile sig_atomic_t g_running;
