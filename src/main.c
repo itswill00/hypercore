@@ -169,20 +169,7 @@ static void init_hardware_nodes(void) {
         }
     }
 
-    const char *chg_paths[] = {
-        "/sys/class/power_supply/battery/constant_charge_current_max",
-        "/sys/class/power_supply/battery/charge_control_limit",
-        "/sys/class/power_supply/battery/input_current_limit",
-        "/sys/class/power_supply/main/constant_charge_current_max",
-        "/sys/class/power_supply/bms/constant_charge_current_max",
-        NULL
-    };
-    for (int i = 0; chg_paths[i]; i++) {
-        if (access(chg_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.charge_control, chg_paths[i]);
-            break;
-        }
-    }
+
 
     g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
     g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/policy0/schedutil", F_OK) == 0);
