@@ -454,7 +454,6 @@ typedef struct {
     const char *touch_game_mode;
     const char *touch_sensitivity;
     const char *touch_edge;
-    const char *charge_control;
 } profile_matrix_t;
 
 static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) {
@@ -525,7 +524,6 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->touch_game_mode = "0";
             m->touch_sensitivity = "0";
             m->touch_edge = "0";
-            m->charge_control = "8";
             break;
 
         case PROFILE_Interactive:
@@ -574,7 +572,6 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->touch_game_mode = "0";
             m->touch_sensitivity = "0";
             m->touch_edge = "0";
-            m->charge_control = "8";
             break;
 
         case PROFILE_Gaming_MOBA:
@@ -633,27 +630,6 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->touch_sensitivity = "1";
             m->touch_edge = (prof == PROFILE_Gaming_MOBA) ? "0" : "1";
 
-            if (g_state.is_charging) {
-                int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-                if (bat_temp > 1000) bat_temp /= 1000;
-                else if (bat_temp > 100) bat_temp /= 10;
-
-                static int s_chg_level = 8;
-                if (bat_temp >= 42) {
-                    s_chg_level = 2;
-                } else if (bat_temp >= 37 && s_chg_level != 2) {
-                    s_chg_level = 4;
-                } else if (s_chg_level == 2 && bat_temp <= 39) {
-                    s_chg_level = (bat_temp >= 37) ? 4 : 8;
-                } else if (s_chg_level == 4 && bat_temp <= 35) {
-                    s_chg_level = 8;
-                }
-                static char s_chg_buf[16];
-                snprintf(s_chg_buf, sizeof(s_chg_buf), "%d", s_chg_level);
-                m->charge_control = s_chg_buf;
-            } else {
-                m->charge_control = "8";
-            }
             break;
         }
     }
@@ -714,7 +690,6 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     sysfs_write(g_nodes.touch_game_mode, m.touch_game_mode);
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
-    sysfs_write(g_nodes.charge_control, m.charge_control);
 
     /* Re-apply IRQ affinity on every profile transition:
      * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
