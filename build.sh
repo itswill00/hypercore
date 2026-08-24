@@ -95,6 +95,7 @@ clang -O3 -Wall -Werror \
     src/sysfs.c \
     src/integrity.c \
     src/sha256.c \
+    src/charger.c \
     -o system/bin/libhypercore.so
 
 mkdir -p "$RELEASE_DIR"
