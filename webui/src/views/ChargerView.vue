@@ -207,7 +207,6 @@ const toast = inject('toast')
 
 const expandedRows = ref({})
 const showViolentModal = ref(false)
-let localPollTimer = null
 
 const modes = [
   {
@@ -335,15 +334,16 @@ async function applyMode(id) {
 }
 
 onMounted(() => {
+  /* Trigger an immediate poll on mount, then rely on the store's unified
+   * chargerInterval (startCardPolling) which already runs every 2s with
+   * an isRefreshing guard. Running a separate localPollTimer would double
+   * the polling rate and spawn redundant shell forks. */
   store.pollCharger()
-  localPollTimer = setInterval(() => store.pollCharger(), 2000)
+  store.startCardPolling()
 })
 
 onUnmounted(() => {
-  if (localPollTimer) {
-    clearInterval(localPollTimer)
-    localPollTimer = null
-  }
+  store.stopCardPolling()
 })
 </script>
 

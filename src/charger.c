@@ -24,11 +24,12 @@
 #define LIMIT_SAFE     10
 
 /* Safety thresholds */
-#define TEMP_OVERRIDE_ENTER  45   /* >= 45°C: drop to SAFE                    */
-#define TEMP_EMERGENCY       50   /* >= 50°C: force BYPASS (emergency cutoff) */
-#define TEMP_OVERRIDE_CLEAR  40   /* <  40°C: restore user mode               */
-#define CAP_MIN_BYPASS        10  /* < 10%:  auto-resume from BYPASS to SAFE  */
-#define CAP_FAST_LIMIT        80  /* >= 80%:  drop FAST to BALANCED           */
+#define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: drop to SAFE                       */
+#define TEMP_EMERGENCY        50   /* >= 50°C: force BYPASS (emergency cutoff)    */
+#define TEMP_OVERRIDE_CLEAR   40   /* <  40°C: restore user mode                  */
+#define CAP_MIN_BYPASS        10   /* <  10%:  auto-resume from BYPASS to SAFE    */
+#define CAP_MIN_BYPASS_RESTORE 12  /* >= 12%:  hysteresis clear for BYPASS resume */
+#define CAP_FAST_LIMIT        80   /* >= 80%:  drop FAST to BALANCED              */
 
 /* Module-level state */
 static int s_nodes_available  = 0;  /* 1 if charger nodes exist on this device */
@@ -180,7 +181,10 @@ void enforce_charge_mode(void) {
     /* --- Safety Override Logic --- */
 
     if (s_user_charge_mode == CHARGE_MODE_BYPASS) {
-        /* User explicitly chose BYPASS: respect it unless critically low battery (<10%) */
+        /* User explicitly chose BYPASS: respect it unless critically low battery (<10%).
+         * Hysteresis: drop to SAFE when cap < CAP_MIN_BYPASS (10%), but only clear the
+         * override and restore BYPASS when cap >= CAP_MIN_BYPASS_RESTORE (12%).
+         * Without hysteresis, the mode would toggle rapidly at the 10% boundary. */
         if (bat_cap < CAP_MIN_BYPASS) {
             effective_mode = CHARGE_MODE_SAFE;
             if (!override_active) {
@@ -188,8 +192,14 @@ void enforce_charge_mode(void) {
                          bat_cap);
             }
             override_active = 1;
-        } else {
+        } else if (override_active && bat_cap >= CAP_MIN_BYPASS_RESTORE) {
+            /* Hysteresis clear: only restore BYPASS after cap recovers above 12% */
             override_active = 0;
+            log_info("Charger", "BYPASS low-bat override cleared: bat_cap=%d%% >= %d%% — restoring BYPASS",
+                     bat_cap, CAP_MIN_BYPASS_RESTORE);
+        } else if (override_active) {
+            /* Still recovering (cap between 10-12%) — stay in SAFE */
+            effective_mode = CHARGE_MODE_SAFE;
         }
     } else {
         /* Temperature-based override for FAST / BALANCED / SAFE / VIOLENT modes */
