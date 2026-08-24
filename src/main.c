@@ -351,6 +351,9 @@ int main(int argc, char *argv[]) {
 
     log_info("Daemon", "HyperCore " VERSION " started.");
 
+    memset(&g_state, 0, sizeof(g_state));
+    g_state.current_profile = (profile_t)-1;
+
     detect_cpu_hardware_limits();
     apply_cpuset();
     apply_memory_tuning();
@@ -360,9 +363,6 @@ int main(int argc, char *argv[]) {
     init_charge_control();
     load_gamelist();
     init_gamelist_watcher();
-
-    memset(&g_state, 0, sizeof(g_state));
-    g_state.current_profile = (profile_t)-1;
 
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
