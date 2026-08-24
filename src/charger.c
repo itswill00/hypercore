@@ -86,33 +86,42 @@ static void apply_effective_mode(int effective_mode) {
     switch (effective_mode) {
     case CHARGE_MODE_VIOLENT:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_FAST);
-        sysfs_write(CHG_SCONFIG_NODE, "10");
+        apply_limit_if_needed(LIMIT_FAST); /* 0 */
+        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", "0");
         break;
     case CHARGE_MODE_FAST:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_FAST);
+        apply_limit_if_needed(LIMIT_FAST); /* 0 */
+        sysfs_write(CHG_SCONFIG_NODE, "0");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
     case CHARGE_MODE_BALANCED:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_BALANCED);
+        apply_limit_if_needed(LIMIT_BALANCED); /* 5 */
+        sysfs_write(CHG_SCONFIG_NODE, "0");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
     case CHARGE_MODE_SAFE:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_SAFE);
+        apply_limit_if_needed(LIMIT_SAFE); /* 10 */
+        sysfs_write(CHG_SCONFIG_NODE, "0");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
     case CHARGE_MODE_BYPASS:
-        /* Write limit to SAFE first before suspending, so if suspend is
-         * released by ROM the fallback is safe, not unrestricted. */
-        apply_limit_if_needed(LIMIT_SAFE);
+        /* Force hardware cutoff limit=16 (0 mA) AND input_suspend=1 */
+        apply_limit_if_needed(16);
         apply_suspend_if_needed(1);
+        sysfs_write(CHG_SCONFIG_NODE, "0");
         break;
     case CHARGE_MODE_OEM:
     default:
         /* Remove any limit enforcement so ROM takes back full control.
          * Restore input_suspend to 0 in case user was previously in BYPASS. */
         apply_suspend_if_needed(0);
+        sysfs_write(CHG_SCONFIG_NODE, "0");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         /* Do NOT touch charge_control_limit in OEM mode — leave ROM alone. */
         break;
     }
@@ -169,7 +178,7 @@ void enforce_charge_mode(void) {
     /* --- Safety Override Logic --- */
 
     if (s_user_charge_mode == CHARGE_MODE_BYPASS) {
-        /* User explicitly chose BYPASS: respect it unless critically low battery */
+        /* User explicitly chose BYPASS: respect it unless critically low battery (<10%) */
         if (bat_cap < CAP_MIN_BYPASS) {
             effective_mode = CHARGE_MODE_SAFE;
             if (!override_active) {
@@ -203,14 +212,6 @@ void enforce_charge_mode(void) {
             effective_mode = s_user_charge_mode;
             log_info("Charger", "Thermal override cleared: bat_temp=%d°C < %d°C — restoring %s",
                      bat_temp, TEMP_OVERRIDE_CLEAR, charge_mode_name(s_user_charge_mode));
-        }
-
-        /* Capacity-based guard: if FAST and battery >= 80%, switch to BALANCED
-         * to avoid high-current stress at high state-of-charge. */
-        if (!override_active && s_user_charge_mode == CHARGE_MODE_FAST && bat_cap >= CAP_FAST_LIMIT) {
-            effective_mode = CHARGE_MODE_BALANCED;
-            /* Do not set override_active — this is a soft nudge, not a temp override.
-             * We re-check every tick and it auto-clears when cap < 80. */
         }
     }
 
