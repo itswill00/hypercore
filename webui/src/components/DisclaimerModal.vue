@@ -28,9 +28,9 @@
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">4. Thermal Boundaries &amp; Charging Guard</div>
+            <div class="sec-title">4. Thermal Boundaries &amp; Battery Telemetry</div>
             <p>
-              The daemon monitors battery temperature in real time and adjusts charge current limits dynamically (1A, 1.8A, 2.5A). Attempting to manually bypass thermal guard nodes may cause thermal throttling or accelerated battery wear.
+              The daemon monitors battery temperature in real time for system thermal profiling. Charging current limits and fast-charging thermal safety are left 100% to stock OEM hardware drivers.
             </p>
           </div>
 
