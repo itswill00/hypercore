@@ -335,10 +335,6 @@ async function confirmViolentMode() {
 }
 
 async function applyMode(id) {
-  if (!store.isRunning) {
-    if (toast) toast('Daemon inactive — start daemon service first')
-    return
-  }
   await store.setChargeMode(id)
   const m = modes.find(x => x.id === id)
   if (toast) toast(`Charge mode switched to ${m?.name ?? id}`)
