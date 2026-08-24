@@ -8,7 +8,7 @@
         <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v4.5.9' }}
+        {{ store.moduleVersion || 'v6.2.0' }}
       </span>
     </div>
 
@@ -27,8 +27,8 @@
                 <Icons name="chip" :size="22" />
               </div>
               <div class="row-meta">
-                <div class="app-banner-title">HyperCore</div>
-                <div class="app-banner-sub">Universal Kernel Optimizer for MT6789 Family</div>
+                <div class="app-banner-title">HyperCore Module</div>
+                <div class="app-banner-sub">Build Specs &amp; Release Changelog</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -41,7 +41,7 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v4.5.7' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.2.0' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
                   <li><strong>Unified Profile Matrix &amp; Deterministic State Machine</strong>: Fully centralized all sysfs/procfs node parameters into a 100% symmetric matrix across all 4 profiles, guaranteeing zero residual state leakage during profile transitions.</li>
