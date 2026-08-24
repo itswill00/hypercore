@@ -53,7 +53,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Power &amp; Battery State</div>
-              <div class="row-sub">{{ activePowerSummary }}</div>
+              <div class="row-sub">Live battery telemetry &amp; sensor metrics</div>
             </div>
           </div>
           <div class="row-val">
@@ -118,7 +118,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">{{ m.name }}</div>
-                <div class="row-sub">{{ m.estCurrent }} ({{ m.estPower }})</div>
+                <div class="row-sub">{{ m.sub }}</div>
               </div>
             </div>
             <div class="row-val">
@@ -222,6 +222,7 @@ const modes = [
   {
     id: 0,
     name: 'OEM Stock',
+    sub: 'Stock ROM driver management',
     desc: 'Full control managed by HyperOS / stock ROM driver. HyperCore does not interfere.',
     icon: 'device',
     badgeClass: 'tertiary',
@@ -233,6 +234,7 @@ const modes = [
   {
     id: 1,
     name: 'Fast Charge',
+    sub: 'Unrestricted max speed · ~13.5W',
     desc: 'Unrestricted maximum charging speed. Recommended when battery is low and fast top-up is needed.',
     icon: 'zap',
     badgeClass: '',
@@ -244,6 +246,7 @@ const modes = [
   {
     id: 2,
     name: 'Balanced',
+    sub: 'Daily balance · ~7.5W rate',
     desc: 'Stable ~2A charging rate with minimal heat. Best overall option for daily use.',
     icon: 'shield',
     badgeClass: 'secondary',
@@ -255,6 +258,7 @@ const modes = [
   {
     id: 3,
     name: 'Safe Mode',
+    sub: 'Trickle charge · ~4.0W cool',
     desc: 'Cool ~1A trickle charging to protect battery health. Recommended for overnight charging.',
     icon: 'thermo',
     badgeClass: 'tertiary',
@@ -266,6 +270,7 @@ const modes = [
   {
     id: 4,
     name: 'Bypass Mode',
+    sub: 'Motherboard direct power · 0mA cell',
     desc: 'Disconnects battery cell charging while supplying power directly to motherboard. Prevents heat while gaming.',
     icon: 'memory',
     badgeClass: '',
@@ -277,6 +282,7 @@ const modes = [
   {
     id: 5,
     name: 'Violent Charge',
+    sub: 'Peak 33W protocol · Max current',
     desc: 'Unlocks peak 33W fast charge protocol by signaling extreme thermal profile and disabling smart charge limits.',
     icon: 'rocket',
     badgeClass: '',
@@ -291,15 +297,6 @@ const activeModeName = computed(() => {
   if (!store.chargerSupported) return 'Unsupported'
   const m = modes.find(x => x.id === store.chargeMode)
   return m ? m.name : 'OEM Stock'
-})
-
-const activePowerSummary = computed(() => {
-  if (!store.chargerSupported) return 'Hardware nodes unavailable'
-  if (store.chargeModeOverride) return 'Thermal override active (Safe mode)'
-  if (store.chargeMode === 4) return 'Bypass mode (Motherboard direct power)'
-  if (store.chargeMode === 5) return 'Violent charge active (Peak 33W)'
-  if (store.batStatus === 'Charging') return `${activeModeName.value} active &bull; Charging`
-  return `${activeModeName.value} active &bull; Discharging`
 })
 
 const displayCurrentMa = computed(() => {
