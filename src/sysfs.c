@@ -100,16 +100,15 @@ void sysfs_write_fallback(const char *paths[], const char *val) {
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
 
-        /* Read current value first; if already matching, skip write entirely */
+        /* Try reading current value first to skip redundant writes.
+         * If read fails, the node may be write-only — still attempt the write.
+         * Do NOT skip (continue) on read failure; that silently loses writes to
+         * write-only sysfs nodes which are common in kernel devfreq/thermal tuning. */
         char current_val[64];
         if (sysfs_read_str(paths[i], current_val, sizeof(current_val))) {
             if (strcmp(current_val, clean_val) == 0) return; /* node exists, value already set */
-        } else {
-            /* sysfs_read_str failed — node may not exist, skip to next candidate */
-            continue;
         }
 
-        /* Open once and write directly — no redundant probe open/close cycle */
         int fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
         if (fd >= 0) {
             write(fd, clean_val, vlen);
@@ -249,33 +248,32 @@ void update_module_prop_status(const char *status) {
     char tmp_path[270];
     snprintf(tmp_path, sizeof(tmp_path), "%s/module.prop.tmp", g_nodes.mod_dir);
 
-    FILE *f = fopen(prop_path, "r");
-    if (!f) {
+    FILE *fin = fopen(prop_path, "r");
+    if (!fin) {
         s_last_status[0] = '\0';
         return;
     }
 
-    char lines[32][256];
-    int count = 0;
-    while (count < 32 && fgets(lines[count], sizeof(lines[count]), f)) {
-        count++;
+    /* Stream line-by-line: no fixed-size array, no truncation risk regardless of
+     * how many lines module.prop contains. */
+    FILE *fout = fopen(tmp_path, "w");
+    if (!fout) {
+        fclose(fin);
+        return;
     }
-    fclose(f);
 
-    /* Atomic write via temp file rename */
-    f = fopen(tmp_path, "w");
-    if (!f) return;
-
+    char line[512];
     int write_ok = 1;
-    for (int i = 0; i < count; i++) {
-        if (strncmp(lines[i], "description=", 12) == 0) {
-            if (fprintf(f, "description=[Active: %s] Smart kernel optimizer & gaming daemon for MT6789 Family.\n", status) < 0)
+    while (fgets(line, sizeof(line), fin)) {
+        if (strncmp(line, "description=", 12) == 0) {
+            if (fprintf(fout, "description=[Active: %s] Smart kernel optimizer & gaming daemon for MT6789 Family.\n", status) < 0)
                 write_ok = 0;
         } else {
-            if (fputs(lines[i], f) == EOF) write_ok = 0;
+            if (fputs(line, fout) == EOF) write_ok = 0;
         }
     }
-    fclose(f);
+    fclose(fin);
+    fclose(fout);
 
     if (write_ok) {
         rename(tmp_path, prop_path);

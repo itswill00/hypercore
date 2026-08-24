@@ -274,12 +274,20 @@ void handle_ipc_events(int timeout_ms) {
                 if (pfds[i].fd == s_server_fd) {
                     int client_fd = accept(s_server_fd, NULL, NULL);
                     if (client_fd >= 0) {
-                        int cfl = fcntl(client_fd, F_GETFL, 0);
-                        if (cfl != -1) fcntl(client_fd, F_SETFL, cfl | O_NONBLOCK);
+                        /* Use SO_RCVTIMEO instead of O_NONBLOCK on the client socket.
+                         * O_NONBLOCK causes read() to return EAGAIN immediately if the
+                         * client hasn't written the request yet (e.g. nc takes ~1-2ms
+                         * after connect to write). A 50ms recv timeout is generous enough
+                         * to always receive the command without hanging on rogue clients. */
+                        struct timeval tv = { .tv_sec = 0, .tv_usec = 50000 };
+                        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
                         process_client(client_fd);
                     }
                 } else if (pfds[i].fd == g_nodes.inotify_fd) {
-                    char ev_buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+                    /* Use 4096-byte buffer to drain multiple inotify events per syscall.
+                     * The kernel often queues several events between poll wakeups and
+                     * a min-sized buffer forces N separate read() calls per event. */
+                    char ev_buf[4096];
                     while (read(g_nodes.inotify_fd, ev_buf, sizeof(ev_buf)) > 0) {
                         g_screen_changed = 1;
                     }
