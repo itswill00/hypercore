@@ -20,7 +20,7 @@
 
 /* Level values written to charge_control_limit per mode */
 #define LIMIT_FAST     0
-#define LIMIT_BALANCED 8
+#define LIMIT_BALANCED 6
 #define LIMIT_SAFE     12
 
 /* Safety thresholds */
