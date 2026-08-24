@@ -1,189 +1,219 @@
 <template>
-  <div class="charger-view">
-
-    <!-- Header -->
-    <div class="charger-header">
-      <div class="header-title">
-        <Icons name="plug" :size="20" style="color: var(--primary);" />
-        <span>Charger Control</span>
+  <div style="height: 100%; display: flex; flex-direction: column;">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-header-title">Charger Control</div>
+        <div class="page-header-sub">Charging speed, thermal guard &amp; bypass mode</div>
       </div>
-      <div class="header-status" :class="statusClass">
-        <span class="status-dot"></span>
-        <span>{{ headerStatusText }}</span>
-      </div>
+      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
+        {{ activeModeName }}
+      </span>
     </div>
 
-    <!-- Thermal Override Warning -->
-    <transition name="fade-slide">
-      <div v-if="store.chargeModeOverride" class="override-banner">
-        <Icons name="thermal" :size="16" />
-        <div>
-          <strong>Thermal Safety Override Aktif</strong>
-          <p>Daemon menurunkan mode sementara karena suhu baterai tinggi ({{ store.batTemp }}°C). Mode akan dikembalikan ke <em>{{ selectedModeName }}</em> setelah suhu turun di bawah 40°C.</p>
+    <div class="content-area">
+
+      <!-- Thermal Override Alert Banner (if thermal guard triggered) -->
+      <div v-if="store.chargeModeOverride" class="md3-banner" style="background: var(--error-container); color: var(--on-error-container); border-color: var(--error); margin-bottom: 14px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div class="icon-badge" style="background: rgba(0,0,0,0.2); color: inherit;">
+            <Icons name="thermal" :size="20" />
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; margin-bottom: 2px;">Thermal Safety Override</div>
+            <div style="font-size: 11px; opacity: 0.9; line-height: 1.4;">
+              Daemon temporarily reduced charging speed to Safe mode due to high battery temperature ({{ store.batTemp }}°C). Mode will automatically restore once temperature drops below 40°C.
+            </div>
+          </div>
         </div>
       </div>
-    </transition>
 
-    <!-- Real-time Telemetry Bar -->
-    <div class="telemetry-bar">
-      <div class="tele-item">
-        <span class="tele-label">Arus Masuk</span>
-        <span class="tele-value" :class="currentClass">{{ displayCurrentMa }}</span>
-      </div>
-      <div class="tele-divider"></div>
-      <div class="tele-item">
-        <span class="tele-label">Tegangan</span>
-        <span class="tele-value">{{ displayVoltage }}</span>
-      </div>
-      <div class="tele-divider"></div>
-      <div class="tele-item">
-        <span class="tele-label">Daya</span>
-        <span class="tele-value" :class="currentClass">{{ displayWatt }}</span>
-      </div>
-      <div class="tele-divider"></div>
-      <div class="tele-item">
-        <span class="tele-label">Suhu Baterai</span>
-        <span class="tele-value" :class="tempClass">{{ store.batTemp }}°C</span>
-      </div>
-    </div>
-
-    <!-- Mode Cards -->
-    <div class="mode-section-label">Pilih Mode Pengisian</div>
-
-    <div class="mode-cards">
-      <div
-        v-for="m in modes"
-        :key="m.id"
-        class="mode-card"
-        :class="{
-          active: effectiveMode === m.id,
-          overridden: store.chargeModeOverride && store.chargeMode === m.id && effectiveMode !== m.id
-        }"
-        @click="selectMode(m.id)"
-      >
-        <div class="card-top">
-          <div class="card-icon-wrapper" :style="{ background: m.iconBg }">
-            <Icons :name="m.icon" :size="18" :style="{ color: m.iconColor }" />
+      <!-- Real-Time Charging Telemetry Group -->
+      <div class="section-title">Live Telemetry</div>
+      <div class="md3-list-group">
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="zap" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Charging Status</div>
+              <div class="row-sub">Current flow &amp; input power</div>
+            </div>
           </div>
-          <div v-if="effectiveMode === m.id" class="card-active-badge">
-            <Icons name="check" :size="10" /> Aktif
-          </div>
-          <div v-else-if="store.chargeMode === m.id && store.chargeModeOverride" class="card-override-badge">
-            Override
+          <div class="row-val">
+            <span class="badge-pill">{{ store.batStatus }}</span>
           </div>
         </div>
 
-        <div class="card-name">{{ m.name }}</div>
-        <div class="card-desc">{{ m.desc }}</div>
-
-        <div class="card-stats">
-          <div class="stat-row">
-            <span class="stat-label">Est. Arus</span>
-            <span class="stat-val" :style="{ color: m.iconColor }">{{ m.estCurrent }}</span>
+        <div class="md3-list-row">
+          <div class="row-left" style="width: 100%;">
+            <div class="stat-grid-2">
+              <div class="stat-box">
+                <div class="stat-lbl">Input Current</div>
+                <div class="stat-num">{{ displayCurrentMa }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Input Voltage</div>
+                <div class="stat-num">{{ displayVoltage }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Estimated Power</div>
+                <div class="stat-num">{{ displayWatt }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Battery Temp</div>
+                <div class="stat-num">{{ store.batTemp }}°C</div>
+              </div>
+            </div>
           </div>
-          <div class="stat-row">
-            <span class="stat-label">Est. Daya</span>
-            <span class="stat-val" :style="{ color: m.iconColor }">{{ m.estPower }}</span>
-          </div>
-          <div class="stat-row">
-            <span class="stat-label">Node Value</span>
-            <span class="stat-val mono">{{ m.nodeVal }}</span>
-          </div>
-        </div>
-
-        <div class="card-bar">
-          <div class="card-bar-fill" :style="{ width: m.barPct + '%', background: m.iconColor }"></div>
         </div>
       </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="charger-footer">
-      <Icons name="shield" :size="13" style="color: var(--primary); opacity: 0.7;" />
-      <span>Safety override otomatis aktif pada suhu &ge; 45&deg;C dan akan pulih saat &lt; 40&deg;C.</span>
-    </div>
+      <!-- Charger Mode Selection Group -->
+      <div class="section-title">Select Charging Mode</div>
+      <div class="md3-list-group">
 
+        <div
+          v-for="m in modes"
+          :key="m.id"
+          class="md3-list-row expandable-row clickable"
+          :class="{
+            'is-expanded': expandedRows[m.id],
+            'selected-mode': store.chargeMode === m.id
+          }"
+          @click="selectMode(m.id)"
+        >
+          <div class="row-header">
+            <div class="row-left">
+              <div class="icon-badge" :class="m.badgeClass">
+                <Icons :name="m.icon" :size="18" />
+              </div>
+              <div class="row-meta">
+                <div class="row-title">{{ m.name }}</div>
+                <div class="row-sub">{{ m.estCurrent }} ({{ m.estPower }})</div>
+              </div>
+            </div>
+            <div class="row-val">
+              <span v-if="store.chargeMode === m.id" class="badge-pill" style="background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);">
+                Active
+              </span>
+              <span v-else class="badge-pill">Select</span>
+              <span class="expand-caret" :class="{ 'open': expandedRows[m.id] }" @click.stop="toggleExpand(m.id)">▼</span>
+            </div>
+          </div>
+
+          <div class="expanded-content">
+            <div class="expanded-inner">
+              <div style="margin-bottom: 8px; font-family: var(--font-sans); color: var(--on-surface-variant); font-size: 11px;">
+                {{ m.desc }}
+              </div>
+              <div class="stat-grid-2">
+                <div class="stat-box">
+                  <div class="stat-lbl">Target Arus</div>
+                  <div class="stat-num">{{ m.estCurrent }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Target Daya</div>
+                  <div class="stat-num">{{ m.estPower }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Node Target</div>
+                  <div class="stat-num">{{ m.nodeVal }}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-lbl">Thermal Guard</div>
+                  <div class="stat-num">{{ m.guardNote }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Info -->
+      <div style="text-align: center; font-size: 10px; color: var(--on-surface-variant); opacity: 0.5; padding: 12px 0 24px 0; font-family: var(--font-mono);">
+        Safety override automatically drops to Safe mode at &ge; 45&deg;C battery temp.
+      </div>
+
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, inject, onMounted, onUnmounted } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
 
+const expandedRows = ref({})
 let localPollTimer = null
 
 const modes = [
   {
     id: 0,
     name: 'OEM Stock',
-    desc: 'Kontrol penuh ke driver bawaan HyperOS/ROM. Tidak ada intervensi dari HyperCore.',
+    desc: 'Kontrol penuh diserahkan ke driver bawaan HyperOS/ROM. Tidak ada intervensi dari HyperCore.',
     icon: 'device',
-    iconColor: 'var(--on-surface-variant)',
-    iconBg: 'rgba(255,255,255,0.06)',
+    badgeClass: 'tertiary',
     estCurrent: 'Dinamis OEM',
     estPower: 'Dinamis',
-    nodeVal: 'tidak diatur',
-    barPct: 45
+    nodeVal: 'Tidak diatur',
+    guardNote: 'Driver ROM'
   },
   {
     id: 1,
     name: 'Fast Charge',
-    desc: 'Pengisian maksimal tanpa batas. Gunakan saat baterai kritis dan tidak perlu bermain.',
-    icon: 'gpu',
-    iconColor: '#FF6B6B',
-    iconBg: 'rgba(255,107,107,0.12)',
+    desc: 'Pengisian maksimal tanpa limit arus. Cocok saat baterai kritis dan butuh pengisian cepat.',
+    icon: 'zap',
+    badgeClass: '',
     estCurrent: '~3,300 – 3,500 mA',
     estPower: '~13.5 W',
     nodeVal: 'limit = 0',
-    barPct: 100
+    guardNote: 'Auto <45°C'
   },
   {
     id: 2,
     name: 'Balanced',
-    desc: 'Pengisian ~2A stabil, suhu terjaga. Pilihan terbaik untuk penggunaan harian.',
+    desc: 'Pengisian ~2A stabil dan dingin. Rekomendasi terbaik untuk penggunaan harian.',
     icon: 'shield',
-    iconColor: '#4ECDC4',
-    iconBg: 'rgba(78,205,196,0.12)',
+    badgeClass: 'secondary',
     estCurrent: '~1,900 – 2,000 mA',
     estPower: '~7.5 W',
     nodeVal: 'limit = 5',
-    barPct: 58
+    guardNote: 'Auto <45°C'
   },
   {
     id: 3,
-    name: 'Safe',
-    desc: 'Pengisian lambat ~1A untuk kesehatan baterai jangka panjang. Ideal saat tidur.',
-    icon: 'thermal',
-    iconColor: '#45B7D1',
-    iconBg: 'rgba(69,183,209,0.12)',
+    name: 'Safe Mode',
+    desc: 'Pengisian dingin ~1A untuk menjaga umur panjang baterai. Sangat disarankan saat pengisian malam/tidur.',
+    icon: 'thermo',
+    badgeClass: 'tertiary',
     estCurrent: '~1,000 – 1,050 mA',
     estPower: '~4.0 W',
     nodeVal: 'limit = 10',
-    barPct: 30
+    guardNote: 'Always Safe'
   },
   {
     id: 4,
-    name: 'Bypass',
-    desc: 'Sel baterai diputus dari input daya. HP berjalan langsung dari adaptor. Ideal gaming panas.',
-    icon: 'power',
-    iconColor: '#A78BFA',
-    iconBg: 'rgba(167,139,250,0.12)',
+    name: 'Bypass Mode',
+    desc: 'Sel baterai diputus dari pengisian. Seluruh daya dialirkan langsung ke komponen mesin HP untuk mencegah panas saat main game.',
+    icon: 'memory',
+    badgeClass: '',
     estCurrent: '0 mA',
     estPower: '0 W',
     nodeVal: 'input_suspend = 1',
-    barPct: 0
+    guardNote: 'Bypass Cutoff'
   }
 ]
 
-const effectiveMode = computed(() => store.chargeMode)
-
-const selectedModeName = computed(() => {
+const activeModeName = computed(() => {
   const m = modes.find(x => x.id === store.chargeMode)
-  return m ? m.name : 'Balanced'
+  return m ? m.name : 'OEM Stock'
 })
 
 const displayCurrentMa = computed(() => {
@@ -205,42 +235,18 @@ const displayWatt = computed(() => {
   return `${((ma * mv) / 1_000_000).toFixed(1)} W`
 })
 
-const headerStatusText = computed(() => {
-  if (!store.isRunning) return 'Daemon tidak aktif'
-  if (store.chargeModeOverride) return 'Safety Override Aktif'
-  const m = modes.find(x => x.id === effectiveMode.value)
-  return m ? m.name : 'OEM Stock'
-})
-
-const statusClass = computed(() => {
-  if (!store.isRunning) return 'status-off'
-  if (store.chargeModeOverride) return 'status-warn'
-  if (effectiveMode.value === 1) return 'status-fast'
-  if (effectiveMode.value === 4) return 'status-bypass'
-  return 'status-ok'
-})
-
-const currentClass = computed(() => {
-  const ma = store.chargeCurrentMa
-  if (ma > 3000) return 'val-hot'
-  if (ma > 1500) return 'val-warm'
-  return 'val-cool'
-})
-
-const tempClass = computed(() => {
-  if (store.batTemp >= 45) return 'val-hot'
-  if (store.batTemp >= 40) return 'val-warm'
-  return 'val-cool'
-})
+function toggleExpand(id) {
+  expandedRows.value[id] = !expandedRows.value[id]
+}
 
 async function selectMode(id) {
   if (!store.isRunning) {
-    toast('Daemon tidak aktif — hidupkan daemon terlebih dahulu')
+    if (toast) toast('Daemon tidak aktif — jalankan daemon terlebih dahulu')
     return
   }
   await store.setChargeMode(id)
   const m = modes.find(x => x.id === id)
-  toast(`Mode diubah ke: ${m?.name ?? id}`)
+  if (toast) toast(`Charge mode switched to ${m?.name ?? id}`)
 }
 
 onMounted(() => {
@@ -249,267 +255,16 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (localPollTimer) { clearInterval(localPollTimer); localPollTimer = null }
+  if (localPollTimer) {
+    clearInterval(localPollTimer)
+    localPollTimer = null
+  }
 })
 </script>
 
 <style scoped>
-.charger-view {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 14px 80px;
-  min-height: 100vh;
-  background: var(--background);
-  overflow-y: auto;
-}
-
-/* ── Header ── */
-.charger-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--on-surface);
-  letter-spacing: -0.3px;
-}
-.header-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-}
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: pulse-dot 2s infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-.status-ok     { background: rgba(78,205,196,0.15);  color: #4ECDC4; }
-.status-fast   { background: rgba(255,107,107,0.15); color: #FF6B6B; }
-.status-warn   { background: rgba(251,191,36,0.15);  color: #FBBF24; }
-.status-bypass { background: rgba(167,139,250,0.15); color: #A78BFA; }
-.status-off    { background: rgba(255,255,255,0.06); color: var(--on-surface-variant); }
-
-/* ── Override Banner ── */
-.override-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: rgba(251,191,36,0.08);
-  border: 1px solid rgba(251,191,36,0.3);
-  border-radius: 12px;
-  padding: 12px;
-  color: #FBBF24;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.override-banner strong { display: block; font-weight: 700; margin-bottom: 3px; }
-.override-banner p  { margin: 0; opacity: 0.85; }
-.override-banner em { font-style: normal; font-weight: 600; }
-
-.fade-slide-enter-active,
-.fade-slide-leave-active { transition: all 0.3s ease; }
-.fade-slide-enter-from,
-.fade-slide-leave-to    { opacity: 0; transform: translateY(-6px); }
-
-/* ── Telemetry Bar ── */
-.telemetry-bar {
-  display: flex;
-  align-items: stretch;
-  background: var(--surface-container);
-  border: 1px solid var(--surface-bright);
-  border-radius: 14px;
-  padding: 12px 0;
-}
-.tele-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0 6px;
-}
-.tele-label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--on-surface-variant);
-  letter-spacing: 0.2px;
-  white-space: nowrap;
-}
-.tele-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--on-surface);
-  transition: color 0.4s ease;
-}
-.tele-divider {
-  width: 1px;
-  background: var(--surface-bright);
-  margin: 2px 0;
-}
-
-.val-hot  { color: #FF6B6B !important; }
-.val-warm { color: #FBBF24 !important; }
-.val-cool { color: #4ECDC4 !important; }
-
-/* ── Section Label ── */
-.mode-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--on-surface-variant);
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  padding: 0 2px;
-}
-
-/* ── Mode Cards ── */
-.mode-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.mode-card {
-  background: var(--surface-container);
-  border: 1.5px solid var(--surface-bright);
-  border-radius: 16px;
-  padding: 14px 14px 10px;
-  cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.2, 0, 0, 1);
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-}
-.mode-card:active { transform: scale(0.985); }
-
-.mode-card.active {
-  border-color: var(--primary);
-  background: var(--surface-container-high);
-  box-shadow: 0 0 0 1px var(--primary), 0 4px 20px rgba(0,0,0,0.25);
-}
-.mode-card.overridden {
-  border-color: rgba(251,191,36,0.45);
-}
-
-/* Top row: icon + badge */
-.card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.card-icon-wrapper {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s ease;
-}
-.mode-card.active .card-icon-wrapper { transform: scale(1.08); }
-
-.card-active-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 15%, transparent);
-  padding: 3px 9px;
-  border-radius: 20px;
-}
-.card-override-badge {
-  font-size: 10px;
-  font-weight: 700;
-  color: #FBBF24;
-  background: rgba(251,191,36,0.12);
-  padding: 3px 9px;
-  border-radius: 20px;
-}
-
-.card-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--on-surface);
-  margin-bottom: 4px;
-}
-.card-desc {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--on-surface-variant);
-  margin-bottom: 10px;
-}
-
-/* Stats */
-.card-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-.stat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.stat-label {
-  font-size: 10.5px;
-  color: var(--on-surface-variant);
-  font-weight: 500;
-}
-.stat-val {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--on-surface);
-}
-.stat-val.mono {
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
-  color: var(--on-surface-variant);
-}
-
-/* Bar */
-.card-bar {
-  height: 3px;
-  background: var(--surface-bright);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.card-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s cubic-bezier(0.2, 0, 0, 1);
-  opacity: 0.55;
-}
-.mode-card.active .card-bar-fill { opacity: 1; }
-
-/* Footer */
-.charger-footer {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  font-size: 10.5px;
-  color: var(--on-surface-variant);
-  line-height: 1.5;
-  opacity: 0.65;
-  padding: 0 2px 4px;
+.selected-mode {
+  background: var(--surface-container-high) !important;
+  border-left: 3px solid var(--primary) !important;
 }
 </style>
