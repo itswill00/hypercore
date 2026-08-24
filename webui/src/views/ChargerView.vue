@@ -272,7 +272,7 @@ const modes = [
     badgeClass: '',
     estCurrent: '~5,000 – 6,600 mA',
     estPower: '~20.0 – 33.0 W',
-    nodeVal: 'limit = 0 · sconfig = 10',
+    nodeVal: 'limit = 0 · sconfig = 0',
     guardNote: 'Extreme Heat'
   }
 ]
@@ -286,7 +286,8 @@ const activeModeName = computed(() => {
 const displayCurrentMa = computed(() => {
   const ma = store.chargeCurrentMa
   if (!ma || ma === 0) return store.batStatus === 'Charging' ? '— mA' : '0 mA'
-  return `${ma.toLocaleString()} mA`
+  const sign = store.batStatus === 'Charging' ? '+' : '-'
+  return `${sign}${ma.toLocaleString()} mA`
 })
 
 const displayVoltage = computed(() => {
