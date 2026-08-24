@@ -483,8 +483,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->lit_max_freq = 1000000;
             m->big_min_freq = g_nodes.big_hw_min_freq;
             m->big_max_freq = 850000;
-            m->up_rate_limit = "10000";
-            m->down_rate_limit = "500";
+            m->up_rate_limit = "20000";
+            m->down_rate_limit = "50000";
 
             m->nr_requests = "32";
             m->read_ahead = "128";
@@ -533,8 +533,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->lit_max_freq = g_nodes.lit_hw_max_freq;
             m->big_min_freq = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
             m->big_max_freq = (tier >= 3) ? 2000000 : g_nodes.big_hw_max_freq;
-            m->up_rate_limit = "1000";
-            m->down_rate_limit = "10000";
+            m->up_rate_limit = "2000";
+            m->down_rate_limit = "20000";
 
             m->nr_requests = "128";
             m->read_ahead = (g_state.app_boost_ticks > 0) ? "384" : "256";
@@ -719,6 +719,9 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     /* Re-apply IRQ affinity on every profile transition:
      * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
     apply_irq_tuning(prof);
+
+    /* Toggle VM stat calculation frequency & dirty writeback interval for Sleep profile */
+    set_memory_sleep_mode(prof == PROFILE_Sleep);
 
     /* Apply SurfaceFlinger latch_unsignaled at runtime via resetprop so it is NOT
      * persistent in system.prop (which triggers mBanking integrity scanners).
