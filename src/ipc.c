@@ -5,6 +5,7 @@
 #include "memory.hpp"
 #include "log.hpp"
 #include "thermal.hpp"
+#include "charger.hpp"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
@@ -162,10 +163,13 @@ static void process_client(int client_fd) {
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
-            "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\"}\n",
+            "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
+            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"charge_thermal_override\":%d}\n",
             getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
-            bat_health, bat_status, bat_tech);
+            bat_health, bat_status, bat_tech,
+            g_state.charge_mode, charge_mode_name(g_state.charge_mode),
+            g_state.charge_mode_thermal_override);
 
         write(client_fd, json, strlen(json));
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
@@ -190,6 +194,30 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "PING", 4) == 0) {
         const char *pong = "PONG\n";
         write(client_fd, pong, strlen(pong));
+    } else if (strncmp(req, "SET_CHARGE_MODE:", 16) == 0) {
+        int mode = atoi(req + 16);
+        if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_BYPASS) {
+            const char *err = "{\"status\":\"error\",\"message\":\"Invalid charge mode (0-4 only)\"}\n";
+            write(client_fd, err, strlen(err));
+        } else {
+            set_charge_mode(mode);
+            char res[256];
+            snprintf(res, sizeof(res),
+                "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\"}\n",
+                mode, charge_mode_name(mode));
+            write(client_fd, res, strlen(res));
+        }
+    } else if (strncmp(req, "GET_CHARGE_MODE", 15) == 0) {
+        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+        if (bat_temp > 1000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
+        char res[256];
+        snprintf(res, sizeof(res),
+            "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
+            "\"charge_thermal_override\":%d,\"bat_temp\":%d}\n",
+            g_state.charge_mode, charge_mode_name(g_state.charge_mode),
+            g_state.charge_mode_thermal_override, bat_temp);
+        write(client_fd, res, strlen(res));
     } else {
         const char *err = "{\"status\":\"error\",\"message\":\"Unknown command\"}\n";
         write(client_fd, err, strlen(err));
