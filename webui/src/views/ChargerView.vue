@@ -14,7 +14,7 @@
 
     <div class="content-area">
 
-      <!-- Thermal Override Alert Banner (if thermal guard triggered) -->
+      <!-- Thermal Override Alert Banner -->
       <div v-if="store.chargeModeOverride" class="md3-banner" style="background: var(--error-container); color: var(--on-error-container); border-color: var(--error); margin-bottom: 14px;">
         <div style="display: flex; align-items: flex-start; gap: 12px;">
           <div class="icon-badge" style="background: rgba(0,0,0,0.2); color: inherit;">
@@ -29,8 +29,8 @@
         </div>
       </div>
 
-      <!-- Real-Time Charging Telemetry Group -->
-      <div class="section-title">Live Telemetry</div>
+      <!-- Power & Battery Status Group -->
+      <div class="section-title">Charging Status</div>
       <div class="md3-list-group">
         <div class="md3-list-row">
           <div class="row-left">
@@ -38,8 +38,8 @@
               <Icons name="zap" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Charging Status</div>
-              <div class="row-sub">Current flow &amp; input power</div>
+              <div class="row-title">Power State</div>
+              <div class="row-sub">Current flow &amp; input voltage</div>
             </div>
           </div>
           <div class="row-val">
@@ -111,11 +111,11 @@
               </div>
               <div class="stat-grid-2">
                 <div class="stat-box">
-                  <div class="stat-lbl">Target Arus</div>
+                  <div class="stat-lbl">Est. Current</div>
                   <div class="stat-num">{{ m.estCurrent }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Target Daya</div>
+                  <div class="stat-lbl">Est. Power</div>
                   <div class="stat-num">{{ m.estPower }}</div>
                 </div>
                 <div class="stat-box">
@@ -157,18 +157,18 @@ const modes = [
   {
     id: 0,
     name: 'OEM Stock',
-    desc: 'Kontrol penuh diserahkan ke driver bawaan HyperOS/ROM. Tidak ada intervensi dari HyperCore.',
+    desc: 'Full control managed by HyperOS / stock ROM driver. HyperCore does not interfere.',
     icon: 'device',
     badgeClass: 'tertiary',
-    estCurrent: 'Dinamis OEM',
-    estPower: 'Dinamis',
-    nodeVal: 'Tidak diatur',
-    guardNote: 'Driver ROM'
+    estCurrent: 'OEM Dynamic',
+    estPower: 'Dynamic',
+    nodeVal: 'Unrestricted',
+    guardNote: 'ROM Driver'
   },
   {
     id: 1,
     name: 'Fast Charge',
-    desc: 'Pengisian maksimal tanpa limit arus. Cocok saat baterai kritis dan butuh pengisian cepat.',
+    desc: 'Unrestricted maximum charging speed. Recommended when battery is low and fast top-up is needed.',
     icon: 'zap',
     badgeClass: '',
     estCurrent: '~3,300 – 3,500 mA',
@@ -179,7 +179,7 @@ const modes = [
   {
     id: 2,
     name: 'Balanced',
-    desc: 'Pengisian ~2A stabil dan dingin. Rekomendasi terbaik untuk penggunaan harian.',
+    desc: 'Stable ~2A charging rate with minimal heat. Best overall option for daily use.',
     icon: 'shield',
     badgeClass: 'secondary',
     estCurrent: '~1,900 – 2,000 mA',
@@ -190,7 +190,7 @@ const modes = [
   {
     id: 3,
     name: 'Safe Mode',
-    desc: 'Pengisian dingin ~1A untuk menjaga umur panjang baterai. Sangat disarankan saat pengisian malam/tidur.',
+    desc: 'Cool ~1A trickle charging to protect battery health. Recommended for overnight charging.',
     icon: 'thermo',
     badgeClass: 'tertiary',
     estCurrent: '~1,000 – 1,050 mA',
@@ -201,7 +201,7 @@ const modes = [
   {
     id: 4,
     name: 'Bypass Mode',
-    desc: 'Sel baterai diputus dari pengisian. Seluruh daya dialirkan langsung ke komponen mesin HP untuk mencegah panas saat main game.',
+    desc: 'Disconnects battery cell charging while supplying power directly to motherboard. Prevents heat while gaming.',
     icon: 'memory',
     badgeClass: '',
     estCurrent: '0 mA',
@@ -241,7 +241,7 @@ function toggleExpand(id) {
 
 async function selectMode(id) {
   if (!store.isRunning) {
-    if (toast) toast('Daemon tidak aktif — jalankan daemon terlebih dahulu')
+    if (toast) toast('Daemon inactive — start daemon service first')
     return
   }
   await store.setChargeMode(id)
