@@ -37,6 +37,7 @@ typedef enum {
     CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=5  (~1.9-2.0A / ~7.5W)  */
     CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=10 (~1.0A   / ~4.0W)    */
     CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA)   */
+    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + sconfig=10 + smart_chg=0 (20-33W)   */
 } charge_mode_t;
 
 extern const char *g_profile_names[];

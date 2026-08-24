@@ -84,6 +84,12 @@ static void apply_suspend_if_needed(int val) {
 /* Apply the target effective mode to hardware nodes. */
 static void apply_effective_mode(int effective_mode) {
     switch (effective_mode) {
+    case CHARGE_MODE_VIOLENT:
+        apply_suspend_if_needed(0);
+        apply_limit_if_needed(LIMIT_FAST);
+        sysfs_write(CHG_SCONFIG_NODE, "10");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
+        break;
     case CHARGE_MODE_FAST:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST);
@@ -175,7 +181,7 @@ void enforce_charge_mode(void) {
             override_active = 0;
         }
     } else {
-        /* Temperature-based override for FAST / BALANCED / SAFE modes */
+        /* Temperature-based override for FAST / BALANCED / SAFE / VIOLENT modes */
         if (bat_temp >= TEMP_EMERGENCY) {
             effective_mode = CHARGE_MODE_BYPASS;
             if (!override_active || g_state.charge_mode != CHARGE_MODE_BYPASS) {
@@ -219,7 +225,7 @@ void enforce_charge_mode(void) {
 }
 
 void set_charge_mode(int mode) {
-    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_BYPASS) {
+    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_VIOLENT) {
         log_warn("Charger", "set_charge_mode: invalid mode %d ignored", mode);
         return;
     }
@@ -248,8 +254,9 @@ const char *charge_mode_name(int mode) {
     case CHARGE_MODE_OEM:      return "OEM Stock";
     case CHARGE_MODE_FAST:     return "Fast Charge";
     case CHARGE_MODE_BALANCED: return "Balanced";
-    case CHARGE_MODE_SAFE:     return "Safe";
-    case CHARGE_MODE_BYPASS:   return "Bypass";
+    case CHARGE_MODE_SAFE:     return "Safe Mode";
+    case CHARGE_MODE_BYPASS:   return "Bypass Mode";
+    case CHARGE_MODE_VIOLENT:  return "Violent Charge";
     default:                   return "Unknown";
     }
 }

@@ -196,8 +196,8 @@ static void process_client(int client_fd) {
         write(client_fd, pong, strlen(pong));
     } else if (strncmp(req, "SET_CHARGE_MODE:", 16) == 0) {
         int mode = atoi(req + 16);
-        if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_BYPASS) {
-            const char *err = "{\"status\":\"error\",\"message\":\"Invalid charge mode (0-4 only)\"}\n";
+        if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_VIOLENT) {
+            const char *err = "{\"status\":\"error\",\"message\":\"Invalid charge mode (0-5 only)\"}\n";
             write(client_fd, err, strlen(err));
         } else {
             set_charge_mode(mode);

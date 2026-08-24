@@ -81,9 +81,10 @@
           class="md3-list-row expandable-row clickable"
           :class="{
             'is-expanded': expandedRows[m.id],
-            'selected-mode': store.chargeMode === m.id
+            'selected-mode': store.chargeMode === m.id,
+            'violent-mode-row': m.id === 5 && store.chargeMode === 5
           }"
-          @click="selectMode(m.id)"
+          @click="onSelectMode(m.id)"
         >
           <div class="row-header">
             <div class="row-left">
@@ -96,7 +97,7 @@
               </div>
             </div>
             <div class="row-val">
-              <span v-if="store.chargeMode === m.id" class="badge-pill" style="background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);">
+              <span v-if="store.chargeMode === m.id" class="badge-pill" :style="m.id === 5 ? 'background: var(--error-container); color: var(--on-error-container); border-color: var(--error); font-weight: 700;' : 'background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);'">
                 Active
               </span>
               <span v-else class="badge-pill">Select</span>
@@ -139,6 +140,41 @@
       </div>
 
     </div>
+
+    <!-- Violent Charging Risk Disclaimer Modal -->
+    <transition name="modal-fade">
+      <div v-if="showViolentModal" class="modal-backdrop" @click.self="showViolentModal = false">
+        <div class="modal-card" style="padding: 20px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div class="icon-badge" style="background: var(--error-container); color: var(--on-error-container);">
+              <Icons name="zap" :size="20" />
+            </div>
+            <div>
+              <div style="font-size: 15px; font-weight: 700; color: var(--on-surface);">Violent Charge Warning</div>
+              <div style="font-size: 11px; color: var(--on-surface-variant);">Hardware stress &amp; risk acknowledgement</div>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 16px;">
+            Violent Charge forces maximum 33W fast charge protocol by disabling OEM smart charging limits and signaling extreme thermal profile to the kernel.<br/><br/>
+            <strong>Important Risk Notice:</strong><br/>
+            • Higher heat output may increase battery temperature under heavy load.<br/>
+            • Prolonged exposure to high temperature can accelerate long-term battery capacity degradation.<br/>
+            • Ensure you are using an official 33W factory charger and quality cable.
+          </div>
+
+          <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button class="btn-md3 btn-md3-secondary" @click="showViolentModal = false">
+              Cancel
+            </button>
+            <button class="btn-md3 btn-md3-danger" @click="confirmViolentMode">
+              I Understand &amp; Accept Risks
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
   </div>
 </template>
 
@@ -151,6 +187,7 @@ const store = useHyperStore()
 const toast = inject('toast')
 
 const expandedRows = ref({})
+const showViolentModal = ref(false)
 let localPollTimer = null
 
 const modes = [
@@ -208,6 +245,17 @@ const modes = [
     estPower: '0 W',
     nodeVal: 'input_suspend = 1',
     guardNote: 'Bypass Cutoff'
+  },
+  {
+    id: 5,
+    name: 'Violent Charge',
+    desc: 'Unlocks peak 33W fast charge protocol by signaling extreme thermal profile and disabling smart charge limits.',
+    icon: 'rocket',
+    badgeClass: '',
+    estCurrent: '~5,000 – 6,600 mA',
+    estPower: '~20.0 – 33.0 W',
+    nodeVal: 'limit = 0 · sconfig = 10',
+    guardNote: 'Extreme Heat'
   }
 ]
 
@@ -239,7 +287,20 @@ function toggleExpand(id) {
   expandedRows.value[id] = !expandedRows.value[id]
 }
 
-async function selectMode(id) {
+function onSelectMode(id) {
+  if (id === 5) {
+    showViolentModal.value = true
+  } else {
+    applyMode(id)
+  }
+}
+
+async function confirmViolentMode() {
+  showViolentModal.value = false
+  await applyMode(5)
+}
+
+async function applyMode(id) {
   if (!store.isRunning) {
     if (toast) toast('Daemon inactive — start daemon service first')
     return
@@ -266,5 +327,9 @@ onUnmounted(() => {
 .selected-mode {
   background: var(--surface-container-high) !important;
   border-left: 3px solid var(--primary) !important;
+}
+
+.violent-mode-row {
+  border-left-color: var(--error) !important;
 }
 </style>
