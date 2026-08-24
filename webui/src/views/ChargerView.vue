@@ -162,12 +162,6 @@
 
       </div>
 
-      <!-- Footer Info -->
-      <div class="thermal-guard-footer">
-        <Icons name="shield" :size="13" />
-        <span>Thermal Guard Active &bull; Auto-protection &ge;45&deg;C</span>
-      </div>
-
     </div>
 
     <!-- Violent Charging Risk Disclaimer Modal -->
@@ -379,19 +373,4 @@ onUnmounted(() => {
   cursor: not-allowed !important;
 }
 
-.thermal-guard-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 16px 0 24px 0;
-  padding: 8px 14px;
-  background: var(--surface-container);
-  border: 1px solid var(--outline-variant);
-  border-radius: 20px;
-  color: var(--on-surface-variant);
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.85;
-}
 </style>
