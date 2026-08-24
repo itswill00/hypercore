@@ -465,11 +465,30 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     loading.value = true
     try {
       const m = parseInt(mode)
-      const cmd = `echo SET_CHARGE_MODE:${m} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true`
-      const res = await execCommand(cmd)
-      /* Optimistically update UI; pollCharger() will confirm next tick */
+
+      /* 1. Persist directly to charge_mode.conf as instant disk fallback */
+      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo ${m} > $MOD/charge_mode.conf 2>/dev/null || echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
+      execCommand(diskCmd).catch(() => {})
+
+      /* 2. Send SET_CHARGE_MODE IPC to UNIX domain socket */
+      const ipcCmd = `MOD="/data/adb/modules/hypercore"; echo SET_CHARGE_MODE:${m} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
+      const res = await execCommand(ipcCmd)
+
+      /* Optimistically update state */
       chargeMode.value = m
       chargeModeOverride.value = false
+
+      /* 3. If IPC returned JSON response, parse authoritative data directly */
+      if (res && res.includes('"status":"ok"')) {
+        try {
+          const data = JSON.parse(res.substring(res.indexOf('{')))
+          if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
+          if (typeof data.charger_supported !== 'undefined') chargerSupported.value = !!data.charger_supported
+        } catch {}
+      }
+
+      /* 4. Wait 200ms for daemon to flush status.json before running pollCharger to avoid stale race condition */
+      await new Promise(r => setTimeout(r, 200))
       await pollCharger()
       return res
     } catch (e) {
