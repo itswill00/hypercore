@@ -45,7 +45,6 @@
       </div>
 
       <!-- Power & Battery Status Group -->
-      <div class="section-title">Charging Status</div>
       <div class="md3-list-group">
         <div class="md3-list-row">
           <div class="row-left">
@@ -53,12 +52,14 @@
               <Icons name="zap" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Power State</div>
-              <div class="row-sub">Current flow &amp; input voltage</div>
+              <div class="row-title">Power &amp; Battery State</div>
+              <div class="row-sub">{{ activePowerSummary }}</div>
             </div>
           </div>
           <div class="row-val">
-            <span class="badge-pill">{{ store.batStatus }}</span>
+            <span class="badge-pill" :style="store.batStatus === 'Charging' ? 'background: var(--primary-container); color: var(--on-primary-container);' : ''">
+              {{ store.batStatus }} {{ store.batLevel ? `(${store.batLevel}%)` : '' }}
+            </span>
           </div>
         </div>
 
@@ -79,7 +80,15 @@
               </div>
               <div class="stat-box">
                 <div class="stat-lbl">Battery Temp</div>
-                <div class="stat-num">{{ store.batTemp }}°C</div>
+                <div class="stat-num" :style="store.batTemp >= 45 ? 'color: var(--error); font-weight: 700;' : ''">{{ store.batTemp }}°C</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Battery Health</div>
+                <div class="stat-num">{{ store.batHealth || 'Good' }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Charge Cycles</div>
+                <div class="stat-num">{{ store.batteryCycles ? `${store.batteryCycles} cycles` : '—' }}</div>
               </div>
             </div>
           </div>
@@ -154,8 +163,9 @@
       </div>
 
       <!-- Footer Info -->
-      <div style="text-align: center; font-size: 10px; color: var(--on-surface-variant); opacity: 0.5; padding: 12px 0 24px 0; font-family: var(--font-mono);">
-        Safety override automatically drops to Safe mode at &ge; 45&deg;C battery temp.
+      <div class="thermal-guard-footer">
+        <Icons name="shield" :size="13" />
+        <span>Thermal Guard Active &bull; Auto-protection &ge;45&deg;C</span>
       </div>
 
     </div>
@@ -283,6 +293,15 @@ const activeModeName = computed(() => {
   return m ? m.name : 'OEM Stock'
 })
 
+const activePowerSummary = computed(() => {
+  if (!store.chargerSupported) return 'Hardware nodes unavailable'
+  if (store.chargeModeOverride) return 'Thermal override active (Safe mode)'
+  if (store.chargeMode === 4) return 'Bypass mode (Motherboard direct power)'
+  if (store.chargeMode === 5) return 'Violent charge active (Peak 33W)'
+  if (store.batStatus === 'Charging') return `${activeModeName.value} active &bull; Charging`
+  return `${activeModeName.value} active &bull; Discharging`
+})
+
 const displayCurrentMa = computed(() => {
   const ma = store.chargeCurrentMa
   if (!ma || ma === 0) return store.batStatus === 'Charging' ? '— mA' : '0 mA'
@@ -361,5 +380,21 @@ onUnmounted(() => {
 .disabled-mode-row {
   opacity: 0.45;
   cursor: not-allowed !important;
+}
+
+.thermal-guard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0 24px 0;
+  padding: 8px 14px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 20px;
+  color: var(--on-surface-variant);
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
 }
 </style>
