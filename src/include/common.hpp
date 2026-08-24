@@ -31,6 +31,14 @@ typedef enum {
     PROFILE_Gaming_MOBA
 } profile_t;
 
+typedef enum {
+    CHARGE_MODE_OEM      = 0,  /* No intervention — full ROM/OEM control */
+    CHARGE_MODE_FAST     = 1,  /* charge_control_limit=0  (~3.3-3.5A / ~13.5W) */
+    CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=5  (~1.9-2.0A / ~7.5W)  */
+    CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=10 (~1.0A   / ~4.0W)    */
+    CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA)   */
+} charge_mode_t;
+
 extern const char *g_profile_names[];
 
 struct hw_nodes {
@@ -69,6 +77,8 @@ struct core_state {
     int jitter_rescue_ticks;
     int prev_load;
     int is_charging;
+    int charge_mode;                  /* charge_mode_t: 0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass */
+    int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat   */
 };
 
 extern volatile sig_atomic_t g_running;
