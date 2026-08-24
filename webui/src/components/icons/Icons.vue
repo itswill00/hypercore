@@ -146,6 +146,14 @@
       <circle cx="12" cy="12" r="1.5" fill="currentColor" />
       <circle cx="12" cy="19" r="1.5" fill="currentColor" />
     </g>
+
+    <g v-else-if="name === 'plug' || name === 'charger'">
+      <path d="M12 22v-5" />
+      <path d="M9 8V2" />
+      <path d="M15 8V2" />
+      <path d="M18 8H6a1 1 0 0 0-1 1v5a7 7 0 0 0 14 0V9a1 1 0 0 0-1-1z" />
+    </g>
+
   </svg>
 </template>
 
