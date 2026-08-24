@@ -9,6 +9,7 @@
 #include "thermal.hpp"
 #include "gamelist.hpp"
 #include "ipc.hpp"
+#include "charger.hpp"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Gaming", "Gaming MOBA"
@@ -356,6 +357,7 @@ int main(int argc, char *argv[]) {
     apply_io_tuning();
     apply_gpu_tuning();
     apply_irq_tuning(PROFILE_Interactive);
+    init_charge_control();
     load_gamelist();
     init_gamelist_watcher();
 
@@ -528,6 +530,16 @@ int main(int argc, char *argv[]) {
         tune_memory_pressure();
         fix_battery_cycle_count();
         track_charging_cycles(g_state.is_charging);
+
+        /* Enforce user-selected charge mode every 2 ticks (~2-4s).
+         * This re-writes charge_control_limit/input_suspend if mi_thermald
+         * or ROM charger driver overwrote them since the last tick. */
+        static int s_charge_enforce_counter = 0;
+        if (++s_charge_enforce_counter >= 2) {
+            s_charge_enforce_counter = 0;
+            enforce_charge_mode();
+        }
+
         update_status_json_file(cpu_temp, bat_temp);
 
         static int s_rotate_counter = 0;
