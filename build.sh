@@ -13,7 +13,8 @@ if [ ! -f "module.prop" ]; then
 fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
-ZIP_OUT="HyperCore-${VERSION}-Unified.zip"
+GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
+ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-${GIT_HASH}.zip"
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
@@ -95,6 +96,7 @@ clang -O3 -Wall -Werror \
     src/sysfs.c \
     src/integrity.c \
     src/sha256.c \
+    src/charger.c \
     -o system/bin/libhypercore.so
 
 mkdir -p "$RELEASE_DIR"

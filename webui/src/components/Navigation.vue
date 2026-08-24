@@ -23,6 +23,7 @@ const route = useRoute()
 
 const navItems = [
   { name: 'Dashboard', path: '/', label: 'Dashboard', icon: 'home' },
+  { name: 'Charger', path: '/charger', label: 'Charger', icon: 'plug' },
   { name: 'Games', path: '/games', label: 'Games', icon: 'games' },
   { name: 'Logs', path: '/logs', label: 'Logs', icon: 'logs' },
   { name: 'About', path: '/about', label: 'About', icon: 'about' }

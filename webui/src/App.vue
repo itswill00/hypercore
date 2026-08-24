@@ -42,7 +42,7 @@ const transitionName = ref('slide-left')
 let toastTimer = null
 let refreshInterval = null
 
-const routesOrder = ['/', '/games', '/logs', '/about']
+const routesOrder = ['/', '/charger', '/games', '/logs', '/about']
 
 let touchStartX = 0
 let touchStartY = 0

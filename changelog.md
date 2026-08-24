@@ -1,3 +1,16 @@
+# HyperCore v6.2.0 — MD3 Charger Dashboard & Device Safety Release
+
+## What's Changed
+
+### ⚡ Charger Control & Thermal Safety
+- **MD3 Charger Control Dashboard**: Brand new native Material Design 3 view with active power stats, current flow (mA), voltage (mV), power calculation (W), and mode selection.
+- **Violent Charge Mode (up to 33W)**: Extreme fast charging profile unlocking full factory charging speed while disabling smart thermal limits. Includes interactive risk acknowledgement modal.
+- **Hardware Bypass Mode Fix**: Double-guarded with `input_suspend=1` and hardware cutoff limit=16 to guarantee true 0 mA zero-current power bypass.
+- **Persistent User Selection**: User-selected charge mode persists across WebUI restarts and daemon reboots without reverting to stock.
+- **Device Support Probing**: Automatic sysfs node validation with graceful safety fallback UI ("Your device does not support this function properly") for unsupported kernel nodes.
+
+---
+
 # HyperCore v6.1.1 — Early Boot Maintenance Release
 
 ## What's Changed
