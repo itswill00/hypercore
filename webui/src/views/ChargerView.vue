@@ -44,6 +44,21 @@
         </div>
       </div>
 
+      <!-- Non-Original Cable / Power Cap Alert Banner -->
+      <div v-if="store.isNonOemCable" class="md3-banner" style="background: var(--surface-container-high); border-color: var(--outline-variant); margin-bottom: 14px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div class="icon-badge secondary">
+            <Icons name="zap" :size="20" />
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--on-surface); margin-bottom: 2px;">Standard Cable Hardware Ceiling</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); line-height: 1.4;">
+              Connected cable/charger is hardware-capped to ~6W max by the PMIC. Switch to an official 33W OEM cable to unlock peak charging speeds.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Power & Battery Status Group -->
       <div class="md3-list-group">
         <div class="md3-list-row">
