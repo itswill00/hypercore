@@ -24,9 +24,9 @@
 #define LIMIT_SAFE     12
 
 /* Safety thresholds */
-#define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: drop to SAFE                       */
+#define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: start gradual step-down            */
 #define TEMP_EMERGENCY        50   /* >= 50°C: force BYPASS (emergency cutoff)    */
-#define TEMP_OVERRIDE_CLEAR   40   /* <  40°C: restore user mode                  */
+#define TEMP_OVERRIDE_CLEAR   41   /* <= 41°C: sustained cool temp for step-up    */
 #define CAP_MIN_BYPASS        10   /* <  10%:  auto-resume from BYPASS to SAFE    */
 #define CAP_MIN_BYPASS_RESTORE 12  /* >= 12%:  hysteresis clear for BYPASS resume */
 #define CAP_FAST_LIMIT        80   /* >= 80%:  drop FAST to BALANCED              */
@@ -34,6 +34,16 @@
 /* Module-level state */
 static int s_nodes_available  = 0;  /* 1 if charger nodes exist on this device */
 static int s_user_charge_mode = CHARGE_MODE_OEM;  /* user's persistent choice   */
+static int s_thermal_step     = 0;  /* 0=User mode, 1=Balanced step, 2=Safe step, 3=Bypass cutoff */
+static time_t s_last_step_time = 0; /* timestamp of last thermal ladder step change */
+
+/* Helper: map thermal ladder step to effective charge mode */
+static int get_mode_for_step(int user_mode, int step) {
+    if (step <= 0) return user_mode;
+    if (step == 1) return CHARGE_MODE_BALANCED;
+    if (step == 2) return CHARGE_MODE_SAFE;
+    return CHARGE_MODE_BYPASS;
+}
 
 /* --------------------------------------------------------------------------
  * Internal helpers
@@ -182,6 +192,7 @@ void enforce_charge_mode(void) {
 
     int effective_mode = s_user_charge_mode;
     int override_active = g_state.charge_mode_thermal_override;
+    time_t now = time(NULL);
 
     /* --- Safety Override Logic --- */
 
@@ -207,28 +218,61 @@ void enforce_charge_mode(void) {
             effective_mode = CHARGE_MODE_SAFE;
         }
     } else {
-        /* Temperature-based override for FAST / BALANCED / SAFE / VIOLENT modes */
+        /* --- Gradual Multi-Step Thermal Ladder --- */
         if (bat_temp >= TEMP_EMERGENCY) {
+            /* >= 50°C: Immediate Emergency Cutoff */
+            s_thermal_step = 3;
+            s_last_step_time = now;
             effective_mode = CHARGE_MODE_BYPASS;
             if (!override_active || g_state.charge_mode != CHARGE_MODE_BYPASS) {
-                log_warn("Charger", "EMERGENCY: bat_temp=%d°C >= %d°C — forcing BYPASS",
+                log_warn("Charger", "EMERGENCY: bat_temp=%d°C >= %d°C — forcing BYPASS cutoff",
                          bat_temp, TEMP_EMERGENCY);
             }
             override_active = 1;
         } else if (bat_temp >= TEMP_OVERRIDE_ENTER) {
-            /* Override: force down to SAFE */
-            effective_mode = CHARGE_MODE_SAFE;
-            if (!override_active) {
-                log_warn("Charger", "Thermal override: bat_temp=%d°C >= %d°C — dropping to SAFE (user wants %s)",
-                         bat_temp, TEMP_OVERRIDE_ENTER, charge_mode_name(s_user_charge_mode));
+            /* >= 45°C: Step down gradually if 10s have elapsed since last step */
+            if (s_thermal_step == 0) {
+                s_thermal_step = 1;
+                s_last_step_time = now;
+                log_warn("Charger", "Thermal ladder: bat_temp=%d°C >= %d°C -> Step 1 down (%s)",
+                         bat_temp, TEMP_OVERRIDE_ENTER, charge_mode_name(get_mode_for_step(s_user_charge_mode, 1)));
+            } else if (now - s_last_step_time >= 10) {
+                /* Temp still >= 45°C after 10s dwell time — step down further */
+                int max_step = (s_user_charge_mode == CHARGE_MODE_BALANCED) ? 2 : (s_user_charge_mode == CHARGE_MODE_SAFE ? 1 : 2);
+                if (s_thermal_step < max_step) {
+                    s_thermal_step++;
+                    s_last_step_time = now;
+                    log_warn("Charger", "Thermal ladder: bat_temp=%d°C persistent >= %d°C -> Step %d down (%s)",
+                             bat_temp, TEMP_OVERRIDE_ENTER, s_thermal_step,
+                             charge_mode_name(get_mode_for_step(s_user_charge_mode, s_thermal_step)));
+                }
             }
-            override_active = 1;
-        } else if (override_active && bat_temp < TEMP_OVERRIDE_CLEAR) {
-            /* Clear override — restore user selection */
-            override_active = 0;
-            effective_mode = s_user_charge_mode;
-            log_info("Charger", "Thermal override cleared: bat_temp=%d°C < %d°C — restoring %s",
-                     bat_temp, TEMP_OVERRIDE_CLEAR, charge_mode_name(s_user_charge_mode));
+            effective_mode = get_mode_for_step(s_user_charge_mode, s_thermal_step);
+            override_active = (s_thermal_step > 0);
+        } else if (override_active && bat_temp <= TEMP_OVERRIDE_CLEAR) {
+            /* <= 41°C: Step up gradually towards user mode if 15s have elapsed at cool temp */
+            if (s_last_step_time == 0) s_last_step_time = now;
+            if (now - s_last_step_time >= 15) {
+                s_thermal_step--;
+                s_last_step_time = now;
+                if (s_thermal_step <= 0) {
+                    s_thermal_step = 0;
+                    override_active = 0;
+                    effective_mode = s_user_charge_mode;
+                    log_info("Charger", "Thermal ladder cleared: bat_temp=%d°C <= %d°C — restored %s",
+                             bat_temp, TEMP_OVERRIDE_CLEAR, charge_mode_name(s_user_charge_mode));
+                } else {
+                    effective_mode = get_mode_for_step(s_user_charge_mode, s_thermal_step);
+                    log_info("Charger", "Thermal ladder step-up: bat_temp=%d°C <= %d°C -> Step %d (%s)",
+                             bat_temp, TEMP_OVERRIDE_CLEAR, s_thermal_step, charge_mode_name(effective_mode));
+                }
+            } else {
+                /* Keep current stepped mode while waiting for 15s cool stability */
+                effective_mode = get_mode_for_step(s_user_charge_mode, s_thermal_step);
+            }
+        } else if (override_active) {
+            /* Temp between 42°C and 44°C while in override: maintain current stepped level */
+            effective_mode = get_mode_for_step(s_user_charge_mode, s_thermal_step);
         }
     }
 
@@ -253,6 +297,8 @@ void set_charge_mode(int mode) {
     }
 
     s_user_charge_mode = mode;
+    s_thermal_step = 0;        /* reset thermal ladder step on manual user choice */
+    s_last_step_time = 0;
     g_state.user_charge_mode = mode;
     g_state.charge_mode_thermal_override = 0; /* clear any active override */
     save_charge_mode_conf(mode);
