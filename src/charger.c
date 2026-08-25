@@ -92,8 +92,22 @@ static void apply_suspend_if_needed(int val) {
     sysfs_write(CHG_SUSPEND_NODE, val ? "1" : "0");
 }
 
+/* Pulse input_suspend (1 -> 100ms -> 0) to force MediaTek TCPC driver to clear
+ * latched PMIC restrictions and execute a fresh USB PD CC-pin handshake (unlocks 13.5W-15W+). */
+static void trigger_tcpc_pd_renegotiation(void) {
+    sysfs_write(CHG_SUSPEND_NODE, "1");
+    usleep(100000); /* 100ms pulse */
+    sysfs_write(CHG_SUSPEND_NODE, "0");
+}
+
+static int s_prev_effective_mode = -1;
+
 /* Apply the target effective mode to hardware nodes. */
 static void apply_effective_mode(int effective_mode) {
+    int was_restricted = (s_prev_effective_mode == CHARGE_MODE_BALANCED ||
+                          s_prev_effective_mode == CHARGE_MODE_SAFE ||
+                          s_prev_effective_mode == CHARGE_MODE_BYPASS);
+
     switch (effective_mode) {
     case CHARGE_MODE_VIOLENT:
         apply_suspend_if_needed(0);
@@ -101,22 +115,24 @@ static void apply_effective_mode(int effective_mode) {
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
         sysfs_write("/sys/class/power_supply/battery/night_charging", "0");
+        if (was_restricted) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_FAST:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        if (was_restricted) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_BALANCED:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_BALANCED); /* 5 */
+        apply_limit_if_needed(LIMIT_BALANCED); /* 6 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
     case CHARGE_MODE_SAFE:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_SAFE); /* 10 */
+        apply_limit_if_needed(LIMIT_SAFE); /* 12 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
@@ -128,18 +144,16 @@ static void apply_effective_mode(int effective_mode) {
         break;
     case CHARGE_MODE_OEM:
     default:
-        /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control:
-         * - input_suspend = 0 (reconnect battery cell if previously in BYPASS)
-         * - charge_control_limit = 0 (unrestricted limit so ROM driver manages speed)
-         * - sconfig = 0 (default thermal signal)
-         * - smart_chg = 1 (smart charging enabled)
-         */
+        /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control */
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_FAST); /* 0 - reset limit to unrestricted OEM baseline */
+        apply_limit_if_needed(LIMIT_FAST); /* 0 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        if (was_restricted) trigger_tcpc_pd_renegotiation();
         break;
     }
+
+    s_prev_effective_mode = effective_mode;
 }
 
 /* --------------------------------------------------------------------------
