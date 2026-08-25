@@ -118,12 +118,16 @@ static void apply_effective_mode(int effective_mode) {
         break;
     case CHARGE_MODE_OEM:
     default:
-        /* Remove any limit enforcement so ROM takes back full control.
-         * Restore input_suspend to 0 in case user was previously in BYPASS. */
+        /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control:
+         * - input_suspend = 0 (reconnect battery cell if previously in BYPASS)
+         * - charge_control_limit = 0 (unrestricted limit so ROM driver manages speed)
+         * - sconfig = 0 (default thermal signal)
+         * - smart_chg = 1 (smart charging enabled)
+         */
         apply_suspend_if_needed(0);
+        apply_limit_if_needed(LIMIT_FAST); /* 0 - reset limit to unrestricted OEM baseline */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        /* Do NOT touch charge_control_limit in OEM mode — leave ROM alone. */
         break;
     }
 }
@@ -161,10 +165,11 @@ void enforce_charge_mode(void) {
 
     g_state.user_charge_mode = s_user_charge_mode;
 
-    /* In OEM mode we do nothing — full ROM control, no interference. */
+    /* In OEM mode, ensure hardware nodes are restored to ROM baseline (read-before-write). */
     if (s_user_charge_mode == CHARGE_MODE_OEM) {
         g_state.charge_mode = CHARGE_MODE_OEM;
         g_state.charge_mode_thermal_override = 0;
+        apply_effective_mode(CHARGE_MODE_OEM);
         return;
     }
 
