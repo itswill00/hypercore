@@ -428,11 +428,23 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     }
   }
 
+  const usbVoltMv = ref(0)
+  const usbType = ref('—')
+
+  const isNonOemCable = computed(() => {
+    if (batStatus.value !== 'Charging') return false
+    const watt = (chargeCurrentMa.value * chargeVoltMv.value) / 1_000_000
+    /* If charging power is <= 7.5W while in Fast (1) or Violent (5) mode */
+    return watt > 0 && watt <= 7.5 && (chargeMode.value === 1 || chargeMode.value === 5)
+  })
+
   async function pollCharger() {
     try {
       const res = await execCommand(
         `echo "CC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";` +
         `echo "CV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";` +
+        `echo "UV:$(cat /sys/class/power_supply/usb/voltage_now 2>/dev/null)";` +
+        `echo "UT:$(cat /sys/class/power_supply/usb/real_type 2>/dev/null || cat /sys/class/power_supply/usb/type 2>/dev/null)";` +
         `echo "CM:$(cat /data/adb/modules/hypercore/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || true)"`
       )
       if (!res) return
@@ -448,6 +460,13 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.CV) {
         const rawUv = parseInt(kv.CV || 0)
         chargeVoltMv.value = rawUv > 10000 ? Math.round(rawUv / 1000) : rawUv
+      }
+      if (kv.UV) {
+        const rawUv = parseInt(kv.UV || 0)
+        usbVoltMv.value = rawUv > 10000 ? Math.round(rawUv / 1000) : rawUv
+      }
+      if (kv.UT) {
+        usbType.value = kv.UT.trim() || 'DCP'
       }
       /* Parse charge_mode from status.json or GET_CHARGE_MODE IPC response */
       if (kv.CM && kv.CM.includes('"status":"ok"')) {
@@ -673,6 +692,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     chargeMode, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
+    usbVoltMv, usbType, isNonOemCable,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,
