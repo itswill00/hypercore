@@ -49,8 +49,8 @@ int init_ipc_socket(void) {
         return -1;
     }
 
-    /* Restrict socket permissions to root (0600) */
-    chmod(s_sock_path, 0600);
+    /* Allow root, webui sandbox, and shell clients to connect to socket (0666) */
+    chmod(s_sock_path, 0666);
 
     if (listen(s_server_fd, 5) < 0) {
         log_error("Ipc", "Failed to listen on socket: %s", strerror(errno));
