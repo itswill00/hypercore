@@ -225,6 +225,11 @@ void restore_baseline_nodes(void) {
 
     if (s_baseline.migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost);
     if (s_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit);
+
+    /* Restore charger nodes to safe ROM defaults on daemon exit/shutdown */
+    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
+    sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+    sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
 }
 
 void update_module_prop_status(const char *status) {
