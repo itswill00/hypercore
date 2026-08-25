@@ -1,3 +1,16 @@
+# HyperCore v6.3.0 — Intelligent Multi-Step Thermal & USB PD Release
+
+## What's Changed
+
+### ⚡ Smart Charger Control & USB PD Re-negotiation
+- **Automated TCPC USB PD Pulse**: Added 100ms MediaTek TCPC CC-pin pulse when switching to OEM Stock, Fast, or Violent modes. Forces instant USB PD re-handshake to unlock 13.5W - 15W+ fast charging without needing manual cable unplugging.
+- **Gradual Multi-Step Thermal Ladder**: Upgraded thermal safety engine with a stepped cooling ladder (10s step-down dwell time, 15s cool recovery dwell <= 41°C). Prevents thermal shock and rapid pause-resume cycling.
+- **Flawless OEM Stock Transition**: Fixed socket state machine and sysfs node reset (`input_suspend=0`, `charge_control_limit=0`) when switching from Bypass back to OEM Stock.
+- **Smart Cable Hardware Ceiling Detection**: Real-time USB VBUS polling and automatic detection banner when standard/non-OEM cables are hardware-capped by the PMIC.
+- **Empirical Hardware Calibration**: Re-calibrated MT6789 charging limits (Balanced = 6 for ~7.4W, Safe = 12 for ~4.2W) based on real-time hardware measurements.
+
+---
+
 # HyperCore v6.2.0 — MD3 Charger Dashboard & Device Safety Release
 
 ## What's Changed

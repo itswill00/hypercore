@@ -5,14 +5,38 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">About Device</div>
-        <div class="page-header-sub">Hardware status, specifications &amp; credits</div>
+        <div class="page-header-sub">Module Info &amp; Community</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v6.2.0' }}
+        {{ store.moduleVersion || 'v6.3.0' }}
       </span>
     </div>
 
     <div class="content-area">
+
+      <!-- Module Info Card -->
+      <div class="md3-card mb-3">
+        <div class="about-hero">
+          <div class="hero-icon">
+            <Icons name="zap" :size="32" />
+          </div>
+          <div>
+            <div class="hero-title">HyperCore</div>
+            <div class="hero-sub">Universal Dual-Kernel MT6789 Performance Module</div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--outline-variant); margin: 0 -16px;">
+          <div class="md3-list-row">
+            <div class="row-left">
+              <div class="row-title">Installed Version</div>
+            </div>
+            <div class="row-val">
+              <span class="release-ver">{{ store.moduleVersion || 'v6.3.0' }} (Latest)</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <!-- Module Identity Banner (Expandable Latest Changelog) -->
       <div class="md3-list-group">
