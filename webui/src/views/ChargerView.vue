@@ -38,7 +38,7 @@
           <div>
             <div style="font-size: 13px; font-weight: 700; margin-bottom: 2px;">Thermal Safety Override</div>
             <div style="font-size: 11px; opacity: 0.9; line-height: 1.4;">
-              Daemon temporarily reduced charging speed to Safe mode due to high battery temperature ({{ store.batTemp }}°C). Mode will automatically restore once temperature drops below 40°C.
+              Daemon is gradually stepping down charging speed to control temperature ({{ store.batTemp }}°C). Full speed will automatically restore once temperature stabilizes below 41°C.
             </div>
           </div>
         </div>
