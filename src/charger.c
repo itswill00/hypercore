@@ -40,6 +40,10 @@ static time_t s_last_step_time = 0; /* timestamp of last thermal ladder step cha
 /* Helper: map thermal ladder step to effective charge mode */
 static int get_mode_for_step(int user_mode, int step) {
     if (step <= 0) return user_mode;
+    if (user_mode == CHARGE_MODE_SAFE) {
+        /* Safe mode (3) should never be promoted to Balanced mode (2) when overheating */
+        return (step >= 2) ? CHARGE_MODE_BYPASS : CHARGE_MODE_SAFE;
+    }
     if (step == 1) return CHARGE_MODE_BALANCED;
     if (step == 2) return CHARGE_MODE_SAFE;
     return CHARGE_MODE_BYPASS;
