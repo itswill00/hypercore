@@ -342,6 +342,7 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
     signal(SIGHUP, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
 
     init_hardware_nodes();
     verify_module_integrity(g_nodes.mod_dir);
