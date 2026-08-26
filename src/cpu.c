@@ -531,8 +531,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->lit_max_freq = g_nodes.lit_hw_max_freq;
             m->big_min_freq = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
             m->big_max_freq = (tier >= 3) ? 2000000 : g_nodes.big_hw_max_freq;
-            m->up_rate_limit = "2000";
-            m->down_rate_limit = "20000";
+            m->up_rate_limit = "12000";   /* 12ms filter — prevents Big core 2.2GHz spikes on minor UI tasks */
+            m->down_rate_limit = "40000"; /* 40ms ramp-down hold — maintains smooth scrolling without freq bounce */
 
             m->nr_requests = "128";
             m->read_ahead = (g_state.app_boost_ticks > 0) ? "384" : "256";
@@ -545,7 +545,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->top_app_uclamp_max = "max";
 
             m->devfreq_poll_ms = "50";
-            m->devfreq_upthresh = "70";
+            m->devfreq_upthresh = "80";   /* 80% load threshold — keeps GPU at 390MHz floor during standard UI */
             m->devfreq_downdiff = "20";
             m->devfreq_min_freq = "390000000";
             m->devfreq_max_freq = max_gpu_hz;
@@ -568,7 +568,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->fpsgo_thrm_enable = "1";
 
             m->sconfig = "0";
-            m->touch_thp_smooth = "1";
+            m->touch_thp_smooth = "0";     /* Reserve high touch sampling IC power for PROFILE_Gaming */
             m->touch_game_mode = "0";
             m->touch_sensitivity = "0";
             m->touch_edge = "0";
