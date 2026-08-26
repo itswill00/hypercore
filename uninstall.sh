@@ -1,7 +1,6 @@
 #!/system/bin/sh
 
 pkill -9 -x libhypercore.so >/dev/null 2>&1
-pkill -9 -x hypercore >/dev/null 2>&1
 
 # Reset CPU scaling governor & frequencies
 for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do

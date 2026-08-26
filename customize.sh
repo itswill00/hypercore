@@ -63,7 +63,6 @@ fi
 # Clean up running daemon instances before module upgrade to prevent binary lock
 ui_print "- Stopping any active daemon instances before upgrade..."
 pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
-pkill -9 -x hypercore >/dev/null 2>&1 || true
 rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid /data/adb/hypercore/hypercore.pid 2>/dev/null || true
 
 ui_print "- Preserving existing user gamelist.txt..."
