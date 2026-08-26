@@ -1,17 +1,8 @@
 #!/system/bin/sh
 
-# Export root manager & system PATHs
 export PATH="/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin:$PATH"
 
 MOD_DIR="/data/adb/modules/hypercore"
-if [ ! -d "$MOD_DIR" ]; then
-    MOD_DIR="/data/adb/modules/tanzanite_hypercore"
-fi
-if [ ! -d "$MOD_DIR" ]; then
-    MOD_DIR="/data/adb/modules/tanzanite_hyperflow"
-fi
-
-# Optional user note passed as first argument
 USER_NOTE="${1:-}"
 
 DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
@@ -26,14 +17,12 @@ TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-# 1. User note (from WebUI description field)
 if [ -n "$USER_NOTE" ]; then
     printf '%s\n' "$USER_NOTE" > "$TMP_DIR/user_note.txt"
 else
     echo "(no description provided)" > "$TMP_DIR/user_note.txt"
 fi
 
-# 2. Copy Log file (with fallback chain)
 if [ -f "/sdcard/Android/hypercore.log" ]; then
     cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
 elif [ -f "/data/adb/hypercore/hypercore.log" ]; then
@@ -44,7 +33,6 @@ else
     touch "$TMP_DIR/hypercore.log"
 fi
 
-# 3. Device & Module Info
 {
     echo "=== Module ==="
     echo "module_id=$(grep '^id=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
@@ -79,7 +67,6 @@ fi
     fi
 } > "$TMP_DIR/device_info.txt"
 
-# 4. Crash-Proof Sysfs Node Dump
 {
     echo "=== CPU Freq Policy ==="
     grep -s -H '' \
@@ -146,11 +133,10 @@ fi
         /dev/cpuset/top-app/cpus 2>/dev/null
 } > "$TMP_DIR/sysfs_nodes.txt"
 
-# 5. Process snapshot — hypercore daemon & top-app
 {
     echo "=== HyperCore Processes ==="
-    ps -A 2>/dev/null | grep -E 'hypercore|libhyper' | grep -v grep || \
-        ps 2>/dev/null | grep -E 'hypercore|libhyper' | grep -v grep
+    ps -A 2>/dev/null | grep -E 'libhypercore' | grep -v grep || \
+        ps 2>/dev/null | grep -E 'libhypercore' | grep -v grep
 
     echo ""
     echo "=== Top 15 CPU Consumers ==="
@@ -163,20 +149,17 @@ fi
         dumpsys window windows 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 4
 } > "$TMP_DIR/processes.txt"
 
-# 6. Logcat tail (last 200 lines, filter to hypercore + kernel warnings)
 {
     echo "=== Logcat (last 200 lines — hypercore & kernel) ==="
     logcat -d -t 200 2>/dev/null | grep -E 'hypercore|libhypercore|kernel|W |E ' | tail -n 200 || \
         logcat -d 2>/dev/null | tail -n 200
 } > "$TMP_DIR/logcat_tail.txt"
 
-# 7. Copy Game List & Module Config
 [ -f "/data/adb/hypercore/gamelist.txt" ] && cp "/data/adb/hypercore/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -z "$(cat "$TMP_DIR/gamelist.txt" 2>/dev/null)" ] && \
     [ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -f "$MOD_DIR/module.prop" ] && cp "$MOD_DIR/module.prop" "$TMP_DIR/module.prop"
 
-# 8. Write manifest
 {
     echo "HyperCore Bug Report"
     echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
@@ -184,7 +167,6 @@ fi
     ls -lh "$TMP_DIR/" 2>/dev/null
 } > "$TMP_DIR/manifest.txt"
 
-# 9. Multi-Tool Archive Creation (zip / busybox zip / tar.gz fallbacks)
 OUT_FILE=""
 
 if command -v zip >/dev/null 2>&1; then
