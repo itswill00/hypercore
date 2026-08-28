@@ -1,3 +1,19 @@
+# HyperCore v6.3.5 — Charger Remapping & Battery Thermal Guard Release
+
+## What's Changed
+
+### ⚡ Charger Control Remapping & OEM Cable Calibration
+- **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.7A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.
+- **OEM Stock Thermal Guard**: Fixed early return bug in `enforce_charge_mode()` to ensure OEM Stock mode remains 100% protected by the 45°C thermal ladder and 50°C emergency cutoff.
+- **Automatic 80% SOC Tapering**: Added automatic speed tapering from Fast/Violent modes down to Balanced mode when battery capacity reaches >=80% to protect cell health.
+- **TCPC PD Re-negotiation Fix**: Enhanced `apply_effective_mode()` so TCPC CC-pin pulse re-handshake triggers reliably on any mode transition to OEM, Fast, or Violent modes.
+- **WebUI Stats Sync**: Updated `ChargerView.vue` UI labels, estimated current, and estimated power numbers to match empirical hardware readings.
+
+### 🔋 Interactive CPU Profile Tuning
+- **Battery Efficiency Optimizations**: Tuned `PROFILE_Interactive` governor parameters (`up_rate_limit = 12ms`, `down_rate_limit = 40ms`, `devfreq_upthresh = 80%`) to eliminate unnecessary Big-core max frequency spikes on light UI tasks.
+
+---
+
 # HyperCore v6.3.0 — Intelligent Multi-Step Thermal & USB PD Release
 
 ## What's Changed
