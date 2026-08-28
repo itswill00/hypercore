@@ -19,9 +19,9 @@
 #define CHG_CAPACITY_NODE "/sys/class/power_supply/battery/capacity"
 
 /* Level values written to charge_control_limit per mode */
-#define LIMIT_FAST     0
-#define LIMIT_BALANCED 6
-#define LIMIT_SAFE     12
+#define LIMIT_FAST     0   /* Level 0:  3,897 mA (~3.9A / ~15.9W) - Fast / Violent / OEM Stock */
+#define LIMIT_BALANCED 10  /* Level 10: 2,318 mA (~2.3A / ~9.3W)  - Balanced (cool active usage) */
+#define LIMIT_SAFE     14  /* Level 14: 727 mA   (~0.73A / ~2.8W) - Safe (overnight & GPS) */
 
 /* Safety thresholds */
 #define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: start gradual step-down            */
