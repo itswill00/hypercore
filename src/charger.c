@@ -108,9 +108,7 @@ static int s_prev_effective_mode = -1;
 
 /* Apply the target effective mode to hardware nodes. */
 static void apply_effective_mode(int effective_mode) {
-    int was_restricted = (s_prev_effective_mode == CHARGE_MODE_BALANCED ||
-                          s_prev_effective_mode == CHARGE_MODE_SAFE ||
-                          s_prev_effective_mode == CHARGE_MODE_BYPASS);
+    int mode_changed = (s_prev_effective_mode != effective_mode);
 
     switch (effective_mode) {
     case CHARGE_MODE_VIOLENT:
@@ -119,24 +117,24 @@ static void apply_effective_mode(int effective_mode) {
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
         sysfs_write("/sys/class/power_supply/battery/night_charging", "0");
-        if (was_restricted) trigger_tcpc_pd_renegotiation();
+        if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_FAST:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        if (was_restricted) trigger_tcpc_pd_renegotiation();
+        if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_BALANCED:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_BALANCED); /* 6 */
+        apply_limit_if_needed(LIMIT_BALANCED); /* 10 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
     case CHARGE_MODE_SAFE:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_SAFE); /* 12 */
+        apply_limit_if_needed(LIMIT_SAFE); /* 14 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
         break;
@@ -153,7 +151,7 @@ static void apply_effective_mode(int effective_mode) {
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        if (was_restricted) trigger_tcpc_pd_renegotiation();
+        if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     }
 
@@ -291,9 +289,10 @@ void enforce_charge_mode(void) {
         }
     }
 
-    /* Update global state */
+    /* Update global state & apply to hardware nodes */
     g_state.charge_mode = effective_mode;
     g_state.charge_mode_thermal_override = override_active;
+    apply_effective_mode(effective_mode);
 }
 
 void set_charge_mode(int mode) {
