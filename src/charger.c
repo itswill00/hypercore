@@ -193,14 +193,6 @@ void enforce_charge_mode(void) {
 
     g_state.user_charge_mode = s_user_charge_mode;
 
-    /* In OEM mode, ensure hardware nodes are restored to ROM baseline (read-before-write). */
-    if (s_user_charge_mode == CHARGE_MODE_OEM) {
-        g_state.charge_mode = CHARGE_MODE_OEM;
-        g_state.charge_mode_thermal_override = 0;
-        apply_effective_mode(CHARGE_MODE_OEM);
-        return;
-    }
-
     int bat_temp  = sysfs_read_int(g_nodes.bat_temp);
     if (bat_temp > 1000) bat_temp /= 1000;
     else if (bat_temp > 100) bat_temp /= 10;
@@ -211,6 +203,11 @@ void enforce_charge_mode(void) {
     int effective_mode = s_user_charge_mode;
     int override_active = g_state.charge_mode_thermal_override;
     time_t now = time(NULL);
+
+    /* SOC Tapering: At >= 80% SOC, taper FAST/VIOLENT down to BALANCED to protect battery longevity */
+    if ((s_user_charge_mode == CHARGE_MODE_FAST || s_user_charge_mode == CHARGE_MODE_VIOLENT) && bat_cap >= CAP_FAST_LIMIT) {
+        effective_mode = CHARGE_MODE_BALANCED;
+    }
 
     /* --- Safety Override Logic --- */
 
@@ -294,12 +291,7 @@ void enforce_charge_mode(void) {
         }
     }
 
-    /* --- Enforcement (anti-tamper mi_thermald) --- */
-    /* apply_effective_mode is read-before-write — only writes if node differs */
-    apply_effective_mode(effective_mode);
-
     /* Update global state */
-    g_state.user_charge_mode = s_user_charge_mode;
     g_state.charge_mode = effective_mode;
     g_state.charge_mode_thermal_override = override_active;
 }
