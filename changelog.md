@@ -1,4 +1,4 @@
-# HyperCore v6.3.5 — Charger Remapping & Battery Thermal Guard Release
+# HyperCore v6.3.5 — Charger Remapping & Battery Thermal Protection Release
 
 ## What's Changed
 
@@ -9,7 +9,7 @@
 ### ⚡ Dual-Control Charging System (Presets & Precision Slider)
 - **Interactive Precision Slider**: Added customizable hardware charging limit slider (levels 0–15, ~500mA to ~4,500mA) with live wattage/amperage feedback and quick-jump pills.
 - **Segmented Control Interface**: Seamless switching between curated preset profiles (OEM Stock, Fast, Balanced, Safe, Bypass, Violent) and custom precision slider control.
-- **Unified Thermal & SOC Protection**: Custom slider limits remain 100% guarded by the 45°C thermal stepped cooling ladder, 50°C emergency cutoff, and 80% SOC longevity tapering.
+- **Unified Thermal & SOC Protection**: Custom slider limits remain protected by the 45°C stepped cooling ladder, 50°C emergency cutoff, and 80% SOC longevity tapering.
 
 ### ⚡ Charger Control Remapping & OEM Cable Calibration
 - **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.73A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.

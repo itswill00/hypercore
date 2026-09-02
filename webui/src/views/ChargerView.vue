@@ -5,7 +5,7 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">Charger Control</div>
-        <div class="page-header-sub">Charging speed, thermal guard &amp; bypass mode</div>
+        <div class="page-header-sub">Charging speed, thermal protection &amp; bypass mode</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;" :style="!store.chargerSupported ? 'background: var(--surface-container-highest); color: var(--on-surface-variant);' : ''">
         {{ activeModeName }}
@@ -187,28 +187,6 @@
             <span class="pill-amp">{{ pill.rate }}</span>
           </button>
         </div>
-
-        <!-- Live Real-Time Diagnostic Strip -->
-        <div class="slider-live-strip">
-          <div class="live-strip-item">
-            <span class="strip-label">Mode Status</span>
-            <span class="strip-value" :style="store.chargeMode === 6 ? 'color: var(--primary);' : ''">
-              {{ store.chargeMode === 6 ? 'Custom Slider (Active)' : 'Preset Active' }}
-            </span>
-          </div>
-          <div class="live-strip-item">
-            <span class="strip-label">Live Current</span>
-            <span class="strip-value" :style="store.batStatus === 'Charging' ? 'color: var(--primary); font-weight: 700;' : ''">
-              {{ displayCurrentMa }}
-            </span>
-          </div>
-          <div class="live-strip-item">
-            <span class="strip-label">Guard Engine</span>
-            <span class="strip-value" :style="store.batTemp >= 45 ? 'color: var(--error);' : ''">
-              {{ store.batTemp >= 45 ? 'Stepped Down' : 'Safe (<45°C)' }}
-            </span>
-          </div>
-        </div>
       </div>
 
       <!-- Preset Profiles Mode Selection Group -->
@@ -267,7 +245,7 @@
                   <div class="stat-num">{{ m.nodeVal }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Thermal Guard</div>
+                  <div class="stat-lbl">Thermal Limit</div>
                   <div class="stat-num">{{ m.guardNote }}</div>
                 </div>
               </div>
@@ -413,7 +391,7 @@ const modes = [
     estCurrent: 'OEM Dynamic',
     estPower: 'OEM Dynamic',
     nodeVal: 'Hands-off',
-    guardNote: 'OEM Thermal'
+    guardNote: 'Stock Thermal'
   },
   {
     id: 1,
@@ -425,7 +403,7 @@ const modes = [
     estCurrent: '~3,900 – 4,600 mA',
     estPower: '~16.0 – 19.0 W',
     nodeVal: 'limit = 0',
-    guardNote: 'Auto <45°C'
+    guardNote: 'Throttle at 45°C'
   },
   {
     id: 2,
@@ -437,7 +415,7 @@ const modes = [
     estCurrent: '~2,300 mA',
     estPower: '~9.3 W',
     nodeVal: 'limit = 10',
-    guardNote: 'Auto <45°C'
+    guardNote: 'Throttle at 45°C'
   },
   {
     id: 3,
@@ -449,7 +427,7 @@ const modes = [
     estCurrent: '~500 – 750 mA',
     estPower: '~2.0 – 2.8 W',
     nodeVal: 'limit = 14',
-    guardNote: 'Always Safe'
+    guardNote: 'Trickle Safe'
   },
   {
     id: 4,
@@ -473,7 +451,7 @@ const modes = [
     estCurrent: '~4,700 – 6,600 mA',
     estPower: '~19.8 – 33.0 W',
     nodeVal: 'limit = 0 · sconfig = 10',
-    guardNote: 'Extreme Heat'
+    guardNote: 'High Heat'
   }
 ]
 
@@ -741,36 +719,6 @@ onUnmounted(() => {
 .quick-pill-btn.is-selected .pill-amp {
   color: var(--on-primary-container);
   opacity: 0.85;
-}
-
-.slider-live-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--outline-variant);
-}
-
-.live-strip-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.strip-label {
-  font-size: 10px;
-  color: var(--on-surface-variant);
-  opacity: 0.75;
-}
-
-.strip-value {
-  font-size: 11.5px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--on-surface);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .selected-mode {

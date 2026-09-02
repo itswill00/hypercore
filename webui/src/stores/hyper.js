@@ -50,8 +50,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const chargeVoltMv = ref(0)            /* real-time mV from voltage_now */
 
   const thermalGuardState = computed(() => {
-    if (batTemp.value >= 42) return 'Trickle Guard (1.0A)'
-    if (batTemp.value >= 37) return 'Safety Balance (1.8A)'
+    if (batTemp.value >= 42) return 'Trickle Charge (1.0A)'
+    if (batTemp.value >= 37) return 'Balanced Charge (1.8A)'
     return 'Fast Charge (2.5A)'
   })
 
