@@ -70,7 +70,7 @@
               </div>
               <div
                 class="row-sub"
-                style="font-family: var(--font-mono); font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                style="font-size: 10px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                 :title="item.pkg"
               >
                 {{ item.pkg }}

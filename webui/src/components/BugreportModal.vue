@@ -288,7 +288,8 @@ onUnmounted(() => {
   color: var(--on-surface-variant, #b0b4c0);
   opacity: 0.45;
   margin-top: 4px;
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   margin-bottom: 16px;
 }
 
@@ -421,7 +422,6 @@ onUnmounted(() => {
   font-size: 11px;
   color: var(--on-surface-variant, #b0b4c0);
   opacity: 0.7;
-  font-family: var(--font-mono);
   min-height: 16px;
   transition: opacity 0.2s ease;
 }
@@ -457,7 +457,7 @@ onUnmounted(() => {
 
 .result-path {
   font-size: 11px;
-  font-family: var(--font-mono);
+  font-family: inherit;
   color: var(--on-surface-variant, #b0b4c0);
   background: var(--surface-container, #1d1e23);
   border: 1px solid var(--outline-variant, #383a42);

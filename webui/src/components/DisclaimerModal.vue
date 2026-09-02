@@ -239,7 +239,7 @@ function acceptDisclaimer() {
 }
 
 .content-box code {
-  font-family: var(--font-mono);
+  font-family: inherit;
   font-size: 11px;
   background: rgba(255, 255, 255, 0.08);
   padding: 1px 4px;

@@ -60,7 +60,7 @@
 
       <ActionButtons />
 
-      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0; font-family: var(--font-mono);">
+      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0;">
         Inspired by encore @Rem01Gaming
       </div>
     </div>
@@ -160,7 +160,8 @@ const store = useHyperStore()
 }
 
 .banner-chip {
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 500;
   padding: 3px 9px;
