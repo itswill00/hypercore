@@ -2,15 +2,23 @@
 
 ## What's Changed
 
+### ⚡ 100% Hands-off OEM Stock Architecture
+- **Complete Decoupling**: Completely decoupled OEM Stock mode from daemon periodic loops (zero sysfs writes on background ticks), restoring full thermal throttling authority to Xiaomi HyperOS kernel and native `mi_thermald`.
+- **One-time Transition Baseline**: Smoothly restores hardware defaults (`input_suspend=0`, `charge_control_limit=0`, `smart_chg=1`, `night_charging=1`) once upon entering OEM Stock without interfering with `sconfig`.
+
 ### ⚡ Charger Control Remapping & OEM Cable Calibration
-- **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.7A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.
-- **OEM Stock Thermal Guard**: Fixed early return bug in `enforce_charge_mode()` to ensure OEM Stock mode remains 100% protected by the 45°C thermal ladder and 50°C emergency cutoff.
+- **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.73A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.
 - **Automatic 80% SOC Tapering**: Added automatic speed tapering from Fast/Violent modes down to Balanced mode when battery capacity reaches >=80% to protect cell health.
-- **TCPC PD Re-negotiation Fix**: Enhanced `apply_effective_mode()` so TCPC CC-pin pulse re-handshake triggers reliably on any mode transition to OEM, Fast, or Violent modes.
+- **TCPC PD Re-negotiation**: Enhanced `apply_effective_mode()` so TCPC CC-pin pulse re-handshake triggers reliably on mode transitions.
 - **WebUI Stats Sync**: Updated `ChargerView.vue` UI labels, estimated current, and estimated power numbers to match empirical hardware readings.
 
-### 🔋 Interactive CPU Profile Tuning
-- **Battery Efficiency Optimizations**: Tuned `PROFILE_Interactive` governor parameters (`up_rate_limit = 12ms`, `down_rate_limit = 40ms`, `devfreq_upthresh = 80%`) to eliminate unnecessary Big-core max frequency spikes on light UI tasks.
+### 🔋 Battery Cycle Stabilizer & Single Source of Truth
+- **Hardware Fuel Gauge BMS Priority**: Directly reads physical MediaTek MT6366/MT6358 Fuel Gauge Coulomb counters (`bms/cycle_count`), eliminating conflicting WebUI background shell commands and software cycle accumulation.
+- **Auth Chip Filter**: Added strict filter to discard raw STMicroelectronics authentication chip signature codes (>3000) on Xiaomi MT6789 devices.
+
+### 📦 Build System & Internal Storage Cleanliness
+- **Unified Release Naming**: Standardized release asset naming to `HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip`, completely eliminating duplicate git hash variations.
+- **Internal Storage Output**: Restricts package output strictly to device internal storage (`/sdcard/HyperCore_Releases`) with zero pollution in Termux home directories.
 
 ---
 

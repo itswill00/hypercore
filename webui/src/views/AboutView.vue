@@ -8,7 +8,7 @@
         <div class="page-header-sub">Module Info &amp; Community</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v6.3.0' }}
+        {{ store.moduleVersion || 'v6.3.5' }}
       </span>
     </div>
 
@@ -32,7 +32,7 @@
               <div class="row-title">Installed Version</div>
             </div>
             <div class="row-val">
-              <span class="release-ver">{{ store.moduleVersion || 'v6.3.0' }} (Latest)</span>
+              <span class="release-ver">{{ store.moduleVersion || 'v6.3.5' }} (Latest)</span>
             </div>
           </div>
         </div>
@@ -65,13 +65,13 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.2.0' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.3.5' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Unified Profile Matrix &amp; Deterministic State Machine</strong>: Fully centralized all sysfs/procfs node parameters into a 100% symmetric matrix across all 4 profiles, guaranteeing zero residual state leakage during profile transitions.</li>
-                  <li><strong>Instant Process Death Rollback</strong>: Implemented immediate PID/cmdline process health checking for foreground games, executing atomic 0ms rollback to Interactive profile on game crash or exit.</li>
-                  <li><strong>Dangling Pointer &amp; sysfs Guard Fixes</strong>: Resolved pointer lifetime issue in sysfs error logging table and normalized string value trimming in Read-Before-Write comparisons.</li>
-                  <li><strong>IRQ Affinity Fallback Handling</strong>: Added fallback masks for offlined CPU cores when tuning MediaTek GPU, DSI, and touch digitizer IRQs.</li>
+                  <li><strong>100% Hands-off OEM Stock Architecture</strong>: Complete hands-off decoupling in OEM Stock mode with zero periodic sysfs writes, restoring 100% thermal throttling control to Xiaomi HyperOS kernel and native mi_thermald.</li>
+                  <li><strong>Physical Hardware Charging Calibration</strong>: Empirically re-calibrated Balanced mode (Limit 10, ~2.3A / 9.3W) and Safe mode (Limit 14, ~0.73A / 2.8W) with automatic 80% SOC longevity tapering.</li>
+                  <li><strong>Single Source of Truth Battery Cycles</strong>: Eliminated conflicting WebUI background polling and software cycle accumulation; strictly reads physical MediaTek BMS Fuel Gauge Coulomb counters directly.</li>
+                  <li><strong>Exclusive Internal Storage Builds</strong>: Standardized unified release naming without duplicate git hash artifacts, strictly outputting to device internal storage (/sdcard/HyperCore_Releases).</li>
                 </ul>
               </div>
             </div>
