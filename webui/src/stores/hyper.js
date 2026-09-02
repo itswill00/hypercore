@@ -54,7 +54,7 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v6.3.0')
+  const moduleVersion = ref('v6.3.5')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
   const uptime = ref('—')
@@ -159,8 +159,7 @@ export const useHyperStore = defineStore('hyper', () => {
         `echo "MEM:$(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo 2>/dev/null | tr '\\n' ' ')";` +
         `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";` +
         `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";` +
-        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";` +
-        `echo "CYC:$(cat /sys/class/power_supply/battery/cycle_count 2>/dev/null || cat /sys/class/power_supply/battery/auth_dev_batt_cycle 2>/dev/null || cat /sys/class/power_supply/bms/cycle_count 2>/dev/null)"`
+        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`
       )
       if (!res) return
       const kv = {}
@@ -188,7 +187,6 @@ export const useHyperStore = defineStore('hyper', () => {
           batRate.value = `${sign}${ma} mA`
         }
       }
-      if (kv.CYC && parseInt(kv.CYC) > 0) batteryCycles.value = parseInt(kv.CYC)
     } catch {}
   }
 
@@ -240,7 +238,7 @@ echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
-echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v6.3.0)";
+echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v6.3.5)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`

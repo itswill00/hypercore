@@ -147,20 +147,23 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 }
 
 int get_true_battery_cycles(void) {
-    /* Hardware PMIC MT6366/MT6358 FG Gauge node (MediaTek MT6789 / BMS) */
+    /* Hardware PMIC MT6366/MT6358 FG Gauge node (MediaTek MT6789 / BMS).
+     * Strictly prioritize genuine fuel-gauge coulomb counters over
+     * battery auth chip registers (which report raw signatures like 5662 on Xiaomi). */
     const char *hw_gauge_nodes[] = {
         "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count",
         "/sys/class/power_supply/bms/cycle_count",
         "/sys/class/power_supply/battery/cycle_count",
-        "/sys/class/power_supply/battery/fg1_cycle",
-        "/sys/class/power_supply/battery/auth_dev_batt_cycle",
         NULL
     };
 
     for (int i = 0; hw_gauge_nodes[i]; i++) {
         if (access(hw_gauge_nodes[i], F_OK) == 0) {
             int val = sysfs_read_int(hw_gauge_nodes[i]);
-            if (val > 0) {
+            /* BMS nodes (index 0 & 1) are direct hardware coulomb counters.
+             * Fallback node (battery/cycle_count) can point to an unformatted
+             * ST auth chip returning 5662 on Xiaomi MT6789. Discard > 3000. */
+            if (val > 0 && (i < 2 || val <= 3000)) {
                 return val;
             }
         }
