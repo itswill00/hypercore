@@ -32,12 +32,12 @@ typedef enum {
 } profile_t;
 
 typedef enum {
-    CHARGE_MODE_OEM      = 0,  /* No intervention — full ROM/OEM control */
-    CHARGE_MODE_FAST     = 1,  /* charge_control_limit=0  (~3.3-3.5A / ~13.5W) */
-    CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=5  (~1.9-2.0A / ~7.5W)  */
-    CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=10 (~1.0A   / ~4.0W)    */
-    CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA)   */
-    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + sconfig=10 + smart_chg=0 (20-33W)   */
+    CHARGE_MODE_OEM      = 0,  /* Hands-off — 100% stock kernel/ROM driver control */
+    CHARGE_MODE_FAST     = 1,  /* charge_control_limit=0  (~3.9A / ~16W) */
+    CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=10 (~2.3A / ~9.3W) */
+    CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=14 (~0.73A / ~2.8W) */
+    CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA) */
+    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + sconfig=10 + smart_chg=0 (19-33W) */
 } charge_mode_t;
 
 extern const char *g_profile_names[];

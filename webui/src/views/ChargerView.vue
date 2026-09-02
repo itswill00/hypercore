@@ -297,7 +297,7 @@ const modes = [
     badgeClass: '',
     estCurrent: '~4,700 – 6,600 mA',
     estPower: '~19.8 – 33.0 W',
-    nodeVal: 'limit = 0 · sconfig = 0',
+    nodeVal: 'limit = 0 · sconfig = 10',
     guardNote: 'Extreme Heat'
   }
 ]
