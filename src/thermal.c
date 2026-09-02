@@ -146,76 +146,8 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
     return tier;
 }
 
-static float s_accumulated_pct = 0.0f;
-static int   s_prev_cap_for_cycle = -1;
-static int   s_added_cycles = 0;
-static int   s_tracker_loaded = 0;
-
-static void load_cycle_tracker(void) {
-    if (s_tracker_loaded) return;
-    char path[256];
-    snprintf(path, sizeof(path), "%s/cycle_tracker.conf", g_nodes.mod_dir);
-    FILE *f = fopen(path, "r");
-    if (f) {
-        if (fscanf(f, "%d %f", &s_added_cycles, &s_accumulated_pct) != 2) {
-            s_added_cycles = 0;
-            s_accumulated_pct = 0.0f;
-        }
-        fclose(f);
-    }
-    s_tracker_loaded = 1;
-}
-
-static void save_cycle_tracker(void) {
-    char path[256];
-    snprintf(path, sizeof(path), "%s/cycle_tracker.conf", g_nodes.mod_dir);
-    FILE *f = fopen(path, "w");
-    if (!f) return;
-    fprintf(f, "%d %.2f\n", s_added_cycles, s_accumulated_pct);
-    fclose(f);
-}
-
-void track_charging_cycles(int is_charging) {
-    load_cycle_tracker();
-
-    int current_cap = sysfs_read_int("/sys/class/power_supply/battery/capacity");
-    if (current_cap <= 0) {
-        current_cap = sysfs_read_int("/sys/class/power_supply/bms/capacity");
-    }
-
-    int full_cycle_completed = 0;
-
-    if (is_charging && s_prev_cap_for_cycle > 0 && current_cap > s_prev_cap_for_cycle) {
-        int delta = current_cap - s_prev_cap_for_cycle;
-        if (delta > 0 && delta <= 50) {
-            s_accumulated_pct += (float)delta;
-            if (s_accumulated_pct >= 100.0f) {
-                int new_added = (int)(s_accumulated_pct / 100.0f);
-                s_added_cycles += new_added;
-                s_accumulated_pct -= (float)(new_added * 100);
-                log_info("Battery", "Dynamic full charge cycle reached! Total added cycles: %d", s_added_cycles);
-                full_cycle_completed = 1; /* force immediate save on full cycle */
-            }
-        }
-    }
-    s_prev_cap_for_cycle = current_cap;
-
-    /* Defer disk writes: save every 5 minutes OR when a full cycle just completed.
-     * Previously saved on every 1% increment during charging — unnecessary I/O. */
-    static time_t s_last_save_time = 0;
-    time_t now = time(NULL);
-    if (full_cycle_completed || (now - s_last_save_time >= 300)) {
-        save_cycle_tracker();
-        s_last_save_time = now;
-    }
-}
-
 int get_true_battery_cycles(void) {
-    load_cycle_tracker();
-
-    int base_cycles = 0;
-
-    /* Hardware PMIC MT6366/MT6358 FG Gauge node (HuaQin / MTK MT6789) */
+    /* Hardware PMIC MT6366/MT6358 FG Gauge node (MediaTek MT6789 / BMS) */
     const char *hw_gauge_nodes[] = {
         "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count",
         "/sys/class/power_supply/bms/cycle_count",
@@ -229,76 +161,12 @@ int get_true_battery_cycles(void) {
         if (access(hw_gauge_nodes[i], F_OK) == 0) {
             int val = sysfs_read_int(hw_gauge_nodes[i]);
             if (val > 0) {
-                /* Hardware PMIC node (index 0) returns exact unscaled cycle count.
-                 * Legacy sysfs nodes > 1000 may require /16 scaling. */
-                if (val > 1000 && i > 0) {
-                    base_cycles = val / 16;
-                } else {
-                    base_cycles = val;
-                }
-                break;
+                return val;
             }
         }
     }
 
-    return base_cycles + s_added_cycles;
-}
-
-void fix_battery_cycle_count(void) {
-    static time_t s_last_fix_time = 0;
-    static int s_last_synced_cycles[4] = {-1, -1, -1, -1};
-    time_t now = time(NULL);
-    if (now - s_last_fix_time < 300) return;
-    s_last_fix_time = now;
-
-    /* Device-specific hardware safety guard:
-     * Only perform cycle count correction if the MT6366/MT6358 PMIC gauge node
-     * or the HuaQin charger manager node exists on this specific device.
-     * On other devices, skip forced cycle correction to avoid modifying non-matching sysfs nodes. */
-    const char *spec_pmic_src = "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count";
-    const char *spec_hq_dest  = "/sys/devices/platform/hq_chg_manager/power_supply/battery/cycle_count";
-
-    if (access(spec_pmic_src, F_OK) != 0 && access(spec_hq_dest, F_OK) != 0) {
-        return;
-    }
-
-    int true_cycles = get_true_battery_cycles();
-    if (true_cycles <= 0) return;
-
-    /* Destination nodes to update with true cycle count */
-    const char *dest_nodes[] = {
-        spec_hq_dest,
-        "/sys/class/power_supply/battery/cycle_count",
-        "/sys/class/power_supply/battery/auth_dev_batt_cycle",
-        NULL
-    };
-
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", true_cycles);
-
-    for (int i = 0; dest_nodes[i]; i++) {
-        if (access(dest_nodes[i], F_OK) == 0) {
-            int current_val = sysfs_read_int(dest_nodes[i]);
-            if (current_val == true_cycles || s_last_synced_cycles[i] == true_cycles) {
-                s_last_synced_cycles[i] = true_cycles;
-                continue;
-            }
-
-            int fd = open(dest_nodes[i], O_WRONLY | O_CLOEXEC);
-            if (fd >= 0) {
-                ssize_t w = write(fd, buf, strlen(buf));
-                close(fd);
-                if (w > 0) {
-                    s_last_synced_cycles[i] = true_cycles;
-                    log_info("Battery", "Synced battery cycle count (%d cycles) to %s", true_cycles, dest_nodes[i]);
-                } else {
-                    log_warn("Battery", "Failed to write cycle count to %s (errno=%d)", dest_nodes[i], errno);
-                }
-            } else {
-                log_warn("Battery", "Failed to open %s (errno=%d)", dest_nodes[i], errno);
-            }
-        }
-    }
+    return 0;
 }
 
 
