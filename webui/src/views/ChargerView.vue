@@ -746,7 +746,8 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 11px;
   color: var(--on-surface-variant);
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .step-tag {
@@ -771,14 +772,16 @@ onUnmounted(() => {
 .slider-badge-val {
   font-size: 15px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.2px;
 }
 
 .slider-badge-pow {
   font-size: 10.5px;
   color: var(--on-surface-variant);
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .slider-track-box {
@@ -861,7 +864,8 @@ onUnmounted(() => {
   font-size: 10px;
   color: var(--on-surface-variant);
   opacity: 0.7;
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .slider-quick-row {
@@ -892,7 +896,8 @@ onUnmounted(() => {
 .quick-pill-btn .pill-amp {
   font-size: 9.5px;
   color: var(--on-surface-variant);
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }
 

@@ -479,7 +479,8 @@ function toggleExpand(key) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 10.5px;
   font-weight: 600;
   color: var(--primary);
@@ -492,7 +493,8 @@ function toggleExpand(key) {
 }
 
 .about-version-badge {
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   font-weight: 600;
   padding: 3px 8px;
@@ -551,7 +553,8 @@ function toggleExpand(key) {
 }
 
 .about-glass-chip {
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
   font-size: 10px;
   padding: 3px 8px;
   border-radius: 8px;
@@ -635,7 +638,8 @@ function toggleExpand(key) {
   font-size: 12px;
   font-weight: 700;
   color: var(--on-surface);
-  font-family: var(--font-mono);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .release-date {
@@ -662,6 +666,6 @@ function toggleExpand(key) {
   color: var(--on-surface-variant);
   opacity: 0.45;
   padding: 16px 0 24px 0;
-  font-family: var(--font-mono);
+  font-family: inherit;
 }
 </style>
