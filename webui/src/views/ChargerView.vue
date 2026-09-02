@@ -110,9 +110,109 @@
         </div>
       </div>
 
-      <!-- Charger Mode Selection Group -->
-      <div class="section-title">Select Charging Mode</div>
-      <div class="md3-list-group">
+      <!-- Control Mode Header & Tab Selector (Presets vs Slider) -->
+      <div class="control-header-row">
+        <div class="section-title" style="margin-bottom: 0;">Charging Control</div>
+        <div class="control-tabs">
+          <button
+            class="control-tab-btn"
+            :class="{ 'is-active': activeControlTab === 'presets' }"
+            @click="activeControlTab = 'presets'"
+          >
+            <Icons name="grid" :size="14" />
+            <span>Presets</span>
+          </button>
+          <button
+            class="control-tab-btn"
+            :class="{ 'is-active': activeControlTab === 'slider' }"
+            @click="activeControlTab = 'slider'"
+          >
+            <Icons name="sliders" :size="14" />
+            <span>Slider</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Custom Precision Slider View -->
+      <div v-if="activeControlTab === 'slider'" class="md3-card mb-3 slider-card">
+        <!-- Card Top Bar: Target Status -->
+        <div class="slider-top-header">
+          <div class="slider-title-meta">
+            <div class="slider-main-title">{{ currentStep.label }}</div>
+            <div class="slider-sub-meta">
+              <span class="step-tag" :style="{ background: currentStep.bgColor, color: currentStep.color }">
+                {{ currentStep.tag }}
+              </span>
+              <span>HW Level: {{ currentStep.limit }}</span>
+            </div>
+          </div>
+          <div class="slider-rate-badge" :style="{ borderColor: currentStep.color }">
+            <div class="slider-badge-val" :style="{ color: currentStep.color }">{{ currentStep.current }}</div>
+            <div class="slider-badge-pow">{{ currentStep.power }}</div>
+          </div>
+        </div>
+
+        <!-- Custom MD3 Range Slider -->
+        <div class="slider-track-box">
+          <div class="slider-input-container">
+            <input
+              type="range"
+              min="0"
+              :max="sliderSteps.length - 1"
+              step="1"
+              v-model.number="sliderValue"
+              @input="onSliderInput"
+              class="md3-range-slider"
+              :disabled="!store.chargerSupported"
+            />
+          </div>
+          <div class="slider-axis-labels">
+            <span>Slow (~0.5A)</span>
+            <span>Balanced (~2.3A)</span>
+            <span>Turbo (~4.5A)</span>
+          </div>
+        </div>
+
+        <!-- Quick Jump Preset Chips -->
+        <div class="slider-quick-row">
+          <button
+            v-for="(pill, pIdx) in quickPills"
+            :key="pIdx"
+            class="quick-pill-btn"
+            :class="{ 'is-selected': currentStepIndex === pill.step }"
+            @click="setSliderStep(pill.step)"
+            :disabled="!store.chargerSupported"
+          >
+            <span>{{ pill.name }}</span>
+            <span class="pill-amp">{{ pill.rate }}</span>
+          </button>
+        </div>
+
+        <!-- Live Real-Time Diagnostic Strip -->
+        <div class="slider-live-strip">
+          <div class="live-strip-item">
+            <span class="strip-label">Mode Status</span>
+            <span class="strip-value" :style="store.chargeMode === 6 ? 'color: var(--primary);' : ''">
+              {{ store.chargeMode === 6 ? 'Custom Slider (Active)' : 'Preset Active' }}
+            </span>
+          </div>
+          <div class="live-strip-item">
+            <span class="strip-label">Live Current</span>
+            <span class="strip-value" :style="store.batStatus === 'Charging' ? 'color: var(--primary); font-weight: 700;' : ''">
+              {{ displayCurrentMa }}
+            </span>
+          </div>
+          <div class="live-strip-item">
+            <span class="strip-label">Guard Engine</span>
+            <span class="strip-value" :style="store.batTemp >= 45 ? 'color: var(--error);' : ''">
+              {{ store.batTemp >= 45 ? 'Stepped Down' : 'Safe (<45°C)' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preset Profiles Mode Selection Group -->
+      <div v-else class="md3-list-group">
 
         <div
           v-for="m in modes"
@@ -217,7 +317,7 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 
@@ -226,6 +326,81 @@ const toast = inject('toast')
 
 const expandedRows = ref({})
 const showViolentModal = ref(false)
+const activeControlTab = ref(store.chargeMode === 6 ? 'slider' : 'presets')
+
+const sliderSteps = [
+  { step: 0, limit: 15, current: '~500 mA', power: '~2.0 W', label: 'Ultra Trickle', tag: 'Safe', color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
+  { step: 1, limit: 14, current: '~750 mA', power: '~2.8 W', label: 'Gentle Overnight', tag: 'Safe', color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
+  { step: 2, limit: 13, current: '~1,200 mA', power: '~4.7 W', label: 'Cool Steady', tag: 'Gentle', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 3, limit: 12, current: '~1,600 mA', power: '~6.3 W', label: 'Mild Balance', tag: 'Cool', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 4, limit: 11, current: '~2,000 mA', power: '~8.0 W', label: 'Efficient Daily', tag: 'Normal', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 5, limit: 10, current: '~2,300 mA', power: '~9.3 W', label: 'Balanced Sweetspot', tag: 'Balanced', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 6, limit: 8,  current: '~2,800 mA', power: '~11.3 W', label: 'Express Flow', tag: 'Warm', color: '#ffb74d', bgColor: 'rgba(255, 183, 77, 0.14)' },
+  { step: 7, limit: 6,  current: '~3,200 mA', power: '~13.1 W', label: 'High Speed', tag: 'Fast', color: '#ffa726', bgColor: 'rgba(255, 167, 38, 0.14)' },
+  { step: 8, limit: 4,  current: '~3,700 mA', power: '~15.2 W', label: 'Turbo Rate', tag: 'Hot', color: '#ff7043', bgColor: 'rgba(255, 112, 67, 0.14)' },
+  { step: 9, limit: 0,  current: '~4,500 mA', power: '~18.5 W+', label: 'Unrestricted Max', tag: 'Peak', color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.15)' }
+]
+
+const quickPills = [
+  { name: 'Trickle', rate: '0.5A', step: 0 },
+  { name: 'Cool', rate: '1.6A', step: 3 },
+  { name: 'Balanced', rate: '2.3A', step: 5 },
+  { name: 'High', rate: '3.2A', step: 7 },
+  { name: 'Max', rate: '4.5A', step: 9 }
+]
+
+const currentStepIndex = computed(() => {
+  const lim = store.customLimit
+  const foundIdx = sliderSteps.findIndex(s => s.limit === lim)
+  if (foundIdx !== -1) return foundIdx
+  let closest = 5
+  let minDiff = 999
+  sliderSteps.forEach((s, idx) => {
+    const diff = Math.abs(s.limit - lim)
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = idx
+    }
+  })
+  return closest
+})
+
+const sliderValue = ref(currentStepIndex.value)
+
+watch(() => store.customLimit, (newLim) => {
+  const idx = sliderSteps.findIndex(s => s.limit === newLim)
+  if (idx !== -1) sliderValue.value = idx
+})
+
+watch(() => store.chargeMode, (newMode) => {
+  if (newMode === 6 && activeControlTab.value !== 'slider') {
+    activeControlTab.value = 'slider'
+  }
+})
+
+const currentStep = computed(() => {
+  return sliderSteps[sliderValue.value] || sliderSteps[5]
+})
+
+let sliderDebounceTimer = null
+function onSliderInput() {
+  const stepObj = sliderSteps[sliderValue.value]
+  if (!stepObj) return
+  
+  clearTimeout(sliderDebounceTimer)
+  sliderDebounceTimer = setTimeout(async () => {
+    await store.setCustomLimit(stepObj.limit)
+    if (toast) toast(`Charging target set to ${stepObj.current} (${stepObj.label})`)
+  }, 180)
+}
+
+async function setSliderStep(stepIdx) {
+  sliderValue.value = stepIdx
+  const stepObj = sliderSteps[stepIdx]
+  if (!stepObj) return
+  await store.setCustomLimit(stepObj.limit)
+  if (toast) toast(`Charging target set to ${stepObj.current} (${stepObj.label})`)
+}
 
 const modes = [
   {
@@ -304,6 +479,10 @@ const modes = [
 
 const activeModeName = computed(() => {
   if (!store.chargerSupported) return 'Unsupported'
+  if (store.chargeMode === 6) {
+    const curStep = sliderSteps.find(s => s.limit === store.customLimit)
+    return curStep ? `Custom (${curStep.current})` : 'Custom Slider'
+  }
   const m = modes.find(x => x.id === store.chargeMode)
   return m ? m.name : 'OEM Stock'
 })
@@ -356,10 +535,6 @@ async function applyMode(id) {
 }
 
 onMounted(() => {
-  /* Trigger an immediate poll on mount, then rely on the store's unified
-   * chargerInterval (startCardPolling) which already runs every 2s with
-   * an isRefreshing guard. Running a separate localPollTimer would double
-   * the polling rate and spawn redundant shell forks. */
   store.pollCharger()
   store.startCardPolling()
 })
@@ -370,6 +545,234 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.control-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 10px 0;
+}
+
+.control-tabs {
+  display: flex;
+  background: var(--surface-container);
+  border-radius: 20px;
+  padding: 3px;
+  border: 1px solid var(--outline-variant);
+  gap: 2px;
+}
+
+.control-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.control-tab-btn.is-active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.slider-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 16px;
+}
+
+.slider-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.slider-title-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.slider-main-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+  letter-spacing: -0.2px;
+}
+
+.slider-sub-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+}
+
+.step-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.slider-rate-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--primary);
+  background: var(--surface-container);
+}
+
+.slider-badge-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: -0.2px;
+}
+
+.slider-badge-pow {
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+}
+
+.slider-track-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.slider-input-container {
+  width: 100%;
+}
+
+.md3-range-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-container-highest);
+  outline: none;
+  accent-color: var(--primary);
+}
+
+.md3-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  transition: transform 0.15s ease;
+}
+
+.md3-range-slider::-webkit-slider-thumb:active {
+  transform: scale(1.18);
+}
+
+.slider-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+  font-family: var(--font-mono);
+}
+
+.slider-quick-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.quick-pill-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.quick-pill-btn span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.quick-pill-btn .pill-amp {
+  font-size: 9.5px;
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.quick-pill-btn.is-selected {
+  background: var(--primary-container);
+  border-color: var(--primary);
+  color: var(--on-primary-container);
+}
+
+.quick-pill-btn.is-selected .pill-amp {
+  color: var(--on-primary-container);
+  opacity: 0.85;
+}
+
+.slider-live-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.live-strip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.strip-label {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.75;
+}
+
+.strip-value {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .selected-mode {
   background: var(--surface-container-high) !important;
   border-left: 3px solid var(--primary) !important;
@@ -383,5 +786,4 @@ onUnmounted(() => {
   opacity: 0.45;
   cursor: not-allowed !important;
 }
-
 </style>

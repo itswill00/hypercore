@@ -6,6 +6,11 @@
 - **Complete Decoupling**: Completely decoupled OEM Stock mode from daemon periodic loops (zero sysfs writes on background ticks), restoring full thermal throttling authority to Xiaomi HyperOS kernel and native `mi_thermald`.
 - **One-time Transition Baseline**: Smoothly restores hardware defaults (`input_suspend=0`, `charge_control_limit=0`, `smart_chg=1`, `night_charging=1`) once upon entering OEM Stock without interfering with `sconfig`.
 
+### ⚡ Dual-Control Charging System (Presets & Precision Slider)
+- **Interactive Precision Slider**: Added customizable hardware charging limit slider (levels 0–15, ~500mA to ~4,500mA) with live wattage/amperage feedback and quick-jump pills.
+- **Segmented Control Interface**: Seamless switching between curated preset profiles (OEM Stock, Fast, Balanced, Safe, Bypass, Violent) and custom precision slider control.
+- **Unified Thermal & SOC Protection**: Custom slider limits remain 100% guarded by the 45°C thermal stepped cooling ladder, 50°C emergency cutoff, and 80% SOC longevity tapering.
+
 ### ⚡ Charger Control Remapping & OEM Cable Calibration
 - **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.73A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.
 - **Automatic 80% SOC Tapering**: Added automatic speed tapering from Fast/Violent modes down to Balanced mode when battery capacity reaches >=80% to protect cell health.
