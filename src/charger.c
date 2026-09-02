@@ -148,9 +148,9 @@ static void apply_effective_mode(int effective_mode) {
     default:
         /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control */
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(LIMIT_FAST); /* 0 */
-        sysfs_write(CHG_SCONFIG_NODE, "0");
+        apply_limit_if_needed(0);
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
         if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     }
@@ -179,6 +179,18 @@ void init_charge_control(void) {
     g_state.charge_mode = s_user_charge_mode;
     g_state.charge_mode_thermal_override = 0;
 
+    if (s_user_charge_mode == CHARGE_MODE_OEM) {
+        /* In OEM Stock mode, ensure input_suspend is cleared in case prior session was Bypass,
+         * then leave all charging regulation 100% to OEM kernel and mi_thermald. */
+        apply_suspend_if_needed(0);
+        apply_limit_if_needed(0);
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
+        s_prev_effective_mode = CHARGE_MODE_OEM;
+        log_info("Charger", "Charger control init: OEM Stock (100%% kernel/ROM managed)");
+        return;
+    }
+
     /* Apply immediately */
     apply_effective_mode(s_user_charge_mode);
 
@@ -190,6 +202,16 @@ void enforce_charge_mode(void) {
     if (!s_nodes_available) return;
 
     g_state.user_charge_mode = s_user_charge_mode;
+
+    /* In OEM Stock mode, HyperCore is strictly hands-off.
+     * All charging rate, current limits, and thermal throttling are 100%
+     * governed by the device hardware, kernel drivers, and mi_thermald.
+     * Zero sysfs writes on periodic ticks! */
+    if (s_user_charge_mode == CHARGE_MODE_OEM) {
+        g_state.charge_mode = CHARGE_MODE_OEM;
+        g_state.charge_mode_thermal_override = 0;
+        return;
+    }
 
     int bat_temp  = sysfs_read_int(g_nodes.bat_temp);
     if (bat_temp > 1000) bat_temp /= 1000;
@@ -311,6 +333,22 @@ void set_charge_mode(int mode) {
     g_state.user_charge_mode = mode;
     g_state.charge_mode_thermal_override = 0; /* clear any active override */
     save_charge_mode_conf(mode);
+
+    if (mode == CHARGE_MODE_OEM) {
+        /* User switched to OEM Stock: restore hardware baseline ONCE,
+         * then completely release control to OEM kernel/thermal engine. */
+        apply_suspend_if_needed(0);
+        apply_limit_if_needed(0);
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
+        if (s_prev_effective_mode != CHARGE_MODE_OEM) {
+            trigger_tcpc_pd_renegotiation();
+        }
+        s_prev_effective_mode = CHARGE_MODE_OEM;
+        g_state.charge_mode = CHARGE_MODE_OEM;
+        log_state("Charger", "Charge mode -> OEM Stock (hands-off: 100%% OEM kernel/thermal control)");
+        return;
+    }
 
     /* Apply immediately without waiting for next enforcement tick */
     enforce_charge_mode();

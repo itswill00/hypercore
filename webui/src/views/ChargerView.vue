@@ -235,10 +235,10 @@ const modes = [
     desc: 'Full control managed by HyperOS / stock ROM driver. HyperCore does not interfere.',
     icon: 'device',
     badgeClass: 'tertiary',
-    estCurrent: '~4,000 mA',
-    estPower: '~16.5 W',
-    nodeVal: 'Unrestricted (limit = 0)',
-    guardNote: 'ROM Driver'
+    estCurrent: 'OEM Dynamic',
+    estPower: 'OEM Dynamic',
+    nodeVal: 'Hands-off',
+    guardNote: 'OEM Thermal'
   },
   {
     id: 1,

@@ -31,6 +31,10 @@ done
 [ -f "/sys/kernel/fpsgo/fbt/ultra_rescue" ] && echo 0 > /sys/kernel/fpsgo/fbt/ultra_rescue 2>/dev/null
 [ -f "/sys/class/thermal/thermal_message/sconfig" ] && echo 0 > /sys/class/thermal/thermal_message/sconfig 2>/dev/null
 
+# Reset charging control
+[ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null
+[ -f "/sys/class/power_supply/battery/charge_control_limit" ] && echo 0 > /sys/class/power_supply/battery/charge_control_limit 2>/dev/null
+
 # Clean up symlinks & lock files
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
 rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid 2>/dev/null
