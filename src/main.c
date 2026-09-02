@@ -529,8 +529,6 @@ int main(int argc, char *argv[]) {
         }
 
         tune_memory_pressure();
-        fix_battery_cycle_count();
-        track_charging_cycles(g_state.is_charging);
 
         /* Enforce user-selected charge mode every 2 ticks (~2-4s).
          * This re-writes charge_control_limit/input_suspend if mi_thermald
