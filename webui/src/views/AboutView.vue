@@ -20,7 +20,6 @@
         <div class="about-banner-content">
           <div class="about-banner-top">
             <div class="about-platform-tag">
-              <span class="status-dot"></span>
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
@@ -493,14 +492,6 @@ function toggleExpand(key) {
   border: 1px solid rgba(255, 255, 255, 0.12);
   letter-spacing: 0.2px;
   backdrop-filter: blur(4px);
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--primary);
-  box-shadow: 0 0 6px var(--primary);
 }
 
 .about-version-badge {
