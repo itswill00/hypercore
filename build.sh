@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
-RELEASE_DIR="/data/data/com.termux/files/home/HyperCore_Release"
+OUTPUT_DIR="/sdcard/HyperCore_Releases"
 
 set -e
 
@@ -13,8 +13,7 @@ if [ ! -f "module.prop" ]; then
 fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
-GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
-ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-${GIT_HASH}.zip"
+ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip"
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
@@ -99,11 +98,11 @@ clang -O3 -Wall -Werror \
     src/charger.c \
     -o system/bin/libhypercore.so
 
-mkdir -p "$RELEASE_DIR"
-rm -f "$RELEASE_DIR/$ZIP_OUT"
+mkdir -p "$OUTPUT_DIR"
+rm -f "$OUTPUT_DIR/HyperCore-${VERSION}-b${VERSION_CODE}"*.zip
 
 echo "packaging zip package..."
-if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
+if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     module.prop \
     system.prop \
     service.sh \
@@ -125,12 +124,9 @@ if ! zip -r "$RELEASE_DIR/$ZIP_OUT" \
     exit 1
 fi
 
-INTERNAL_DIR="/sdcard/HyperCore_Releases"
-mkdir -p "$INTERNAL_DIR"
-cp "$RELEASE_DIR/$ZIP_OUT" "/data/data/com.termux/files/home/$ZIP_OUT"
-cp "$RELEASE_DIR/$ZIP_OUT" "$INTERNAL_DIR/$ZIP_OUT"
+am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUTPUT_DIR/$ZIP_OUT" >/dev/null 2>&1 || true
 
-echo "build finished: ${RELEASE_DIR}/${ZIP_OUT}"
+echo "build finished: ${OUTPUT_DIR}/${ZIP_OUT}"
 
 if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."
