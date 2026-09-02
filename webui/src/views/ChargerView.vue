@@ -130,6 +130,14 @@
             <Icons name="sliders" :size="14" />
             <span>Slider</span>
           </button>
+          <button
+            class="control-tab-btn"
+            :class="{ 'is-active': activeControlTab === 'protection' }"
+            @click="activeControlTab = 'protection'"
+          >
+            <Icons name="shield" :size="14" />
+            <span>Protection</span>
+          </button>
         </div>
       </div>
 
@@ -208,7 +216,7 @@
       </div>
 
       <!-- Preset Profiles Mode Selection Group -->
-      <div v-else class="md3-list-group">
+      <div v-else-if="activeControlTab === 'presets'" class="md3-list-group">
 
         <div
           v-for="m in modes"
@@ -273,100 +281,99 @@
 
       </div>
 
-    </div>
-
-    <!-- Hardware Protection Options Group -->
-    <div class="section-title" style="margin-top: 18px;">Protection Options</div>
-    <div class="md3-list-group">
-      <!-- Night Charging Protection Row -->
-      <div
-        class="md3-list-row clickable"
-        :class="{ 'disabled-mode-row': !store.chargerSupported }"
-        @click="toggleNightCharging"
-      >
-        <div class="row-left">
-          <div class="icon-badge tertiary">
-            <Icons name="moon" :size="18" />
+      <!-- Hardware Protection Options Group (Tab 3) -->
+      <div v-else-if="activeControlTab === 'protection'" class="md3-list-group">
+        <!-- Night Charging Protection Row -->
+        <div
+          class="md3-list-row clickable"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
+          @click="toggleNightCharging"
+        >
+          <div class="row-left">
+            <div class="icon-badge tertiary">
+              <Icons name="moon" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Night Charging Protection</div>
+              <div class="row-sub">Pauses at 80% overnight to prevent sustained high voltage stress</div>
+            </div>
           </div>
-          <div class="row-meta">
-            <div class="row-title">Night Charging Protection</div>
-            <div class="row-sub">Pauses at 80% overnight to prevent sustained high voltage stress</div>
+          <div class="row-val" @click.stop>
+            <label class="md3-switch">
+              <input
+                type="checkbox"
+                :checked="store.nightCharging"
+                @change="toggleNightCharging"
+                :disabled="!store.chargerSupported"
+              />
+              <span class="md3-switch-track">
+                <span class="md3-switch-thumb"></span>
+              </span>
+            </label>
           </div>
         </div>
-        <div class="row-val" @click.stop>
-          <label class="md3-switch">
-            <input
-              type="checkbox"
-              :checked="store.nightCharging"
-              @change="toggleNightCharging"
-              :disabled="!store.chargerSupported"
-            />
-            <span class="md3-switch-track">
-              <span class="md3-switch-thumb"></span>
-            </span>
-          </label>
+
+        <!-- Smart Charging Curve Row -->
+        <div
+          class="md3-list-row clickable"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
+          @click="toggleSmartChg"
+        >
+          <div class="row-left">
+            <div class="icon-badge">
+              <Icons name="chip" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Smart Charging Curve</div>
+              <div class="row-sub">Dynamic thermal regulation and adaptive current throttling</div>
+            </div>
+          </div>
+          <div class="row-val" @click.stop>
+            <label class="md3-switch">
+              <input
+                type="checkbox"
+                :checked="store.smartChg"
+                @change="toggleSmartChg"
+                :disabled="!store.chargerSupported"
+              />
+              <span class="md3-switch-track">
+                <span class="md3-switch-thumb"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Limit Charging to 80% Row -->
+        <div
+          class="md3-list-row clickable"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
+          @click="toggleProtect80"
+        >
+          <div class="row-left">
+            <div class="icon-badge secondary">
+              <Icons name="shield" :size="18" />
+            </div>
+            <div class="row-meta">
+              <div class="row-title">Limit Charging to 80%</div>
+              <div class="row-sub">Hard stop charging at 80% capacity to extend battery cycle life</div>
+            </div>
+          </div>
+          <div class="row-val" @click.stop>
+            <label class="md3-switch">
+              <input
+                type="checkbox"
+                :checked="store.protect80"
+                @change="toggleProtect80"
+                :disabled="!store.chargerSupported"
+              />
+              <span class="md3-switch-track">
+                <span class="md3-switch-thumb"></span>
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <!-- Smart Charging Curve Row -->
-      <div
-        class="md3-list-row clickable"
-        :class="{ 'disabled-mode-row': !store.chargerSupported }"
-        @click="toggleSmartChg"
-      >
-        <div class="row-left">
-          <div class="icon-badge">
-            <Icons name="chip" :size="18" />
-          </div>
-          <div class="row-meta">
-            <div class="row-title">Smart Charging Curve</div>
-            <div class="row-sub">Dynamic thermal regulation and adaptive current throttling</div>
-          </div>
-        </div>
-        <div class="row-val" @click.stop>
-          <label class="md3-switch">
-            <input
-              type="checkbox"
-              :checked="store.smartChg"
-              @change="toggleSmartChg"
-              :disabled="!store.chargerSupported"
-            />
-            <span class="md3-switch-track">
-              <span class="md3-switch-thumb"></span>
-            </span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Limit Charging to 80% Row -->
-      <div
-        class="md3-list-row clickable"
-        :class="{ 'disabled-mode-row': !store.chargerSupported }"
-        @click="toggleProtect80"
-      >
-        <div class="row-left">
-          <div class="icon-badge secondary">
-            <Icons name="shield" :size="18" />
-          </div>
-          <div class="row-meta">
-            <div class="row-title">Limit Charging to 80%</div>
-            <div class="row-sub">Hard stop charging at 80% capacity to extend battery cycle life</div>
-          </div>
-        </div>
-        <div class="row-val" @click.stop>
-          <label class="md3-switch">
-            <input
-              type="checkbox"
-              :checked="store.protect80"
-              @change="toggleProtect80"
-              :disabled="!store.chargerSupported"
-            />
-            <span class="md3-switch-track">
-              <span class="md3-switch-thumb"></span>
-            </span>
-          </label>
-        </div>
-      </div>
     </div>
 
     <!-- Violent Charging Risk Disclaimer Modal -->
@@ -684,15 +691,16 @@ onUnmounted(() => {
 .control-tab-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: transparent;
   border: none;
   border-radius: 16px;
-  padding: 5px 12px;
-  font-size: 11.5px;
+  padding: 5px 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--on-surface-variant);
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
