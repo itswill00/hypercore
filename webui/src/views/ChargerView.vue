@@ -275,23 +275,30 @@
 
     </div>
 
-    <!-- Advanced Charging Options (Hardware Toggles) -->
-    <div class="card" style="margin-top: 14px;">
-      <div class="card-title">Charging Options</div>
-      <div class="card-subtitle">Hardware toggles for battery longevity &amp; protection</div>
-
-      <div class="options-list">
-        <!-- Night Charging Toggle -->
-        <div class="option-item">
-          <div class="option-meta">
-            <div class="option-title">Night Charging Protection</div>
-            <div class="option-desc">Pauses charging at 80% overnight to protect battery chemistry from high voltage stress</div>
+    <!-- Hardware Protection Options Group -->
+    <div class="section-title" style="margin-top: 18px;">Protection Options</div>
+    <div class="md3-list-group">
+      <!-- Night Charging Protection Row -->
+      <div
+        class="md3-list-row clickable"
+        :class="{ 'disabled-mode-row': !store.chargerSupported }"
+        @click="toggleNightCharging"
+      >
+        <div class="row-left">
+          <div class="icon-badge tertiary">
+            <Icons name="moon" :size="18" />
           </div>
+          <div class="row-meta">
+            <div class="row-title">Night Charging Protection</div>
+            <div class="row-sub">Pauses at 80% overnight to prevent sustained high voltage stress</div>
+          </div>
+        </div>
+        <div class="row-val" @click.stop>
           <label class="md3-switch">
             <input
               type="checkbox"
               :checked="store.nightCharging"
-              @change="onToggleNightCharging"
+              @change="toggleNightCharging"
               :disabled="!store.chargerSupported"
             />
             <span class="md3-switch-track">
@@ -299,18 +306,29 @@
             </span>
           </label>
         </div>
+      </div>
 
-        <!-- Smart Charging Toggle -->
-        <div class="option-item">
-          <div class="option-meta">
-            <div class="option-title">Smart Charging Curve</div>
-            <div class="option-desc">Enables kernel dynamic charging regulation and thermal mitigation algorithms</div>
+      <!-- Smart Charging Curve Row -->
+      <div
+        class="md3-list-row clickable"
+        :class="{ 'disabled-mode-row': !store.chargerSupported }"
+        @click="toggleSmartChg"
+      >
+        <div class="row-left">
+          <div class="icon-badge">
+            <Icons name="chip" :size="18" />
           </div>
+          <div class="row-meta">
+            <div class="row-title">Smart Charging Curve</div>
+            <div class="row-sub">Dynamic thermal regulation and adaptive current throttling</div>
+          </div>
+        </div>
+        <div class="row-val" @click.stop>
           <label class="md3-switch">
             <input
               type="checkbox"
               :checked="store.smartChg"
-              @change="onToggleSmartChg"
+              @change="toggleSmartChg"
               :disabled="!store.chargerSupported"
             />
             <span class="md3-switch-track">
@@ -318,18 +336,29 @@
             </span>
           </label>
         </div>
+      </div>
 
-        <!-- 80% Battery Protect Cap -->
-        <div class="option-item">
-          <div class="option-meta">
-            <div class="option-title">Limit Charging to 80%</div>
-            <div class="option-desc">Hard stop charging at 80% battery capacity to significantly prolong battery cycle lifespan</div>
+      <!-- Limit Charging to 80% Row -->
+      <div
+        class="md3-list-row clickable"
+        :class="{ 'disabled-mode-row': !store.chargerSupported }"
+        @click="toggleProtect80"
+      >
+        <div class="row-left">
+          <div class="icon-badge secondary">
+            <Icons name="shield" :size="18" />
           </div>
+          <div class="row-meta">
+            <div class="row-title">Limit Charging to 80%</div>
+            <div class="row-sub">Hard stop charging at 80% capacity to extend battery cycle life</div>
+          </div>
+        </div>
+        <div class="row-val" @click.stop>
           <label class="md3-switch">
             <input
               type="checkbox"
               :checked="store.protect80"
-              @change="onToggleProtect80"
+              @change="toggleProtect80"
               :disabled="!store.chargerSupported"
             />
             <span class="md3-switch-track">
@@ -472,22 +501,25 @@ function stepUp() {
   }
 }
 
-async function onToggleNightCharging(e) {
-  const checked = e.target.checked
-  await store.setNightCharging(checked)
-  if (toast) toast(`Night Charging ${checked ? 'enabled (stops at 80% overnight)' : 'disabled (charges to 100%)'}`)
+async function toggleNightCharging() {
+  if (!store.chargerSupported) return
+  const next = !store.nightCharging
+  await store.setNightCharging(next)
+  if (toast) toast(`Night Charging ${next ? 'enabled (pauses at 80% overnight)' : 'disabled (charges to 100%)'}`)
 }
 
-async function onToggleSmartChg(e) {
-  const checked = e.target.checked
-  await store.setSmartChg(checked)
-  if (toast) toast(`Smart Charging curve ${checked ? 'enabled' : 'disabled'}`)
+async function toggleSmartChg() {
+  if (!store.chargerSupported) return
+  const next = !store.smartChg
+  await store.setSmartChg(next)
+  if (toast) toast(`Smart Charging curve ${next ? 'enabled' : 'disabled'}`)
 }
 
-async function onToggleProtect80(e) {
-  const checked = e.target.checked
-  await store.setProtect80(checked)
-  if (toast) toast(`80% Battery Limit ${checked ? 'enabled (cutoff at 80%)' : 'disabled (unrestricted to 100%)'}`)
+async function toggleProtect80() {
+  if (!store.chargerSupported) return
+  const next = !store.protect80
+  await store.setProtect80(next)
+  if (toast) toast(`80% Battery Limit ${next ? 'enabled (stops at 80%)' : 'disabled (unrestricted to 100%)'}`)
 }
 
 const modes = [
@@ -881,55 +913,19 @@ onUnmounted(() => {
   cursor: not-allowed !important;
 }
 
-/* Charging Options & MD3 Switches */
-.options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.option-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  background: var(--surface-container);
-  border: 1px solid var(--outline-variant);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.option-meta {
-  flex: 1;
-  min-width: 0;
-}
-
-.option-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--on-surface);
-  line-height: 1.3;
-}
-
-.option-desc {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  line-height: 1.4;
-  margin-top: 3px;
-}
-
+/* Material Design 3 Precision Switch */
 .md3-switch {
   position: relative;
   display: inline-block;
-  width: 48px;
-  height: 28px;
+  width: 46px;
+  height: 26px;
   flex-shrink: 0;
   cursor: pointer;
+  vertical-align: middle;
 }
 
 .md3-switch input {
+  position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
@@ -937,25 +933,29 @@ onUnmounted(() => {
 
 .md3-switch-track {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: var(--surface-container-highest);
-  border: 2px solid var(--outline);
-  border-radius: 28px;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1.5px solid var(--outline);
+  border-radius: 26px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
 }
 
 .md3-switch-thumb {
   position: absolute;
-  height: 16px;
-  width: 16px;
+  width: 14px;
+  height: 14px;
   left: 4px;
-  bottom: 4px;
-  background: var(--outline);
+  top: 4px;
   border-radius: 50%;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--outline);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              top 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.2s ease;
+  box-sizing: border-box;
 }
 
 .md3-switch input:checked + .md3-switch-track {
@@ -964,12 +964,12 @@ onUnmounted(() => {
 }
 
 .md3-switch input:checked + .md3-switch-track .md3-switch-thumb {
-  transform: translateX(20px);
+  transform: translateX(18px);
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 2px;
   background: var(--on-primary);
-  width: 20px;
-  height: 20px;
-  left: 2px;
-  bottom: 2px;
 }
 
 .md3-switch input:disabled + .md3-switch-track {
