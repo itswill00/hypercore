@@ -5,11 +5,8 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">About Device</div>
-        <div class="page-header-sub">Module Info &amp; Community</div>
+        <div class="page-header-sub">System &amp; Community</div>
       </div>
-      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v6.3.5' }}
-      </span>
     </div>
 
     <div class="content-area">
@@ -30,7 +27,7 @@
           <div class="about-title-block">
             <h1 class="about-hero-title">HyperCore</h1>
             <p class="about-hero-desc">
-              Universal Dual-Kernel Performance &amp; Thermal Engine
+              Universal Dual-Kernel Performance Module
             </p>
             <div class="about-author-line">
               <span>Crafted with precision by</span>
@@ -52,16 +49,16 @@
               <span class="chip-val">ARM64-v8a</span>
             </div>
             <div class="about-glass-chip">
-              <span class="chip-label">Engine</span>
+              <span class="chip-label">Daemon</span>
               <span class="chip-val" :style="store.isRunning ? 'color: var(--primary);' : ''">
-                {{ store.isRunning ? `Daemon Active (PID ${store.daemonPid})` : 'Standby' }}
+                {{ store.isRunning ? `Active (PID ${store.daemonPid})` : 'Standby' }}
               </span>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Module Identity Banner (Expandable Latest Changelog) -->
+      <!-- Release Notes (Expandable Changelog) -->
       <div class="md3-list-group">
         <div
           class="md3-list-row expandable-row clickable"
@@ -70,12 +67,12 @@
         >
           <div class="row-header">
             <div class="row-left">
-              <div class="app-banner-icon">
-                <Icons name="chip" :size="22" />
+              <div class="icon-badge">
+                <Icons name="logs" :size="18" />
               </div>
               <div class="row-meta">
-                <div class="app-banner-title">HyperCore Module</div>
-                <div class="app-banner-sub">Build Specs &amp; Release Changelog</div>
+                <div class="row-title">Release Notes</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.3.5' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -150,7 +147,7 @@
                   <div class="stat-num">{{ store.thermalTier }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Power guard</div>
+                  <div class="stat-lbl">Charging status</div>
                   <div class="stat-num">{{ store.thermalGuardState }}</div>
                 </div>
               </div>

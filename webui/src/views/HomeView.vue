@@ -3,8 +3,8 @@
     
     <div class="page-header">
       <div>
-        <div class="page-header-title">HyperCore</div>
-        <div class="page-header-sub">by @itswill00</div>
+        <div class="page-header-title">Dashboard</div>
+        <div class="page-header-sub">Performance &amp; Status Overview</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
         {{ store.moduleVersion || 'v6.3.5' }}
