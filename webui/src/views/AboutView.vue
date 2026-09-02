@@ -14,25 +14,49 @@
 
     <div class="content-area">
 
-      <!-- Module Info Card -->
-      <div class="md3-card mb-3">
-        <div class="about-hero">
-          <div class="hero-icon">
-            <Icons name="zap" :size="32" />
-          </div>
-          <div>
-            <div class="hero-title">HyperCore</div>
-            <div class="hero-sub">Universal Dual-Kernel MT6789 Performance Module</div>
-          </div>
-        </div>
-
-        <div style="border-top: 1px solid var(--outline-variant); margin: 0 -16px;">
-          <div class="md3-list-row">
-            <div class="row-left">
-              <div class="row-title">Installed Version</div>
+      <!-- About Hero Showcase Card with banner.jpg Background -->
+      <div class="about-hero-banner" :style="{ backgroundImage: `url(${bannerImg})` }">
+        <div class="about-banner-overlay"></div>
+        <div class="about-banner-content">
+          <div class="about-banner-top">
+            <div class="about-platform-tag">
+              <span class="status-dot"></span>
+              <span>MT6789 Family</span>
             </div>
-            <div class="row-val">
-              <span class="release-ver">{{ store.moduleVersion || 'v6.3.5' }} (Latest)</span>
+            <span class="about-version-badge">
+              {{ store.moduleVersion || 'v6.3.5' }} · Stable
+            </span>
+          </div>
+
+          <div class="about-title-block">
+            <h1 class="about-hero-title">HyperCore</h1>
+            <p class="about-hero-desc">
+              Universal Dual-Kernel Performance &amp; Thermal Engine
+            </p>
+            <div class="about-author-line">
+              <span>Crafted with precision by</span>
+              <a href="https://github.com/itswill00" target="_blank" class="about-author-link" @click.stop="openExternal('https://github.com/itswill00')">@itswill00</a>
+            </div>
+          </div>
+
+          <div class="about-chips-row">
+            <div class="about-glass-chip">
+              <span class="chip-label">Kernel</span>
+              <span class="chip-val">5.10 – 6.12 GKI</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Target</span>
+              <span class="chip-val">Helio G99/G100/G200</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Arch</span>
+              <span class="chip-val">ARM64-v8a</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Engine</span>
+              <span class="chip-val" :style="store.isRunning ? 'color: var(--primary);' : ''">
+                {{ store.isRunning ? `Daemon Active (PID ${store.daemonPid})` : 'Standby' }}
+              </span>
             </div>
           </div>
         </div>
@@ -408,6 +432,7 @@ import { ref } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import { openExternal } from '@/helpers/shell'
 import Icons from '@/components/icons/Icons.vue'
+import bannerImg from '@/assets/banner.jpg'
 
 const store = useHyperStore()
 const expandedRows = ref({})
@@ -418,6 +443,148 @@ function toggleExpand(key) {
 </script>
 
 <style scoped>
+.about-hero-banner {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--surface-container-highest);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background-image: url('banner.jpg'), url('./banner.jpg'), url('../banner.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.about-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(14, 15, 20, 0.94) 0%, rgba(18, 19, 26, 0.84) 60%, rgba(12, 13, 18, 0.68) 100%);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+.about-banner-content {
+  position: relative;
+  z-index: 2;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.about-platform-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(4px);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+}
+
+.about-version-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.about-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.about-hero-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--on-surface);
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+}
+
+.about-hero-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.about-author-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.about-author-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.about-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.about-glass-chip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(4px);
+}
+
+.about-glass-chip .chip-label {
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+}
+
+.about-glass-chip .chip-val {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
 .app-banner-icon {
   width: 36px;
   height: 36px;
