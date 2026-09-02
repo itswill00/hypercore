@@ -275,6 +275,71 @@
 
     </div>
 
+    <!-- Advanced Charging Options (Hardware Toggles) -->
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-title">Charging Options</div>
+      <div class="card-subtitle">Hardware toggles for battery longevity &amp; protection</div>
+
+      <div class="options-list">
+        <!-- Night Charging Toggle -->
+        <div class="option-item">
+          <div class="option-meta">
+            <div class="option-title">Night Charging Protection</div>
+            <div class="option-desc">Pauses charging at 80% overnight to protect battery chemistry from high voltage stress</div>
+          </div>
+          <label class="md3-switch">
+            <input
+              type="checkbox"
+              :checked="store.nightCharging"
+              @change="onToggleNightCharging"
+              :disabled="!store.chargerSupported"
+            />
+            <span class="md3-switch-track">
+              <span class="md3-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- Smart Charging Toggle -->
+        <div class="option-item">
+          <div class="option-meta">
+            <div class="option-title">Smart Charging Curve</div>
+            <div class="option-desc">Enables kernel dynamic charging regulation and thermal mitigation algorithms</div>
+          </div>
+          <label class="md3-switch">
+            <input
+              type="checkbox"
+              :checked="store.smartChg"
+              @change="onToggleSmartChg"
+              :disabled="!store.chargerSupported"
+            />
+            <span class="md3-switch-track">
+              <span class="md3-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+
+        <!-- 80% Battery Protect Cap -->
+        <div class="option-item">
+          <div class="option-meta">
+            <div class="option-title">Limit Charging to 80%</div>
+            <div class="option-desc">Hard stop charging at 80% battery capacity to significantly prolong battery cycle lifespan</div>
+          </div>
+          <label class="md3-switch">
+            <input
+              type="checkbox"
+              :checked="store.protect80"
+              @change="onToggleProtect80"
+              :disabled="!store.chargerSupported"
+            />
+            <span class="md3-switch-track">
+              <span class="md3-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- Violent Charging Risk Disclaimer Modal -->
     <transition name="modal-fade">
       <div v-if="showViolentModal" class="modal-backdrop" @click.self="showViolentModal = false">
@@ -405,6 +470,24 @@ function stepUp() {
   if (sliderValue.value < sliderSteps.length - 1) {
     setSliderStep(sliderValue.value + 1)
   }
+}
+
+async function onToggleNightCharging(e) {
+  const checked = e.target.checked
+  await store.setNightCharging(checked)
+  if (toast) toast(`Night Charging ${checked ? 'enabled (stops at 80% overnight)' : 'disabled (charges to 100%)'}`)
+}
+
+async function onToggleSmartChg(e) {
+  const checked = e.target.checked
+  await store.setSmartChg(checked)
+  if (toast) toast(`Smart Charging curve ${checked ? 'enabled' : 'disabled'}`)
+}
+
+async function onToggleProtect80(e) {
+  const checked = e.target.checked
+  await store.setProtect80(checked)
+  if (toast) toast(`80% Battery Limit ${checked ? 'enabled (cutoff at 80%)' : 'disabled (unrestricted to 100%)'}`)
 }
 
 const modes = [
@@ -796,5 +879,101 @@ onUnmounted(() => {
 .disabled-mode-row {
   opacity: 0.45;
   cursor: not-allowed !important;
+}
+
+/* Charging Options & MD3 Switches */
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.option-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  line-height: 1.3;
+}
+
+.option-desc {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.md3-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.md3-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.md3-switch-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface-container-highest);
+  border: 2px solid var(--outline);
+  border-radius: 28px;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md3-switch-thumb {
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background: var(--outline);
+  border-radius: 50%;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md3-switch input:checked + .md3-switch-track {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.md3-switch input:checked + .md3-switch-track .md3-switch-thumb {
+  transform: translateX(20px);
+  background: var(--on-primary);
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+}
+
+.md3-switch input:disabled + .md3-switch-track {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 </style>

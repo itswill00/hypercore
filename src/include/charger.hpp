@@ -56,6 +56,13 @@ int get_charge_mode(void);
  */
 const char *charge_mode_name(int mode);
 
+void set_night_charging(int enabled);
+int get_night_charging(void);
+void set_smart_chg(int enabled);
+int get_smart_chg(void);
+void set_protect_80(int enabled);
+int get_protect_80(void);
+
 #ifdef __cplusplus
 }
 #endif

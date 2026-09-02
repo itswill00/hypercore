@@ -89,7 +89,7 @@
                 </div>
                 <ul class="changelog-bullets">
                   <li><strong>100% Hands-off OEM Stock Architecture</strong>: Complete hands-off decoupling in OEM Stock mode with zero periodic sysfs writes, restoring 100% thermal throttling control to Xiaomi HyperOS kernel and native mi_thermald.</li>
-                  <li><strong>Physical Hardware Charging Calibration</strong>: Empirically re-calibrated Balanced mode (Limit 10, ~2.3A / 9.3W) and Safe mode (Limit 14, ~0.73A / 2.8W) with automatic 80% SOC longevity tapering.</li>
+                  <li><strong>Physical Hardware Charging Calibration</strong>: Empirically calibrated Balanced mode (Limit 10, ~2.3A / 9.3W) and Safe mode (Limit 14, ~0.73A / 2.8W) with unrestricted full-capacity charging.</li>
                   <li><strong>Single Source of Truth Battery Cycles</strong>: Eliminated conflicting WebUI background polling and software cycle accumulation; strictly reads physical MediaTek BMS Fuel Gauge Coulomb counters directly.</li>
                   <li><strong>Exclusive Internal Storage Builds</strong>: Standardized unified release naming without duplicate git hash artifacts, strictly outputting to device internal storage (/sdcard/HyperCore_Releases).</li>
                 </ul>

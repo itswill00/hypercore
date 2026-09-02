@@ -29,12 +29,14 @@
 #define TEMP_OVERRIDE_CLEAR   41   /* <= 41°C: sustained cool temp for step-up    */
 #define CAP_MIN_BYPASS        10   /* <  10%:  auto-resume from BYPASS to SAFE    */
 #define CAP_MIN_BYPASS_RESTORE 12  /* >= 12%:  hysteresis clear for BYPASS resume */
-#define CAP_FAST_LIMIT        80   /* >= 80%:  drop FAST to BALANCED              */
 
 /* Module-level state */
 static int s_nodes_available     = 0;  /* 1 if charger nodes exist on this device */
 static int s_user_charge_mode    = CHARGE_MODE_OEM;  /* user's persistent choice   */
 static int s_custom_charge_limit = LIMIT_BALANCED;   /* custom slider hardware limit (0-15), default 10 */
+static int s_night_charging      = 0;  /* 1 = night charging protection (pauses at 80% overnight) */
+static int s_smart_chg           = 0;  /* 1 = smart charging curve enabled */
+static int s_protect_80          = 0;  /* 1 = user hard limit to stop charging at 80% */
 static int s_thermal_step        = 0;  /* 0=User mode, 1=Balanced step, 2=Safe step, 3=Bypass cutoff */
 static time_t s_last_step_time   = 0;  /* timestamp of last thermal ladder step change */
 
@@ -109,6 +111,78 @@ static int load_custom_charge_limit_conf(void) {
     return limit;
 }
 
+static void save_night_charging_conf(int val) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.mod_dir);
+    char tmp[310];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (f) {
+        fprintf(f, "%d\n", val ? 1 : 0);
+        fclose(f);
+        rename(tmp, path);
+    }
+}
+
+static int load_night_charging_conf(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    int val = 0;
+    if (fscanf(f, "%d", &val) != 1) val = 0;
+    fclose(f);
+    return (val == 1) ? 1 : 0;
+}
+
+static void save_smart_chg_conf(int val) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.mod_dir);
+    char tmp[310];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (f) {
+        fprintf(f, "%d\n", val ? 1 : 0);
+        fclose(f);
+        rename(tmp, path);
+    }
+}
+
+static int load_smart_chg_conf(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    int val = 0;
+    if (fscanf(f, "%d", &val) != 1) val = 0;
+    fclose(f);
+    return (val == 1) ? 1 : 0;
+}
+
+static void save_protect_80_conf(int val) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.mod_dir);
+    char tmp[310];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (f) {
+        fprintf(f, "%d\n", val ? 1 : 0);
+        fclose(f);
+        rename(tmp, path);
+    }
+}
+
+static int load_protect_80_conf(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    int val = 0;
+    if (fscanf(f, "%d", &val) != 1) val = 0;
+    fclose(f);
+    return (val == 1) ? 1 : 0;
+}
+
 /* Write charge_control_limit only if it differs from current value.
  * Read-before-write prevents unnecessary sysfs churn and mi_thermald
  * re-trigger (writing same value is still a kernel write call). */
@@ -140,6 +214,8 @@ static int s_prev_effective_mode = -1;
 /* Apply the target effective mode to hardware nodes. */
 static void apply_effective_mode(int effective_mode) {
     int mode_changed = (s_prev_effective_mode != effective_mode);
+    const char *smart_str = s_smart_chg ? "1" : "0";
+    const char *night_str = s_night_charging ? "1" : "0";
 
     switch (effective_mode) {
     case CHARGE_MODE_VIOLENT:
@@ -154,20 +230,23 @@ static void apply_effective_mode(int effective_mode) {
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
+        sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_BALANCED:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_BALANCED); /* 10 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
+        sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         break;
     case CHARGE_MODE_SAFE:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_SAFE); /* 14 */
         sysfs_write(CHG_SCONFIG_NODE, "0");
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
+        sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         break;
     case CHARGE_MODE_BYPASS:
         /* Force hardware cutoff limit=16 (0 mA) AND input_suspend=1 */
@@ -179,7 +258,8 @@ static void apply_effective_mode(int effective_mode) {
         apply_suspend_if_needed(0);
         apply_limit_if_needed(s_custom_charge_limit);
         sysfs_write(CHG_SCONFIG_NODE, "0");
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
+        sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_OEM:
@@ -187,8 +267,8 @@ static void apply_effective_mode(int effective_mode) {
         /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control */
         apply_suspend_if_needed(0);
         apply_limit_if_needed(0);
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
+        sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         if (mode_changed) trigger_tcpc_pd_renegotiation();
         break;
     }
@@ -214,8 +294,14 @@ void init_charge_control(void) {
     /* Load persisted user choice from disk */
     s_user_charge_mode = load_charge_mode_conf();
     s_custom_charge_limit = load_custom_charge_limit_conf();
+    s_night_charging = load_night_charging_conf();
+    s_smart_chg = load_smart_chg_conf();
+    s_protect_80 = load_protect_80_conf();
     g_state.user_charge_mode = s_user_charge_mode;
     g_state.custom_charge_limit = s_custom_charge_limit;
+    g_state.night_charging = s_night_charging;
+    g_state.smart_chg = s_smart_chg;
+    g_state.protect_80 = s_protect_80;
     g_state.charge_mode = s_user_charge_mode;
     g_state.charge_mode_thermal_override = 0;
 
@@ -224,8 +310,8 @@ void init_charge_control(void) {
          * then leave all charging regulation 100% to OEM kernel and mi_thermald. */
         apply_suspend_if_needed(0);
         apply_limit_if_needed(0);
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", s_smart_chg ? "1" : "0");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", s_night_charging ? "1" : "0");
         s_prev_effective_mode = CHARGE_MODE_OEM;
         log_info("Charger", "Charger control init: OEM Stock (100%% kernel/ROM managed)");
         return;
@@ -234,14 +320,18 @@ void init_charge_control(void) {
     /* Apply immediately */
     apply_effective_mode(s_user_charge_mode);
 
-    log_info("Charger", "Charger control init: mode=%s (%d)",
-             charge_mode_name(s_user_charge_mode), s_user_charge_mode);
+    log_info("Charger", "Charger control init: mode=%s (%d), night_chg=%d, smart_chg=%d, protect_80=%d",
+             charge_mode_name(s_user_charge_mode), s_user_charge_mode,
+             s_night_charging, s_smart_chg, s_protect_80);
 }
 
 void enforce_charge_mode(void) {
     if (!s_nodes_available) return;
 
     g_state.user_charge_mode = s_user_charge_mode;
+    g_state.night_charging = s_night_charging;
+    g_state.smart_chg = s_smart_chg;
+    g_state.protect_80 = s_protect_80;
 
     /* In OEM Stock mode, HyperCore is strictly hands-off.
      * All charging rate, current limits, and thermal throttling are 100%
@@ -264,12 +354,11 @@ void enforce_charge_mode(void) {
     int override_active = g_state.charge_mode_thermal_override;
     time_t now = time(NULL);
 
-    /* SOC Tapering: At >= 80% SOC, taper high-speed charging down to BALANCED to protect battery longevity */
-    if (bat_cap >= CAP_FAST_LIMIT) {
-        if (s_user_charge_mode == CHARGE_MODE_FAST || s_user_charge_mode == CHARGE_MODE_VIOLENT) {
-            effective_mode = CHARGE_MODE_BALANCED;
-        } else if (s_user_charge_mode == CHARGE_MODE_CUSTOM && s_custom_charge_limit < LIMIT_BALANCED) {
-            effective_mode = CHARGE_MODE_BALANCED;
+    /* Battery Protect 80% Cap Toggle: If user enabled 80% stop limit,
+     * suspend input charging once battery capacity reaches >= 80%. */
+    if (s_protect_80 && s_user_charge_mode != CHARGE_MODE_BYPASS) {
+        if (bat_cap >= 80) {
+            effective_mode = CHARGE_MODE_BYPASS;
         }
     }
 
@@ -383,8 +472,8 @@ void set_charge_mode(int mode) {
          * then completely release control to OEM kernel/thermal engine. */
         apply_suspend_if_needed(0);
         apply_limit_if_needed(0);
-        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
-        sysfs_write("/sys/class/power_supply/battery/night_charging", "1");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
+        sysfs_write("/sys/class/power_supply/battery/night_charging", "0");
         if (s_prev_effective_mode != CHARGE_MODE_OEM) {
             trigger_tcpc_pd_renegotiation();
         }
@@ -445,4 +534,40 @@ const char *charge_mode_name(int mode) {
     case CHARGE_MODE_CUSTOM:   return "Custom Slider";
     default:                   return "Unknown";
     }
+}
+
+void set_night_charging(int enabled) {
+    s_night_charging = enabled ? 1 : 0;
+    g_state.night_charging = s_night_charging;
+    save_night_charging_conf(s_night_charging);
+    sysfs_write("/sys/class/power_supply/battery/night_charging", s_night_charging ? "1" : "0");
+    log_state("Charger", "Night charging switch -> %d", s_night_charging);
+}
+
+int get_night_charging(void) {
+    return s_night_charging;
+}
+
+void set_smart_chg(int enabled) {
+    s_smart_chg = enabled ? 1 : 0;
+    g_state.smart_chg = s_smart_chg;
+    save_smart_chg_conf(s_smart_chg);
+    sysfs_write("/sys/class/power_supply/battery/smart_chg", s_smart_chg ? "1" : "0");
+    log_state("Charger", "Smart charging switch -> %d", s_smart_chg);
+}
+
+int get_smart_chg(void) {
+    return s_smart_chg;
+}
+
+void set_protect_80(int enabled) {
+    s_protect_80 = enabled ? 1 : 0;
+    g_state.protect_80 = s_protect_80;
+    save_protect_80_conf(s_protect_80);
+    enforce_charge_mode();
+    log_state("Charger", "Protect 80%% limit switch -> %d", s_protect_80);
+}
+
+int get_protect_80(void) {
+    return s_protect_80;
 }

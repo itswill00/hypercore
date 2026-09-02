@@ -84,6 +84,9 @@ struct core_state {
     int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat                            */
     int charger_supported;            /* 1 = hardware sysfs charger control nodes detected, 0 = unsupported               */
     int custom_charge_limit;          /* Custom slider hardware limit level (0-15), default 10                            */
+    int night_charging;               /* 1 = night charging protection enabled (pauses at 80% overnight)                   */
+    int smart_chg;                    /* 1 = smart charging curve enabled                                                  */
+    int protect_80;                   /* 1 = stop charging at 80% capacity limit                                           */
 };
 
 extern volatile sig_atomic_t g_running;

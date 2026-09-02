@@ -4,16 +4,15 @@
 
 ### ⚡ 100% Hands-off OEM Stock Architecture
 - **Complete Decoupling**: Completely decoupled OEM Stock mode from daemon periodic loops (zero sysfs writes on background ticks), restoring full thermal throttling authority to Xiaomi HyperOS kernel and native `mi_thermald`.
-- **One-time Transition Baseline**: Smoothly restores hardware defaults (`input_suspend=0`, `charge_control_limit=0`, `smart_chg=1`, `night_charging=1`) once upon entering OEM Stock without interfering with `sconfig`.
+- **One-time Transition Baseline**: Restores hardware defaults (`input_suspend=0`, `charge_control_limit=0`, `smart_chg=0`, `night_charging=0`) once upon entering OEM Stock, ensuring zero artificial 80% cutoff.
 
 ### ⚡ Dual-Control Charging System (Presets & Precision Slider)
 - **Interactive Precision Slider**: Added customizable hardware charging limit slider (levels 0–15, ~500mA to ~4,500mA) with live wattage/amperage feedback and quick-jump pills.
 - **Segmented Control Interface**: Seamless switching between curated preset profiles (OEM Stock, Fast, Balanced, Safe, Bypass, Violent) and custom precision slider control.
-- **Unified Thermal & SOC Protection**: Custom slider limits remain protected by the 45°C stepped cooling ladder, 50°C emergency cutoff, and 80% SOC longevity tapering.
+- **Full-Spectrum Charging (100% Cap)**: Completely removed artificial 80% cutoff, allowing unrestricted charging all the way to 100% while guarded by the 45°C thermal safety ladder and 50°C emergency cutoff.
 
 ### ⚡ Charger Control Remapping & OEM Cable Calibration
 - **Remapped Charging Limits**: Updated `LIMIT_BALANCED` to Level 10 (~2.3A / 9.3W) for cool active gaming/usage, and `LIMIT_SAFE` to Level 14 (~0.73A / 2.8W) for reliable overnight and GPS charging based on empirical OEM cable testing.
-- **Automatic 80% SOC Tapering**: Added automatic speed tapering from Fast/Violent modes down to Balanced mode when battery capacity reaches >=80% to protect cell health.
 - **TCPC PD Re-negotiation**: Enhanced `apply_effective_mode()` so TCPC CC-pin pulse re-handshake triggers reliably on mode transitions.
 - **WebUI Stats Sync**: Updated `ChargerView.vue` UI labels, estimated current, and estimated power numbers to match empirical hardware readings.
 

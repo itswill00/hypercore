@@ -164,12 +164,15 @@ static void process_client(int client_fd) {
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
             "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
-            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
+            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
+            "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
+            "\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
             getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
             bat_health, bat_status, bat_tech,
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.custom_charge_limit,
+            g_state.night_charging, g_state.smart_chg, g_state.protect_80,
             g_state.charge_mode_thermal_override, g_state.charger_supported);
 
         write(client_fd, json, strlen(json));
@@ -236,16 +239,64 @@ static void process_client(int client_fd) {
                 limit, g_state.charger_supported);
             write(client_fd, res, strlen(res));
         }
+    } else if (strncmp(req, "SET_NIGHT_CHARGING:", 19) == 0) {
+        int val = atoi(req + 19);
+        set_night_charging(val ? 1 : 0);
+        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+        if (cpu_temp > 1000) cpu_temp /= 1000;
+        if (bat_temp > 1000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
+        update_status_json_file(cpu_temp, bat_temp);
+
+        char res[256];
+        snprintf(res, sizeof(res),
+            "{\"status\":\"ok\",\"night_charging\":%d}\n",
+            g_state.night_charging);
+        write(client_fd, res, strlen(res));
+    } else if (strncmp(req, "SET_SMART_CHG:", 14) == 0) {
+        int val = atoi(req + 14);
+        set_smart_chg(val ? 1 : 0);
+        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+        if (cpu_temp > 1000) cpu_temp /= 1000;
+        if (bat_temp > 1000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
+        update_status_json_file(cpu_temp, bat_temp);
+
+        char res[256];
+        snprintf(res, sizeof(res),
+            "{\"status\":\"ok\",\"smart_chg\":%d}\n",
+            g_state.smart_chg);
+        write(client_fd, res, strlen(res));
+    } else if (strncmp(req, "SET_PROTECT_80:", 15) == 0) {
+        int val = atoi(req + 15);
+        set_protect_80(val ? 1 : 0);
+        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+        if (cpu_temp > 1000) cpu_temp /= 1000;
+        if (bat_temp > 1000) bat_temp /= 1000;
+        else if (bat_temp > 100) bat_temp /= 10;
+        update_status_json_file(cpu_temp, bat_temp);
+
+        char res[256];
+        snprintf(res, sizeof(res),
+            "{\"status\":\"ok\",\"protect_80\":%d}\n",
+            g_state.protect_80);
+        write(client_fd, res, strlen(res));
     } else if (strncmp(req, "GET_CHARGE_MODE", 15) == 0) {
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
         if (bat_temp > 1000) bat_temp /= 1000;
         else if (bat_temp > 100) bat_temp /= 10;
-        char res[256];
+        char res[320];
         snprintf(res, sizeof(res),
             "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
-            "\"custom_limit\":%d,\"charge_thermal_override\":%d,\"charger_supported\":%d,\"bat_temp\":%d}\n",
+            "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
+            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"bat_temp\":%d}\n",
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-            g_state.custom_charge_limit, g_state.charge_mode_thermal_override,
+            g_state.custom_charge_limit,
+            g_state.night_charging, g_state.smart_chg, g_state.protect_80,
+            g_state.charge_mode_thermal_override,
             g_state.charger_supported, bat_temp);
         write(client_fd, res, strlen(res));
     } else {
@@ -338,11 +389,14 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
         "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
-        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
+        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
+        "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
+        "\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
         getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
         g_state.is_charging, gpu_load, bat_cycles,
         g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
         g_state.custom_charge_limit,
+        g_state.night_charging, g_state.smart_chg, g_state.protect_80,
         g_state.charge_mode_thermal_override, g_state.charger_supported);
 
     const char *paths[] = {
