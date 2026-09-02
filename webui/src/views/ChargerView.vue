@@ -152,19 +152,37 @@
           </div>
         </div>
 
-        <!-- Custom MD3 Range Slider -->
+        <!-- Custom MD3 Range Slider with Precision Stepper -->
         <div class="slider-track-box">
-          <div class="slider-input-container">
-            <input
-              type="range"
-              min="0"
-              :max="sliderSteps.length - 1"
-              step="1"
-              v-model.number="sliderValue"
-              @input="onSliderInput"
-              class="md3-range-slider"
-              :disabled="!store.chargerSupported"
-            />
+          <div class="slider-control-row">
+            <button
+              class="step-arrow-btn"
+              :disabled="sliderValue <= 0 || !store.chargerSupported"
+              @click="stepDown"
+              title="Step down"
+            >
+              −
+            </button>
+            <div class="slider-input-container">
+              <input
+                type="range"
+                min="0"
+                :max="sliderSteps.length - 1"
+                step="1"
+                v-model.number="sliderValue"
+                @input="onSliderInput"
+                class="md3-range-slider"
+                :disabled="!store.chargerSupported"
+              />
+            </div>
+            <button
+              class="step-arrow-btn"
+              :disabled="sliderValue >= sliderSteps.length - 1 || !store.chargerSupported"
+              @click="stepUp"
+              title="Step up"
+            >
+              +
+            </button>
           </div>
           <div class="slider-axis-labels">
             <span>Slow (~0.5A)</span>
@@ -307,40 +325,36 @@ const showViolentModal = ref(false)
 const activeControlTab = ref(store.chargeMode === 6 ? 'slider' : 'presets')
 
 const sliderSteps = [
-  { step: 0, limit: 15, current: '~500 mA', power: '~2.0 W', label: 'Ultra Trickle', tag: 'Safe', color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
-  { step: 1, limit: 14, current: '~750 mA', power: '~2.8 W', label: 'Gentle Overnight', tag: 'Safe', color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
-  { step: 2, limit: 13, current: '~1,200 mA', power: '~4.7 W', label: 'Cool Steady', tag: 'Gentle', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
-  { step: 3, limit: 12, current: '~1,600 mA', power: '~6.3 W', label: 'Mild Balance', tag: 'Cool', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
-  { step: 4, limit: 11, current: '~2,000 mA', power: '~8.0 W', label: 'Efficient Daily', tag: 'Normal', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
-  { step: 5, limit: 10, current: '~2,300 mA', power: '~9.3 W', label: 'Balanced Sweetspot', tag: 'Balanced', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
-  { step: 6, limit: 8,  current: '~2,800 mA', power: '~11.3 W', label: 'Express Flow', tag: 'Warm', color: '#ffb74d', bgColor: 'rgba(255, 183, 77, 0.14)' },
-  { step: 7, limit: 6,  current: '~3,200 mA', power: '~13.1 W', label: 'High Speed', tag: 'Fast', color: '#ffa726', bgColor: 'rgba(255, 167, 38, 0.14)' },
-  { step: 8, limit: 4,  current: '~3,700 mA', power: '~15.2 W', label: 'Turbo Rate', tag: 'Hot', color: '#ff7043', bgColor: 'rgba(255, 112, 67, 0.14)' },
-  { step: 9, limit: 0,  current: '~4,500 mA', power: '~18.5 W+', label: 'Unrestricted Max', tag: 'Peak', color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.15)' }
+  { step: 0,  limit: 15, current: '~500 mA',  power: '~2.0 W',  label: 'Trickle Minimum',   tag: 'Safe',     color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
+  { step: 1,  limit: 14, current: '~750 mA',  power: '~2.8 W',  label: 'Gentle Overnight',  tag: 'Safe',     color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
+  { step: 2,  limit: 13, current: '~1,200 mA', power: '~4.7 W', label: 'Cool Steady',       tag: 'Gentle',   color: 'var(--primary)',  bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 3,  limit: 12, current: '~1,600 mA', power: '~6.3 W', label: 'Mild Steady',       tag: 'Cool',     color: 'var(--primary)',  bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 4,  limit: 11, current: '~2,000 mA', power: '~8.0 W', label: 'Daily Efficient',   tag: 'Normal',   color: 'var(--primary)',  bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 5,  limit: 10, current: '~2,300 mA', power: '~9.3 W', label: 'Balanced Sweetspot',tag: 'Balanced', color: 'var(--primary)', bgColor: 'rgba(120, 180, 255, 0.12)' },
+  { step: 6,  limit: 9,  current: '~2,550 mA', power: '~10.3 W', label: 'Balanced Boost',   tag: 'Warm',     color: '#ffb74d',         bgColor: 'rgba(255, 183, 77, 0.14)' },
+  { step: 7,  limit: 8,  current: '~2,800 mA', power: '~11.3 W', label: 'Express Flow',     tag: 'Warm',     color: '#ffb74d',         bgColor: 'rgba(255, 183, 77, 0.14)' },
+  { step: 8,  limit: 7,  current: '~3,000 mA', power: '~12.2 W', label: 'Express Boost',    tag: 'Fast',     color: '#ffa726',         bgColor: 'rgba(255, 167, 38, 0.14)' },
+  { step: 9,  limit: 6,  current: '~3,200 mA', power: '~13.1 W', label: 'High Speed',       tag: 'Fast',     color: '#ffa726',         bgColor: 'rgba(255, 167, 38, 0.14)' },
+  { step: 10, limit: 5,  current: '~3,450 mA', power: '~14.1 W', label: 'Turbo Flow',       tag: 'Fast+',    color: '#ff9800',         bgColor: 'rgba(255, 152, 0, 0.14)' },
+  { step: 11, limit: 4,  current: '~3,700 mA', power: '~15.2 W', label: 'Turbo Rate',       tag: 'Hot',      color: '#ff7043',         bgColor: 'rgba(255, 112, 67, 0.14)' },
+  { step: 12, limit: 3,  current: '~3,900 mA', power: '~16.0 W', label: 'Peak Flow',        tag: 'Hot+',     color: '#ff5722',         bgColor: 'rgba(255, 87, 34, 0.14)' },
+  { step: 13, limit: 2,  current: '~4,100 mA', power: '~16.9 W', label: 'Extreme Rate',     tag: 'Peak',     color: '#f4511e',         bgColor: 'rgba(244, 81, 30, 0.14)' },
+  { step: 14, limit: 1,  current: '~4,300 mA', power: '~17.7 W', label: 'Ultra Peak',       tag: 'Peak',     color: '#e53935',         bgColor: 'rgba(229, 57, 53, 0.15)' },
+  { step: 15, limit: 0,  current: '~4,500 mA', power: '~18.5 W+',label: 'Max Unrestricted', tag: 'Max',      color: '#d32f2f',         bgColor: 'rgba(211, 47, 47, 0.15)' }
 ]
 
 const quickPills = [
   { name: 'Trickle', rate: '0.5A', step: 0 },
-  { name: 'Cool', rate: '1.6A', step: 3 },
-  { name: 'Balanced', rate: '2.3A', step: 5 },
-  { name: 'High', rate: '3.2A', step: 7 },
-  { name: 'Max', rate: '4.5A', step: 9 }
+  { name: 'Cool',    rate: '1.6A', step: 3 },
+  { name: 'Balanced',rate: '2.3A', step: 5 },
+  { name: 'High',    rate: '3.2A', step: 9 },
+  { name: 'Max',     rate: '4.5A', step: 15 }
 ]
 
 const currentStepIndex = computed(() => {
   const lim = store.customLimit
   const foundIdx = sliderSteps.findIndex(s => s.limit === lim)
-  if (foundIdx !== -1) return foundIdx
-  let closest = 5
-  let minDiff = 999
-  sliderSteps.forEach((s, idx) => {
-    const diff = Math.abs(s.limit - lim)
-    if (diff < minDiff) {
-      minDiff = diff
-      closest = idx
-    }
-  })
-  return closest
+  return foundIdx !== -1 ? foundIdx : 5
 })
 
 const sliderValue = ref(currentStepIndex.value)
@@ -368,16 +382,29 @@ function onSliderInput() {
   clearTimeout(sliderDebounceTimer)
   sliderDebounceTimer = setTimeout(async () => {
     await store.setCustomLimit(stepObj.limit)
-    if (toast) toast(`Charging target set to ${stepObj.current} (${stepObj.label})`)
+    if (toast) toast(`Charging target: Level ${stepObj.limit} · ${stepObj.current}`)
   }, 180)
 }
 
 async function setSliderStep(stepIdx) {
+  if (stepIdx < 0 || stepIdx >= sliderSteps.length) return
   sliderValue.value = stepIdx
   const stepObj = sliderSteps[stepIdx]
   if (!stepObj) return
   await store.setCustomLimit(stepObj.limit)
-  if (toast) toast(`Charging target set to ${stepObj.current} (${stepObj.label})`)
+  if (toast) toast(`Charging target: Level ${stepObj.limit} · ${stepObj.current}`)
+}
+
+function stepDown() {
+  if (sliderValue.value > 0) {
+    setSliderStep(sliderValue.value - 1)
+  }
+}
+
+function stepUp() {
+  if (sliderValue.value < sliderSteps.length - 1) {
+    setSliderStep(sliderValue.value + 1)
+  }
 }
 
 const modes = [
@@ -640,6 +667,42 @@ onUnmounted(() => {
 
 .slider-input-container {
   width: 100%;
+}
+
+.slider-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.step-arrow-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 50%;
+  color: var(--on-surface);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.step-arrow-btn:active:not(:disabled) {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  transform: scale(0.92);
+}
+
+.step-arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .md3-range-slider {
