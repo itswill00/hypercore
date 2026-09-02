@@ -207,7 +207,7 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: auto;
   box-sizing: border-box;
-  padding: 8px 12px calc(72px + var(--window-inset-bottom, 0px)) 12px;
+  padding: 8px 12px calc(92px + var(--window-inset-bottom, 0px)) 12px;
   scrollbar-width: thin;
   scrollbar-color: var(--surface-container-highest) transparent;
 }

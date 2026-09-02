@@ -137,7 +137,7 @@ onUnmounted(() => {
 <style scoped>
 .toast-pill {
   position: fixed;
-  bottom: 76px;
+  bottom: calc(88px + var(--window-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   background: var(--surface-container-highest);
