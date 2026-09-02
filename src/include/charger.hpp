@@ -31,6 +31,19 @@ void enforce_charge_mode(void);
 void set_charge_mode(int mode);
 
 /*
+ * set_custom_charge_limit(limit_level)
+ *   Set custom hardware limit level (0-15) via slider, persist to disk,
+ *   activate CHARGE_MODE_CUSTOM, and immediately apply.
+ */
+void set_custom_charge_limit(int limit_level);
+
+/*
+ * get_custom_charge_limit()
+ *   Return current custom slider limit level (0-15).
+ */
+int get_custom_charge_limit(void);
+
+/*
  * get_charge_mode()
  *   Return the current effective mode (may differ from user selection if
  *   thermal override is active).

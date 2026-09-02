@@ -32,10 +32,11 @@
 #define CAP_FAST_LIMIT        80   /* >= 80%:  drop FAST to BALANCED              */
 
 /* Module-level state */
-static int s_nodes_available  = 0;  /* 1 if charger nodes exist on this device */
-static int s_user_charge_mode = CHARGE_MODE_OEM;  /* user's persistent choice   */
-static int s_thermal_step     = 0;  /* 0=User mode, 1=Balanced step, 2=Safe step, 3=Bypass cutoff */
-static time_t s_last_step_time = 0; /* timestamp of last thermal ladder step change */
+static int s_nodes_available     = 0;  /* 1 if charger nodes exist on this device */
+static int s_user_charge_mode    = CHARGE_MODE_OEM;  /* user's persistent choice   */
+static int s_custom_charge_limit = LIMIT_BALANCED;   /* custom slider hardware limit (0-15), default 10 */
+static int s_thermal_step        = 0;  /* 0=User mode, 1=Balanced step, 2=Safe step, 3=Bypass cutoff */
+static time_t s_last_step_time   = 0;  /* timestamp of last thermal ladder step change */
 
 /* Helper: map thermal ladder step to effective charge mode */
 static int get_mode_for_step(int user_mode, int step) {
@@ -43,6 +44,11 @@ static int get_mode_for_step(int user_mode, int step) {
     if (user_mode == CHARGE_MODE_SAFE) {
         /* Safe mode (3) should never be promoted to Balanced mode (2) when overheating */
         return (step >= 2) ? CHARGE_MODE_BYPASS : CHARGE_MODE_SAFE;
+    }
+    if (user_mode == CHARGE_MODE_CUSTOM) {
+        if (step >= 3) return CHARGE_MODE_BYPASS;
+        if (step == 2) return CHARGE_MODE_SAFE;
+        return (s_custom_charge_limit < LIMIT_BALANCED) ? CHARGE_MODE_BALANCED : CHARGE_MODE_SAFE;
     }
     if (step == 1) return CHARGE_MODE_BALANCED;
     if (step == 2) return CHARGE_MODE_SAFE;
@@ -74,8 +80,33 @@ static int load_charge_mode_conf(void) {
     int mode = CHARGE_MODE_OEM;
     if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
     fclose(f);
-    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_VIOLENT) mode = CHARGE_MODE_OEM;
+    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) mode = CHARGE_MODE_OEM;
     return mode;
+}
+
+static void save_custom_charge_limit_conf(int limit) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
+    char tmp[310];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
+    if (f) {
+        fprintf(f, "%d\n", limit);
+        fclose(f);
+        rename(tmp, path);
+    }
+}
+
+static int load_custom_charge_limit_conf(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (!f) return LIMIT_BALANCED;
+    int limit = LIMIT_BALANCED;
+    if (fscanf(f, "%d", &limit) != 1) limit = LIMIT_BALANCED;
+    fclose(f);
+    if (limit < 0 || limit > 15) limit = LIMIT_BALANCED;
+    return limit;
 }
 
 /* Write charge_control_limit only if it differs from current value.
@@ -144,6 +175,13 @@ static void apply_effective_mode(int effective_mode) {
         apply_suspend_if_needed(1);
         sysfs_write(CHG_SCONFIG_NODE, "0");
         break;
+    case CHARGE_MODE_CUSTOM:
+        apply_suspend_if_needed(0);
+        apply_limit_if_needed(s_custom_charge_limit);
+        sysfs_write(CHG_SCONFIG_NODE, "0");
+        sysfs_write("/sys/class/power_supply/battery/smart_chg", "1");
+        if (mode_changed) trigger_tcpc_pd_renegotiation();
+        break;
     case CHARGE_MODE_OEM:
     default:
         /* Restore hardware nodes to OEM baseline defaults so ROM takes back full control */
@@ -175,7 +213,9 @@ void init_charge_control(void) {
 
     /* Load persisted user choice from disk */
     s_user_charge_mode = load_charge_mode_conf();
+    s_custom_charge_limit = load_custom_charge_limit_conf();
     g_state.user_charge_mode = s_user_charge_mode;
+    g_state.custom_charge_limit = s_custom_charge_limit;
     g_state.charge_mode = s_user_charge_mode;
     g_state.charge_mode_thermal_override = 0;
 
@@ -224,9 +264,13 @@ void enforce_charge_mode(void) {
     int override_active = g_state.charge_mode_thermal_override;
     time_t now = time(NULL);
 
-    /* SOC Tapering: At >= 80% SOC, taper FAST/VIOLENT down to BALANCED to protect battery longevity */
-    if ((s_user_charge_mode == CHARGE_MODE_FAST || s_user_charge_mode == CHARGE_MODE_VIOLENT) && bat_cap >= CAP_FAST_LIMIT) {
-        effective_mode = CHARGE_MODE_BALANCED;
+    /* SOC Tapering: At >= 80% SOC, taper high-speed charging down to BALANCED to protect battery longevity */
+    if (bat_cap >= CAP_FAST_LIMIT) {
+        if (s_user_charge_mode == CHARGE_MODE_FAST || s_user_charge_mode == CHARGE_MODE_VIOLENT) {
+            effective_mode = CHARGE_MODE_BALANCED;
+        } else if (s_user_charge_mode == CHARGE_MODE_CUSTOM && s_custom_charge_limit < LIMIT_BALANCED) {
+            effective_mode = CHARGE_MODE_BALANCED;
+        }
     }
 
     /* --- Safety Override Logic --- */
@@ -318,7 +362,7 @@ void enforce_charge_mode(void) {
 }
 
 void set_charge_mode(int mode) {
-    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_VIOLENT) {
+    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) {
         log_warn("Charger", "set_charge_mode: invalid mode %d ignored", mode);
         return;
     }
@@ -356,6 +400,36 @@ void set_charge_mode(int mode) {
     log_state("Charger", "Charge mode -> %s (%d) via IPC", charge_mode_name(mode), mode);
 }
 
+void set_custom_charge_limit(int limit_level) {
+    if (limit_level < 0 || limit_level > 15) {
+        log_warn("Charger", "set_custom_charge_limit: invalid limit %d ignored", limit_level);
+        return;
+    }
+    if (!s_nodes_available) {
+        log_warn("Charger", "set_custom_charge_limit: charger nodes not available on this device");
+        return;
+    }
+
+    s_custom_charge_limit = limit_level;
+    s_user_charge_mode = CHARGE_MODE_CUSTOM;
+    s_thermal_step = 0;        /* reset thermal ladder step on manual user choice */
+    s_last_step_time = 0;
+    g_state.user_charge_mode = CHARGE_MODE_CUSTOM;
+    g_state.custom_charge_limit = limit_level;
+    g_state.charge_mode_thermal_override = 0;
+    save_charge_mode_conf(CHARGE_MODE_CUSTOM);
+    save_custom_charge_limit_conf(limit_level);
+
+    /* Apply immediately */
+    enforce_charge_mode();
+
+    log_state("Charger", "Charge limit set to level %d via Custom Slider", limit_level);
+}
+
+int get_custom_charge_limit(void) {
+    return s_custom_charge_limit;
+}
+
 int get_charge_mode(void) {
     return g_state.charge_mode;
 }
@@ -368,6 +442,7 @@ const char *charge_mode_name(int mode) {
     case CHARGE_MODE_SAFE:     return "Safe Mode";
     case CHARGE_MODE_BYPASS:   return "Bypass Mode";
     case CHARGE_MODE_VIOLENT:  return "Violent Charge";
+    case CHARGE_MODE_CUSTOM:   return "Custom Slider";
     default:                   return "Unknown";
     }
 }

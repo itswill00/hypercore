@@ -38,6 +38,7 @@ typedef enum {
     CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=14 (~0.73A / ~2.8W) */
     CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA) */
     CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + sconfig=10 + smart_chg=0 (19-33W) */
+    CHARGE_MODE_CUSTOM   = 6,  /* Custom user-defined limit via slider (level 0-15) */
 } charge_mode_t;
 
 extern const char *g_profile_names[];
@@ -78,10 +79,11 @@ struct core_state {
     int jitter_rescue_ticks;
     int prev_load;
     int is_charging;
-    int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent) */
+    int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent 6=Custom) */
     int charge_mode;                  /* CHARGE_MODE_* currently active on hardware (effective mode)                      */
     int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat                            */
     int charger_supported;            /* 1 = hardware sysfs charger control nodes detected, 0 = unsupported               */
+    int custom_charge_limit;          /* Custom slider hardware limit level (0-15), default 10                            */
 };
 
 extern volatile sig_atomic_t g_running;

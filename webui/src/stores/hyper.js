@@ -42,7 +42,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const batTech = ref('Li-poly')
 
   /* Charger Control */
-  const chargeMode = ref(0)              /* CHARGE_MODE_* (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent) */
+  const chargeMode = ref(0)              /* CHARGE_MODE_* (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent 6=Custom) */
+  const customLimit = ref(10)            /* Custom slider level (0-15), default 10 */
   const chargeModeOverride = ref(false)  /* true = daemon overrode user choice due to heat */
   const chargerSupported = ref(true)     /* true = device has required charger sysfs nodes */
   const chargeCurrentMa = ref(0)         /* real-time mA from current_now */
@@ -273,6 +274,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
           if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
           if (typeof ipcData.charge_mode !== 'undefined') chargeMode.value = ipcData.charge_mode
+          if (typeof ipcData.custom_limit !== 'undefined') customLimit.value = ipcData.custom_limit
           if (typeof ipcData.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!ipcData.charge_thermal_override
           if (typeof ipcData.charger_supported !== 'undefined') chargerSupported.value = !!ipcData.charger_supported
           ipcSetThermal = true
@@ -471,6 +473,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         try {
           const cm = JSON.parse(kv.CM.substring(kv.CM.indexOf('{')))
           if (typeof cm.charge_mode !== 'undefined') chargeMode.value = cm.charge_mode
+          if (typeof cm.custom_limit !== 'undefined') customLimit.value = cm.custom_limit
           if (typeof cm.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!cm.charge_thermal_override
           if (typeof cm.charger_supported !== 'undefined') chargerSupported.value = !!cm.charger_supported
         } catch {}
@@ -500,11 +503,49 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         try {
           const data = JSON.parse(res.substring(res.indexOf('{')))
           if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
+          if (typeof data.custom_limit !== 'undefined') customLimit.value = data.custom_limit
           if (typeof data.charger_supported !== 'undefined') chargerSupported.value = !!data.charger_supported
         } catch {}
       }
 
       /* 4. Wait 200ms for daemon to flush status.json before running pollCharger to avoid stale race condition */
+      await new Promise(r => setTimeout(r, 200))
+      await pollCharger()
+      return res
+    } catch (e) {
+      return 'error'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function setCustomLimit(limit) {
+    loading.value = true
+    try {
+      const l = parseInt(limit)
+      if (isNaN(l) || l < 0 || l > 15) return 'invalid'
+
+      /* 1. Persist to charge_mode.conf (mode 6) and custom_charge_limit.conf */
+      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo 6 > $MOD/charge_mode.conf 2>/dev/null; echo ${l} > $MOD/custom_charge_limit.conf 2>/dev/null || echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
+      execCommand(diskCmd).catch(() => {})
+
+      /* 2. Send SET_CHARGE_LIMIT IPC */
+      const ipcCmd = `MOD="/data/adb/modules/hypercore"; echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
+      const res = await execCommand(ipcCmd)
+
+      chargeMode.value = 6
+      customLimit.value = l
+      chargeModeOverride.value = false
+
+      if (res && res.includes('"status":"ok"')) {
+        try {
+          const data = JSON.parse(res.substring(res.indexOf('{')))
+          if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
+          if (typeof data.custom_limit !== 'undefined') customLimit.value = data.custom_limit
+          if (typeof data.charger_supported !== 'undefined') chargerSupported.value = !!data.charger_supported
+        } catch {}
+      }
+
       await new Promise(r => setTimeout(r, 200))
       await pollCharger()
       return res
@@ -689,13 +730,13 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
-    chargeMode, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
+    chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
     usbVoltMv, usbType, isNonOemCable,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,
     refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
     addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker,
-    startCardPolling, stopCardPolling, pollCharger, setChargeMode
+    startCardPolling, stopCardPolling, pollCharger, setChargeMode, setCustomLimit
   }
 })
