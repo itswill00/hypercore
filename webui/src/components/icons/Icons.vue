@@ -166,6 +166,10 @@
       <line x1="17" y1="16" x2="23" y2="16" />
     </g>
 
+    <g v-else-if="name === 'moon' || name === 'night'">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </g>
+
     <g v-else-if="name === 'grid' || name === 'presets'">
       <rect x="3" y="3" width="7" height="7" />
       <rect x="14" y="3" width="7" height="7" />
