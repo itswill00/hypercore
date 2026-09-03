@@ -457,7 +457,6 @@ int main(int argc, char *argv[]) {
         s_prev_cpu_temp = cpu_temp;
 
         static int s_prev_gpu_heavy = -1;
-        static int s_prev_app_boost = 0;
         int is_gpu_heavy = (gpu_load >= 20);
 
         /* Rate-limit anti-tamper audit to every 5 ticks (≈5s) to avoid reading
@@ -496,10 +495,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
-            g_state.app_boost_ticks != s_prev_app_boost || is_tampered ||
+            is_tampered ||
             ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && is_gpu_heavy != s_prev_gpu_heavy)) {
             s_prev_gpu_heavy = is_gpu_heavy;
-            s_prev_app_boost = g_state.app_boost_ticks;
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
@@ -523,10 +521,6 @@ int main(int argc, char *argv[]) {
             apply_profile(next_profile, thermal_tier, gpu_load);
             g_state.current_profile = next_profile;
             g_state.thermal_tier = thermal_tier;
-        }
-
-        if (g_state.current_profile == PROFILE_Interactive) {
-            enforce_interactive_gpu_polling(50);
         }
 
         tune_memory_pressure();
