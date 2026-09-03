@@ -18,6 +18,10 @@
 - **Clean Tactile Micro-Interactions**: Clean unboxed inactive icons, tactile scale micro-interactions on press (`scale(0.92)`), and refined active indicator pill states.
 - **Safe-Area Content Insets**: Dynamically adapted page bottom padding and floating toast notifications to clear navigation bounds gracefully across all screen sizes.
 
+### 🔋 Genuine BMS Battery Cycle Auto-Correction & Health Guard
+- **Automatic Kernel Node Healing**: Automatically detects erratic auth-chip signatures (e.g. 5662) or multiplied sub-cycles in `/sys/class/power_supply/battery/cycle_count` and immediately overwrites them with genuine hardware Coulomb counter values from the physical PMIC BMS (`bms/cycle_count`).
+- **Natural Cycle Progression**: Incrementally tracks real cycle increments (+1) from the hardware gauge, persisting verified cycles across device reboots and preventing sudden Battery Health degradation in Android OS and third-party monitoring apps.
+
 ### 🔤 System Typography Normalization
 - **Native System Font Stack**: Normalized global typography to inherit Android's native system font stack (`system-ui, -apple-system, Roboto, BlinkMacSystemFont, 'Segoe UI', sans-serif`).
 - **Tabular Numeric Formatting**: Replaced generic monospace fonts on all status badges, stat chips, package names, and charging metrics with `font-variant-numeric: tabular-nums` for crisp, natural alignment. Monospace strictly reserved for the UNIX terminal activity log.
