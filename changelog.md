@@ -28,6 +28,11 @@
 - **GPU Thermal Ceiling**: Set Mali-G57 GPU ceiling to 648 MHz (with 80% load threshold) in Interactive profile, cutting GPU video decoding heat by over 35% during Instagram Reels and TikTok playback.
 - **Daemon Loop Desensitization**: Eliminated redundant `apply_profile()` re-executions on app boost countdowns, eliminating daemon CPU overhead.
 
+### 🎮 Precision Foreground Game Detection & Auto-Switching
+- **Expanded Top-App Cgroup Scanning**: Removed rigid 3-PID scan limit that prematurely terminated scans before user-space game processes (which typically reside at PID index 4+ beneath system_server and input methods), expanding coverage up to 64 PIDs with self and daemon PID skipping.
+- **Accurate Game PID Tracking**: Directly captured genuine foreground game process IDs for instantaneous process death detection and zero-latency rollback to Interactive upon game exit.
+- **Fail-Safe OEM Fallback**: Restored rate-limited window focus verification (`dumpsys window`) to ensure 100% reliable detection under proprietary Game Turbo and multi-window environments.
+
 ### 🔤 System Typography Normalization
 - **Native System Font Stack**: Normalized global typography to inherit Android's native system font stack (`system-ui, -apple-system, Roboto, BlinkMacSystemFont, 'Segoe UI', sans-serif`).
 - **Tabular Numeric Formatting**: Replaced generic monospace fonts on all status badges, stat chips, package names, and charging metrics with `font-variant-numeric: tabular-nums` for crisp, natural alignment. Monospace strictly reserved for the UNIX terminal activity log.

@@ -135,6 +135,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
         MOD_TARGET=\"/data/adb/modules/hypercore\"
         if [ -d \"\$MOD_TARGET\" ]; then
             mkdir -p \$MOD_TARGET/system/bin
+            rm -f \$MOD_TARGET/system/bin/libhypercore.so
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
             [ -f system/bin/hypercore-bugreport ] && cp system/bin/hypercore-bugreport \$MOD_TARGET/system/bin/hypercore-bugreport
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
