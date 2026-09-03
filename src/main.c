@@ -272,9 +272,10 @@ static int get_top_app_pid(void) {
     /* Prefer cgroup.procs over tasks to filter out system_server thread workers */
     const char *sources[] = {
         "/dev/cpuset/top-app/cgroup.procs",
-        "/dev/cpuset/top-app/tasks",
+        "/sys/fs/cgroup/top-app/cgroup.procs",
         NULL
     };
+    pid_t self_pid = getpid();
     for (int s = 0; sources[s]; s++) {
         FILE *f = fopen(sources[s], "r");
         if (!f) continue;
@@ -282,12 +283,27 @@ static int get_top_app_pid(void) {
         int pid = 0;
         while (fgets(line, sizeof(line), f)) {
             int candidate = atoi(line);
-            if (candidate <= 100) continue;
+            if (candidate <= 100 || candidate == self_pid) continue;
             char cpath[64];
             snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", candidate);
-            if (access(cpath, F_OK) == 0) {
-                pid = candidate;
-                break;
+            int cfd = open(cpath, O_RDONLY | O_CLOEXEC);
+            if (cfd >= 0) {
+                char cmd[128];
+                ssize_t n = read(cfd, cmd, sizeof(cmd) - 1);
+                close(cfd);
+                if (n > 0) {
+                    cmd[n] = '\0';
+                    /* Skip Android system services and input methods */
+                    if (strncmp(cmd, "system_server", 13) == 0 ||
+                        strncmp(cmd, "/system/", 8) == 0 ||
+                        strncmp(cmd, "/vendor/", 8) == 0 ||
+                        strstr(cmd, "inputmethod") != NULL ||
+                        strstr(cmd, "libhypercore") != NULL) {
+                        continue;
+                    }
+                    pid = candidate;
+                    break;
+                }
             }
         }
         fclose(f);
@@ -381,7 +397,8 @@ int main(int argc, char *argv[]) {
 
         char active_game[128] = "";
         profile_t custom_profile = PROFILE_Gaming;
-        int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile);
+        int game_pid = 0;
+        int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile, &game_pid);
 
         int current_top_pid = get_top_app_pid();
         static int s_prev_top_pid = 0;
@@ -404,7 +421,7 @@ int main(int argc, char *argv[]) {
         static profile_t s_last_game_profile = PROFILE_Interactive;
 
         if (game_active) {
-            s_last_game_pid = current_top_pid;
+            if (game_pid > 0) s_last_game_pid = game_pid;
             s_game_absent_ticks = 0;
             if (!s_prev_game_active) {
                 set_read_ahead("512");

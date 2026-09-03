@@ -128,9 +128,10 @@ void check_gamelist_inotify(void) {
     }
 }
 
-int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile) {
+int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile, int *out_game_pid) {
     if (out_game_name && max_len > 0) out_game_name[0] = '\0';
     if (out_profile) *out_profile = PROFILE_Gaming;
+    if (out_game_pid) *out_game_pid = 0;
 
     check_gamelist_inotify();
 
@@ -149,6 +150,8 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         NULL
     };
 
+    pid_t self_pid = getpid();
+
     for (int p = 0; procs_paths[p]; p++) {
         FILE *fp = fopen(procs_paths[p], "r");
         if (!fp) continue;
@@ -163,10 +166,10 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
             s_lens_cached = 1;
         }
 
-        /* Cap at 3 PIDs: the active foreground window PID always appears at the top of top-app cgroup */
-        while (fgets(line_str, sizeof(line_str), fp) && pid_scanned < 3) {
+        /* Scan up to 64 PIDs: the active foreground app PID appears in top-app cgroup */
+        while (fgets(line_str, sizeof(line_str), fp) && pid_scanned < 64) {
             int pid = atoi(line_str);
-            if (pid <= 0) continue;
+            if (pid <= 100 || pid == self_pid) continue;
             pid_scanned++;
 
             char cmdpath[64];
@@ -196,11 +199,41 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
                     if (out_profile) {
                         *out_profile = s_profiles[i];
                     }
+                    if (out_game_pid) {
+                        *out_game_pid = pid;
+                    }
                     return 1;
                 }
             }
         }
         fclose(fp);
+    }
+
+    /* Rate-limited dumpsys window fallback scan (every 3s) for OEM game spaces (e.g. Game Turbo) */
+    static time_t s_last_dumpsys = 0;
+    time_t now_ds = time(NULL);
+    if (now_ds - s_last_dumpsys >= 3) {
+        s_last_dumpsys = now_ds;
+        FILE *pp = popen("dumpsys window 2>/dev/null | grep -m1 -E 'mCurrentFocus|mFocusedApp'", "r");
+        if (pp) {
+            char dump_buf[512];
+            while (fgets(dump_buf, sizeof(dump_buf), pp)) {
+                for (int i = 0; i < s_game_count; i++) {
+                    if (s_games[i][0] != '\0' && strstr(dump_buf, s_games[i]) != NULL) {
+                        pclose(pp);
+                        if (out_game_name && max_len > 0) {
+                            strncpy(out_game_name, s_games[i], max_len - 1);
+                            out_game_name[max_len - 1] = '\0';
+                        }
+                        if (out_profile) {
+                            *out_profile = s_profiles[i];
+                        }
+                        return 1;
+                    }
+                }
+            }
+            pclose(pp);
+        }
     }
 
     return 0;
