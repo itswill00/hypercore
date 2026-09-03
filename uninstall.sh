@@ -44,6 +44,7 @@ rm -f /data/adb/modules/hypercore/custom_charge_limit.conf /data/adb/hypercore/c
 rm -f /data/adb/modules/hypercore/night_charging.conf /data/adb/hypercore/night_charging.conf 2>/dev/null
 rm -f /data/adb/modules/hypercore/smart_chg.conf /data/adb/hypercore/smart_chg.conf 2>/dev/null
 rm -f /data/adb/modules/hypercore/protect_80.conf /data/adb/hypercore/protect_80.conf 2>/dev/null
+rm -f /data/adb/modules/hypercore/battery_cycle.conf /data/adb/hypercore/battery_cycle.conf 2>/dev/null
 rm -f /data/local/tmp/.hypercore_lock /data/local/tmp/hypercore.sock /data/local/tmp/hypercore.pid 2>/dev/null
 rm -f /dev/hypercore.sock 2>/dev/null
 rm -f /sdcard/Android/.hypercore_lock 2>/dev/null

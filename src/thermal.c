@@ -146,30 +146,116 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
     return tier;
 }
 
+/* Battery cycle persistence and auto-correction */
+static int s_verified_cycles = 0;
+static int s_cycles_loaded = 0;
+
+static void load_verified_cycles(void) {
+    if (s_cycles_loaded) return;
+    char path[256];
+    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "r");
+    if (f) {
+        if (fscanf(f, "%d", &s_verified_cycles) != 1 || s_verified_cycles < 0 || s_verified_cycles > 4000) {
+            s_verified_cycles = 0;
+        }
+        fclose(f);
+    }
+    s_cycles_loaded = 1;
+}
+
+static void save_verified_cycles(int cycles) {
+    if (cycles <= 0 || cycles > 4000) return;
+    char path[256];
+    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.mod_dir);
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "%d\n", cycles);
+        fclose(f);
+    }
+}
+
 int get_true_battery_cycles(void) {
+    load_verified_cycles();
+
     /* Hardware PMIC MT6366/MT6358 FG Gauge node (MediaTek MT6789 / BMS).
      * Strictly prioritize genuine fuel-gauge coulomb counters over
      * battery auth chip registers (which report raw signatures like 5662 on Xiaomi). */
-    const char *hw_gauge_nodes[] = {
+    const char *hw_bms_nodes[] = {
         "/sys/devices/platform/soc/10026000.pwrap/10026000.pwrap:mt6366/mt6358-gauge/power_supply/bms/cycle_count",
         "/sys/class/power_supply/bms/cycle_count",
-        "/sys/class/power_supply/battery/cycle_count",
         NULL
     };
 
-    for (int i = 0; hw_gauge_nodes[i]; i++) {
-        if (access(hw_gauge_nodes[i], F_OK) == 0) {
-            int val = sysfs_read_int(hw_gauge_nodes[i]);
-            /* BMS nodes (index 0 & 1) are direct hardware coulomb counters.
-             * Fallback node (battery/cycle_count) can point to an unformatted
-             * ST auth chip returning 5662 on Xiaomi MT6789. Discard > 3000. */
-            if (val > 0 && (i < 2 || val <= 3000)) {
-                return val;
+    int bms_val = 0;
+    for (int i = 0; hw_bms_nodes[i]; i++) {
+        if (access(hw_bms_nodes[i], F_OK) == 0) {
+            int val = sysfs_read_int(hw_bms_nodes[i]);
+            if (val > 0 && val <= 4000) {
+                bms_val = val;
+                break;
             }
         }
     }
 
-    return 0;
+    if (bms_val > 0) {
+        if (s_verified_cycles == 0) {
+            s_verified_cycles = bms_val;
+            save_verified_cycles(s_verified_cycles);
+        } else if (bms_val >= s_verified_cycles && bms_val <= s_verified_cycles + 5) {
+            /* Monotonic forward progression (+1 or incremental cycle increase) */
+            if (bms_val != s_verified_cycles) {
+                s_verified_cycles = bms_val;
+                save_verified_cycles(s_verified_cycles);
+                log_info("Battery", "Battery cycle naturally incremented to %d (persisted)", s_verified_cycles);
+            }
+        }
+        return s_verified_cycles;
+    }
+
+    /* Fallback: if device has no BMS node, check battery/cycle_count with strict filter */
+    int bat_val = sysfs_read_int("/sys/class/power_supply/battery/cycle_count");
+    if (bat_val > 0 && bat_val <= 3000) {
+        if (s_verified_cycles == 0) {
+            s_verified_cycles = bat_val;
+            save_verified_cycles(s_verified_cycles);
+        } else if (bat_val >= s_verified_cycles && bat_val <= s_verified_cycles + 5) {
+            if (bat_val != s_verified_cycles) {
+                s_verified_cycles = bat_val;
+                save_verified_cycles(s_verified_cycles);
+            }
+        }
+        return s_verified_cycles;
+    }
+
+    return s_verified_cycles;
+}
+
+void sync_battery_cycle_count(void) {
+    int cycles = get_true_battery_cycles();
+    if (cycles <= 0) return;
+
+    char str_cycles[32];
+    snprintf(str_cycles, sizeof(str_cycles), "%d", cycles);
+
+    /* Target sysfs nodes that Android system services and third-party apps query */
+    const char *dest_nodes[] = {
+        "/sys/class/power_supply/battery/cycle_count",
+        "/sys/devices/platform/hq_chg_manager/power_supply/battery/cycle_count",
+        NULL
+    };
+
+    for (int i = 0; dest_nodes[i]; i++) {
+        if (access(dest_nodes[i], F_OK) == 0) {
+            int cur = sysfs_read_int(dest_nodes[i]);
+            /* If node has abnormal signature (e.g. 5662) or is out of sync with genuine cycles */
+            if (cur != cycles) {
+                sysfs_write(dest_nodes[i], str_cycles);
+                log_info("Battery", "Synced genuine battery cycles (%d) to %s (was %d)",
+                         cycles, dest_nodes[i], cur);
+            }
+        }
+    }
 }
 
 

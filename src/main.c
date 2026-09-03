@@ -362,6 +362,7 @@ int main(int argc, char *argv[]) {
     apply_gpu_tuning();
     apply_irq_tuning(PROFILE_Interactive);
     init_charge_control();
+    sync_battery_cycle_count();
     load_gamelist();
     init_gamelist_watcher();
 
@@ -540,6 +541,13 @@ int main(int argc, char *argv[]) {
         }
 
         update_status_json_file(cpu_temp, bat_temp);
+
+        /* Auto-correct and synchronize true battery cycle count every 5 ticks (~10s) */
+        static int s_cycle_sync_counter = 0;
+        if (++s_cycle_sync_counter >= 5) {
+            s_cycle_sync_counter = 0;
+            sync_battery_cycle_count();
+        }
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {
