@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.3.5' }} · Stable
+              {{ store.moduleVersion || 'v6.4.5' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.3.5' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.4.5' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,13 +85,14 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.3.5' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.4.5' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>100% Hands-off OEM Stock Architecture</strong>: Complete hands-off decoupling in OEM Stock mode with zero periodic sysfs writes, restoring 100% thermal throttling control to Xiaomi HyperOS kernel and native mi_thermald.</li>
-                  <li><strong>Physical Hardware Charging Calibration</strong>: Empirically calibrated Balanced mode (Limit 10, ~2.3A / 9.3W) and Safe mode (Limit 14, ~0.73A / 2.8W) with unrestricted full-capacity charging.</li>
-                  <li><strong>Single Source of Truth Battery Cycles</strong>: Eliminated conflicting WebUI background polling and software cycle accumulation; strictly reads physical MediaTek BMS Fuel Gauge Coulomb counters directly.</li>
-                  <li><strong>Exclusive Internal Storage Builds</strong>: Standardized unified release naming without duplicate git hash artifacts, strictly outputting to device internal storage (/sdcard/HyperCore_Releases).</li>
+                  <li><strong>Unified 3-Way Segmented Charging Control</strong>: Presets, 16-level precision slider with stepper buttons, and hardware protection options seamlessly organized into a single intuitive control switcher.</li>
+                  <li><strong>Hardware Battery Longevity Controls</strong>: User-configurable, persistent toggles for Night Charging Protection, Smart Charging Curve, and 80% Capacity Limit.</li>
+                  <li><strong>Unrestricted Full-Capacity Charging</strong>: Eliminated kernel freeze past 80% capacity for normal continuous charging up to 100%.</li>
+                  <li><strong>Floating Island Dock Navigation</strong>: Modern floating dock navigation with frosted glassmorphism, responsive safe-area insets, and tactile micro-interactions.</li>
+                  <li><strong>System Typography &amp; Tabular Figures</strong>: Normalized UI typography to system font stack with tabular-numeric formatting for clean, native alignment.</li>
                 </ul>
               </div>
             </div>

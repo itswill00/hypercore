@@ -58,7 +58,7 @@ export const useHyperStore = defineStore('hyper', () => {
     return 'Fast Charge (2.5A)'
   })
 
-  const moduleVersion = ref('v6.3.5')
+  const moduleVersion = ref('v6.4.5')
   const kernelVersion = ref('—')
   const chipset = ref('MediaTek MT6789 Family')
   const uptime = ref('—')
@@ -242,7 +242,7 @@ echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
-echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v6.3.5)";
+echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v6.4.5)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`

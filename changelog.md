@@ -1,3 +1,29 @@
+# HyperCore v6.4.5 — Advanced Charging Control, Hardware Protection & Floating Dock Release
+
+## What's Changed
+
+### ⚡ Unified 3-Way Segmented Charging Control
+- **Presets, Slider & Protection Tabs**: Seamlessly organized charging control into a clean 3-way segmented switcher (`[ Presets ] | [ Slider ] | [ Protection ]`), eliminating disjointed floating cards and bringing all charging options into a unified view.
+- **Full 16-Level Precision Hardware Slider**: Expanded charging control slider to cover all 16 discrete hardware levels (0 through 15) with dedicated single-tap stepper buttons (`[−]` and `[+]`) and quick-jump pills.
+- **Unrestricted Full-Capacity 100% Charging**: Completely removed artificial 80% software blocks and resolved kernel-level charging halts, enabling unrestricted charging to 100% capacity under full hardware thermal protection.
+
+### 🛡️ Configurable Hardware Battery Protection Toggles
+- **Night Charging Protection**: Dedicated hardware toggle writing directly to `/sys/class/power_supply/battery/night_charging` to pause charging at 80% overnight, extending cell chemistry lifespan.
+- **Smart Charging Curve**: Dynamic kernel current regulation and thermal mitigation toggle (`/sys/class/power_supply/battery/smart_chg`).
+- **80% Battery Limit Cutoff**: Optional user-enforced hard cutoff at 80% state of charge with seamless auto-bypass.
+- **Persistent Hardware Configurations**: Added persistent state storage (`night_charging.conf`, `smart_chg.conf`, `protect_80.conf`) with IPC daemon synchronization and uninstall script cleanup.
+
+### 🏝️ Floating Island Dock Navigation
+- **Modern Dark Glassmorphism Dock**: Transformed the bottom navigation bar into a floating capsule island dock (`border-radius: 32px`, `backdrop-filter: blur(24px) saturate(180%)`) with AMOLED ambient depth.
+- **Clean Tactile Micro-Interactions**: Clean unboxed inactive icons, tactile scale micro-interactions on press (`scale(0.92)`), and refined active indicator pill states.
+- **Safe-Area Content Insets**: Dynamically adapted page bottom padding and floating toast notifications to clear navigation bounds gracefully across all screen sizes.
+
+### 🔤 System Typography Normalization
+- **Native System Font Stack**: Normalized global typography to inherit Android's native system font stack (`system-ui, -apple-system, Roboto, BlinkMacSystemFont, 'Segoe UI', sans-serif`).
+- **Tabular Numeric Formatting**: Replaced generic monospace fonts on all status badges, stat chips, package names, and charging metrics with `font-variant-numeric: tabular-nums` for crisp, natural alignment. Monospace strictly reserved for the UNIX terminal activity log.
+
+---
+
 # HyperCore v6.3.5 — Charger Remapping & Battery Thermal Protection Release
 
 ## What's Changed
