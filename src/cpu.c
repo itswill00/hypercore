@@ -528,27 +528,36 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
 
         case PROFILE_Interactive:
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = g_nodes.lit_hw_max_freq;
-            m->big_min_freq = (g_state.app_boost_ticks > 0) ? 1400000 : 725000;
-            m->big_max_freq = (tier >= 3) ? 2000000 : g_nodes.big_hw_max_freq;
-            m->up_rate_limit = "12000";   /* 12ms filter — prevents Big core 2.2GHz spikes on minor UI tasks */
-            m->down_rate_limit = "40000"; /* 40ms ramp-down hold — maintains smooth scrolling without freq bounce */
+            m->lit_max_freq = 1700000;    /* 1.7 GHz Little core ceiling — prevents Little cluster from burning power at 2.0GHz */
+            m->big_min_freq = 725000;     /* Minimum 725MHz idle floor */
+            /* Cap Big cores at 1.8GHz - 2.0GHz depending on thermal tier.
+             * 2.2GHz is reserved for Gaming/MOBA to avoid heavy A76 voltage heat during social media */
+            if (tier >= 2) {
+                m->big_max_freq = 1600000;
+            } else if (tier == 1) {
+                m->big_max_freq = 1800000;
+            } else {
+                m->big_max_freq = 2000000;
+            }
+
+            m->up_rate_limit = "1000";    /* 1ms filter — instant touch response without lag */
+            m->down_rate_limit = "3000";  /* 3ms ramp-down — drops CPU immediately to idle between frames to dissipate heat */
 
             m->nr_requests = "128";
-            m->read_ahead = (g_state.app_boost_ticks > 0) ? "384" : "256";
+            m->read_ahead = "256";
 
             m->bg_shares = "1024";
             m->bg_uclamp_min = "0";
             m->bg_uclamp_max = "max";
             m->top_app_shares = "1024";
-            m->top_app_uclamp_min = (g_state.app_boost_ticks > 0) ? "25" : "0";
+            m->top_app_uclamp_min = "0";
             m->top_app_uclamp_max = "max";
 
             m->devfreq_poll_ms = "50";
-            m->devfreq_upthresh = "80";   /* 80% load threshold — keeps GPU at 390MHz floor during standard UI */
-            m->devfreq_downdiff = "20";
+            m->devfreq_upthresh = "85";   /* 85% load threshold — keeps GPU at 390MHz floor during standard UI */
+            m->devfreq_downdiff = "25";
             m->devfreq_min_freq = "390000000";
-            m->devfreq_max_freq = max_gpu_hz;
+            m->devfreq_max_freq = "648000000"; /* 648MHz GPU cap for UI/Sosmed — silky 120Hz without 1GHz heat */
 
             m->dvfsrc_qos = "0";
 
@@ -556,7 +565,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->ged_smart_boost = "0";
             m->ged_boost_enable = "0";
             m->enable_gpu_boost = "0";
-            m->gpu_cust_upbound_freq = max_gpu_khz;
+            m->gpu_cust_upbound_freq = "648000";
             m->gpu_bottom_freq = "390000";
             m->g_fb_dvfs_threshold = "15";
             m->gx_fb_dvfs_margin = "10";
@@ -701,12 +710,17 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     /* Apply SurfaceFlinger latch_unsignaled at runtime via resetprop so it is NOT
      * persistent in system.prop (which triggers mBanking integrity scanners).
      * Enabled only during Gaming/MOBA for smoother frame delivery; disabled on exit. */
-    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
-        system("resetprop debug.sf.latch_unsignaled 1 2>/dev/null || true");
-        system("resetprop persist.sys.wifi.low_latency 1 2>/dev/null || true");
-    } else {
-        system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
-        system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+    static int s_prev_gaming_state = -1;
+    int is_gaming = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
+    if (is_gaming != s_prev_gaming_state) {
+        s_prev_gaming_state = is_gaming;
+        if (is_gaming) {
+            system("resetprop debug.sf.latch_unsignaled 1 2>/dev/null || true");
+            system("resetprop persist.sys.wifi.low_latency 1 2>/dev/null || true");
+        } else {
+            system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
+            system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+        }
     }
 }
 
