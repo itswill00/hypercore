@@ -556,14 +556,16 @@ onUnmounted(() => {
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.15s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .step-arrow-btn:active:not(:disabled) {
   background: var(--primary-container);
   color: var(--on-primary-container);
-  transform: scale(0.92);
+  transform: scale(0.88);
+  transition: transform 0.08s ease;
 }
 
 .step-arrow-btn:disabled {
@@ -591,11 +593,12 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   border: 2px solid var(--surface);
-  transition: transform 0.15s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .md3-range-slider::-webkit-slider-thumb:active {
-  transform: scale(1.18);
+  transform: scale(1.22);
+  box-shadow: 0 0 0 8px rgba(200, 198, 215, 0.18), 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .slider-axis-labels {
@@ -625,7 +628,9 @@ onUnmounted(() => {
   border-radius: 10px;
   color: var(--on-surface);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .quick-pill-btn span {
@@ -641,10 +646,17 @@ onUnmounted(() => {
   margin-top: 2px;
 }
 
+.quick-pill-btn:active {
+  transform: scale(0.92);
+  transition: transform 0.08s ease;
+}
+
 .quick-pill-btn.is-selected {
   background: var(--primary-container);
   border-color: var(--primary);
   color: var(--on-primary-container);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transform: scale(1.02);
 }
 
 .quick-pill-btn.is-selected .pill-amp {
@@ -666,6 +678,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   cursor: pointer;
   vertical-align: middle;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .md3-switch input {
@@ -693,13 +706,17 @@ onUnmounted(() => {
   top: 4px;
   border-radius: 50%;
   background: var(--outline);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              top 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+              width 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              left 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+              top 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
               background 0.2s ease;
   box-sizing: border-box;
+}
+
+.md3-switch:active .md3-switch-thumb {
+  width: 17px;
 }
 
 .md3-switch input:checked + .md3-switch-track {
@@ -714,6 +731,11 @@ onUnmounted(() => {
   left: 3px;
   top: 2px;
   background: var(--on-primary);
+}
+
+.md3-switch input:checked:active + .md3-switch-track .md3-switch-thumb {
+  width: 21px;
+  transform: translateX(15px);
 }
 
 .md3-switch input:disabled + .md3-switch-track {
