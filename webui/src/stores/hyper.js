@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { execCommand, sanitize, isKSU } from '@/helpers/shell'
+import { execCommand, sanitize, isKSU, base64EncodeUtf8 } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/hypercore'
 const LOG = '/sdcard/Android/hypercore.log'
@@ -667,14 +667,11 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   async function exportLogs(note = '') {
     loading.value = true
     try {
-      const safeNote = sanitize(note)
-        .replace(/[$`\\]/g, '')
-        .replace(/'/g, '')
-        .slice(0, 500)
-      const noteArg = safeNote ? `'${safeNote}'` : ''
+      const b64Note = note && note.trim() ? base64EncodeUtf8(note.trim().slice(0, 1000)) : ''
+      const noteArg = b64Note ? `'${b64Note}'` : "''"
       const cmd = `${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null \
         || sh ${MOD}/system/bin/hypercore-bugreport ${noteArg} 2>/dev/null`
-      const res = await execCommand(cmd)
+      const res = await execCommand(cmd, 30000)
       const path = (res || '').trim().split('\n').pop()
       if (path && path !== 'ERROR' && (path.indexOf('.zip') !== -1 || path.indexOf('.tar.gz') !== -1)) {
         return path

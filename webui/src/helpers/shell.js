@@ -2,7 +2,7 @@
 let cbSeq = 0
 let cachedInstalledApps = null
 
-export function execCommand(cmd) {
+export function execCommand(cmd, timeoutMs = 6000) {
   return new Promise((resolve, reject) => {
     if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
       const id = `_hc_${++cbSeq}_${Date.now()}`
@@ -12,7 +12,7 @@ export function execCommand(cmd) {
           delete window[id]
           resolve('')
         }
-      }, 6000)
+      }, timeoutMs)
 
       window[id] = (errno, stdout, stderr) => {
         clearTimeout(timer)
@@ -35,6 +35,15 @@ export function execCommand(cmd) {
       reject(new Error('No root manager bridge available'))
     }
   })
+}
+
+export function base64EncodeUtf8(str) {
+  if (!str) return ''
+  try {
+    return btoa(unescape(encodeURIComponent(str)))
+  } catch {
+    return ''
+  }
 }
 
 export function sanitize(s) {

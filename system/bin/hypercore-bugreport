@@ -3,7 +3,7 @@
 export PATH="/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin:$PATH"
 
 MOD_DIR="/data/adb/modules/hypercore"
-USER_NOTE="${1:-}"
+USER_NOTE_RAW="${1:-}"
 
 DATE_STR=$(date +"%Y-%m-%d_%H-%M-%S" 2>/dev/null)
 [ -z "$DATE_STR" ] && DATE_STR=$(date +"%Y%m%d_%H%M%S" 2>/dev/null)
@@ -17,12 +17,19 @@ TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-if [ -n "$USER_NOTE" ]; then
-    printf '%s\n' "$USER_NOTE" > "$TMP_DIR/user_note.txt"
+# 1. User Note (Handles plain text or Base64 encoded payload)
+if [ -n "$USER_NOTE_RAW" ]; then
+    DECODED_NOTE=$(printf '%s' "$USER_NOTE_RAW" | base64 -d 2>/dev/null)
+    if [ -n "$DECODED_NOTE" ]; then
+        printf '%s\n' "$DECODED_NOTE" > "$TMP_DIR/user_note.txt"
+    else
+        printf '%s\n' "$USER_NOTE_RAW" > "$TMP_DIR/user_note.txt"
+    fi
 else
     echo "(no description provided)" > "$TMP_DIR/user_note.txt"
 fi
 
+# 2. Daemon Log
 if [ -f "/sdcard/Android/hypercore.log" ]; then
     cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
 elif [ -f "/data/adb/hypercore/hypercore.log" ]; then
@@ -33,6 +40,13 @@ else
     touch "$TMP_DIR/hypercore.log"
 fi
 
+# 3. Live Socket Daemon Status (JSON snapshot)
+echo "GET_STATUS" | nc -w 1 -U /dev/hypercore.sock > "$TMP_DIR/daemon_status.json" 2>/dev/null || true
+if [ ! -s "$TMP_DIR/daemon_status.json" ]; then
+    echo '{"status":"error","message":"daemon_socket_unreachable"}' > "$TMP_DIR/daemon_status.json"
+fi
+
+# 4. Device & Environment Info
 {
     echo "=== Module ==="
     echo "module_id=$(grep '^id=' "$MOD_DIR/module.prop" 2>/dev/null | cut -d= -f2)"
@@ -54,19 +68,21 @@ fi
     echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
     echo ""
     echo "=== Root Manager ==="
-    if [ -d "/data/adb/ksu" ]; then
+    if [ -d "/data/adb/ksu" ] || command -v ksud >/dev/null 2>&1; then
         echo "root=KernelSU"
-        echo "ksu_version=$(cat /data/adb/ksu/version 2>/dev/null || echo unknown)"
-    elif [ -d "/data/adb/ap" ]; then
+        echo "ksu_version=$(ksud -V 2>/dev/null || su -v 2>/dev/null || cat /data/adb/ksu/version 2>/dev/null || echo unknown)"
+    elif [ -d "/data/adb/ap" ] || command -v apd >/dev/null 2>&1; then
         echo "root=APatch"
+        echo "apatch_version=$(apd -V 2>/dev/null || su -v 2>/dev/null || echo unknown)"
     elif command -v magisk >/dev/null 2>&1; then
         echo "root=Magisk"
-        echo "magisk_version=$(magisk -v 2>/dev/null)"
+        echo "magisk_version=$(magisk -v 2>/dev/null || magisk -V 2>/dev/null)"
     else
         echo "root=unknown"
     fi
 } > "$TMP_DIR/device_info.txt"
 
+# 5. Kernel & Hardware Sysfs Nodes
 {
     echo "=== CPU Freq Policy ==="
     grep -s -H '' \
@@ -90,12 +106,29 @@ fi
         /sys/devices/platform/soc/*mali*/power_policy 2>/dev/null
 
     echo ""
-    echo "=== GED / FPSGO ==="
-    grep -s -H '' /sys/module/ged/parameters/* 2>/dev/null | grep -vE 'uevent|debug|trace|panic'
+    echo "=== GED Parameters ==="
+    grep -s -H '' \
+        /sys/module/ged/parameters/boost_gpu_enable \
+        /sys/module/ged/parameters/enable_gpu_boost \
+        /sys/module/ged/parameters/ged_smart_boost \
+        /sys/module/ged/parameters/ged_boost_enable \
+        /sys/module/ged/parameters/gpu_bottom_freq \
+        /sys/module/ged/parameters/gpu_cust_boost_freq \
+        /sys/module/ged/parameters/gpu_cust_upbound_freq \
+        /sys/module/ged/parameters/gpu_dvfs_enable \
+        /sys/module/ged/parameters/gpu_loading \
+        /sys/module/ged/parameters/gx_game_mode \
+        /sys/module/ged/parameters/gx_boost_on \
+        /sys/module/ged/parameters/g_fb_dvfs_threshold 2>/dev/null
+
+    echo ""
+    echo "=== FPSGO ==="
     grep -s -H '' \
         /sys/kernel/fpsgo/common/force_onoff \
         /sys/kernel/fpsgo/fbt/boost_ta \
         /sys/kernel/fpsgo/fbt/ultra_rescue \
+        /sys/kernel/fpsgo/fbt/light_loading_policy \
+        /sys/kernel/fpsgo/fbt/switch_idleprefer \
         /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
 
     echo ""
@@ -107,7 +140,7 @@ fi
         /sys/class/thermal/thermal_message/sport_mode 2>/dev/null
 
     echo ""
-    echo "=== Battery / Power ==="
+    echo "=== Battery, BMS & Charger Telemetry ==="
     grep -s -H '' \
         /sys/class/power_supply/*/status \
         /sys/class/power_supply/*/capacity \
@@ -115,6 +148,12 @@ fi
         /sys/class/power_supply/*/cycle_count \
         /sys/class/power_supply/*/current_now \
         /sys/class/power_supply/*/voltage_now \
+        /sys/class/power_supply/*/charge_control_limit \
+        /sys/class/power_supply/*/input_suspend \
+        /sys/class/power_supply/*/night_charging \
+        /sys/class/power_supply/*/smart_chg \
+        /sys/class/power_supply/*/charging_enabled \
+        /sys/class/power_supply/bms/cycle_count \
         /sys/kernel/helio-dvfsrc/dvfsrc_qos_mode 2>/dev/null
 
     echo ""
@@ -133,33 +172,41 @@ fi
         /dev/cpuset/top-app/cpus 2>/dev/null
 } > "$TMP_DIR/sysfs_nodes.txt"
 
+# 6. Real-time Process Snapshot (Fast & Sorted)
 {
     echo "=== HyperCore Processes ==="
     ps -A 2>/dev/null | grep -E 'libhypercore' | grep -v grep || \
         ps 2>/dev/null | grep -E 'libhypercore' | grep -v grep
 
     echo ""
-    echo "=== Top 15 CPU Consumers ==="
-    ps -A -o pid,ppid,%cpu,%mem,name 2>/dev/null | head -n 16 || \
-        ps -o pid,%cpu,%mem,args 2>/dev/null | head -n 16
+    echo "=== Top 15 CPU Consumers (Sorted by Usage) ==="
+    top -b -n 1 -m 15 -s 3 2>/dev/null
 
     echo ""
-    echo "=== Foreground Activity ==="
-    dumpsys activity top 2>/dev/null | grep -E 'ACTIVITY|mCurrentFocus' | head -n 5 || \
-        dumpsys window windows 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp' | head -n 4
+    echo "=== Foreground Window & Activity ==="
+    dumpsys window 2>/dev/null | grep -m1 'mCurrentFocus' || true
+    dumpsys activity activities 2>/dev/null | grep -m1 'topResumedActivity' || true
 } > "$TMP_DIR/processes.txt"
 
+# 7. Logcat Tail
 {
-    echo "=== Logcat (last 200 lines — hypercore & kernel) ==="
-    logcat -d -t 200 2>/dev/null | grep -E 'hypercore|libhypercore|kernel|W |E ' | tail -n 200 || \
-        logcat -d 2>/dev/null | tail -n 200
+    echo "=== Logcat Tail (HyperCore, Thermal, Power, GED, FPSGO) ==="
+    logcat -d -t 350 2>/dev/null | grep -E -i 'hypercore|libhypercore|thermal|battery|fpsgo|ged|sched|devfreq|power' | tail -n 250 || \
+        logcat -d -t 200 2>/dev/null
 } > "$TMP_DIR/logcat_tail.txt"
+
+# 8. Copy Configs & Gamelist
+mkdir -p "$TMP_DIR/configs"
+for c in "$MOD_DIR"/*.conf /data/adb/hypercore/*.conf; do
+    [ -f "$c" ] && cp "$c" "$TMP_DIR/configs/" 2>/dev/null
+done
 
 [ -f "/data/adb/hypercore/gamelist.txt" ] && cp "/data/adb/hypercore/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -z "$(cat "$TMP_DIR/gamelist.txt" 2>/dev/null)" ] && \
     [ -f "$MOD_DIR/gamelist.txt" ] && cp "$MOD_DIR/gamelist.txt" "$TMP_DIR/gamelist.txt"
 [ -f "$MOD_DIR/module.prop" ] && cp "$MOD_DIR/module.prop" "$TMP_DIR/module.prop"
 
+# 9. Manifest
 {
     echo "HyperCore Bug Report"
     echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
@@ -168,26 +215,26 @@ fi
 } > "$TMP_DIR/manifest.txt"
 
 OUT_FILE=""
+mkdir -p "/sdcard/HyperCore_Bugreports"
 
 if command -v zip >/dev/null 2>&1; then
-    mkdir -p "/sdcard/HyperCore_Bugreports"
     ( cd "$TMP_DIR" && zip -r "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
     [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip"
 elif command -v busybox >/dev/null 2>&1 && busybox zip --help >/dev/null 2>&1; then
-    mkdir -p "/sdcard/HyperCore_Bugreports"
     ( cd "$TMP_DIR" && busybox zip -r "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ./* >/dev/null 2>&1 )
     [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.zip"
 fi
 
 if [ -z "$OUT_FILE" ]; then
-    mkdir -p "/sdcard/HyperCore_Bugreports"
     ( cd "$TMP_DIR" && tar -czf "/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz" ./* >/dev/null 2>&1 )
     [ -f "/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz" ] && OUT_FILE="/sdcard/HyperCore_Bugreports/${BASE_NAME}.tar.gz"
 fi
 
 if [ -n "$OUT_FILE" ]; then
-    cp "$OUT_FILE" "/storage/emulated/0/HyperCore_Bugreports/" 2>/dev/null
-    am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1
+    chmod 666 "$OUT_FILE" 2>/dev/null || true
+    chmod 777 "/sdcard/HyperCore_Bugreports" 2>/dev/null || true
+    cp "$OUT_FILE" "/storage/emulated/0/HyperCore_Bugreports/" 2>/dev/null || true
+    am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1 || true
     rm -rf "$TMP_DIR"
     echo "$OUT_FILE"
 else
