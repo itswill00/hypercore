@@ -33,8 +33,8 @@
             </div>
           </div>
 
-          <!-- State: idle / generating / done -->
-          <div v-if="!resultPath && !generating" class="action-row">
+          <!-- State: idle / generating / done / error -->
+          <div v-if="!resultPath && !generating && !errorMessage" class="action-row">
             <button class="btn-cancel" @click="close">Cancel</button>
             <button class="btn-generate" @click="generate">
               <Icons name="logs" :size="15" />
@@ -52,14 +52,26 @@
 
           <div v-else-if="resultPath" class="result-state">
             <div class="result-icon">✓</div>
-            <div class="result-label">Report saved</div>
-            <div class="result-path" @click="copyPath" :title="resultPath">
-              {{ shortPath(resultPath) }}
-              <span class="copy-hint">tap to copy</span>
+            <div class="result-label">Report Saved</div>
+            <div class="result-folder">Internal Storage &rsaquo; HyperCore_Bugreports</div>
+            <div class="result-path-box" @click="copyPath" :title="resultPath">
+              <span class="file-name">{{ fileName(resultPath) }}</span>
+              <span class="copy-badge" :class="{ 'copied': copied }">{{ copied ? 'Copied!' : 'Copy Path' }}</span>
             </div>
-            <div class="action-row" style="margin-top: 14px;">
+            <div class="result-hint">Ready to attach or share on GitHub / Telegram</div>
+            <div class="action-row" style="margin-top: 14px; width: 100%;">
               <button class="btn-cancel" @click="close">Done</button>
               <button class="btn-generate secondary" @click="reset">New Report</button>
+            </div>
+          </div>
+
+          <div v-else-if="errorMessage" class="error-state">
+            <div class="error-icon">!</div>
+            <div class="error-label">Generation Failed</div>
+            <div class="error-sub">{{ errorMessage }}</div>
+            <div class="action-row" style="margin-top: 14px; width: 100%;">
+              <button class="btn-cancel" @click="close">Close</button>
+              <button class="btn-generate" @click="generate">Try Again</button>
             </div>
           </div>
 
@@ -70,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, inject, onMounted, onUnmounted } from 'vue'
+import { ref, inject, onUnmounted } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import Icons from '@/components/icons/Icons.vue'
 
@@ -85,26 +97,35 @@ const toast = inject('toast')
 const note = ref('')
 const generating = ref(false)
 const resultPath = ref('')
+const errorMessage = ref('')
+const copied = ref(false)
 const stepIdx = ref(0)
 let stepTimer = null
+let copyResetTimer = null
 
 const generatingSteps = [
-  'Reading daemon log...',
-  'Dumping sysfs nodes...',
+  'Reading daemon log & socket status...',
+  'Dumping sysfs, BMS & thermal nodes...',
   'Capturing process snapshot...',
-  'Collecting logcat...',
-  'Packing archive...',
+  'Collecting filtered logcat tail...',
+  'Packaging zip archive...',
 ]
 
 const includes = [
-  'Daemon log',
-  'Sysfs nodes',
-  'Process list',
+  'Daemon state',
+  'Module configs',
+  'Sysfs & BMS',
+  'Top CPU processes',
   'Logcat tail',
+  'Logs',
   'Device info',
-  'Game list',
   'Your note',
 ]
+
+function fileName(p) {
+  if (!p) return ''
+  return p.split('/').pop()
+}
 
 function close() {
   if (generating.value) return
@@ -114,33 +135,36 @@ function close() {
 function reset() {
   note.value = ''
   resultPath.value = ''
+  errorMessage.value = ''
   stepIdx.value = 0
 }
 
-function shortPath(p) {
-  if (!p) return ''
-  const parts = p.split('/')
-  return '…/' + parts.slice(-2).join('/')
-}
-
 async function copyPath() {
+  if (!resultPath.value) return
   try {
     await navigator.clipboard.writeText(resultPath.value)
-    if (toast) toast('Path copied')
+    copied.value = true
+    if (toast) toast('Path copied to clipboard')
   } catch {
+    copied.value = true
     if (toast) toast(resultPath.value)
   }
+  clearTimeout(copyResetTimer)
+  copyResetTimer = setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 
 async function generate() {
   generating.value = true
   stepIdx.value = 0
   resultPath.value = ''
+  errorMessage.value = ''
+  copied.value = false
 
-  // Cycle through step labels for UX feedback
   stepTimer = setInterval(() => {
     stepIdx.value = (stepIdx.value + 1) % generatingSteps.length
-  }, 900)
+  }, 450)
 
   try {
     const path = await store.exportLogs(note.value)
@@ -149,19 +173,20 @@ async function generate() {
     if (path) {
       resultPath.value = path
     } else {
+      errorMessage.value = 'Execution timed out or root shell returned empty.'
       if (toast) toast('Failed to generate report')
-      emit('close')
     }
-  } catch {
+  } catch (err) {
     generating.value = false
     clearInterval(stepTimer)
+    errorMessage.value = err?.message || 'Failed to generate report'
     if (toast) toast('Failed to generate report')
-    emit('close')
   }
 }
 
 onUnmounted(() => {
   clearInterval(stepTimer)
+  clearTimeout(copyResetTimer)
 })
 </script>
 
@@ -431,8 +456,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 0;
+  width: 100%;
 }
 
 .result-icon {
@@ -450,35 +476,114 @@ onUnmounted(() => {
 }
 
 .result-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--on-surface, #f0f2f5);
 }
 
-.result-path {
+.result-folder {
+  font-size: 10.5px;
+  color: var(--primary, #8b8fcf);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.result-path-box {
+  width: 100%;
+  box-sizing: border-box;
   font-size: 11px;
   font-family: inherit;
   color: var(--on-surface-variant, #b0b4c0);
   background: var(--surface-container, #1d1e23);
   border: 1px solid var(--outline-variant, #383a42);
-  border-radius: 8px;
-  padding: 6px 12px;
+  border-radius: 12px;
+  padding: 10px 14px;
   cursor: pointer;
-  text-align: center;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: background 0.12s ease;
+  justify-content: space-between;
+  gap: 8px;
+  transition: border-color 0.15s ease, background 0.12s ease;
 }
 
-.result-path:active {
+.result-path-box:active {
   background: var(--surface-container-high, #26272e);
+  border-color: var(--primary, #8b8fcf);
 }
 
-.copy-hint {
-  font-size: 9.5px;
-  opacity: 0.45;
-  font-family: inherit;
+.file-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--on-surface, #f0f2f5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.copy-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface-container-high, #26272e);
+  color: var(--primary, #8b8fcf);
+  border: 1px solid var(--outline-variant, #383a42);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.copy-badge.copied {
+  background: rgba(100, 200, 130, 0.2);
+  color: #7dd8a0;
+  border-color: rgba(100, 200, 130, 0.4);
+}
+
+.result-hint {
+  font-size: 10.5px;
+  color: var(--on-surface-variant, #b0b4c0);
+  opacity: 0.6;
+  text-align: center;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* Error state */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.error-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(235, 87, 87, 0.15);
+  border: 1.5px solid rgba(235, 87, 87, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #eb5757;
+  margin-bottom: 2px;
+}
+
+.error-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #eb5757;
+}
+
+.error-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant, #b0b4c0);
+  opacity: 0.75;
+  text-align: center;
 }
 
 /* Modal Transition */
