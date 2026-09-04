@@ -2,9 +2,9 @@
 
 ## What's Changed
 
-### ⚡ Unified 3-Way Segmented Charging Control
-- **Presets, Slider & Protection Tabs**: Seamlessly organized charging control into a clean 3-way segmented switcher (`[ Presets ] | [ Slider ] | [ Protection ]`), eliminating disjointed floating cards and bringing all charging options into a unified view.
-- **Full 16-Level Precision Hardware Slider**: Expanded charging control slider to cover all 16 discrete hardware levels (0 through 15) with dedicated single-tap stepper buttons (`[−]` and `[+]`) and quick-jump pills.
+### ⚡ Streamlined Hardware Charging Speed Slider
+- **Dedicated 16-Level Hardware Slider**: Eliminated redundant and legacy preset mode cards, focusing the entire charging control interface on the full 16-level discrete hardware slider (levels 0 through 15) with dedicated single-tap stepper buttons (`[−]` and `[+]`) and quick-jump pills (Trickle, Cool, Balanced, High, Max).
+- **Direct Unified Layout**: Removed tab switching friction; power telemetry, charging speed controls, and battery protection toggles are now directly accessible on a single page.
 - **Unrestricted Full-Capacity 100% Charging**: Completely removed artificial 80% software blocks and resolved kernel-level charging halts, enabling unrestricted charging to 100% capacity under full hardware thermal protection.
 
 ### 🛡️ Configurable Hardware Battery Protection Toggles
