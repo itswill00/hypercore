@@ -155,48 +155,58 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.toast-slide-enter-active,
+.toast-slide-enter-active {
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+}
 .toast-slide-leave-active {
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
 }
 
 .toast-slide-enter-from {
   opacity: 0;
-  transform: translate(-50%, 10px);
+  transform: translate(-50%, 16px) scale(0.92);
 }
 
 .toast-slide-leave-to {
   opacity: 0;
-  transform: translate(-50%, -6px);
+  transform: translate(-50%, -8px) scale(0.96);
 }
 </style>
 
 <style>
 .slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.22s cubic-bezier(0.2, 0, 0, 1);
+.slide-right-enter-active {
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
   position: absolute;
   width: 100%;
   height: 100%;
+  will-change: transform, opacity;
+}
+
+.slide-left-leave-active,
+.slide-right-leave-active {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1), opacity 0.16s ease;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  will-change: transform, opacity;
 }
 
 .slide-left-enter-from {
   opacity: 0;
-  transform: translateX(30px);
+  transform: translate3d(24px, 0, 0) scale(0.985);
 }
 .slide-left-leave-to {
   opacity: 0;
-  transform: translateX(-30px);
+  transform: translate3d(-18px, 0, 0) scale(0.99);
 }
 
 .slide-right-enter-from {
   opacity: 0;
-  transform: translateX(-30px);
+  transform: translate3d(-24px, 0, 0) scale(0.985);
 }
 .slide-right-leave-to {
   opacity: 0;
-  transform: translateX(30px);
+  transform: translate3d(18px, 0, 0) scale(0.99);
 }
 </style>

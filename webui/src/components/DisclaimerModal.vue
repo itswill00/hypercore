@@ -353,13 +353,39 @@ function acceptDisclaimer() {
   transform: scale(0.98);
 }
 
-.disclaimer-fade-enter-active,
-.disclaimer-fade-leave-active {
-  transition: opacity 0.22s cubic-bezier(0.2, 0, 0, 1);
+.disclaimer-fade-enter-active {
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.disclaimer-fade-enter-from,
+.disclaimer-fade-leave-active {
+  transition: opacity 0.18s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.disclaimer-fade-enter-active .disclaimer-card {
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  will-change: transform, opacity;
+}
+
+.disclaimer-fade-leave-active .disclaimer-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1), opacity 0.18s ease;
+  will-change: transform, opacity;
+}
+
+.disclaimer-fade-enter-from {
+  opacity: 0;
+}
+
+.disclaimer-fade-enter-from .disclaimer-card {
+  opacity: 0;
+  transform: scale(0.9) translateY(14px);
+}
+
 .disclaimer-fade-leave-to {
   opacity: 0;
+}
+
+.disclaimer-fade-leave-to .disclaimer-card {
+  opacity: 0;
+  transform: scale(0.95) translateY(8px);
 }
 </style>

@@ -366,15 +366,24 @@ onUnmounted(() => {
   margin: 4px 6px;
 }
 
-.menu-pop-enter-active,
-.menu-pop-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+.menu-pop-enter-active {
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: top right;
 }
 
-.menu-pop-enter-from,
+.menu-pop-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top right;
+}
+
+.menu-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.88) translateY(-4px);
+}
+
 .menu-pop-leave-to {
   opacity: 0;
-  transform: scale(0.92) translateY(-6px);
+  transform: scale(0.92) translateY(-4px);
 }
 
 .log-line-enter-active {
