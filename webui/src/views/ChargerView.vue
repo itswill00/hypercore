@@ -5,7 +5,7 @@
     <div class="page-header">
       <div>
         <div class="page-header-title">Charger Control</div>
-        <div class="page-header-sub">Charging speed, thermal protection &amp; bypass mode</div>
+        <div class="page-header-sub">Hardware charging speed &amp; battery protection</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;" :style="!store.chargerSupported ? 'background: var(--surface-container-highest); color: var(--on-surface-variant);' : ''">
         {{ activeModeName }}
@@ -110,39 +110,13 @@
         </div>
       </div>
 
-      <!-- Control Mode Header & Tab Selector (Presets vs Slider) -->
-      <div class="control-header-row">
-        <div class="section-title" style="margin-bottom: 0;">Charging Control</div>
-        <div class="control-tabs">
-          <button
-            class="control-tab-btn"
-            :class="{ 'is-active': activeControlTab === 'presets' }"
-            @click="activeControlTab = 'presets'"
-          >
-            <Icons name="grid" :size="14" />
-            <span>Presets</span>
-          </button>
-          <button
-            class="control-tab-btn"
-            :class="{ 'is-active': activeControlTab === 'slider' }"
-            @click="activeControlTab = 'slider'"
-          >
-            <Icons name="sliders" :size="14" />
-            <span>Slider</span>
-          </button>
-          <button
-            class="control-tab-btn"
-            :class="{ 'is-active': activeControlTab === 'protection' }"
-            @click="activeControlTab = 'protection'"
-          >
-            <Icons name="shield" :size="14" />
-            <span>Protection</span>
-          </button>
-        </div>
+      <!-- Section: Charging Speed (Precision Slider) -->
+      <div class="section-header-row">
+        <div class="section-title" style="margin-bottom: 0;">Charging Speed</div>
+        <span class="section-badge">{{ currentStep.tag }} · Level {{ currentStep.limit }}</span>
       </div>
 
-      <!-- Custom Precision Slider View -->
-      <div v-if="activeControlTab === 'slider'" class="md3-card mb-3 slider-card">
+      <div class="md3-card mb-3 slider-card">
         <!-- Card Top Bar: Target Status -->
         <div class="slider-top-header">
           <div class="slider-title-meta">
@@ -215,74 +189,12 @@
         </div>
       </div>
 
-      <!-- Preset Profiles Mode Selection Group -->
-      <div v-else-if="activeControlTab === 'presets'" class="md3-list-group">
-
-        <div
-          v-for="m in modes"
-          :key="m.id"
-          class="md3-list-row expandable-row clickable"
-          :class="{
-            'is-expanded': expandedRows[m.id],
-            'selected-mode': store.chargerSupported && store.chargeMode === m.id,
-            'violent-mode-row': m.id === 5 && store.chargeMode === 5 && store.chargerSupported,
-            'disabled-mode-row': !store.chargerSupported
-          }"
-          @click="onSelectMode(m.id)"
-        >
-          <div class="row-header">
-            <div class="row-left">
-              <div class="icon-badge" :class="m.badgeClass">
-                <Icons :name="m.icon" :size="18" />
-              </div>
-              <div class="row-meta">
-                <div class="row-title">{{ m.name }}</div>
-                <div class="row-sub">{{ m.sub }}</div>
-              </div>
-            </div>
-            <div class="row-val">
-              <span v-if="!store.chargerSupported" class="badge-pill">
-                Unsupported
-              </span>
-              <span v-else-if="store.chargeMode === m.id" class="badge-pill" :style="m.id === 5 ? 'background: var(--error-container); color: var(--on-error-container); border-color: var(--error); font-weight: 700;' : 'background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary);'">
-                Active
-              </span>
-              <span v-else class="badge-pill">Select</span>
-              <span class="expand-caret" :class="{ 'open': expandedRows[m.id] }" @click.stop="toggleExpand(m.id)">▼</span>
-            </div>
-          </div>
-
-          <div class="expanded-content">
-            <div class="expanded-inner">
-              <div style="margin-bottom: 8px; font-family: var(--font-sans); color: var(--on-surface-variant); font-size: 11px;">
-                {{ m.desc }}
-              </div>
-              <div class="stat-grid-2">
-                <div class="stat-box">
-                  <div class="stat-lbl">Est. Current</div>
-                  <div class="stat-num">{{ m.estCurrent }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Est. Power</div>
-                  <div class="stat-num">{{ m.estPower }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Node Target</div>
-                  <div class="stat-num">{{ m.nodeVal }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Thermal Limit</div>
-                  <div class="stat-num">{{ m.guardNote }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <!-- Section: Hardware Battery Protection -->
+      <div class="section-header-row">
+        <div class="section-title" style="margin-bottom: 0;">Battery Protection</div>
       </div>
 
-      <!-- Hardware Protection Options Group (Tab 3) -->
-      <div v-else-if="activeControlTab === 'protection'" class="md3-list-group">
+      <div class="md3-list-group">
         <!-- Night Charging Protection Row -->
         <div
           class="md3-list-row clickable"
@@ -375,41 +287,6 @@
       </div>
 
     </div>
-
-    <!-- Violent Charging Risk Disclaimer Modal -->
-    <transition name="modal-fade">
-      <div v-if="showViolentModal" class="modal-backdrop" @click.self="showViolentModal = false">
-        <div class="modal-card" style="padding: 20px;">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <div class="icon-badge" style="background: var(--error-container); color: var(--on-error-container);">
-              <Icons name="zap" :size="20" />
-            </div>
-            <div>
-              <div style="font-size: 15px; font-weight: 700; color: var(--on-surface);">Violent Charge Warning</div>
-              <div style="font-size: 11px; color: var(--on-surface-variant);">Hardware stress &amp; risk acknowledgement</div>
-            </div>
-          </div>
-
-          <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 16px;">
-            Violent Charge forces maximum 33W fast charge protocol by disabling OEM smart charging limits and signaling extreme thermal profile to the kernel.<br/><br/>
-            <strong>Important Risk Notice:</strong><br/>
-            • Higher heat output may increase battery temperature under heavy load.<br/>
-            • Prolonged exposure to high temperature can accelerate long-term battery capacity degradation.<br/>
-            • Ensure you are using an official 33W factory charger and quality cable.
-          </div>
-
-          <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button class="btn-md3 btn-md3-secondary" @click="showViolentModal = false">
-              Cancel
-            </button>
-            <button class="btn-md3 btn-md3-danger" @click="confirmViolentMode">
-              I Understand &amp; Accept Risks
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
   </div>
 </template>
 
@@ -420,11 +297,6 @@ import Icons from '@/components/icons/Icons.vue'
 
 const store = useHyperStore()
 const toast = inject('toast')
-
-const expandedRows = ref({})
-const showViolentModal = ref(false)
-const activeControlTab = ref(store.chargeMode === 6 ? 'slider' : 'presets')
-
 const sliderSteps = [
   { step: 0,  limit: 15, current: '~500 mA',  power: '~2.0 W',  label: 'Trickle Minimum',   tag: 'Safe',     color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
   { step: 1,  limit: 14, current: '~750 mA',  power: '~2.8 W',  label: 'Gentle Overnight',  tag: 'Safe',     color: 'var(--tertiary)', bgColor: 'rgba(125, 205, 255, 0.12)' },
@@ -463,12 +335,6 @@ const sliderValue = ref(currentStepIndex.value)
 watch(() => store.customLimit, (newLim) => {
   const idx = sliderSteps.findIndex(s => s.limit === newLim)
   if (idx !== -1) sliderValue.value = idx
-})
-
-watch(() => store.chargeMode, (newMode) => {
-  if (newMode === 6 && activeControlTab.value !== 'slider') {
-    activeControlTab.value = 'slider'
-  }
 })
 
 const currentStep = computed(() => {
@@ -529,89 +395,9 @@ async function toggleProtect80() {
   if (toast) toast(`80% Battery Limit ${next ? 'enabled (stops at 80%)' : 'disabled (unrestricted to 100%)'}`)
 }
 
-const modes = [
-  {
-    id: 0,
-    name: 'OEM Stock',
-    sub: 'Stock ROM driver management',
-    desc: 'Full control managed by HyperOS / stock ROM driver. HyperCore does not interfere.',
-    icon: 'device',
-    badgeClass: 'tertiary',
-    estCurrent: 'OEM Dynamic',
-    estPower: 'OEM Dynamic',
-    nodeVal: 'Hands-off',
-    guardNote: 'Stock Thermal'
-  },
-  {
-    id: 1,
-    name: 'Fast Charge',
-    sub: 'Unrestricted max speed · ~19W',
-    desc: 'Unrestricted maximum charging speed. Recommended when battery is low and fast top-up is needed.',
-    icon: 'zap',
-    badgeClass: '',
-    estCurrent: '~3,900 – 4,600 mA',
-    estPower: '~16.0 – 19.0 W',
-    nodeVal: 'limit = 0',
-    guardNote: 'Throttle at 45°C'
-  },
-  {
-    id: 2,
-    name: 'Balanced',
-    sub: 'Daily balance · ~9.3W rate',
-    desc: 'Cool ~2.3A charging rate with minimal heat. Best overall option for active daily use and gaming.',
-    icon: 'shield',
-    badgeClass: 'secondary',
-    estCurrent: '~2,300 mA',
-    estPower: '~9.3 W',
-    nodeVal: 'limit = 10',
-    guardNote: 'Throttle at 45°C'
-  },
-  {
-    id: 3,
-    name: 'Safe Mode',
-    sub: 'Trickle charge · ~2.8W cool',
-    desc: 'Gentle ~0.7A trickle charging to protect battery health. Recommended for overnight charging and GPS.',
-    icon: 'thermo',
-    badgeClass: 'tertiary',
-    estCurrent: '~500 – 750 mA',
-    estPower: '~2.0 – 2.8 W',
-    nodeVal: 'limit = 14',
-    guardNote: 'Trickle Safe'
-  },
-  {
-    id: 4,
-    name: 'Bypass Mode',
-    sub: 'Motherboard direct power · 0mA cell',
-    desc: 'Disconnects battery cell charging while supplying power directly to motherboard. Prevents heat while gaming.',
-    icon: 'memory',
-    badgeClass: '',
-    estCurrent: '0 mA',
-    estPower: '0 W',
-    nodeVal: 'input_suspend = 1',
-    guardNote: 'Bypass Cutoff'
-  },
-  {
-    id: 5,
-    name: 'Violent Charge',
-    sub: 'Peak 33W protocol · Max current',
-    desc: 'Unlocks peak 33W fast charge protocol by signaling extreme thermal profile and disabling smart charge limits.',
-    icon: 'rocket',
-    badgeClass: '',
-    estCurrent: '~4,700 – 6,600 mA',
-    estPower: '~19.8 – 33.0 W',
-    nodeVal: 'limit = 0 · sconfig = 10',
-    guardNote: 'High Heat'
-  }
-]
-
 const activeModeName = computed(() => {
   if (!store.chargerSupported) return 'Unsupported'
-  if (store.chargeMode === 6) {
-    const curStep = sliderSteps.find(s => s.limit === store.customLimit)
-    return curStep ? `Custom (${curStep.current})` : 'Custom Slider'
-  }
-  const m = modes.find(x => x.id === store.chargeMode)
-  return m ? m.name : 'OEM Stock'
+  return `${currentStep.value.label} (${currentStep.value.current})`
 })
 
 const displayCurrentMa = computed(() => {
@@ -634,33 +420,6 @@ const displayWatt = computed(() => {
   return `${((ma * mv) / 1_000_000).toFixed(1)} W`
 })
 
-function toggleExpand(id) {
-  expandedRows.value[id] = !expandedRows.value[id]
-}
-
-function onSelectMode(id) {
-  if (!store.chargerSupported) {
-    if (toast) toast('Your device does not support this function properly')
-    return
-  }
-  if (id === 5) {
-    showViolentModal.value = true
-  } else {
-    applyMode(id)
-  }
-}
-
-async function confirmViolentMode() {
-  showViolentModal.value = false
-  await applyMode(5)
-}
-
-async function applyMode(id) {
-  await store.setChargeMode(id)
-  const m = modes.find(x => x.id === id)
-  if (toast) toast(`Charge mode switched to ${m?.name ?? id}`)
-}
-
 onMounted(() => {
   store.pollCharger()
   store.startCardPolling()
@@ -672,42 +431,23 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.control-header-row {
+.section-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 16px 0 10px 0;
+  margin: 18px 0 10px 0;
 }
 
-.control-tabs {
-  display: flex;
+.section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
   background: var(--surface-container);
-  border-radius: 20px;
-  padding: 3px;
   border: 1px solid var(--outline-variant);
-  gap: 2px;
-}
-
-.control-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: none;
-  border-radius: 16px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.control-tab-btn.is-active {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .slider-card {
@@ -910,15 +650,6 @@ onUnmounted(() => {
 .quick-pill-btn.is-selected .pill-amp {
   color: var(--on-primary-container);
   opacity: 0.85;
-}
-
-.selected-mode {
-  background: var(--surface-container-high) !important;
-  border-left: 3px solid var(--primary) !important;
-}
-
-.violent-mode-row {
-  border-left-color: var(--error) !important;
 }
 
 .disabled-mode-row {
