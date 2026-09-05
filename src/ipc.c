@@ -346,8 +346,10 @@ void handle_ipc_events(int timeout_ms) {
         for (int i = 0; i < nfds; i++) {
             if (pfds[i].revents & POLLIN) {
                 if (pfds[i].fd == s_server_fd) {
-                    int client_fd = accept(s_server_fd, NULL, NULL);
-                    if (client_fd >= 0) {
+                    /* Drain pending client connections up to 8 per poll cycle to prevent backlog stall */
+                    int client_fd;
+                    int max_accept = 8;
+                    while (max_accept-- > 0 && (client_fd = accept(s_server_fd, NULL, NULL)) >= 0) {
                         /* Use SO_RCVTIMEO instead of O_NONBLOCK on the client socket.
                          * O_NONBLOCK causes read() to return EAGAIN immediately if the
                          * client hasn't written the request yet (e.g. nc takes ~1-2ms
