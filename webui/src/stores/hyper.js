@@ -118,8 +118,6 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
-  let cpuGpuInterval = null
-  let ramBatInterval = null
   let chargerInterval = null
 
   async function pollCpuGpu() {
@@ -195,23 +193,16 @@ export const useHyperStore = defineStore('hyper', () => {
   }
 
   function startCardPolling() {
-    if (!cpuGpuInterval) {
-      /* Guard: skip poll tick if a full refresh() is already in flight to avoid
-       * stale partial data overwriting values refresh() is currently updating */
-      cpuGpuInterval = setInterval(() => { if (!isRefreshing) pollCpuGpu() }, 3000)
-    }
-    if (!ramBatInterval) {
-      ramBatInterval = setInterval(() => { if (!isRefreshing) pollRamBat() }, 5000)
-    }
     if (!chargerInterval) {
       chargerInterval = setInterval(() => { if (!isRefreshing) pollCharger() }, 2000)
     }
   }
 
   function stopCardPolling() {
-    if (cpuGpuInterval) { clearInterval(cpuGpuInterval); cpuGpuInterval = null }
-    if (ramBatInterval) { clearInterval(ramBatInterval); ramBatInterval = null }
-    if (chargerInterval) { clearInterval(chargerInterval); chargerInterval = null }
+    if (chargerInterval) {
+      clearInterval(chargerInterval)
+      chargerInterval = null
+    }
   }
 
   async function refresh() {
