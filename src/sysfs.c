@@ -230,6 +230,12 @@ void restore_baseline_nodes(void) {
     sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
     sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+
+    /* Restore CPU governor rate limit permissions */
+    chmod("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", 0644);
+    chmod("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", 0644);
+    chmod("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", 0644);
+    chmod("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", 0644);
 }
 
 void update_module_prop_status(const char *status) {
