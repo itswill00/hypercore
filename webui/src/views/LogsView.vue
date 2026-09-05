@@ -104,14 +104,17 @@ const parsedLogs = computed(() => {
       const tag = (m[3] || '').trim()
       const msg = m[4] || line
 
+      const uLevel = level.toUpperCase()
+      const uTag = tag.toUpperCase()
+
       let levelClass = 'lbl-info'
-      if (level === 'STATE') levelClass = 'lbl-state'
-      else if (level === 'WARN') levelClass = 'lbl-warn'
-      else if (level === 'ERROR') levelClass = 'lbl-error'
+      if (uLevel === 'STATE') levelClass = 'lbl-state'
+      else if (uLevel === 'WARN') levelClass = 'lbl-warn'
+      else if (uLevel === 'ERROR') levelClass = 'lbl-error'
 
       let textClass = ''
-      if (msg.includes('Gaming') || tag === 'GAME') textClass = 'txt-gaming'
-      else if (msg.includes('Thermal Tier') || level === 'WARN') textClass = 'txt-thermal'
+      if (msg.includes('Gaming') || uTag === 'GAME') textClass = 'txt-gaming'
+      else if (msg.includes('Thermal Tier') || uLevel === 'WARN') textClass = 'txt-thermal'
       else if (msg.includes('started')) textClass = 'txt-start'
 
       return { stamp, level, tag, msg, levelClass, textClass }

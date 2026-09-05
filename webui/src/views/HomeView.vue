@@ -85,7 +85,6 @@ const store = useHyperStore()
   margin-bottom: 16px;
   border: 1px solid var(--surface-container-highest);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  background-image: url('banner.jpg'), url('./banner.jpg'), url('../banner.jpg');
   background-size: cover;
   background-position: center;
 }
