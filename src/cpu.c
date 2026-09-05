@@ -98,15 +98,25 @@ static const char *s_policy7_down_rate_nodes[] = {
     NULL
 };
 
+static void write_rate_limit_fallback(const char *paths[], const char *val) {
+    if (!paths || !val) return;
+    for (int i = 0; paths[i]; i++) {
+        if (!paths[i] || paths[i][0] == '\0') continue;
+        chmod(paths[i], 0644);
+        sysfs_write(paths[i], val);
+        chmod(paths[i], 0444);
+    }
+}
+
 void set_rate_limits(const char *up, const char *down) {
-    sysfs_write_fallback(s_policy0_up_rate_nodes, up);
-    sysfs_write_fallback(s_policy0_down_rate_nodes, down);
-    sysfs_write_fallback(s_policy4_up_rate_nodes, up);
-    sysfs_write_fallback(s_policy4_down_rate_nodes, down);
-    sysfs_write_fallback(s_policy6_up_rate_nodes, up);
-    sysfs_write_fallback(s_policy6_down_rate_nodes, down);
-    sysfs_write_fallback(s_policy7_up_rate_nodes, up);
-    sysfs_write_fallback(s_policy7_down_rate_nodes, down);
+    write_rate_limit_fallback(s_policy0_up_rate_nodes, up);
+    write_rate_limit_fallback(s_policy0_down_rate_nodes, down);
+    write_rate_limit_fallback(s_policy4_up_rate_nodes, up);
+    write_rate_limit_fallback(s_policy4_down_rate_nodes, down);
+    write_rate_limit_fallback(s_policy6_up_rate_nodes, up);
+    write_rate_limit_fallback(s_policy6_down_rate_nodes, down);
+    write_rate_limit_fallback(s_policy7_up_rate_nodes, up);
+    write_rate_limit_fallback(s_policy7_down_rate_nodes, down);
 }
 
 static const char *s_cpuset_bg_cpus_nodes[] = {
@@ -528,19 +538,19 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
 
         case PROFILE_Interactive:
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = 1700000;    /* 1.7 GHz Little core ceiling — prevents Little cluster from burning power at 2.0GHz */
+            m->lit_max_freq = 1600000;    /* 1.6 GHz Little core ceiling — optimal efficiency on A55 cluster */
             m->big_min_freq = 725000;     /* Minimum 725MHz idle floor */
-            /* Cap Big cores at 1.8GHz - 2.0GHz depending on thermal tier.
-             * 2.2GHz is reserved for Gaming/MOBA to avoid heavy A76 voltage heat during social media */
+            /* Cap Big cores at 1.8GHz for daily UI & social media.
+             * 2.0-2.2GHz is reserved for Gaming/MOBA to avoid heavy A76 voltage heat and power drain */
             if (tier >= 2) {
-                m->big_max_freq = 1600000;
+                m->big_max_freq = 1400000;
             } else if (tier == 1) {
-                m->big_max_freq = 1800000;
+                m->big_max_freq = 1600000;
             } else {
-                m->big_max_freq = 2000000;
+                m->big_max_freq = 1800000;
             }
 
-            m->up_rate_limit = "1000";    /* 1ms filter — instant touch response without lag */
+            m->up_rate_limit = "4000";    /* 4ms filter — prevents jumping to high clocks on transient micro-spikes */
             m->down_rate_limit = "3000";  /* 3ms ramp-down — drops CPU immediately to idle between frames to dissipate heat */
 
             m->nr_requests = "128";
@@ -548,7 +558,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
 
             m->bg_shares = "1024";
             m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "max";
+            m->bg_uclamp_max = "50";      /* Clamp background tasks to 50% max capacity — prevents background drain */
+            m->sys_bg_uclamp_max = "50";
             m->top_app_shares = "1024";
             m->top_app_uclamp_min = "0";
             m->top_app_uclamp_max = "max";
