@@ -86,8 +86,6 @@ int trigger_purge_ram_cache(void) {
 
     /* Raise compaction_proactiveness instead of writing compact_memory directly to avoid synchronous mmap_lock stalls */
     sysfs_write("/proc/sys/vm/compaction_proactiveness", "60");
-    sysfs_write("/proc/sys/vm/stat_interval", "1");
-    sysfs_write("/sys/module/lowmemorykiller/parameters/minfree", "1");
 
     log_info("Memory", "RAM & Cache deep purge executed: drop_caches(3), async kcompactd triggered (compaction_proactiveness=60).");
     return 1;
