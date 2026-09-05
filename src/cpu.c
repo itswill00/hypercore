@@ -684,6 +684,8 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
     sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
+    set_mali_upthreshold(m.devfreq_upthresh);
+    set_mali_downdifferential(m.devfreq_downdiff);
 
     sysfs_write_fallback(s_dvfsrc_nodes, m.dvfsrc_qos);
 

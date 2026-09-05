@@ -16,6 +16,8 @@ int read_mali_governor(char *out_buf, size_t max_len);
 void detect_max_gpu_freq(void);
 const char *get_max_gpu_freq_hz(void);
 const char *get_max_gpu_freq_khz(void);
+void set_mali_upthreshold(const char *val);
+void set_mali_downdifferential(const char *val);
 
 #ifdef __cplusplus
 }

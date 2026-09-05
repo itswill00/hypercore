@@ -171,6 +171,14 @@ int read_mali_governor(char *out_buf, size_t max_len) {
     return sysfs_read_str_fallback(s_mali_gov_nodes, out_buf, max_len);
 }
 
+void set_mali_upthreshold(const char *val) {
+    sysfs_write_fallback(s_mali_upthreshold_nodes, val);
+}
+
+void set_mali_downdifferential(const char *val) {
+    sysfs_write_fallback(s_mali_downdiff_nodes, val);
+}
+
 void apply_gpu_tuning(void) {
     detect_max_gpu_freq();
 
