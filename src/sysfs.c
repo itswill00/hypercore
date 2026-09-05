@@ -231,11 +231,35 @@ void restore_baseline_nodes(void) {
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
     sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
 
-    /* Restore CPU governor rate limit permissions */
-    chmod("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", 0644);
-    chmod("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", 0644);
-    chmod("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", 0644);
-    chmod("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", 0644);
+    /* Restore CPU governor rate limit permissions across all policies and governors */
+    const char *rate_limit_restore_paths[] = {
+        "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us",
+        "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
+        NULL
+    };
+    for (int i = 0; rate_limit_restore_paths[i]; i++) {
+        if (access(rate_limit_restore_paths[i], F_OK) == 0) {
+            chmod(rate_limit_restore_paths[i], 0644);
+        }
+    }
 }
 
 void update_module_prop_status(const char *status) {

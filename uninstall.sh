@@ -13,6 +13,11 @@ for i in 6 7; do
     [ -f "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" ] && echo 725000 > "/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq" 2>/dev/null
 done
 
+# Restore CPU governor rate limit permissions
+chmod 644 /sys/devices/system/cpu/cpufreq/policy*/sugov_ext/*rate_limit_us \
+          /sys/devices/system/cpu/cpufreq/policy*/schedutil/*rate_limit_us \
+          /sys/devices/system/cpu/cpufreq/policy*/rate_limit_us 2>/dev/null || true
+
 # Reset Mali GPU power policy & devfreq governor
 for p in /sys/devices/platform/soc/*.mali/power_policy /sys/class/devfreq/*.mali/power_policy; do
     [ -f "$p" ] && echo coarse_demand > "$p" 2>/dev/null

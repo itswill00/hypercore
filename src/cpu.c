@@ -102,6 +102,7 @@ static void write_rate_limit_fallback(const char *paths[], const char *val) {
     if (!paths || !val) return;
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
+        if (access(paths[i], F_OK) != 0) continue;
         chmod(paths[i], 0644);
         sysfs_write(paths[i], val);
         chmod(paths[i], 0444);
