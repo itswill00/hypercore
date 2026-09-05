@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
             }
         } else {
             /* Process death detection: if game PID terminated, immediately force return to Interactive */
-            if (s_prev_game_active && (s_last_game_pid <= 0 || !is_process_alive(s_last_game_pid))) {
+            if (s_prev_game_active && s_last_game_pid > 0 && !is_process_alive(s_last_game_pid)) {
                 s_game_absent_ticks = 3;
                 g_state.gaming_hold_ticks = 0;
                 s_prev_game_active = 0;

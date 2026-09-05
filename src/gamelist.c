@@ -128,6 +128,38 @@ void check_gamelist_inotify(void) {
     }
 }
 
+static int find_pid_by_pkg(const char *pkg) {
+    if (!pkg || !pkg[0]) return 0;
+    DIR *d = opendir("/proc");
+    if (!d) return 0;
+    struct dirent *ent;
+    int found_pid = 0;
+    size_t pkg_len = strlen(pkg);
+    while ((ent = readdir(d)) != NULL) {
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+        int pid = atoi(ent->d_name);
+        if (pid <= 100) continue;
+        char cmdpath[64];
+        snprintf(cmdpath, sizeof(cmdpath), "/proc/%d/cmdline", pid);
+        int fd = open(cmdpath, O_RDONLY | O_CLOEXEC);
+        if (fd >= 0) {
+            char cmdline[256];
+            ssize_t n = read(fd, cmdline, sizeof(cmdline) - 1);
+            close(fd);
+            if (n > 0) {
+                cmdline[n] = '\0';
+                if (strncmp(cmdline, pkg, pkg_len) == 0 &&
+                    (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':' || cmdline[pkg_len] == ' ')) {
+                    found_pid = pid;
+                    break;
+                }
+            }
+        }
+    }
+    closedir(d);
+    return found_pid;
+}
+
 int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile, int *out_game_pid) {
     if (out_game_name && max_len > 0) out_game_name[0] = '\0';
     if (out_profile) *out_profile = PROFILE_Gaming;
@@ -227,6 +259,9 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
                         }
                         if (out_profile) {
                             *out_profile = s_profiles[i];
+                        }
+                        if (out_game_pid) {
+                            *out_game_pid = find_pid_by_pkg(s_games[i]);
                         }
                         return 1;
                     }
