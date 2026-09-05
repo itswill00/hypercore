@@ -566,10 +566,10 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->top_app_uclamp_max = "max";
 
             m->devfreq_poll_ms = "50";
-            m->devfreq_upthresh = "85";   /* 85% load threshold — keeps GPU at 390MHz floor during standard UI */
-            m->devfreq_downdiff = "25";
+            m->devfreq_upthresh = "65";   /* Responsive 65% load threshold — ramps up GPU swiftly for smooth UI rendering */
+            m->devfreq_downdiff = "20";
             m->devfreq_min_freq = "390000000";
-            m->devfreq_max_freq = "648000000"; /* 648MHz GPU cap for UI/Sosmed — silky 120Hz without 1GHz heat */
+            m->devfreq_max_freq = max_gpu_hz;   /* Uncapped to hardware max frequency for fluid UI */
 
             m->dvfsrc_qos = "0";
 
@@ -577,7 +577,7 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->ged_smart_boost = "0";
             m->ged_boost_enable = "0";
             m->enable_gpu_boost = "0";
-            m->gpu_cust_upbound_freq = "648000";
+            m->gpu_cust_upbound_freq = max_gpu_khz; /* Hardware max kHz upbound */
             m->gpu_bottom_freq = "390000";
             m->g_fb_dvfs_threshold = "15";
             m->gx_fb_dvfs_margin = "10";

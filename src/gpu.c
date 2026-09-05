@@ -136,8 +136,9 @@ void enforce_interactive_gpu_polling(int target_poll_ms) {
         }
     }
 
-    int cust_upbound = sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
-    if (cust_upbound > 648000) {
+    long max_khz = atol(get_max_gpu_freq_khz());
+    long cust_upbound = (long)sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
+    if (cust_upbound < max_khz) {
         needs_enforce = 1;
     }
 
@@ -149,13 +150,13 @@ void enforce_interactive_gpu_polling(int target_poll_ms) {
 
     sysfs_write_fallback(s_mali_gov_nodes, "simple_ondemand");
     sysfs_write_fallback(s_mali_poll_nodes, poll_buf);
-    sysfs_write_fallback(s_mali_upthreshold_nodes, "80");
+    sysfs_write_fallback(s_mali_upthreshold_nodes, "65");
     sysfs_write_fallback(s_mali_downdiff_nodes, "20");
     sysfs_write_fallback(s_mali_min_freq_nodes, "390000000");
-    sysfs_write_fallback(s_mali_max_freq_nodes, "648000000");
+    sysfs_write_fallback(s_mali_max_freq_nodes, get_max_gpu_freq_hz());
     sysfs_write_fallback(s_mali_power_policy_nodes, "coarse_demand");
 
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "648000");
+    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
     sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
     sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
     sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
