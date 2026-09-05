@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.4.5' }} · Stable
+              {{ store.moduleVersion || 'v6.4.8' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.4.5' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.4.8' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,14 +85,13 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.4.5' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.4.8' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Unified 3-Way Segmented Charging Control</strong>: Presets, 16-level precision slider with stepper buttons, and hardware protection options seamlessly organized into a single intuitive control switcher.</li>
-                  <li><strong>Hardware Battery Longevity Controls</strong>: User-configurable, persistent toggles for Night Charging Protection, Smart Charging Curve, and 80% Capacity Limit.</li>
-                  <li><strong>Unrestricted Full-Capacity Charging</strong>: Eliminated kernel freeze past 80% capacity for normal continuous charging up to 100%.</li>
-                  <li><strong>Floating Island Dock Navigation</strong>: Modern floating dock navigation with frosted glassmorphism, responsive safe-area insets, and tactile micro-interactions.</li>
-                  <li><strong>System Typography &amp; Tabular Figures</strong>: Normalized UI typography to system font stack with tabular-numeric formatting for clean, native alignment.</li>
+                  <li><strong>Interactive Profile GPU Max Frequency Uncap</strong>: Removed artificial 648 MHz GPU ceiling in Interactive profile, opening full hardware capability (up to ~1003 MHz) with responsive 65% upthreshold to eliminate UI rendering stutter and frame drops.</li>
+                  <li><strong>Real-Time Kernel Charging Telemetry</strong>: Replaced static text estimates with live kernel charging rate metrics directly on the Dashboard banner.</li>
+                  <li><strong>WebUI Stylesheet Consolidation</strong>: Purged dead/unused CSS classes and consolidated root document styling rules for optimal rendering performance.</li>
+                  <li><strong>Profile Transition State Hardening</strong>: Verified zero-friction, deterministic atomic transitions between Interactive, Gaming, MOBA, and Sleep states.</li>
                 </ul>
               </div>
             </div>

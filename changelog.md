@@ -1,3 +1,25 @@
+# HyperCore v6.4.8 — Interactive GPU Uncap, Telemetry Precision & WebUI Performance Release
+
+## What's Changed
+
+### 🚀 Interactive Profile GPU Max Frequency Uncap
+- **Hardware Ceiling Uncapped**: Completely removed the hard-coded 648 MHz GPU ceiling in Interactive profile (`devfreq_max_freq` and `gpu_cust_upbound_freq`), enabling Mali-G57 to scale freely to full hardware peak capability (up to ~1003 MHz / 990 MHz OPP).
+- **Responsive UI Scaling Threshold**: Tuned devfreq `upthreshold` down from 85% to 65% and `downdifferential` to 20%, ensuring SurfaceFlinger, 90/120Hz display refresh animations, and UI scrolling burst smoothly out of the 390 MHz floor without frame drops or UI heaviness.
+- **Hardware Max Frequency Auto-Detection**: Dynamically detects available hardware frequency tables and ensures interactive scaling bounds match genuine SoC limits.
+
+### 📊 Real-Time Charging Telemetry Precision
+- **Live Kernel Power Metrics**: Replaced static/hardcoded charging text estimates on the Dashboard hero banner with real-time live kernel charging rate metrics (`Chg: +xxxx mA`).
+- **Dynamic Battery State Synchronization**: Aligned battery telemetry across Dashboard, Charger Control, and About views directly with active PMIC current flow.
+
+### 🎨 WebUI Performance & Stylesheet Cleanup
+- **Consolidated Root Styling Rules**: Unified duplicate root `body, #app` stylesheet declarations.
+- **Dead CSS Class Removal**: Purged unused stylesheet classes (`.profile-grid`, `.profile-btn`, `.progress-track`, `.progress-fill`), streamlining the inline single-file bundle size and DOM rendering efficiency.
+
+### 🛡️ Profile State Transition Determinism
+- **Verified Zero-Friction Transitions**: Validated deterministic atomic transitions between Interactive, Gaming, MOBA, and Sleep states under both automatic foreground scanning and manual IPC socket requests with zero daemon stalls or kernel permission errors.
+
+---
+
 # HyperCore v6.4.5 — Advanced Charging Control, Hardware Protection & Floating Dock Release
 
 ## What's Changed

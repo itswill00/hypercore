@@ -152,6 +152,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
             cp NOTICE.md \$MOD_TARGET/NOTICE.md
             chmod 755 \$MOD_TARGET/system/bin/*
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
+            rm -f /dev/hypercore.sock \$MOD_TARGET/hypercore.sock /data/adb/hypercore/hypercore.sock 2>/dev/null || true
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi
     "; then
