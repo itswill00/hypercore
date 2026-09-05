@@ -198,16 +198,31 @@ int get_true_battery_cycles(void) {
         }
     }
 
+    static int s_reset_candidate = 0;
+    static int s_reset_count = 0;
+
     if (bms_val > 0) {
         if (s_verified_cycles == 0) {
             s_verified_cycles = bms_val;
             save_verified_cycles(s_verified_cycles);
-        } else if (bms_val >= s_verified_cycles && bms_val <= s_verified_cycles + 5) {
+        } else if (bms_val > s_verified_cycles && bms_val <= 4000) {
             /* Monotonic forward progression (+1 or incremental cycle increase) */
-            if (bms_val != s_verified_cycles) {
-                s_verified_cycles = bms_val;
-                save_verified_cycles(s_verified_cycles);
-                log_info("Battery", "Battery cycle naturally incremented to %d (persisted)", s_verified_cycles);
+            s_verified_cycles = bms_val;
+            save_verified_cycles(s_verified_cycles);
+            log_info("Battery", "Battery cycle naturally incremented to %d (persisted)", s_verified_cycles);
+            s_reset_count = 0;
+        } else if (bms_val > 0 && bms_val < s_verified_cycles) {
+            /* Battery replacement detection: 5 consecutive reads of lower cycle count confirms new cell */
+            if (bms_val == s_reset_candidate) {
+                if (++s_reset_count >= 5) {
+                    s_verified_cycles = bms_val;
+                    save_verified_cycles(s_verified_cycles);
+                    log_info("Battery", "Battery replacement detected: cycle count recalibrated to %d", s_verified_cycles);
+                    s_reset_count = 0;
+                }
+            } else {
+                s_reset_candidate = bms_val;
+                s_reset_count = 1;
             }
         }
         return s_verified_cycles;
@@ -219,11 +234,10 @@ int get_true_battery_cycles(void) {
         if (s_verified_cycles == 0) {
             s_verified_cycles = bat_val;
             save_verified_cycles(s_verified_cycles);
-        } else if (bat_val >= s_verified_cycles && bat_val <= s_verified_cycles + 5) {
-            if (bat_val != s_verified_cycles) {
-                s_verified_cycles = bat_val;
-                save_verified_cycles(s_verified_cycles);
-            }
+        } else if (bat_val > s_verified_cycles && bat_val <= 3000) {
+            s_verified_cycles = bat_val;
+            save_verified_cycles(s_verified_cycles);
+            log_info("Battery", "Battery cycle naturally incremented to %d (persisted)", s_verified_cycles);
         }
         return s_verified_cycles;
     }
