@@ -7,7 +7,7 @@
         <div class="page-header-sub">Performance &amp; Status Overview</div>
       </div>
       <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || 'v6.6.0' }}
+        {{ store.moduleVersion || 'v6.7.0' }}
       </span>
     </div>
 

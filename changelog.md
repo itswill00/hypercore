@@ -1,3 +1,26 @@
+# HyperCore v6.7.0 — Unconstrained Performance, Zero Thermal Throttling & Seamless Profiler Release
+
+## What's Changed
+
+### 🚀 Complete Internal Thermal Management Stripped
+- **Zero Artificial Thermal Throttling**: Completely removed `calculate_thermal_tier()` along with all internal thermal tiers and thermal hold tick mechanisms. HyperCore no longer artificially throttles CPU/GPU frequencies or scales down performance based on temperature thresholds.
+- **Unconstrained Gaming Profile**: Big cores (2.2 GHz) and Little cores (2.0 GHz) now operate at full hardware peak capability without clock degradation during heavy gaming sessions.
+- **Multi-Step Thermal Ladder Removed**: Fully eliminated automatic charging current step-downs in `charger.c`. User-selected charging modes and custom slider limits remain strictly respected without thermal overrides.
+- **WebUI & IPC Cleansing**: Purged deprecated thermal tier telemetry chips, JSON fields, and guessing heuristics from the WebUI and IPC status endpoints.
+
+### 🔄 Seamless Profile Transitions & Architecture Hardening
+- **Manual IPC Profile Locking**: Upgraded `SET_PROFILE:<profile>` IPC socket command to persistently lock the profile without being instantly overwritten by the autonomous profiler loop.
+- **Autonomous Mode Revert (`SET_PROFILE:AUTO`)**: Added dedicated `AUTO` / `DYNAMIC` command to seamlessly return daemon control to the dynamic foreground/screen profiler.
+- **Micro-Stutter Elimination**: Removed redundant `is_gpu_heavy` sysfs write triggers during gaming mode, eliminating dozens of unnecessary kernel writes per minute during fluctuating GPU load.
+- **Screen-Off Burst Reset**: Entering `PROFILE_Sleep` now immediately resets all active boost ticks (`gaming_hold_ticks`, `jitter_rescue_ticks`, `launch_boost_ticks`, `app_boost_ticks`), allowing the SoC to immediately drop to deep C-state sleep.
+- **Single-Pass Tamper Recovery**: Streamlined governor mutation audit in `audit_active_profile_state()` to eliminate duplicate re-enforcement calls.
+- **Frequency Boundary Sanitization**: Added defensive min/max frequency bounds checking to guarantee `min_freq <= max_freq` across all CPU policies, preventing `-EINVAL` kernel rejection.
+
+### 🛡️ System Hygiene & Lifecycle Cleanup
+- **SurfaceFlinger & Low-Latency Cleanup**: Automatically restores `debug.sf.latch_unsignaled = 0` and deletes `persist.sys.wifi.low_latency` on daemon shutdown (`restore_baseline_nodes()`), leaving zero persistent footprint.
+
+---
+
 # HyperCore v6.6.0 — HyperMoon HUD Overhaul, Governor Telemetry & Zero-Latency Performance Release
 
 ## What's Changed
