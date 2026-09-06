@@ -64,15 +64,15 @@ public class HyperMoonOverlay {
 
     // Layout State Variables
     private static volatile boolean isDragging = false;
-    private static int posX = 565;
-    private static int posY = 156;
-    private static float scale = 0.79f;
-    private static float opacity = 0.58f;
-    private static int fontSizeSp = 11;
+    private static int posX = 697;
+    private static int posY = 411;
+    private static float scale = 0.65f;
+    private static float opacity = 0.70f;
+    private static int fontSizeSp = 14;
     private static int cornerRadiusDp = 14;
     private static int bgWidthDp = 150;
     private static int bgHeightDp = 160;
-    private static int refreshInterval = 850;
+    private static int refreshInterval = 1500;
     private static String theme = "cyber_neon";
     private static String customHexColor = "#6366F1";
     private static boolean isHorizontal = false;
@@ -88,14 +88,14 @@ public class HyperMoonOverlay {
     private static boolean showFps = true;
     private static boolean showCpu = true;
     private static boolean showCpuFreq = true;
-    private static boolean showGov = true;
+    private static boolean showGov = false;
     private static boolean showGpu = true;
     private static boolean showGpuFreq = true;
-    private static boolean showGpuGov = true;
+    private static boolean showGpuGov = false;
     private static boolean showRam = true;
     private static boolean showZram = false;
     private static boolean showBattery = true;
-    private static boolean showNet = false;
+    private static boolean showNet = true;
 
     // Render Stats State
     private static String fpsText = "60";

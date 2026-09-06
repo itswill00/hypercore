@@ -146,6 +146,49 @@ if [ -d "/data/adb/modules/fps_moon/state" ] && [ ! -f "/data/adb/hypercore/hud/
     ui_print "- Migrating existing FPS Moon preferences to HyperMoon..."
     cp -rf /data/adb/modules/fps_moon/state/* /data/adb/hypercore/hud/ 2>/dev/null || true
 fi
+
+if [ ! -f "/data/adb/hypercore/hud/config.json" ]; then
+    cat << 'EOF' > /data/adb/hypercore/hud/config.json
+{
+  "visible": false,
+  "auto_gaming": false,
+  "show_fps": true,
+  "show_cpu": true,
+  "show_cpu_freq": true,
+  "show_gov": false,
+  "show_gpu": true,
+  "show_gpu_freq": true,
+  "show_gpu_gov": false,
+  "show_ram": true,
+  "show_zram": false,
+  "show_battery": true,
+  "show_net": true,
+  "is_horizontal": false,
+  "align": "left",
+  "theme": "cyber_neon",
+  "custom_color": "#6366F1",
+  "opacity": 0.7,
+  "scale": 0.65,
+  "font_size": 14,
+  "corner_radius": 14,
+  "bg_width": 150,
+  "bg_height": 160,
+  "refresh_interval": 1500,
+  "target_fps": 60
+}
+EOF
+    chmod 666 /data/adb/hypercore/hud/config.json 2>/dev/null || true
+fi
+
+if [ ! -f "/data/adb/hypercore/hud/position.json" ]; then
+    cat << 'EOF' > /data/adb/hypercore/hud/position.json
+{
+  "x": 697,
+  "y": 411
+}
+EOF
+    chmod 666 /data/adb/hypercore/hud/position.json 2>/dev/null || true
+fi
 chmod 777 /data/adb/hypercore/hud 2>/dev/null || true
 
 ui_print "- Auto-detecting installed games on your device..."

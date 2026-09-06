@@ -502,7 +502,7 @@ hz_found:
 }
 
 static time_t last_cfg_mtime = 0;
-static int cached_refresh_interval = 850;
+static int cached_refresh_interval = 1500;
 
 static int get_refresh_interval() {
     char cfg_path[512];

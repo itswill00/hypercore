@@ -26,18 +26,18 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     show_ram: true,
     show_zram: false,
     show_battery: true,
-    show_net: false,
-    is_horizontal: true,
+    show_net: true,
+    is_horizontal: false,
     align: 'left',
     theme: 'cyber_neon',
     custom_color: '#6366F1',
-    opacity: 0.60,
-    scale: 0.80,
-    font_size: 11,
+    opacity: 0.70,
+    scale: 0.65,
+    font_size: 14,
     corner_radius: 14,
     bg_width: 150,
     bg_height: 160,
-    refresh_interval: 850,
+    refresh_interval: 1500,
     target_fps: 60
   })
 
@@ -104,62 +104,47 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
   }
 
   async function toggleMaster(enable) {
-    loading.value = true
+    // 1. Optimistic UI update: 0ms response
     config.value.visible = enable
-    await saveConfig()
+    isRunning.value = enable
 
+    // 2. Save config asynchronously
+    saveConfigDebounced()
+
+    // 3. Fast asynchronous execution
     try {
       if (enable) {
-        const grantCmd = [
-          'mkdir -p /data/adb/hypercore/hud 2>/dev/null',
-          'chmod 777 /data/adb/hypercore/hud 2>/dev/null',
-          'cmd appops set --uid 0 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true',
-          'cmd appops set --uid 1000 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true',
-          'cmd appops set --uid 2000 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true',
-          'cmd appops set android SYSTEM_ALERT_WINDOW allow 2>/dev/null || true',
-          'cmd appops set com.android.shell SYSTEM_ALERT_WINDOW allow 2>/dev/null || true',
-          'pm grant com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null || true'
-        ].join('; ')
-        await execCommand(grantCmd)
-
-        const startDaemon = `
+        const startCmd = `
+          mkdir -p ${HUD_DIR} 2>/dev/null
           if ! pidof hypermoon_daemon >/dev/null 2>&1; then
             export HYPERMOON_STATE_DIR="${HUD_DIR}"
             nohup /data/adb/modules/hypercore/system/bin/hypermoon_daemon > "${HUD_DIR}/daemon.log" 2>&1 &
           fi
-        `
-        await execCommand(startDaemon)
-
-        const startOverlay = `
           if ! pgrep -f 'com.hypermoon.HyperMoonOverlay' >/dev/null 2>&1; then
             export HYPERMOON_STATE_DIR="${HUD_DIR}"
             CLASSPATH="/data/adb/modules/hypercore/system/bin/hypermoon.dex" nohup /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay "${HUD_DIR}" > "${HUD_DIR}/overlay.log" 2>&1 &
           fi
         `
-        await execCommand(startOverlay)
+        await execCommand(startCmd)
       } else {
         const killCmd = `
           for p in $(pgrep -f '[H]yperMoonOverlay|[F]PSMoonOverlay' 2>/dev/null); do [ "$p" != "$$" ] && kill -9 "$p" 2>/dev/null || true; done
-          pkill -9 -x hypermoon_daemon 2>/dev/null || true
-          pkill -9 -x fpsmoon_daemon 2>/dev/null || true
+          kill -9 $(pidof hypermoon_daemon fpsmoon_daemon 2>/dev/null) 2>/dev/null || true
         `
         await execCommand(killCmd)
       }
-      await new Promise(r => setTimeout(r, 400))
-      await checkStatus()
-      return enable ? 'HyperMoon HUD activated' : 'HyperMoon HUD stopped'
+      setTimeout(checkStatus, 350)
+      return enable ? 'Overlay enabled' : 'Overlay disabled'
     } catch {
-      return 'Failed to toggle HyperMoon HUD'
-    } finally {
-      loading.value = false
+      return 'Failed to switch overlay'
     }
   }
 
   async function resetPosition() {
     try {
-      const defPos = JSON.stringify({ x: 48, y: 96 }, null, 2)
+      const defPos = JSON.stringify({ x: 697, y: 411 }, null, 2)
       await execCommand(`echo '${defPos}' > ${POS_FILE} && chmod 666 ${POS_FILE} 2>/dev/null`)
-      return 'Overlay position reset to default'
+      return 'Position reset'
     } catch {
       return 'Failed to reset position'
     }
@@ -171,9 +156,9 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
       await toggleMaster(false)
       await new Promise(r => setTimeout(r, 300))
       await toggleMaster(true)
-      return 'HyperMoon engine restarted'
+      return 'Overlay restarted'
     } catch {
-      return 'Failed to restart HyperMoon engine'
+      return 'Failed to restart overlay'
     } finally {
       loading.value = false
     }

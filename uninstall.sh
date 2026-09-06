@@ -2,7 +2,7 @@
 
 pkill -9 -x libhypercore.so >/dev/null 2>&1
 pkill -9 -f com.hypermoon.HyperMoonOverlay >/dev/null 2>&1 || true
-pkill -9 -x hypermoon_daemon >/dev/null 2>&1 || true
+kill -9 $(pidof hypermoon_daemon 2>/dev/null) 2>/dev/null || true
 
 # Reset CPU scaling governor & frequencies
 for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do

@@ -72,7 +72,7 @@
               </span>
             </div>
             <div class="hypermoon-sub">
-              {{ hudStore.config.visible ? 'Floating on-screen FPS & performance monitor' : 'Tap to configure or toggle on-screen HUD' }}
+              {{ hudStore.config.visible ? 'Floating performance monitor is active' : 'Tap to customize or toggle in-game overlay' }}
             </div>
           </div>
         </div>
@@ -81,7 +81,6 @@
             <input
               type="checkbox"
               :checked="hudStore.config.visible"
-              :disabled="hudStore.loading"
               @change="onToggleHud"
             />
             <span class="md3-switch-track">
@@ -223,7 +222,7 @@ async function onToggleHud() {
 
 .hypermoon-card {
   background: var(--surface-container);
-  border: 1px solid var(--surface-container-highest);
+  border: 1px solid var(--surface-container-high);
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -281,8 +280,8 @@ async function onToggleHud() {
 }
 
 .badge-mini-active {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 </style>
 
