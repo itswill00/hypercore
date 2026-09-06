@@ -1,3 +1,27 @@
+# HyperCore v6.6.0 — HyperMoon HUD Overhaul, Governor Telemetry & Zero-Latency Performance Release
+
+## What's Changed
+
+### 🌕 HyperMoon HUD Overhaul & Governor Telemetry
+- **CPU & GPU Governor Live Display**: Added native support and dedicated toggles for real-time CPU scaling governor (`show_gov` / `sugov_ext` / `schedutil`) and Mali graphics governor & policy (`show_gpu_gov` / `simple_ondemand` / `ged_dvfs`).
+- **ZRAM Compressed Swap Telemetry**: Added real-time monitoring for compressed swap memory usage (`show_zram`).
+- **Full Geometry & Appearance Customization**: Added granular Card Width (`100px - 400px`) and Card Height (`36px - 260px`) sliders, with expanded ranges for Scale (`50% - 180%`), Font Size (`9sp - 22sp`), Corner Radius (`0dp - 30dp`), Update Interval (`50ms - 2500ms`), and Background Opacity (`10% - 100%`).
+- **One-Tap Quick Presets**: Integrated instant preset switching between **Compact** (FPS, CPU, GPU, Battery), **Minimal** (pure FPS), and **Detailed** (full telemetry & govs) with automatic optimal dimension sizing.
+- **Theme & Custom Accent Color**: Added native theme presets (Cyber Neon, AMOLED Dark, Matrix Green, Crimson Red) and custom hex color picker with real-time card and text accenting.
+- **Layout & Text Alignment Controls**: Added intuitive Horizontal Bar vs Vertical Card orientation switcher with dynamic Left, Center, and Right text alignment.
+
+### ⚡ Zero-Latency Reactive Architecture
+- **Kernel inotify Real-Time Synchronization**: Connected Java DEX overlay directly to Linux kernel `inotify` via `FileObserver`, enabling sub-millisecond reactions to configuration updates and slider dragging.
+- **Instant Master Switch**: Re-engineered ON/OFF toggle to manage view visibility directly in Dalvik without stopping or respawning background processes, eliminating switch lag completely.
+- **Dynamic Anti-Clipping Geometry Engine**: Upgraded `calcHudDimensions()` to automatically calculate line heights and prevent bottom telemetry metrics (Battery, Network) from clipping in Vertical Card mode regardless of card height settings.
+
+### 🎨 Design Polish & UX Refinement
+- **AMOLED Dark MD3 Harmony**: Replaced harsh green accent badges with 100% monochrome AMOLED dark styling matching the HyperCore design system.
+- **Tactile Switch Hitboxes**: Enlarged switch touch targets (48x48px) with `pointer-events: none` internal decoupling to prevent touch desynchronization on mobile screens.
+- **Natural Copywriting**: Purged robotic terminology across the HUD view in favor of clear, natural English phrasing.
+
+---
+
 # HyperCore v6.5.0 — Architecture Isolation, Gamelist Ecosystem & Full-Spectrum Stability Release
 
 ## What's Changed
