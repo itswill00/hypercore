@@ -24,11 +24,14 @@ import android.view.WindowManager;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,8 +82,21 @@ public class HyperMoonOverlay {
     private static String customHexColor = "#6366F1";
     private static boolean isHorizontal = false;
     private static String align = "left"; // left, center, right
+    private static boolean masterVisible = true;
     private static boolean isVisible = true;
     private static boolean autoGaming = false;
+
+    // Auto Gaming Cache & Top-App Process Paths
+    private static Set<String> cachedGamelist = new HashSet<>();
+    private static long lastGamelistModified = 0L;
+    private static long lastGameCheckTime = 0L;
+    private static boolean lastGameActiveState = false;
+    private static final byte[] cmdlineBuf = new byte[128];
+    private static final String[] TOP_APP_PROCS_PATHS = {
+        "/dev/cpuset/top-app/cgroup.procs",
+        "/sys/fs/cgroup/top-app/cgroup.procs",
+        "/dev/cpuset/top-app/tasks"
+    };
 
     // Config & Position timestamp check — instant sync on file modification
     private static long lastConfigModified = 0L;
@@ -1033,7 +1049,7 @@ public class HyperMoonOverlay {
                     System.err.println("[HyperMoon] Recovered loop: " + t.getMessage());
                 } finally {
                     try {
-                        int delay = isVisible ? Math.max(50, refreshInterval) : 250;
+                        int delay = isVisible ? (autoGaming ? Math.max(50, Math.min(refreshInterval, 750)) : Math.max(50, refreshInterval)) : 250;
                         handler.postDelayed(this, delay);
                     } catch (Throwable t2) {
                         try {
@@ -1167,20 +1183,48 @@ public class HyperMoonOverlay {
             }
         }
 
-        Map<String, String> stats = readStats();
+        // Evaluate dynamic visibility (auto_gaming strictly in games)
+        boolean targetVisible = masterVisible;
+        if (autoGaming) {
+            targetVisible = masterVisible && isGameActive();
+        }
+
+        if (isVisible != targetVisible) {
+            isVisible = targetVisible;
+            if (!isHardwareSurface && hudView != null) {
+                hudView.setVisibility(isVisible ? View.VISIBLE : View.GONE);
+                if (isVisible) {
+                    int[] dims = calcHudDimensions();
+                    if (params != null && (dims[0] != params.width || dims[1] != params.height)) {
+                        params.width = dims[0];
+                        params.height = dims[1];
+                        try { windowManager.updateViewLayout(hudView, params); } catch (Throwable ignored) {}
+                    }
+                    hudView.invalidate();
+                }
+            } else if (isHardwareSurface) {
+                renderHardwareSurface();
+            }
+        }
 
         if (!isVisible) {
             if (!isHardwareSurface && hudView != null) {
-                hudView.setVisibility(View.GONE);
+                if (hudView.getVisibility() != View.GONE) {
+                    hudView.setVisibility(View.GONE);
+                }
             } else if (isHardwareSurface) {
                 renderHardwareSurface();
             }
             return;
         } else {
             if (!isHardwareSurface && hudView != null) {
-                hudView.setVisibility(View.VISIBLE);
+                if (hudView.getVisibility() != View.VISIBLE) {
+                    hudView.setVisibility(View.VISIBLE);
+                }
             }
         }
+
+        Map<String, String> stats = readStats();
 
         fpsText = stats.getOrDefault("fps", "60");
         ftText  = stats.getOrDefault("frametime", "16.6");
@@ -1274,6 +1318,124 @@ public class HyperMoonOverlay {
         return map;
     }
 
+    private static void reloadGamelistIfNeeded() {
+        File glFile = new File("/data/adb/hypercore/gamelist.txt");
+        if (!glFile.exists()) {
+            glFile = new File("/sdcard/Android/gamelist.txt");
+        }
+        if (!glFile.exists()) {
+            glFile = new File("/data/adb/modules/hypercore/gamelist.txt");
+        }
+        if (!glFile.exists()) return;
+
+        long mod = glFile.lastModified();
+        if (mod != lastGamelistModified || cachedGamelist.isEmpty()) {
+            lastGamelistModified = mod;
+            Set<String> set = new HashSet<>();
+            try (BufferedReader br = new BufferedReader(new FileReader(glFile))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("#")) continue;
+                    int colon = line.indexOf(':');
+                    String pkg = (colon > 0) ? line.substring(0, colon).trim() : line;
+                    if (!pkg.isEmpty()) {
+                        set.add(pkg);
+                    }
+                }
+                cachedGamelist = set;
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private static boolean checkTopAppGaming() {
+        if (cachedGamelist.isEmpty()) return false;
+
+        for (String path : TOP_APP_PROCS_PATHS) {
+            File f = new File(path);
+            if (!f.exists()) continue;
+
+            try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+                String line;
+                int scanned = 0;
+                while ((line = br.readLine()) != null && scanned < 32) {
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+                    scanned++;
+
+                    String cmdPath = "/proc/" + line + "/cmdline";
+                    File cmdFile = new File(cmdPath);
+                    if (!cmdFile.exists()) continue;
+
+                    try (FileInputStream fis = new FileInputStream(cmdFile)) {
+                        int n = fis.read(cmdlineBuf);
+                        if (n > 0) {
+                            int end = 0;
+                            while (end < n && cmdlineBuf[end] != 0 && cmdlineBuf[end] != ':' && cmdlineBuf[end] != ' ') {
+                                end++;
+                            }
+                            if (end > 0) {
+                                String pkg = new String(cmdlineBuf, 0, end);
+                                if (cachedGamelist.contains(pkg)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            } catch (Throwable ignored) {}
+        }
+        return false;
+    }
+
+    private static boolean checkStatusJsonGaming() {
+        File sf = new File("/data/adb/hypercore/status.json");
+        if (!sf.exists()) {
+            sf = new File("/dev/hypercore_status.json");
+        }
+        if (!sf.exists()) {
+            sf = new File("/data/adb/modules/hypercore/status.json");
+        }
+        if (sf.exists()) {
+            try (BufferedReader br = new BufferedReader(new FileReader(sf))) {
+                String line = br.readLine();
+                if (line != null) {
+                    if (line.contains("\"Gaming\"") || line.contains("\"Gaming MOBA\"") ||
+                        line.contains("Gaming") || line.contains("GAMING")) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+        return false;
+    }
+
+    private static boolean isGameActive() {
+        long now = System.currentTimeMillis();
+        // Throttle game check to 250ms for maximum reactivity with near-zero CPU usage
+        if (now - lastGameCheckTime < 250) {
+            return lastGameActiveState;
+        }
+        lastGameCheckTime = now;
+
+        reloadGamelistIfNeeded();
+
+        // 1. Direct top-app check against gamelist.txt (real-time sub-millisecond detection)
+        if (checkTopAppGaming()) {
+            lastGameActiveState = true;
+            return true;
+        }
+
+        // 2. HyperCore daemon status.json check (active profile is Gaming / Gaming MOBA)
+        if (checkStatusJsonGaming()) {
+            lastGameActiveState = true;
+            return true;
+        }
+
+        lastGameActiveState = false;
+        return false;
+    }
+
     private static void readConfig() {
         File file = new File(configPath);
         if (!file.exists()) return;
@@ -1287,23 +1449,11 @@ public class HyperMoonOverlay {
             String content = sb.toString();
 
             autoGaming = parseBool(content, "auto_gaming", autoGaming);
-            boolean baseVisible = parseBool(content, "visible", isVisible);
+            masterVisible = parseBool(content, "visible", masterVisible);
             if (autoGaming) {
-                boolean isGaming = false;
-                try {
-                    File sf = new File("/data/adb/hypercore/status.json");
-                    if (sf.exists()) {
-                        BufferedReader sbr = new BufferedReader(new FileReader(sf));
-                        String sline = sbr.readLine();
-                        sbr.close();
-                        if (sline != null && sline.contains("Gaming")) {
-                            isGaming = true;
-                        }
-                    }
-                } catch (Throwable ignored) {}
-                isVisible = isGaming;
+                isVisible = masterVisible && isGameActive();
             } else {
-                isVisible = baseVisible;
+                isVisible = masterVisible;
             }
             showFps = parseBool(content, "show_fps", showFps);
             showCpu = parseBool(content, "show_cpu", showCpu);

@@ -29,7 +29,7 @@
             <div>
               <div class="master-card-title">Enable Overlay</div>
               <div class="master-card-sub">
-                {{ hudStore.config.visible ? 'Live stats showing on screen' : 'Overlay is currently off' }}
+                {{ hudStore.config.visible ? (hudStore.config.auto_gaming ? 'Overlay will automatically show during games' : 'Live stats showing on screen') : 'Overlay is currently off' }}
               </div>
             </div>
           </div>
@@ -495,7 +495,13 @@ function onSelectTheme(themeId) {
 
 function toggleAutoGaming() {
   hudStore.config.auto_gaming = !hudStore.config.auto_gaming
+  if (hudStore.config.auto_gaming && !hudStore.config.visible) {
+    hudStore.config.visible = true
+  }
   hudStore.saveConfigDebounced()
+  if (toast) {
+    toast(hudStore.config.auto_gaming ? 'Enabled: Overlay will show only in games' : 'Disabled: Overlay follows master switch')
+  }
 }
 
 function setLayout(isHorizontal) {

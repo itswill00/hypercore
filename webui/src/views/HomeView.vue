@@ -72,7 +72,7 @@
               </span>
             </div>
             <div class="hypermoon-sub">
-              {{ hudStore.config.visible ? 'Floating performance monitor is active' : 'Tap to customize or toggle in-game overlay' }}
+              {{ hudStore.config.visible ? (hudStore.config.auto_gaming ? 'Overlay automatically shows during games' : 'Floating performance monitor is active') : 'Tap to customize or toggle in-game overlay' }}
             </div>
           </div>
         </div>
