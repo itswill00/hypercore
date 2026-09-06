@@ -84,6 +84,7 @@
               v-model="item.profile"
               @change="changeProfile(item.pkg, item.profile)"
               class="select-md3"
+              :class="getProfileClass(item.profile)"
             >
               <option value="GAMING">Gaming</option>
               <option value="GAMING_MOBA">Gaming (MOBA)</option>
@@ -93,17 +94,19 @@
 
             <button
               class="btn-md3 btn-md3-primary btn-md3-sm"
+              :disabled="launchingPkg === item.pkg"
               @click="launch(item.pkg)"
             >
-              <Icons name="rocket" :size="13" />
-              <span>Launch</span>
+              <Icons :name="launchingPkg === item.pkg ? 'check' : 'rocket'" :size="13" />
+              <span>{{ launchingPkg === item.pkg ? 'Launching' : 'Launch' }}</span>
             </button>
             <button
-              class="btn-md3 btn-md3-danger btn-icon-only btn-md3-sm"
-              title="Remove game"
+              class="btn-md3 btn-icon-only btn-md3-sm"
+              :class="confirmRemovePkg === item.pkg ? 'btn-md3-danger active-confirm' : 'btn-md3-danger'"
+              :title="confirmRemovePkg === item.pkg ? 'Click again to confirm delete' : 'Remove game'"
               @click="remove(item.pkg)"
             >
-              <Icons name="trash" :size="13" />
+              <Icons :name="confirmRemovePkg === item.pkg ? 'check' : 'trash'" :size="13" />
             </button>
           </div>
         </div>
@@ -212,14 +215,42 @@ function getAppGradient(name) {
   return `linear-gradient(135deg, hsl(${h1}, 70%, 45%), hsl(${h2}, 75%, 35%))`
 }
 
+const confirmRemovePkg = ref('')
+const launchingPkg = ref('')
+let confirmTimeout = null
+
+function getProfileClass(profile) {
+  switch ((profile || '').toUpperCase()) {
+    case 'GAMING': return 'prof-gaming'
+    case 'GAMING_MOBA': return 'prof-moba'
+    case 'INTERACTIVE': return 'prof-interactive'
+    case 'SLEEP': return 'prof-saver'
+    default: return ''
+  }
+}
+
 async function remove(pkg) {
-  const msg = store.removeGame(pkg)
-  if (msg && toast) toast(msg)
+  if (confirmRemovePkg.value === pkg) {
+    confirmRemovePkg.value = ''
+    if (confirmTimeout) clearTimeout(confirmTimeout)
+    const msg = store.removeGame(pkg)
+    if (msg && toast) toast(msg)
+  } else {
+    confirmRemovePkg.value = pkg
+    if (confirmTimeout) clearTimeout(confirmTimeout)
+    confirmTimeout = setTimeout(() => {
+      if (confirmRemovePkg.value === pkg) confirmRemovePkg.value = ''
+    }, 3500)
+  }
 }
 
 async function launch(pkg) {
+  launchingPkg.value = pkg
   const msg = store.launchGame(pkg)
   if (msg && toast) toast(msg)
+  setTimeout(() => {
+    if (launchingPkg.value === pkg) launchingPkg.value = ''
+  }, 1500)
 }
 
 async function changeProfile(pkg, profile) {
@@ -264,7 +295,28 @@ async function changeProfile(pkg, profile) {
   transition: all 0.2s ease;
 }
 
+.select-md3.prof-gaming {
+  border-left: 3px solid #ff7043;
+}
+
+.select-md3.prof-moba {
+  border-left: 3px solid #26c6da;
+}
+
+.select-md3.prof-interactive {
+  border-left: 3px solid #42a5f5;
+}
+
+.select-md3.prof-saver {
+  border-left: 3px solid #66bb6a;
+}
+
 .select-md3:focus {
   border-color: var(--primary);
+}
+
+.active-confirm {
+  background: var(--error) !important;
+  color: var(--on-error) !important;
 }
 </style>

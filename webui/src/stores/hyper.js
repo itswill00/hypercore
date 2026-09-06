@@ -745,7 +745,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     }
 
     const cmd = [
-      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
+      `for f in ${GL_PERM} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    echo '${pkg}:${profile}' >> "$f.tmp"`,
@@ -756,6 +756,42 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     execCommand(cmd)
     setTimeout(refresh, 400)
     return `Updated ${pkg} to ${profile}`
+  }
+
+  async function autoDetectGames() {
+    loading.value = true
+    try {
+      const scanCmd = `pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom' 2>/dev/null`
+      const out = await execCommand(scanCmd)
+      if (!out || !out.trim()) {
+        return 'No installed games detected'
+      }
+
+      const found = out.trim().split('\n').map(l => l.trim()).filter(Boolean)
+      const existing = new Set(games.value.map(g => g.pkg))
+      const toAdd = found.filter(p => !existing.has(p))
+
+      if (toAdd.length === 0) {
+        return 'All detected games are already in the list'
+      }
+
+      const appendLines = toAdd.map(pkg => `${pkg}:GAMING`).join('\n')
+      const cmd = [
+        `mkdir -p /data/adb/hypercore 2>/dev/null`,
+        `for f in ${GL_PERM} ${GL_SD}; do`,
+        `  touch "$f" 2>/dev/null`,
+        `  printf '%s\\n' "${appendLines}" >> "$f" 2>/dev/null`,
+        `done`
+      ].join('\n')
+      await execCommand(cmd)
+      await new Promise(r => setTimeout(r, 300))
+      await refresh()
+      return `Auto-detected and added ${toAdd.length} game${toAdd.length > 1 ? 's' : ''}`
+    } catch {
+      return 'Failed to auto-detect games'
+    } finally {
+      loading.value = false
+    }
   }
 
   function launchGame(rawPkg) {
@@ -777,7 +813,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,
     refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
-    addGame, removeGame, updateGameProfile, launchGame, setLogsActive, stopUptimeTicker,
+    addGame, removeGame, updateGameProfile, autoDetectGames, launchGame, setLogsActive, stopUptimeTicker,
     startCardPolling, stopCardPolling, pollCharger, setChargeMode, setCustomLimit,
     setNightCharging, setSmartChg, setProtect80
   }

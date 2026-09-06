@@ -65,9 +65,9 @@ void load_gamelist(void) {
             if (colon) {
                 *colon = '\0';
                 char *prof_str = colon + 1;
-                if (strcmp(prof_str, "INTERACTIVE") == 0 || strcmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
-                else if (strcmp(prof_str, "SLEEP") == 0 || strcmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
-                else if (strcmp(prof_str, "GAMING_MOBA") == 0 || strcmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
+                if (strcasecmp(prof_str, "INTERACTIVE") == 0 || strcasecmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
+                else if (strcasecmp(prof_str, "SLEEP") == 0 || strcasecmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
+                else if (strcasecmp(prof_str, "GAMING_MOBA") == 0 || strcasecmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
                 else prof = PROFILE_Gaming;
             }
 
