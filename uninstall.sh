@@ -1,6 +1,8 @@
 #!/system/bin/sh
 
 pkill -9 -x libhypercore.so >/dev/null 2>&1
+pkill -9 -f com.hypermoon.HyperMoonOverlay >/dev/null 2>&1 || true
+pkill -9 -x hypermoon_daemon >/dev/null 2>&1 || true
 
 # Reset CPU scaling governor & frequencies
 for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
@@ -43,6 +45,7 @@ done
 # Clean up symlinks & lock files
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
 rm -f /data/adb/ap/bin/hypercore-bugreport /data/adb/ksu/bin/hypercore-bugreport /data/adb/modules/bin/hypercore-bugreport 2>/dev/null
+rm -f /data/adb/ap/bin/hypermoon_daemon /data/adb/ksu/bin/hypermoon_daemon /data/adb/modules/bin/hypermoon_daemon 2>/dev/null
 rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/modules/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid 2>/dev/null
 rm -f /data/adb/modules/hypercore/status.json /data/adb/modules/hypercore/*.conf /data/adb/modules/hypercore/gamelist.txt 2>/dev/null
 rm -rf /data/adb/hypercore 2>/dev/null || true

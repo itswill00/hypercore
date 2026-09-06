@@ -2,6 +2,14 @@
 
 ## What's Changed
 
+### 🌕 Native HyperMoon HUD Integration (Unified FPS & Performance Overlay)
+- **Module Consolidation**: Integrated standalone FPS Moon directly into HyperCore as **HyperMoon**, eliminating the need for two separate Magisk/KernelSU modules and saving system resources.
+- **Dual Engine Architecture**: Ultra-low-overhead native C telemetry daemon (`hypermoon_daemon`) paired with high-performance Java/DEX Surface overlay (`hypermoon.dex` via `app_process`).
+- **Dashboard Quick Switch**: Added dedicated minimalist HyperMoon card on the Dashboard with an instant ON/OFF master toggle and live status badge.
+- **Dedicated HUD Settings View (`/hud`)**: Deeply customizable layout (Capsule Pill vs Card Stack), text alignment, telemetry metrics toggle (FPS, Frametime, CPU load/freq, GPU load/freq, RAM, Battery Watt/Temp, Network), scaling, opacity, corner radius, and refresh rate.
+- **Auto-Gaming Synergy**: Smart foreground detection automatically reveals HUD during active gameplay and hides it during normal interactive tasks when auto-gaming mode is enabled.
+- **Zero Storage Clutter**: HUD configurations and logs reside cleanly in `/data/adb/hypercore/hud/` with automatic migration from older FPS Moon modules.
+
 ### 📂 Filesystem Architecture & Persistent Data Isolation
 - **Dedicated Data Directory (`/data/adb/hypercore/`)**: Completely isolated all dynamic runtime configs (`*.conf`), user gamelist (`gamelist.txt`), log files, and PID states into `/data/adb/hypercore/`.
 - **Zero Module Root Pollution**: Guaranteed `/data/adb/modules/hypercore/` contains strictly clean Magisk/KSU overlay files and lifecycle scripts with zero runtime clutter.

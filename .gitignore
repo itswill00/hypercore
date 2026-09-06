@@ -2,6 +2,9 @@
 hypercore
 libhypercore.so
 system/bin/libhypercore.so
+system/bin/hypermoon_daemon
+system/bin/hypermoon.dex
+*.dex
 *.so
 *.zip
 *.tmp

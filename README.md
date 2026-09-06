@@ -45,7 +45,8 @@ Android devices often experience frame drops or scrolling stutters due to conser
 - **MediaTek DVFSRC Bandwidth Optimization**: Adjusts interconnect memory bandwidth limits (`dvfsrc_qos_mode`) during gaming workloads to eliminate RAM bus bottlenecks.
 - **Dynamic 4-Tier Thermal Mitigation System**: Hysteresis-guarded thermal mitigation (Tier 0 to Tier 3) protecting hardware during sustained load.
 - **MediaTek FPSGO & GED Integration**: Configures FPSGO and GED boost parameters for frame stabilization during heavy graphics rendering.
-- **Material Design 3 WebUI**: Integrated WebUI for KernelSU / APatch / Magisk providing status monitoring, game management, log viewing, and RAM tools.
+- **HyperMoon Native Performance HUD**: Dual-engine on-screen overlay (C telemetry daemon `hypermoon_daemon` + Java DEX `HyperMoonOverlay`) rendering floating real-time FPS, frametime, CPU/GPU loads and frequencies, battery wattage, and network throughput with customizable pill/card layouts and auto-gaming detection.
+- **Material Design 3 WebUI**: Integrated WebUI for KernelSU / APatch / Magisk providing status monitoring, HUD customization, game management, charging control, log viewing, and RAM tools.
 
 </details>
 

@@ -136,8 +136,17 @@ for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
         ui_print "- Creating PATH symlink in $manager_dir"
         ln -sf "$MODPATH/system/bin/libhypercore.so" "$manager_dir/libhypercore.so" 2>/dev/null || true
         [ -f "$MODPATH/system/bin/hypercore-bugreport" ] && ln -sf "$MODPATH/system/bin/hypercore-bugreport" "$manager_dir/hypercore-bugreport" 2>/dev/null || true
+        [ -f "$MODPATH/system/bin/hypermoon_daemon" ] && ln -sf "$MODPATH/system/bin/hypermoon_daemon" "$manager_dir/hypermoon_daemon" 2>/dev/null || true
     fi
 done
+
+# HyperMoon HUD State directory & FPS Moon migration
+mkdir -p /data/adb/hypercore/hud
+if [ -d "/data/adb/modules/fps_moon/state" ] && [ ! -f "/data/adb/hypercore/hud/config.json" ]; then
+    ui_print "- Migrating existing FPS Moon preferences to HyperMoon..."
+    cp -rf /data/adb/modules/fps_moon/state/* /data/adb/hypercore/hud/ 2>/dev/null || true
+fi
+chmod 777 /data/adb/hypercore/hud 2>/dev/null || true
 
 ui_print "- Auto-detecting installed games on your device..."
 AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom' 2>/dev/null)

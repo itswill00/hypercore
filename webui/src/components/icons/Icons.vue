@@ -98,6 +98,16 @@
     <g v-else-if="name === 'chevron-right'">
       <polyline points="9 18 15 12 9 6" />
     </g>
+
+    <g v-else-if="name === 'chevron-left' || name === 'arrow-left' || name === 'back'">
+      <polyline points="15 18 9 12 15 6" />
+    </g>
+
+    <g v-else-if="name === 'hud' || name === 'monitor' || name === 'overlay'">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </g>
     
     <g v-else-if="name === 'star'">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />

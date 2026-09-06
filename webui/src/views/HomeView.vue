@@ -58,6 +58,39 @@
         </div>
       </div>
 
+      <!-- HyperMoon Performance HUD Card -->
+      <div class="hypermoon-card">
+        <div class="hypermoon-card-left" @click="$router.push('/hud')">
+          <div class="icon-badge" :class="hudStore.config.visible ? '' : 'secondary'">
+            <Icons name="moon" :size="20" />
+          </div>
+          <div class="hypermoon-meta">
+            <div class="hypermoon-title-row">
+              <span class="hypermoon-title">HyperMoon HUD</span>
+              <span class="badge-mini" :class="hudStore.isRunning ? 'badge-mini-active' : ''">
+                {{ hudStore.isRunning ? 'Active' : 'Off' }}
+              </span>
+            </div>
+            <div class="hypermoon-sub">
+              {{ hudStore.config.visible ? 'Floating on-screen FPS & performance monitor' : 'Tap to configure or toggle on-screen HUD' }}
+            </div>
+          </div>
+        </div>
+        <div class="hypermoon-card-right">
+          <label class="md3-switch" @click.stop>
+            <input
+              type="checkbox"
+              :checked="hudStore.config.visible"
+              :disabled="hudStore.loading"
+              @change="onToggleHud"
+            />
+            <span class="md3-switch-track">
+              <span class="md3-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <ActionButtons />
 
       <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0;">
@@ -68,12 +101,26 @@
 </template>
 
 <script setup>
+import { onMounted, inject } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
+import { useHyperMoonStore } from '@/stores/hypermoon'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
 import bannerImg from '@/assets/banner.jpg'
 
 const store = useHyperStore()
+const hudStore = useHyperMoonStore()
+const toast = inject('toast')
+
+onMounted(() => {
+  hudStore.init()
+})
+
+async function onToggleHud() {
+  const target = !hudStore.config.visible
+  const msg = await hudStore.toggleMaster(target)
+  if (msg && toast) toast(msg)
+}
 </script>
 
 <style scoped>
@@ -174,5 +221,68 @@ const store = useHyperStore()
   backdrop-filter: blur(4px);
 }
 
+.hypermoon-card {
+  background: var(--surface-container);
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.hypermoon-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.hypermoon-card-left:active {
+  opacity: 0.85;
+}
+
+.hypermoon-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hypermoon-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hypermoon-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.hypermoon-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.3;
+}
+
+.badge-mini {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+}
+
+.badge-mini-active {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
 </style>
 

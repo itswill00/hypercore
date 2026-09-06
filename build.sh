@@ -17,7 +17,7 @@ ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip"
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
-for tool in clang zip node npm; do
+for tool in clang zip node npm ecj; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "error: $tool is not installed"
         exit 1
@@ -96,6 +96,29 @@ clang -O3 -Wall -Werror \
     src/charger.c \
     -o system/bin/libhypercore.so
 
+echo "compiling hypermoon c daemon..."
+clang -O3 -Wall -Wextra \
+    src/hud/hypermoon_daemon.c \
+    -o system/bin/hypermoon_daemon
+chmod 755 system/bin/hypermoon_daemon
+
+echo "compiling hypermoon java overlay dex..."
+ANDROID_JAR="/data/data/com.termux/files/usr/share/java/android.jar"
+if [ ! -f "$ANDROID_JAR" ]; then
+    ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
+fi
+rm -rf build/classes
+mkdir -p build/classes
+ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java
+if command -v dx >/dev/null 2>&1; then
+    dx --dex --output=system/bin/hypermoon.dex build/classes
+elif command -v d8 >/dev/null 2>&1; then
+    d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class
+    mv system/bin/classes.dex system/bin/hypermoon.dex
+fi
+rm -rf build/classes
+chmod 644 system/bin/hypermoon.dex
+
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR/HyperCore-${VERSION}-b${VERSION_CODE}"*.zip
 
@@ -108,6 +131,8 @@ if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     customize.sh \
     system/bin/libhypercore.so \
     system/bin/hypercore-bugreport \
+    system/bin/hypermoon_daemon \
+    system/bin/hypermoon.dex \
     webroot/index.html \
     gamelist.txt \
     changelog.md \
@@ -125,9 +150,12 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."
     if su -c "
         pkill -9 -x libhypercore.so 2>/dev/null || true
+        pkill -9 -x hypermoon_daemon 2>/dev/null || true
+        for p in \$(pgrep -f '[H]yperMoonOverlay' 2>/dev/null); do [ \"\$p\" != \"\$\$\" ] && kill -9 \"\$p\" 2>/dev/null || true; done
         MOD_TARGET=\"/data/adb/modules/hypercore\"
         DATA_TARGET=\"/data/adb/hypercore\"
         mkdir -p \"\$DATA_TARGET\"
+        mkdir -p \"\$DATA_TARGET/hud\"
         if [ -d \"\$MOD_TARGET\" ]; then
             # Migrate existing user configs from module root to persistent data dir
             for f in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf; do
@@ -144,9 +172,11 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
 
             mkdir -p \$MOD_TARGET/system/bin
             mkdir -p \$MOD_TARGET/webroot
-            rm -f \$MOD_TARGET/system/bin/libhypercore.so
+            rm -f \$MOD_TARGET/system/bin/libhypercore.so \$MOD_TARGET/system/bin/hypermoon_daemon \$MOD_TARGET/system/bin/hypermoon.dex
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
             [ -f system/bin/hypercore-bugreport ] && cp system/bin/hypercore-bugreport \$MOD_TARGET/system/bin/hypercore-bugreport
+            [ -f system/bin/hypermoon_daemon ] && cp system/bin/hypermoon_daemon \$MOD_TARGET/system/bin/hypermoon_daemon
+            [ -f system/bin/hypermoon.dex ] && cp system/bin/hypermoon.dex \$MOD_TARGET/system/bin/hypermoon.dex
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
             cp banner.jpg \$MOD_TARGET/banner.jpg
             cp module.prop \$MOD_TARGET/module.prop
@@ -156,6 +186,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
             cp uninstall.sh \$MOD_TARGET/uninstall.sh
             cp changelog.md \$MOD_TARGET/changelog.md
             chmod 755 \$MOD_TARGET/system/bin/*
+            [ -f \$MOD_TARGET/system/bin/hypermoon.dex ] && chmod 644 \$MOD_TARGET/system/bin/hypermoon.dex
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
             chmod 644 \$MOD_TARGET/module.prop \$MOD_TARGET/system.prop \$MOD_TARGET/banner.jpg \$MOD_TARGET/changelog.md \$MOD_TARGET/webroot/index.html
             rm -f /dev/hypercore.sock \$DATA_TARGET/hypercore.sock \$DATA_TARGET/hypercore.pid 2>/dev/null || true

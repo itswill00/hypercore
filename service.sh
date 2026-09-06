@@ -30,3 +30,26 @@ if [ -f "$BIN" ]; then
         nohup "$BIN" >/dev/null 2>&1 &
     fi
 fi
+
+# HyperMoon HUD Service Setup & Auto-Start
+cmd appops set --uid 0 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true
+cmd appops set --uid 1000 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true
+cmd appops set --uid 2000 SYSTEM_ALERT_WINDOW allow 2>/dev/null || true
+cmd appops set android SYSTEM_ALERT_WINDOW allow 2>/dev/null || true
+cmd appops set com.android.shell SYSTEM_ALERT_WINDOW allow 2>/dev/null || true
+pm grant com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null || true
+
+HUD_STATE="/data/adb/hypercore/hud"
+mkdir -p "$HUD_STATE" 2>/dev/null
+chmod 777 "$HUD_STATE" 2>/dev/null || true
+
+if [ -f "$HUD_STATE/config.json" ] && grep -q '"visible"[[:space:]]*:[[:space:]]*true' "$HUD_STATE/config.json" 2>/dev/null; then
+    if [ -f "$MODDIR/system/bin/hypermoon_daemon" ]; then
+        export HYPERMOON_STATE_DIR="$HUD_STATE"
+        nohup "$MODDIR/system/bin/hypermoon_daemon" > "$HUD_STATE/daemon.log" 2>&1 &
+    fi
+    if [ -f "$MODDIR/system/bin/hypermoon.dex" ]; then
+        export HYPERMOON_STATE_DIR="$HUD_STATE"
+        CLASSPATH="$MODDIR/system/bin/hypermoon.dex" nohup /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay "$HUD_STATE" > "$HUD_STATE/overlay.log" 2>&1 &
+    fi
+fi
