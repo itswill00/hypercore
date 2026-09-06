@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="banner.png" alt="HyperCore Banner" width="100%">
+  <img src="banner.jpg" alt="HyperCore Banner" width="100%">
 </p>
 
 <h1 align="center">HyperCore</h1>
@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Arch-ARM64-lightgrey.svg" alt="Architecture">
   <img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20APatch%20%7C%20Magisk-brightgreen.svg" alt="Root">
   <img src="https://img.shields.io/badge/Language-C99%20%7C%20Vue%203-blueviolet.svg" alt="Language">
-  <img src="https://img.shields.io/badge/Release-v6.0.0-purple.svg" alt="Release">
+  <img src="https://img.shields.io/badge/Release-v6.4.8-purple.svg" alt="Release">
 </p>
 
 <p align="center">
