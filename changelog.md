@@ -1,3 +1,24 @@
+# HyperCore v6.5.0 — Architecture Isolation, Gamelist Ecosystem & Full-Spectrum Stability Release
+
+## What's Changed
+
+### 📂 Filesystem Architecture & Persistent Data Isolation
+- **Dedicated Data Directory (`/data/adb/hypercore/`)**: Completely isolated all dynamic runtime configs (`*.conf`), user gamelist (`gamelist.txt`), log files, and PID states into `/data/adb/hypercore/`.
+- **Zero Module Root Pollution**: Guaranteed `/data/adb/modules/hypercore/` contains strictly clean Magisk/KSU overlay files and lifecycle scripts with zero runtime clutter.
+- **Automatic Migration & Backward Compatibility**: Built-in backward-compatibility layer dynamically reads and seamlessly migrates legacy configurations on daemon start or module update.
+
+### 🎮 Gamelist Management & Intelligent Auto-Detection
+- **Intelligent One-Tap Auto-Detect**: Integrated multi-vendor game package scanner (`pm list packages -3`) identifying popular titles and auto-registering them with `GAMING` profile.
+- **Case-Insensitive Parser**: Refactored C daemon parser to use `strcasecmp`, ensuring profiles (`GAMING`, `Gaming`, `gaming`, `MOBA`, `INTERACTIVE`, `SLEEP`) parse reliably without casing issues.
+- **Inline Tactile 2-Step Deletion**: Implemented tactile two-step inline delete confirmation (tap once to prompt confirmation, tap again to delete, auto-reverts in 3.5s) to eliminate accidental touches without disruptive popups.
+- **Minimalist Profile Accents & Launch Feedback**: Subtle color-coded profile indicators in select dropdowns and temporary tactile "Launching..." button feedback.
+
+### 🛡️ System Hygiene & Lifecycle Cleanup
+- **Comprehensive Uninstallation**: Full node restoration for CPU governors, frequencies, rate limits, Mali GPU power policies, GED/FPSGO parameters, and complete cleanup of PATH symlinks (`libhypercore.so` & `hypercore-bugreport`).
+- **Strict Embedded Binary Checksums**: Embedded SHA-256 verification guaranteeing zero tampering across all deployment assets.
+
+---
+
 # HyperCore v6.4.8 — Interactive GPU Uncap, Telemetry Precision & WebUI Performance Release
 
 ## What's Changed
