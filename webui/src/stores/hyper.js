@@ -3,9 +3,9 @@ import { ref, computed } from 'vue'
 import { execCommand, sanitize, isKSU, base64EncodeUtf8 } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/hypercore'
+const DATA = '/data/adb/hypercore'
 const LOG = '/sdcard/Android/hypercore.log'
 const GL_PERM = '/data/adb/hypercore/gamelist.txt'
-const GL_MOD = `${MOD}/gamelist.txt`
 const GL_SD = '/sdcard/Android/gamelist.txt'
 
 export const useHyperStore = defineStore('hyper', () => {
@@ -126,8 +126,8 @@ export const useHyperStore = defineStore('hyper', () => {
         `echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";` +
         `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";` +
         `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";` +
-        `echo "STAT:$(cat /data/adb/modules/hypercore/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null)";` +
-        `echo "PID:$(cat /data/adb/modules/hypercore/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)"`
+        `echo "STAT:$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || cat /data/adb/modules/hypercore/status.json 2>/dev/null)";` +
+        `echo "PID:$(cat /data/adb/hypercore/hypercore.pid 2>/dev/null || cat /data/adb/modules/hypercore/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)"`
       )
       if (!res) return
       const kv = {}
@@ -211,8 +211,8 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(cat $MOD/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_STATUS | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U $MOD/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true); echo "IPC:$IPC";
-echo "PID:$(cat $MOD/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)";
+IPC=$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || echo GET_STATUS | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || cat $MOD/status.json 2>/dev/null || true); echo "IPC:$IPC";
+echo "PID:$(cat /data/adb/hypercore/hypercore.pid 2>/dev/null || cat $MOD/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";
@@ -235,7 +235,7 @@ echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
 echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || echo v6.4.8)";
 echo "===GL===";
-cat ${GL_PERM} 2>/dev/null || cat $MOD/gamelist.txt 2>/dev/null || true;
+cat ${GL_PERM} 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`
 
     try {
@@ -442,7 +442,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         `echo "CV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";` +
         `echo "UV:$(cat /sys/class/power_supply/usb/voltage_now 2>/dev/null)";` +
         `echo "UT:$(cat /sys/class/power_supply/usb/real_type 2>/dev/null || cat /sys/class/power_supply/usb/type 2>/dev/null)";` +
-        `echo "CM:$(cat /data/adb/modules/hypercore/status.json 2>/dev/null || cat /data/adb/hypercore/status.json 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || true)"`
+        `echo "CM:$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || cat /data/adb/modules/hypercore/status.json 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || true)"`
       )
       if (!res) return
       const kv = {}
@@ -487,11 +487,11 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       const m = parseInt(mode)
 
       /* 1. Persist directly to charge_mode.conf as instant disk fallback */
-      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo ${m} > $MOD/charge_mode.conf 2>/dev/null || echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
 
       /* 2. Send SET_CHARGE_MODE IPC to UNIX domain socket */
-      const ipcCmd = `MOD="/data/adb/modules/hypercore"; echo SET_CHARGE_MODE:${m} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
+      const ipcCmd = `echo SET_CHARGE_MODE:${m} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       const res = await execCommand(ipcCmd)
 
       /* Optimistically update state */
@@ -526,11 +526,11 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (isNaN(l) || l < 0 || l > 15) return 'invalid'
 
       /* 1. Persist to charge_mode.conf (mode 6) and custom_charge_limit.conf */
-      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo 6 > $MOD/charge_mode.conf 2>/dev/null; echo ${l} > $MOD/custom_charge_limit.conf 2>/dev/null || echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null; echo ${l} > /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
 
       /* 2. Send SET_CHARGE_LIMIT IPC */
-      const ipcCmd = `MOD="/data/adb/modules/hypercore"; echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U $MOD/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
+      const ipcCmd = `echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       const res = await execCommand(ipcCmd)
 
       chargeMode.value = 6
@@ -561,9 +561,9 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       nightCharging.value = !!val
-      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo ${val} > $MOD/night_charging.conf 2>/dev/null || echo ${val} > /data/adb/hypercore/night_charging.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/night_charging.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || true`
+      const ipcCmd = `echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
       await new Promise(r => setTimeout(r, 150))
       await pollCharger()
@@ -577,9 +577,9 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       smartChg.value = !!val
-      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo ${val} > $MOD/smart_chg.conf 2>/dev/null || echo ${val} > /data/adb/hypercore/smart_chg.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/smart_chg.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_SMART_CHG:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || true`
+      const ipcCmd = `echo SET_SMART_CHG:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_SMART_CHG:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
       await new Promise(r => setTimeout(r, 150))
       await pollCharger()
@@ -593,9 +593,9 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       protect80.value = !!val
-      const diskCmd = `MOD="/data/adb/modules/hypercore"; mkdir -p $MOD 2>/dev/null; echo ${val} > $MOD/protect_80.conf 2>/dev/null || echo ${val} > /data/adb/hypercore/protect_80.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/protect_80.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_PROTECT_80:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || true`
+      const ipcCmd = `echo SET_PROTECT_80:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_PROTECT_80:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
       await new Promise(r => setTimeout(r, 150))
       await pollCharger()
@@ -608,12 +608,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
 
     loading.value = true
     try {
-      // Primary: request daemon via IPC (daemon handles this safely without compact_memory)
-      // Fallback: drop_caches only — DO NOT write compact_memory directly;
-      // it triggers synchronous kernel compaction that freezes all userland threads
-      // (200-800ms D-state) and can cause ANR/soft reboot. See daemon C-1 fix.
-      const cmd = `MOD="/data/adb/modules/hypercore";
-echo PURGE_RAM | nc -U /dev/hypercore.sock 2>/dev/null || echo PURGE_RAM | nc -U $MOD/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; echo 60 > /proc/sys/vm/compaction_proactiveness 2>/dev/null || true)`
+      const cmd = `echo PURGE_RAM | nc -U /dev/hypercore.sock 2>/dev/null || echo PURGE_RAM | nc -U /data/adb/hypercore/hypercore.sock 2>/dev/null || (sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; echo 60 > /proc/sys/vm/compaction_proactiveness 2>/dev/null || true)`
       await execCommand(cmd)
       await new Promise(resolve => setTimeout(resolve, 400))
       await refresh()
@@ -632,14 +627,14 @@ echo PURGE_RAM | nc -U /dev/hypercore.sock 2>/dev/null || echo PURGE_RAM | nc -U
 pkill -15 -x libhypercore.so 2>/dev/null || true;
 sleep 0.3;
 pkill -9 -x libhypercore.so 2>/dev/null || true;
-rm -f /dev/hypercore.sock $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
+rm -f /dev/hypercore.sock /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid $MOD/hypercore.sock $MOD/hypercore.pid 2>/dev/null || true;
 nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       await execCommand(cmd)
 
       let started = false
       for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 250))
-        const check = await execCommand('echo GET_STATUS | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/modules/hypercore/hypercore.sock 2>/dev/null || true')
+        const check = await execCommand('echo GET_STATUS | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true')
         if (check && check.includes('"status":"ok"')) {
           started = true
           break
@@ -704,7 +699,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
     const cmd = [
       `mkdir -p /data/adb/hypercore 2>/dev/null`,
-      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
+      `for f in ${GL_PERM} ${GL_SD}; do`,
       `  touch "$f" 2>/dev/null`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
@@ -727,7 +722,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
-      `for f in ${GL_PERM} ${GL_MOD} ${GL_SD}; do`,
+      `for f in ${GL_PERM} ${GL_SD}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
