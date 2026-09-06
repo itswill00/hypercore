@@ -340,7 +340,7 @@ static int is_process_alive(int pid) {
 
 static int check_and_recover_sysfs_tampering(profile_t current_prof) {
     if ((int)current_prof < 0 || (int)current_prof >= 4) return 0;
-    return audit_active_profile_state(current_prof, g_state.thermal_tier);
+    return audit_active_profile_state(current_prof);
 }
 
 #include "integrity.hpp"
@@ -388,6 +388,7 @@ int main(int argc, char *argv[]) {
 
     memset(&g_state, 0, sizeof(g_state));
     g_state.current_profile = (profile_t)-1;
+    g_state.manual_profile = -1;
 
     detect_cpu_hardware_limits();
     apply_cpuset();
@@ -409,8 +410,6 @@ int main(int argc, char *argv[]) {
         else if (bat_temp > 100) bat_temp /= 10;
 
         g_state.is_charging = check_charging_status();
-
-        int thermal_tier = calculate_thermal_tier(cpu_temp, bat_temp);
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
 
         char active_game[128] = "";
@@ -476,6 +475,9 @@ int main(int argc, char *argv[]) {
         if (!is_screen_on()) {
             next_profile = PROFILE_Sleep;
             g_state.gaming_hold_ticks = 0;
+            g_state.jitter_rescue_ticks = 0;
+            g_state.launch_boost_ticks = 0;
+            g_state.app_boost_ticks = 0;
         } else if (game_active) {
             next_profile = custom_profile;
             s_last_game_profile = custom_profile;
@@ -483,6 +485,8 @@ int main(int argc, char *argv[]) {
         } else if (g_state.gaming_hold_ticks > 0) {
             g_state.gaming_hold_ticks--;
             next_profile = s_last_game_profile;
+        } else if (g_state.manual_profile >= 0 && g_state.manual_profile < 4) {
+            next_profile = (profile_t)g_state.manual_profile;
         } else {
             next_profile = PROFILE_Interactive;
         }
@@ -490,9 +494,6 @@ int main(int argc, char *argv[]) {
         static int s_prev_cpu_temp = 0;
         int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;
         s_prev_cpu_temp = cpu_temp;
-
-        static int s_prev_gpu_heavy = -1;
-        int is_gpu_heavy = (gpu_load >= 20);
 
         /* Rate-limit anti-tamper audit to every 5 ticks (≈5s) to avoid reading
          * 3 sysfs nodes per second just for governor/GPU policy verification. */
@@ -529,10 +530,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (next_profile != g_state.current_profile || thermal_tier != g_state.thermal_tier ||
-            is_tampered ||
-            ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && is_gpu_heavy != s_prev_gpu_heavy)) {
-            s_prev_gpu_heavy = is_gpu_heavy;
+        if (next_profile != g_state.current_profile || is_tampered) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
@@ -548,14 +546,9 @@ int main(int argc, char *argv[]) {
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
                 }
                 update_module_prop_status(status_buf);
-            } else if (thermal_tier != g_state.thermal_tier) {
-                log_warn("Temp", "Temp Tier: T%d -> T%d (CPU: %d°C, Bat: %d°C %s)",
-                         g_state.thermal_tier, thermal_tier, cpu_temp, bat_temp,
-                         g_state.is_charging ? "[CHG]" : "");
             }
-            apply_profile(next_profile, thermal_tier, gpu_load);
+            apply_profile(next_profile, gpu_load);
             g_state.current_profile = next_profile;
-            g_state.thermal_tier = thermal_tier;
         }
 
         tune_memory_pressure();

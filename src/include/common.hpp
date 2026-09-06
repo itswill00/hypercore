@@ -71,8 +71,7 @@ struct hw_nodes {
 
 struct core_state {
     profile_t current_profile;
-    int thermal_tier;
-    int thermal_hold_ticks;
+    int manual_profile;               /* -1 = auto (autonomous profiler), 0=Sleep, 1=Interactive, 2=Gaming, 3=Gaming_MOBA */
     int touch_boost_ticks;
     int gaming_hold_ticks;
     int launch_boost_ticks;
@@ -82,7 +81,6 @@ struct core_state {
     int is_charging;
     int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent 6=Custom) */
     int charge_mode;                  /* CHARGE_MODE_* currently active on hardware (effective mode)                      */
-    int charge_mode_thermal_override; /* 1 = daemon temporarily overrode user mode due to heat                            */
     int charger_supported;            /* 1 = hardware sysfs charger control nodes detected, 0 = unsupported               */
     int custom_charge_limit;          /* Custom slider hardware limit level (0-15), default 10                            */
     int night_charging;               /* 1 = night charging protection enabled (pauses at 80% overnight)                   */

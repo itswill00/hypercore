@@ -36,9 +36,6 @@
             <div class="banner-chip">
               <span>Profile: {{ store.activeProfile }}</span>
             </div>
-            <div class="banner-chip">
-              <span>Thermal: {{ store.thermalTier }}</span>
-            </div>
             <div class="banner-chip" v-if="store.cpuTemp > 0">
               <span>CPU: {{ store.cpuTemp }}°C{{ store.cpuGov && store.cpuGov !== '—' ? ` · ${store.cpuGov}` : '' }}</span>
             </div>

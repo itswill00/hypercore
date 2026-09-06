@@ -231,6 +231,10 @@ void restore_baseline_nodes(void) {
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
     sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
 
+    /* Clear runtime gaming properties so no residue remains */
+    system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
+    system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+
     /* Restore CPU governor rate limit permissions across all policies and governors */
     const char *rate_limit_restore_paths[] = {
         "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",

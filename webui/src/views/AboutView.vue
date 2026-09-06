@@ -143,10 +143,6 @@
                   <div class="stat-num">{{ store.chgTemp > 0 ? store.chgTemp + '°C' : store.batTemp + '°C' }}</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Thermal tier</div>
-                  <div class="stat-num">{{ store.thermalTier }}</div>
-                </div>
-                <div class="stat-box">
                   <div class="stat-lbl">Charging status</div>
                   <div class="stat-num">{{ store.thermalGuardState }}</div>
                 </div>

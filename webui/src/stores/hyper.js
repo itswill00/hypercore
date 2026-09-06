@@ -146,7 +146,6 @@ export const useHyperStore = defineStore('hyper', () => {
           const s = JSON.parse(kv.STAT.substring(kv.STAT.indexOf('{')))
           if (s.pid) daemonPid.value = String(s.pid).split(' ')[0]
           if (s.profile) activeProfile.value = s.profile
-          if (typeof s.thermal_tier !== 'undefined') thermalTier.value = `Tier ${s.thermal_tier}`
           if (s.battery_cycles && parseInt(s.battery_cycles) > 0) batteryCycles.value = parseInt(s.battery_cycles)
         } catch {}
       } else if (kv.PID && kv.PID.trim().length > 0) {
@@ -257,13 +256,12 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.VER) moduleVersion.value = kv.VER.trim()
       if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
-      let ipcSetThermal = false
+      let ipcSuccess = false
       if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
         try {
           const ipcData = JSON.parse(kv.IPC.substring(kv.IPC.indexOf('{')))
           if (ipcData.pid) daemonPid.value = String(ipcData.pid).split(' ')[0]
           if (ipcData.profile) activeProfile.value = ipcData.profile
-          if (typeof ipcData.thermal_tier !== 'undefined') thermalTier.value = `Tier ${ipcData.thermal_tier}`
           if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
           if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
@@ -272,13 +270,12 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           if (typeof ipcData.night_charging !== 'undefined') nightCharging.value = !!ipcData.night_charging
           if (typeof ipcData.smart_chg !== 'undefined') smartChg.value = !!ipcData.smart_chg
           if (typeof ipcData.protect_80 !== 'undefined') protect80.value = !!ipcData.protect_80
-          if (typeof ipcData.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!ipcData.charge_thermal_override
           if (typeof ipcData.charger_supported !== 'undefined') chargerSupported.value = !!ipcData.charger_supported
-          ipcSetThermal = true
+          ipcSuccess = true
         } catch {}
       }
       
-      if (!ipcSetThermal) {
+      if (!ipcSuccess) {
         const rawPid = (kv.PID || '').trim().split(' ')[0]
         if (rawPid && rawPid.length > 0) daemonPid.value = rawPid
 
@@ -378,27 +375,6 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.SW) {
         const p = kv.SW.split(':')
         vmInfo.value = `${p[0] || '15'} / ${p[1] || '100'}`
-      }
-
-      if (!ipcSetThermal) {
-        const logLines = logBlock.trim().split('\n')
-        let tier = '—'
-        for (let i = logLines.length - 1; i >= 0; i--) {
-          if (logLines[i].indexOf('Thermal Tier:') !== -1) {
-            if (logLines[i].indexOf('T3') !== -1) tier = 'Tier 3 (Protection)'
-            else if (logLines[i].indexOf('T2') !== -1) tier = 'Tier 2 (Warm)'
-            else if (logLines[i].indexOf('T1') !== -1) tier = 'Tier 1 (Normal)'
-            else tier = 'Tier 0 (Optimal)'
-            break
-          }
-        }
-        if (tier === '—' && cpuTemp.value > 0) {
-          if (cpuTemp.value >= 75) tier = 'Tier 3 (Protection)'
-          else if (cpuTemp.value >= 65) tier = 'Tier 2 (Warm)'
-          else if (cpuTemp.value >= 58) tier = 'Tier 1 (Normal)'
-          else tier = 'Tier 0 (Optimal)'
-        }
-        thermalTier.value = tier
       }
 
       const parsedPkgs = []

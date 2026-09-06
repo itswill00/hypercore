@@ -164,36 +164,44 @@ static void process_client(int client_fd) {
 
         char json[1024];
         snprintf(json, sizeof(json),
-            "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
+            "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
             "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
             "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
             "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
-            getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp, gpu_temp, chg_temp,
+            "\"charger_supported\":%d}\n",
+            getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
             bat_health, bat_status, bat_tech,
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charge_mode_thermal_override, g_state.charger_supported);
+            g_state.charger_supported);
 
         write(client_fd, json, strlen(json));
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
         const char *pname = req + 12;
-        profile_t new_prof = PROFILE_Interactive;
-        if (strncasecmp(pname, "SLEEP", 5) == 0) new_prof = PROFILE_Sleep;
-        else if (strncasecmp(pname, "GAMING_MOBA", 11) == 0 || strncasecmp(pname, "MOBA", 4) == 0) new_prof = PROFILE_Gaming_MOBA;
-        else if (strncasecmp(pname, "GAMING", 6) == 0) new_prof = PROFILE_Gaming;
-        else if (strncasecmp(pname, "INTERACTIVE", 11) == 0) new_prof = PROFILE_Interactive;
+        if (strncasecmp(pname, "AUTO", 4) == 0 || strncasecmp(pname, "DYNAMIC", 7) == 0 || strncasecmp(pname, "DEFAULT", 7) == 0) {
+            g_state.manual_profile = -1;
+            log_state("Ipc", "Profile reverted to Autonomous (Auto) via IPC");
+            const char *res = "{\"status\":\"ok\",\"message\":\"Profile reverted to Autonomous (Auto)\"}\n";
+            write(client_fd, res, strlen(res));
+        } else {
+            profile_t new_prof = PROFILE_Interactive;
+            if (strncasecmp(pname, "SLEEP", 5) == 0) new_prof = PROFILE_Sleep;
+            else if (strncasecmp(pname, "GAMING_MOBA", 11) == 0 || strncasecmp(pname, "MOBA", 4) == 0) new_prof = PROFILE_Gaming_MOBA;
+            else if (strncasecmp(pname, "GAMING", 6) == 0) new_prof = PROFILE_Gaming;
+            else if (strncasecmp(pname, "INTERACTIVE", 11) == 0) new_prof = PROFILE_Interactive;
 
-        apply_profile(new_prof, g_state.thermal_tier, 0);
-        g_state.current_profile = new_prof;
-        log_state("Ipc", "Manual profile switch via IPC -> %s", g_profile_names[new_prof]);
+            g_state.manual_profile = (int)new_prof;
+            apply_profile(new_prof, 0);
+            g_state.current_profile = new_prof;
+            log_state("Ipc", "Manual profile switch via IPC -> %s (locked)", g_profile_names[new_prof]);
 
-        char res[256];
-        snprintf(res, sizeof(res), "{\"status\":\"ok\",\"message\":\"Profile switched to %s\"}\n", g_profile_names[new_prof]);
-        write(client_fd, res, strlen(res));
+            char res[256];
+            snprintf(res, sizeof(res), "{\"status\":\"ok\",\"message\":\"Profile switched to %s\"}\n", g_profile_names[new_prof]);
+            write(client_fd, res, strlen(res));
+        }
     } else if (strncmp(req, "PURGE_RAM", 9) == 0 || strncmp(req, "CLEAR_CACHE", 11) == 0) {
         trigger_purge_ram_cache();
         const char *res = "{\"status\":\"ok\",\"message\":\"RAM and Cache purged successfully\"}\n";
@@ -295,11 +303,10 @@ static void process_client(int client_fd) {
         snprintf(res, sizeof(res),
             "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
             "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"bat_temp\":%d}\n",
+            "\"charger_supported\":%d,\"bat_temp\":%d}\n",
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charge_mode_thermal_override,
             g_state.charger_supported, bat_temp);
         write(client_fd, res, strlen(res));
     } else {
@@ -392,17 +399,17 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
 
     char json[1024];
     snprintf(json, sizeof(json),
-        "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\",\"thermal_tier\":%d,"
+        "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
         "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
         "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
         "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-        "\"charge_thermal_override\":%d,\"charger_supported\":%d}\n",
-        getpid(), prof_str, g_state.thermal_tier, cpu_temp, bat_temp,
+        "\"charger_supported\":%d}\n",
+        getpid(), prof_str, cpu_temp, bat_temp,
         g_state.is_charging, gpu_load, bat_cycles,
         g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
         g_state.custom_charge_limit,
         g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-        g_state.charge_mode_thermal_override, g_state.charger_supported);
+        g_state.charger_supported);
 
     char data_status[300];
     snprintf(data_status, sizeof(data_status), "%s/status.json", g_nodes.data_dir);

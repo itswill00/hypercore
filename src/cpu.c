@@ -408,7 +408,6 @@ static const char *s_game_mode_nodes[] = {
 
 typedef struct {
     profile_t target_profile;
-    int thermal_tier;
 
     const char *cpu_gov;
     int lit_min_freq;
@@ -467,10 +466,9 @@ typedef struct {
     const char *touch_edge;
 } profile_matrix_t;
 
-static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) {
+static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
     memset(m, 0, sizeof(*m));
     m->target_profile = prof;
-    m->thermal_tier = tier;
     m->cpu_gov = get_best_governor(prof);
 
     detect_max_gpu_freq();
@@ -540,16 +538,9 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
         case PROFILE_Interactive:
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->lit_max_freq = 1600000;    /* 1.6 GHz Little core ceiling — optimal efficiency on A55 cluster */
-            m->big_min_freq = 725000;     /* Minimum 725MHz idle floor */
-            /* Cap Big cores at 1.8GHz for daily UI & social media.
-             * 2.0-2.2GHz is reserved for Gaming/MOBA to avoid heavy A76 voltage heat and power drain */
-            if (tier >= 2) {
-                m->big_max_freq = 1400000;
-            } else if (tier == 1) {
-                m->big_max_freq = 1600000;
-            } else {
-                m->big_max_freq = 1800000;
-            }
+            m->big_min_freq = g_nodes.big_hw_min_freq;
+            /* Cap Big cores at 1.8GHz for daily UI & social media (thermal management disabled) */
+            m->big_max_freq = 1800000;
 
             m->up_rate_limit = "4000";    /* 4ms filter — prevents jumping to high clocks on transient micro-spikes */
             m->down_rate_limit = "3000";  /* 3ms ramp-down — drops CPU immediately to idle between frames to dissipate heat */
@@ -615,7 +606,8 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->top_app_uclamp_min = "50";
             m->top_app_uclamp_max = "max";
 
-            m->devfreq_poll_ms = (tier == 0) ? "20" : (tier == 1 ? "30" : "45");
+            /* Full GPU performance without thermal tier degradation */
+            m->devfreq_poll_ms = "20";
             m->devfreq_upthresh = "50";
             m->devfreq_downdiff = "20";
             m->devfreq_min_freq = "390000000";
@@ -631,11 +623,11 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             m->gpu_bottom_freq = "390000";
 
             if (prof == PROFILE_Gaming_MOBA) {
-                m->g_fb_dvfs_threshold = (tier == 0) ? "25" : (tier == 1 ? "30" : "35");
-                m->gx_fb_dvfs_margin    = (tier == 0) ? "30" : (tier == 1 ? "35" : "40");
+                m->g_fb_dvfs_threshold = "25";
+                m->gx_fb_dvfs_margin    = "30";
             } else {
-                m->g_fb_dvfs_threshold = (tier == 0) ? "30" : (tier == 1 ? "35" : "40");
-                m->gx_fb_dvfs_margin    = (tier == 0) ? "50" : (tier == 1 ? "40" : "30");
+                m->g_fb_dvfs_threshold = "25";
+                m->gx_fb_dvfs_margin    = "50";
             }
 
             m->gx_game_mode = "1";
@@ -654,12 +646,16 @@ static void build_profile_matrix(profile_t prof, int tier, profile_matrix_t *m) 
             break;
         }
     }
+
+    /* Boundary sanitization: guarantee min_freq <= max_freq to prevent kernel EINVAL */
+    if (m->lit_max_freq < m->lit_min_freq) m->lit_max_freq = m->lit_min_freq;
+    if (m->big_max_freq < m->big_min_freq) m->big_max_freq = m->big_min_freq;
 }
 
-void apply_profile(profile_t prof, int tier, int gpu_load) {
+void apply_profile(profile_t prof, int gpu_load) {
     (void)gpu_load;
     profile_matrix_t m;
-    build_profile_matrix(prof, tier, &m);
+    build_profile_matrix(prof, &m);
 
     set_cpu_governor(m.cpu_gov);
     set_cpu_freqs(m.lit_min_freq, m.lit_max_freq, m.big_min_freq, m.big_max_freq,
@@ -738,11 +734,11 @@ void apply_profile(profile_t prof, int tier, int gpu_load) {
     }
 }
 
-int audit_active_profile_state(profile_t active_prof, int tier) {
+int audit_active_profile_state(profile_t active_prof) {
     if ((int)active_prof < 0 || (int)active_prof >= 4) return 0;
 
     profile_matrix_t m;
-    build_profile_matrix(active_prof, tier, &m);
+    build_profile_matrix(active_prof, &m);
 
     int tampered = 0;
 
@@ -770,13 +766,9 @@ int audit_active_profile_state(profile_t active_prof, int tier) {
         }
     }
 
-    if (tampered) {
-        apply_profile(active_prof, tier, 0);
-    }
-
     return tampered;
 }
 
 void reset_to_interactive_baseline(void) {
-    apply_profile(PROFILE_Interactive, 0, 0);
+    apply_profile(PROFILE_Interactive, 0);
 }

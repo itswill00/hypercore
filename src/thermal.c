@@ -110,42 +110,6 @@ int check_charging_status(void) {
     return (strstr(buf, "Charging") != NULL);
 }
 
-int calculate_thermal_tier(int cpu_temp, int bat_temp) {
-    int tier = g_state.thermal_tier;
-    int is_chg = g_state.is_charging;
-
-    int t3_cpu = is_chg ? 72 : 75;
-    int t3_bat = is_chg ? 50 : 53;
-
-    if (cpu_temp >= t3_cpu || bat_temp >= t3_bat) {
-        tier = 3;
-        g_state.thermal_hold_ticks = 3;
-    } else if (g_state.thermal_hold_ticks > 0) {
-        g_state.thermal_hold_ticks--;
-        tier = 3;
-    } else if (g_state.thermal_tier == 3) {
-        if (cpu_temp <= 64 && bat_temp <= 46) {
-            tier = (cpu_temp >= 58 || bat_temp >= 44) ? 2 : 1;
-        }
-    } else if (cpu_temp >= 65 || bat_temp >= 48) {
-        tier = 2;
-    } else if (g_state.thermal_tier == 2) {
-        if (cpu_temp < 58 && bat_temp < 44) {
-            tier = (cpu_temp >= 54 || bat_temp >= 42) ? 1 : 0;
-        }
-    } else if (g_state.thermal_tier == 1) {
-        if (cpu_temp < 52 && bat_temp < 40) {
-            tier = 0;
-        }
-    } else if (cpu_temp >= 58 || bat_temp >= 44) {
-        tier = 1;
-    } else {
-        tier = 0;
-    }
-
-    return tier;
-}
-
 /* Battery cycle persistence and auto-correction */
 static int s_verified_cycles = 0;
 static int s_cycles_loaded = 0;
