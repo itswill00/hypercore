@@ -94,13 +94,31 @@ static void init_hardware_nodes(void) {
     if (access("/data/adb/modules/hypercore", F_OK) == 0) {
         strcpy(g_nodes.mod_dir, "/data/adb/modules/hypercore");
     } else if (access("/data/adb", F_OK) == 0) {
-        mkdir("/data/adb/hypercore", 0755);
         strcpy(g_nodes.mod_dir, "/data/adb/hypercore");
     } else {
         strcpy(g_nodes.mod_dir, "/data/local/tmp");
     }
 
-    snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.mod_dir);
+    if (access("/data/adb", F_OK) == 0) {
+        mkdir("/data/adb/hypercore", 0755);
+        strcpy(g_nodes.data_dir, "/data/adb/hypercore");
+    } else {
+        mkdir("/data/local/tmp/hypercore", 0755);
+        strcpy(g_nodes.data_dir, "/data/local/tmp/hypercore");
+    }
+
+    snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.data_dir);
+
+    /* Clean up legacy misplaced runtime files from mod_dir */
+    if (strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/hypercore.sock", g_nodes.mod_dir);
+        unlink(old_path);
+        snprintf(old_path, sizeof(old_path), "%s/hypercore.pid", g_nodes.mod_dir);
+        unlink(old_path);
+        snprintf(old_path, sizeof(old_path), "%s/status.json", g_nodes.mod_dir);
+        unlink(old_path);
+    }
 
     scan_thermal_zones();
 

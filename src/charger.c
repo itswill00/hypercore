@@ -63,7 +63,7 @@ static int get_mode_for_step(int user_mode, int step) {
 
 static void save_charge_mode_conf(int mode) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.data_dir);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
@@ -76,8 +76,22 @@ static void save_charge_mode_conf(int mode) {
 
 static int load_charge_mode_conf(void) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/charge_mode.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            int mode = CHARGE_MODE_OEM;
+            if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
+            fclose(f);
+            unlink(old_path);
+            save_charge_mode_conf(mode);
+            if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) mode = CHARGE_MODE_OEM;
+            return mode;
+        }
+    }
     if (!f) return CHARGE_MODE_OEM;
     int mode = CHARGE_MODE_OEM;
     if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
@@ -88,7 +102,7 @@ static int load_charge_mode_conf(void) {
 
 static void save_custom_charge_limit_conf(int limit) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.data_dir);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
@@ -101,8 +115,22 @@ static void save_custom_charge_limit_conf(int limit) {
 
 static int load_custom_charge_limit_conf(void) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            int limit = LIMIT_BALANCED;
+            if (fscanf(f, "%d", &limit) != 1) limit = LIMIT_BALANCED;
+            fclose(f);
+            unlink(old_path);
+            save_custom_charge_limit_conf(limit);
+            if (limit < 0 || limit > 15) limit = LIMIT_BALANCED;
+            return limit;
+        }
+    }
     if (!f) return LIMIT_BALANCED;
     int limit = LIMIT_BALANCED;
     if (fscanf(f, "%d", &limit) != 1) limit = LIMIT_BALANCED;
@@ -113,7 +141,7 @@ static int load_custom_charge_limit_conf(void) {
 
 static void save_night_charging_conf(int val) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.data_dir);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
@@ -126,8 +154,21 @@ static void save_night_charging_conf(int val) {
 
 static int load_night_charging_conf(void) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/night_charging.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            int val = 0;
+            if (fscanf(f, "%d", &val) != 1) val = 0;
+            fclose(f);
+            unlink(old_path);
+            save_night_charging_conf(val);
+            return (val == 1) ? 1 : 0;
+        }
+    }
     if (!f) return 0;
     int val = 0;
     if (fscanf(f, "%d", &val) != 1) val = 0;
@@ -137,7 +178,7 @@ static int load_night_charging_conf(void) {
 
 static void save_smart_chg_conf(int val) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.data_dir);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
@@ -150,8 +191,21 @@ static void save_smart_chg_conf(int val) {
 
 static int load_smart_chg_conf(void) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/smart_chg.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            int val = 0;
+            if (fscanf(f, "%d", &val) != 1) val = 0;
+            fclose(f);
+            unlink(old_path);
+            save_smart_chg_conf(val);
+            return (val == 1) ? 1 : 0;
+        }
+    }
     if (!f) return 0;
     int val = 0;
     if (fscanf(f, "%d", &val) != 1) val = 0;
@@ -161,7 +215,7 @@ static int load_smart_chg_conf(void) {
 
 static void save_protect_80_conf(int val) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.data_dir);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
@@ -174,8 +228,21 @@ static void save_protect_80_conf(int val) {
 
 static int load_protect_80_conf(void) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/protect_80.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            int val = 0;
+            if (fscanf(f, "%d", &val) != 1) val = 0;
+            fclose(f);
+            unlink(old_path);
+            save_protect_80_conf(val);
+            return (val == 1) ? 1 : 0;
+        }
+    }
     if (!f) return 0;
     int val = 0;
     if (fscanf(f, "%d", &val) != 1) val = 0;

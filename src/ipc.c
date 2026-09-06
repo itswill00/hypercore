@@ -61,14 +61,19 @@ int init_ipc_socket(void) {
 
     log_info("Ipc", "Socket IPC server listening at %s", s_sock_path);
 
-    /* Create backward-compat symlinks at legacy paths so older WebUI nc commands
-     * and external scripts that reference the old /data/adb/ path still work.
-     * These are symlinks only — the actual socket is in /dev/ (scanner-safe). */
-    char legacy_mod[300], legacy_data[300];
-    snprintf(legacy_mod,  sizeof(legacy_mod),  "%s/hypercore.sock", g_nodes.mod_dir);
-    snprintf(legacy_data, sizeof(legacy_data), "/data/adb/hypercore/hypercore.sock");
-    unlink(legacy_mod);  symlink(s_sock_path, legacy_mod);
+    /* Create backward-compat symlink in persistent data_dir so external scripts
+     * that reference /data/adb/hypercore/hypercore.sock still work.
+     * The actual primary socket is in /dev/ (scanner-safe). */
+    char legacy_data[300];
+    snprintf(legacy_data, sizeof(legacy_data), "%s/hypercore.sock", g_nodes.data_dir);
     unlink(legacy_data); symlink(s_sock_path, legacy_data);
+
+    /* Ensure old mod_dir symlink is removed */
+    if (strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_sock[300];
+        snprintf(old_sock, sizeof(old_sock), "%s/hypercore.sock", g_nodes.mod_dir);
+        unlink(old_sock);
+    }
 
     return 0;
 }
@@ -80,11 +85,9 @@ void close_ipc_socket(void) {
     }
     if (s_sock_path[0] != '\0') {
         unlink(s_sock_path);
-        /* Clean up backward-compat symlinks too */
-        char legacy_mod[300], legacy_data[300];
-        snprintf(legacy_mod,  sizeof(legacy_mod),  "%s/hypercore.sock", g_nodes.mod_dir);
-        snprintf(legacy_data, sizeof(legacy_data), "/data/adb/hypercore/hypercore.sock");
-        unlink(legacy_mod);
+        /* Clean up backward-compat symlink */
+        char legacy_data[300];
+        snprintf(legacy_data, sizeof(legacy_data), "%s/hypercore.sock", g_nodes.data_dir);
         unlink(legacy_data);
     }
 }
@@ -401,9 +404,12 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
         g_state.night_charging, g_state.smart_chg, g_state.protect_80,
         g_state.charge_mode_thermal_override, g_state.charger_supported);
 
+    char data_status[300];
+    snprintf(data_status, sizeof(data_status), "%s/status.json", g_nodes.data_dir);
+
     const char *paths[] = {
-        "/data/adb/modules/hypercore/status.json",
-        "/data/adb/hypercore/status.json",
+        "/dev/hypercore_status.json",
+        data_status,
         NULL
     };
 

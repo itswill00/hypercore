@@ -150,11 +150,37 @@ int calculate_thermal_tier(int cpu_temp, int bat_temp) {
 static int s_verified_cycles = 0;
 static int s_cycles_loaded = 0;
 
+static void save_verified_cycles(int cycles) {
+    if (cycles <= 0 || cycles > 4000) return;
+    char path[256];
+    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.data_dir);
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "%d\n", cycles);
+        fclose(f);
+    }
+}
+
 static void load_verified_cycles(void) {
     if (s_cycles_loaded) return;
     char path[256];
-    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.mod_dir);
+    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[256];
+        snprintf(old_path, sizeof(old_path), "%s/battery_cycle.conf", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            if (fscanf(f, "%d", &s_verified_cycles) != 1 || s_verified_cycles < 0 || s_verified_cycles > 4000) {
+                s_verified_cycles = 0;
+            }
+            fclose(f);
+            unlink(old_path);
+            save_verified_cycles(s_verified_cycles);
+            s_cycles_loaded = 1;
+            return;
+        }
+    }
     if (f) {
         if (fscanf(f, "%d", &s_verified_cycles) != 1 || s_verified_cycles < 0 || s_verified_cycles > 4000) {
             s_verified_cycles = 0;
@@ -162,17 +188,6 @@ static void load_verified_cycles(void) {
         fclose(f);
     }
     s_cycles_loaded = 1;
-}
-
-static void save_verified_cycles(int cycles) {
-    if (cycles <= 0 || cycles > 4000) return;
-    char path[256];
-    snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.mod_dir);
-    FILE *f = fopen(path, "w");
-    if (f) {
-        fprintf(f, "%d\n", cycles);
-        fclose(f);
-    }
 }
 
 int get_true_battery_cycles(void) {

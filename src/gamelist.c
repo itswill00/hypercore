@@ -17,20 +17,36 @@ void load_gamelist(void) {
     s_game_count = 0;
     s_lens_cached = 0; /* invalidate pkg_len cache on every reload */
     char path[256];
+    path[0] = '\0';
 
-    FILE *f = fopen("/data/adb/hypercore/gamelist.txt", "r");
+    char data_gl[256];
+    snprintf(data_gl, sizeof(data_gl), "%s/gamelist.txt", g_nodes.data_dir);
+    FILE *f = fopen(data_gl, "r");
     if (f) {
-        snprintf(path, sizeof(path), "/data/adb/hypercore/gamelist.txt");
+        snprintf(path, sizeof(path), "%s", data_gl);
     } else {
-        snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
-        f = fopen(path, "r");
-        if (!f) {
+        /* Check legacy mod_dir and migrate if found */
+        char old_path[256];
+        snprintf(old_path, sizeof(old_path), "%s/gamelist.txt", g_nodes.mod_dir);
+        f = fopen(old_path, "r");
+        if (f) {
+            snprintf(path, sizeof(path), "%s", data_gl);
+            FILE *fw = fopen(path, "w");
+            if (fw) {
+                char buf[512];
+                while (fgets(buf, sizeof(buf), f)) fputs(buf, fw);
+                fclose(fw);
+            }
+            fclose(f);
+            unlink(old_path);
+            f = fopen(path, "r");
+        } else {
             f = fopen("/sdcard/Android/gamelist.txt", "r");
             if (f) snprintf(path, sizeof(path), "/sdcard/Android/gamelist.txt");
         }
     }
 
-    if (!path[0]) snprintf(path, sizeof(path), "/data/adb/hypercore/gamelist.txt");
+    if (!path[0]) snprintf(path, sizeof(path), "%s", data_gl);
 
     if (f) {
         char line[256];
@@ -102,19 +118,16 @@ void init_gamelist_watcher(void) {
     s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (s_inotify_fd < 0) return;
 
+    char data_gl[256];
+    snprintf(data_gl, sizeof(data_gl), "%s/gamelist.txt", g_nodes.data_dir);
+
     /* Ensure watch file exists before inotify_add_watch to prevent ENOENT */
     {
-        int touch_fd = open("/data/adb/hypercore/gamelist.txt",
-                            O_CREAT | O_WRONLY | O_CLOEXEC, 0644);
+        int touch_fd = open(data_gl, O_CREAT | O_WRONLY | O_CLOEXEC, 0644);
         if (touch_fd >= 0) close(touch_fd);
     }
 
-    inotify_add_watch(s_inotify_fd, "/data/adb/hypercore/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
-
-    char path[256];
-    snprintf(path, sizeof(path), "%s/gamelist.txt", g_nodes.mod_dir);
-    inotify_add_watch(s_inotify_fd, path, IN_MODIFY | IN_CLOSE_WRITE);
-
+    inotify_add_watch(s_inotify_fd, data_gl, IN_MODIFY | IN_CLOSE_WRITE);
     inotify_add_watch(s_inotify_fd, "/sdcard/Android/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
 }
 

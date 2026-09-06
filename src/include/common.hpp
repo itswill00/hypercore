@@ -45,6 +45,7 @@ extern const char *g_profile_names[];
 
 struct hw_nodes {
     char mod_dir[256];
+    char data_dir[256];
     char pid_file[256];
     char lock_file[256];
     char cpu_temp[256];
