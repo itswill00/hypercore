@@ -42,15 +42,11 @@ done
 
 # Clean up symlinks & lock files
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
-rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid 2>/dev/null
-rm -f /data/adb/modules/hypercore/status.json /data/adb/hypercore/status.json 2>/dev/null
-rm -f /data/adb/modules/hypercore/charge_mode.conf /data/adb/hypercore/charge_mode.conf 2>/dev/null
-rm -f /data/adb/modules/hypercore/custom_charge_limit.conf /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null
-rm -f /data/adb/modules/hypercore/night_charging.conf /data/adb/hypercore/night_charging.conf 2>/dev/null
-rm -f /data/adb/modules/hypercore/smart_chg.conf /data/adb/hypercore/smart_chg.conf 2>/dev/null
-rm -f /data/adb/modules/hypercore/protect_80.conf /data/adb/hypercore/protect_80.conf 2>/dev/null
-rm -f /data/adb/modules/hypercore/battery_cycle.conf /data/adb/hypercore/battery_cycle.conf 2>/dev/null
+rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/modules/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid 2>/dev/null
+rm -f /data/adb/modules/hypercore/status.json /data/adb/modules/hypercore/*.conf /data/adb/modules/hypercore/gamelist.txt 2>/dev/null
+rm -rf /data/adb/hypercore 2>/dev/null || true
 rm -f /data/local/tmp/.hypercore_lock /data/local/tmp/hypercore.sock /data/local/tmp/hypercore.pid 2>/dev/null
-rm -f /dev/hypercore.sock 2>/dev/null
+rm -rf /data/local/tmp/hypercore 2>/dev/null || true
+rm -f /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null
 rm -f /sdcard/Android/.hypercore_lock 2>/dev/null
-rm -f /sdcard/Android/hypercore.log /data/adb/hypercore/hypercore.log 2>/dev/null
+rm -f /sdcard/Android/hypercore.log 2>/dev/null

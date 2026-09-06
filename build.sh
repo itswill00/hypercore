@@ -43,14 +43,12 @@ if [ -d "webui" ]; then
     
     mkdir -p webroot
     cp webui/dist/index.html webroot/index.html
-    if [ -f banner.jpg ]; then
-        cp banner.jpg webroot/banner.jpg
-    fi
+    rm -f webroot/banner.jpg
 fi
 
 echo "generating sha256 checksums..."
 rm -f checksums.txt
-for file in system.prop service.sh post-fs-data.sh webroot/index.html webroot/banner.jpg update.json changelog.md NOTICE.md uninstall.sh banner.jpg; do
+for file in system.prop service.sh post-fs-data.sh webroot/index.html changelog.md uninstall.sh banner.jpg; do
     if [ -f "$file" ]; then
         sha256sum "$file" >> checksums.txt
     fi
@@ -111,11 +109,8 @@ if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     system/bin/libhypercore.so \
     system/bin/hypercore-bugreport \
     webroot/index.html \
-    webroot/banner.jpg \
     gamelist.txt \
-    update.json \
     changelog.md \
-    NOTICE.md \
     uninstall.sh \
     banner.jpg >/dev/null; then
     echo "error: packaging failed"
@@ -131,24 +126,39 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     if su -c "
         pkill -9 -x libhypercore.so 2>/dev/null || true
         MOD_TARGET=\"/data/adb/modules/hypercore\"
+        DATA_TARGET=\"/data/adb/hypercore\"
+        mkdir -p \"\$DATA_TARGET\"
         if [ -d \"\$MOD_TARGET\" ]; then
+            # Migrate existing user configs from module root to persistent data dir
+            for f in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf; do
+                if [ -f \"\$MOD_TARGET/\$f\" ] && [ ! -f \"\$DATA_TARGET/\$f\" ]; then
+                    cp -f \"\$MOD_TARGET/\$f\" \"\$DATA_TARGET/\$f\" 2>/dev/null || true
+                fi
+                rm -f \"\$MOD_TARGET/\$f\"
+            done
+            if [ -f \"\$MOD_TARGET/gamelist.txt\" ] && [ ! -f \"\$DATA_TARGET/gamelist.txt\" ]; then
+                cp -f \"\$MOD_TARGET/gamelist.txt\" \"\$DATA_TARGET/gamelist.txt\" 2>/dev/null || true
+            fi
+            rm -f \"\$MOD_TARGET/gamelist.txt\" \"\$MOD_TARGET/NOTICE.md\" \"\$MOD_TARGET/update.json\" \"\$MOD_TARGET/webroot/banner.jpg\"
+            rm -f \"\$MOD_TARGET/hypercore.sock\" \"\$MOD_TARGET/hypercore.pid\" \"\$MOD_TARGET/status.json\"
+
             mkdir -p \$MOD_TARGET/system/bin
+            mkdir -p \$MOD_TARGET/webroot
             rm -f \$MOD_TARGET/system/bin/libhypercore.so
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
             [ -f system/bin/hypercore-bugreport ] && cp system/bin/hypercore-bugreport \$MOD_TARGET/system/bin/hypercore-bugreport
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
-            [ -f webroot/banner.jpg ] && cp webroot/banner.jpg \$MOD_TARGET/webroot/banner.jpg
+            cp banner.jpg \$MOD_TARGET/banner.jpg
             cp module.prop \$MOD_TARGET/module.prop
             cp system.prop \$MOD_TARGET/system.prop
             cp service.sh \$MOD_TARGET/service.sh
             cp post-fs-data.sh \$MOD_TARGET/post-fs-data.sh
             cp uninstall.sh \$MOD_TARGET/uninstall.sh
-            cp update.json \$MOD_TARGET/update.json
             cp changelog.md \$MOD_TARGET/changelog.md
-            cp NOTICE.md \$MOD_TARGET/NOTICE.md
             chmod 755 \$MOD_TARGET/system/bin/*
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
-            rm -f /dev/hypercore.sock \$MOD_TARGET/hypercore.sock /data/adb/hypercore/hypercore.sock 2>/dev/null || true
+            chmod 644 \$MOD_TARGET/module.prop \$MOD_TARGET/system.prop \$MOD_TARGET/banner.jpg \$MOD_TARGET/changelog.md \$MOD_TARGET/webroot/index.html
+            rm -f /dev/hypercore.sock \$DATA_TARGET/hypercore.sock \$DATA_TARGET/hypercore.pid 2>/dev/null || true
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi
     "; then

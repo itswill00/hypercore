@@ -63,9 +63,16 @@ fi
 # Clean up running daemon instances before module upgrade to prevent binary lock
 ui_print "- Stopping any active daemon instances before upgrade..."
 pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
-rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid /data/adb/hypercore/hypercore.pid 2>/dev/null || true
+rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid /data/adb/hypercore/hypercore.pid /dev/hypercore.sock 2>/dev/null || true
 
-ui_print "- Preserving existing user gamelist.txt..."
+ui_print "- Preserving user configurations in /data/adb/hypercore..."
+mkdir -p /data/adb/hypercore
+for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf; do
+    if [ -f "/data/adb/modules/hypercore/$conf" ] && [ ! -f "/data/adb/hypercore/$conf" ]; then
+        cp -f "/data/adb/modules/hypercore/$conf" "/data/adb/hypercore/$conf" 2>/dev/null || true
+    fi
+done
+
 PRESERVE_GL="/tmp/hypercore_gamelist_bak.txt"
 rm -f "$PRESERVE_GL"
 if [ -f "/data/adb/hypercore/gamelist.txt" ]; then
@@ -77,15 +84,22 @@ fi
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 
-mkdir -p /data/adb/hypercore
-
 if [ -f "$PRESERVE_GL" ]; then
     ui_print "- Merging preserved user gamelist entries..."
     cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: '!seen[$1]++' > /data/adb/hypercore/gamelist.txt
     rm -f "$PRESERVE_GL"
-else
+elif [ -f "$MODPATH/gamelist.txt" ]; then
     cp -f "$MODPATH/gamelist.txt" /data/adb/hypercore/gamelist.txt 2>/dev/null || touch /data/adb/hypercore/gamelist.txt
 fi
+
+# Clean up non-module files, temporary configs, and duplicates from installed module root
+rm -f "$MODPATH/gamelist.txt"
+rm -f "$MODPATH/NOTICE.md"
+rm -f "$MODPATH/update.json"
+rm -f "$MODPATH/webroot/banner.jpg"
+rm -f "$MODPATH"/*.conf
+rm -f "$MODPATH/hypercore" "$MODPATH/libhypercore.so"
+rm -f "$MODPATH/hypercore.sock" "$MODPATH/hypercore.pid" "$MODPATH/status.json"
 
 ui_print "- Verifying embedded binary SHA-256 integrity..."
 chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
@@ -105,9 +119,6 @@ if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
     fi
 fi
 
-# Clean up legacy root binary copies if upgrading
-rm -f "$MODPATH/hypercore" "$MODPATH/libhypercore.so"
-
 ui_print "- Setting permissions & PATH symlinks..."
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 set_perm "$MODPATH/service.sh" 0 0 0755
@@ -116,6 +127,8 @@ set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/system.prop" 0 0 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
+[ -f "$MODPATH/banner.jpg" ] && set_perm "$MODPATH/banner.jpg" 0 0 0644
+[ -f "$MODPATH/changelog.md" ] && set_perm "$MODPATH/changelog.md" 0 0 0644
 
 # Create symlinks in root manager PATH for KSU / APatch / Magisk
 for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
@@ -139,9 +152,11 @@ if [ -n "$AUTO_GAMES" ]; then
 else
     ui_print "  (No installed games auto-detected, gamelist ready for manual entries)"
 fi
-cp -f /data/adb/hypercore/gamelist.txt "$MODPATH/gamelist.txt" 2>/dev/null || true
+rm -f "$MODPATH/gamelist.txt"
 set_perm /data/adb/hypercore/gamelist.txt 0 0 0644
-set_perm "$MODPATH/gamelist.txt" 0 0 0644
+for c in /data/adb/hypercore/*.conf; do
+    [ -f "$c" ] && set_perm "$c" 0 0 0644
+done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
 [ -z "$VERSION_NAME" ] && VERSION_NAME="v6.4.8"
