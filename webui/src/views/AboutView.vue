@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.4.8' }} · Stable
+              {{ store.moduleVersion || 'v6.6.0' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.4.8' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.6.0' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,13 +85,13 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.4.8' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.6.0' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Interactive Profile GPU Max Frequency Uncap</strong>: Removed artificial 648 MHz GPU ceiling in Interactive profile, opening full hardware capability (up to ~1003 MHz) with responsive 65% upthreshold to eliminate UI rendering stutter and frame drops.</li>
-                  <li><strong>Real-Time Kernel Charging Telemetry</strong>: Replaced static text estimates with live kernel charging rate metrics directly on the Dashboard banner.</li>
-                  <li><strong>WebUI Stylesheet Consolidation</strong>: Purged dead/unused CSS classes and consolidated root document styling rules for optimal rendering performance.</li>
-                  <li><strong>Profile Transition State Hardening</strong>: Verified zero-friction, deterministic atomic transitions between Interactive, Gaming, MOBA, and Sleep states.</li>
+                  <li><strong>HyperMoon HUD Overhaul &amp; Governor Telemetry</strong>: Native CPU and Mali GPU scaling governors live on-screen with real-time ZRAM swap monitoring.</li>
+                  <li><strong>Granular Geometry &amp; Appearance Engine</strong>: Direct Card Width and Height control, 50%–180% scale, font sizes, corner radius, and opacity.</li>
+                  <li><strong>Instant Reactive Master Switch</strong>: Sub-millisecond toggle response linked via Linux kernel FileObserver inotify.</li>
+                  <li><strong>Quick Presets &amp; Theme Accents</strong>: Instant 1-tap switching between Compact, Minimal, and Detailed layouts with AMOLED Dark and custom accent coloring.</li>
                 </ul>
               </div>
             </div>
