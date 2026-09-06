@@ -11,6 +11,7 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.hardware.display.DisplayManager;
 import android.os.Build;
+import android.os.FileObserver;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -39,6 +40,7 @@ public class HyperMoonOverlay {
     private static CanvasHudView hudView;
     private static WindowManager.LayoutParams params;
     private static Handler handler;
+    private static FileObserver configObserver = null;
 
     // Direct Hardware SurfaceControl Engine State (Direct SurfaceFlinger - Bypasses WMS & AMS)
     private static boolean isHardwareSurface = false;
@@ -574,8 +576,24 @@ public class HyperMoonOverlay {
         int requiredWidthPx = Math.round(maxContentW + paddingX);
         int targetWidthPx = Math.max((int)(dpToPx(bgWidthDp) * scale), requiredWidthPx);
 
-        // Height calculation: Directly obey user bgHeightDp slider!
-        int targetHeightPx = Math.max((int)(dpToPx(24) * scale), (int)(dpToPx(bgHeightDp) * scale));
+        // Height calculation: obey user bgHeightDp while guaranteeing no line clipping
+        float requiredHeightPx;
+        if (isHorizontal) {
+            requiredHeightPx = dpToPx(48) * scale;
+        } else {
+            float lineGap = subTextSize * 1.45f;
+            int lineCount = 1;
+            if (showCpu && cpuText != null) lineCount++;
+            if (showGov && govText != null) lineCount++;
+            if (showGpu && gpuText != null) lineCount++;
+            if (showGpuGov && gpuGovText != null) lineCount++;
+            if (showRam && ramText != null) lineCount++;
+            if (showZram && zramText != null) lineCount++;
+            if (showBattery && pwrText != null) lineCount++;
+            if (showNet && netText != null) lineCount++;
+            requiredHeightPx = (dpToPx(16) * scale) + (fpsNumSize * 0.75f) + (lineCount * lineGap) + (dpToPx(16) * scale);
+        }
+        int targetHeightPx = Math.max((int)(dpToPx(bgHeightDp) * scale), Math.round(requiredHeightPx));
 
         dimsResult[0] = targetWidthPx;
         dimsResult[1] = targetHeightPx;
@@ -1005,6 +1023,7 @@ public class HyperMoonOverlay {
     }
 
     private static void startLoop() {
+        startFileWatcher();
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -1014,7 +1033,7 @@ public class HyperMoonOverlay {
                     System.err.println("[HyperMoon] Recovered loop: " + t.getMessage());
                 } finally {
                     try {
-                        int delay = Math.max(50, refreshInterval);
+                        int delay = isVisible ? Math.max(50, refreshInterval) : 250;
                         handler.postDelayed(this, delay);
                     } catch (Throwable t2) {
                         try {
@@ -1024,6 +1043,58 @@ public class HyperMoonOverlay {
                 }
             }
         }, Math.max(50, refreshInterval));
+    }
+
+    private static void startFileWatcher() {
+        try {
+            File dir = new File(stateDir);
+            dir.mkdirs();
+            configObserver = new FileObserver(stateDir, FileObserver.CLOSE_WRITE | FileObserver.MOVED_TO | FileObserver.MODIFY) {
+                @Override
+                public void onEvent(int event, String path) {
+                    if (path == null) return;
+                    if (path.endsWith("config.json")) {
+                        if (handler != null) {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    readConfig();
+                                    if (!isHardwareSurface && windowManager != null && hudView != null && params != null) {
+                                        hudView.setVisibility(isVisible ? View.VISIBLE : View.GONE);
+                                        int[] dims = calcHudDimensions();
+                                        if (dims[0] != params.width || dims[1] != params.height) {
+                                            params.width = dims[0];
+                                            params.height = dims[1];
+                                            try { windowManager.updateViewLayout(hudView, params); } catch (Throwable ignored) {}
+                                        }
+                                        hudView.invalidate();
+                                    } else if (isHardwareSurface) {
+                                        renderHardwareSurface();
+                                    }
+                                }
+                            });
+                        }
+                    } else if (path.endsWith("position.json")) {
+                        if (handler != null) {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    readPosition();
+                                    if (!isHardwareSurface && windowManager != null && hudView != null && params != null) {
+                                        params.x = posX;
+                                        params.y = posY;
+                                        try { windowManager.updateViewLayout(hudView, params); } catch (Throwable ignored) {}
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            };
+            configObserver.startWatching();
+        } catch (Throwable t) {
+            System.err.println("[HyperMoon] FileObserver fallback: " + t.getMessage());
+        }
     }
 
     private static String getDynamicScreenHz() {

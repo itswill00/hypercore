@@ -67,8 +67,8 @@
           <div class="hypermoon-meta">
             <div class="hypermoon-title-row">
               <span class="hypermoon-title">HyperMoon HUD</span>
-              <span class="badge-mini" :class="hudStore.isRunning ? 'badge-mini-active' : ''">
-                {{ hudStore.isRunning ? 'Active' : 'Off' }}
+              <span class="badge-mini" :class="hudStore.config.visible ? 'badge-mini-active' : ''">
+                {{ hudStore.config.visible ? 'Active' : 'Off' }}
               </span>
             </div>
             <div class="hypermoon-sub">
@@ -76,12 +76,11 @@
             </div>
           </div>
         </div>
-        <div class="hypermoon-card-right">
-          <label class="md3-switch" @click.stop>
+        <div class="hypermoon-card-right" @click.stop="onToggleHud">
+          <label class="md3-switch" style="pointer-events: none;">
             <input
               type="checkbox"
               :checked="hudStore.config.visible"
-              @change="onToggleHud"
             />
             <span class="md3-switch-track">
               <span class="md3-switch-thumb"></span>
@@ -115,10 +114,8 @@ onMounted(() => {
   hudStore.init()
 })
 
-async function onToggleHud() {
-  const target = !hudStore.config.visible
-  const msg = await hudStore.toggleMaster(target)
-  if (msg && toast) toast(msg)
+function onToggleHud() {
+  hudStore.toggleMaster(!hudStore.config.visible)
 }
 </script>
 
@@ -282,6 +279,15 @@ async function onToggleHud() {
 .badge-mini-active {
   background: var(--primary);
   color: var(--on-primary);
+}
+
+.hypermoon-card-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px 8px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 </style>
 

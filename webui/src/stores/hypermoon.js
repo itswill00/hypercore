@@ -79,7 +79,7 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       saveConfig()
-    }, 250)
+    }, 150)
   }
 
   async function saveConfig() {
@@ -104,40 +104,34 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
   }
 
   async function toggleMaster(enable) {
-    // 1. Optimistic UI update: 0ms response
+    // 1. Instant local state update (0ms UI latency)
     config.value.visible = enable
-    isRunning.value = enable
+    isRunning.value = true
 
-    // 2. Save config asynchronously
-    saveConfigDebounced()
+    // 2. Immediate config write (bypasses debounce for instant kernel inotify)
+    saveConfig().catch(() => {})
 
-    // 3. Fast asynchronous execution
-    try {
-      if (enable) {
-        const startCmd = `
-          mkdir -p ${HUD_DIR} 2>/dev/null
-          if ! pidof hypermoon_daemon >/dev/null 2>&1; then
-            export HYPERMOON_STATE_DIR="${HUD_DIR}"
-            nohup /data/adb/modules/hypercore/system/bin/hypermoon_daemon > "${HUD_DIR}/daemon.log" 2>&1 &
-          fi
-          if ! pgrep -f 'com.hypermoon.HyperMoonOverlay' >/dev/null 2>&1; then
-            export HYPERMOON_STATE_DIR="${HUD_DIR}"
-            CLASSPATH="/data/adb/modules/hypercore/system/bin/hypermoon.dex" nohup /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay "${HUD_DIR}" > "${HUD_DIR}/overlay.log" 2>&1 &
-          fi
-        `
-        await execCommand(startCmd)
-      } else {
-        const killCmd = `
-          for p in $(pgrep -f '[H]yperMoonOverlay|[F]PSMoonOverlay' 2>/dev/null); do [ "$p" != "$$" ] && kill -9 "$p" 2>/dev/null || true; done
-          kill -9 $(pidof hypermoon_daemon fpsmoon_daemon 2>/dev/null) 2>/dev/null || true
-        `
-        await execCommand(killCmd)
-      }
-      setTimeout(checkStatus, 350)
-      return enable ? 'Overlay enabled' : 'Overlay disabled'
-    } catch {
-      return 'Failed to switch overlay'
+    // 3. Ensure engine background processes are alive when enabling
+    if (enable) {
+      const ensureCmd = `
+        mkdir -p ${HUD_DIR} 2>/dev/null
+        if ! pidof hypermoon_daemon >/dev/null 2>&1; then
+          export HYPERMOON_STATE_DIR="${HUD_DIR}"
+          nohup /data/adb/modules/hypercore/system/bin/hypermoon_daemon > "${HUD_DIR}/daemon.log" 2>&1 &
+        fi
+        if ! pgrep -f 'com.hypermoon.HyperMoonOverlay' >/dev/null 2>&1; then
+          export HYPERMOON_STATE_DIR="${HUD_DIR}"
+          CLASSPATH="/data/adb/modules/hypercore/system/bin/hypermoon.dex" nohup /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay "${HUD_DIR}" > "${HUD_DIR}/overlay.log" 2>&1 &
+        fi
+      `
+      execCommand(ensureCmd).then(() => {
+        setTimeout(checkStatus, 300)
+      }).catch(() => {})
+    } else {
+      setTimeout(checkStatus, 300)
     }
+
+    return enable ? 'Overlay enabled' : 'Overlay disabled'
   }
 
   async function resetPosition() {
@@ -162,6 +156,91 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  function applyPreset(type) {
+    const isHoriz = config.value.is_horizontal !== false
+    if (type === 'compact') {
+      config.value.show_fps = true
+      config.value.show_cpu = true
+      config.value.show_cpu_freq = true
+      config.value.show_gov = false
+      config.value.show_gpu = true
+      config.value.show_gpu_freq = true
+      config.value.show_gpu_gov = false
+      config.value.show_ram = false
+      config.value.show_zram = false
+      config.value.show_battery = true
+      config.value.show_net = false
+      if (isHoriz) {
+        config.value.bg_width = 250
+        config.value.bg_height = 56
+      } else {
+        config.value.bg_width = 150
+        config.value.bg_height = 120
+      }
+    } else if (type === 'minimal') {
+      config.value.show_fps = true
+      config.value.show_cpu = false
+      config.value.show_cpu_freq = false
+      config.value.show_gov = false
+      config.value.show_gpu = false
+      config.value.show_gpu_freq = false
+      config.value.show_gpu_gov = false
+      config.value.show_ram = false
+      config.value.show_zram = false
+      config.value.show_battery = false
+      config.value.show_net = false
+      if (isHoriz) {
+        config.value.bg_width = 180
+        config.value.bg_height = 42
+      } else {
+        config.value.bg_width = 130
+        config.value.bg_height = 70
+      }
+    } else if (type === 'detailed') {
+      config.value.show_fps = true
+      config.value.show_cpu = true
+      config.value.show_cpu_freq = true
+      config.value.show_gov = true
+      config.value.show_gpu = true
+      config.value.show_gpu_freq = true
+      config.value.show_gpu_gov = true
+      config.value.show_ram = true
+      config.value.show_zram = false
+      config.value.show_battery = true
+      config.value.show_net = true
+      if (isHoriz) {
+        config.value.bg_width = 340
+        config.value.bg_height = 68
+      } else {
+        config.value.bg_width = 160
+        config.value.bg_height = 220
+      }
+    }
+    saveConfig()
+  }
+
+  function setLayout(isHorizontal) {
+    config.value.is_horizontal = isHorizontal
+    if (isHorizontal && config.value.bg_height > 70) {
+      config.value.bg_width = 260
+      config.value.bg_height = 56
+    } else if (!isHorizontal && config.value.bg_width > 200) {
+      config.value.bg_width = 150
+      config.value.bg_height = 160
+    }
+    saveConfig()
+  }
+
+  function setAlignment(alignType) {
+    config.value.align = alignType
+    saveConfig()
+  }
+
+  function setTheme(themeName) {
+    config.value.theme = themeName
+    saveConfig()
   }
 
   function startPollingStats() {
@@ -199,6 +278,10 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     toggleMaster,
     resetPosition,
     restartEngine,
+    applyPreset,
+    setLayout,
+    setAlignment,
+    setTheme,
     startPollingStats,
     stopPollingStats
   }
