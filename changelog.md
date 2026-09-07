@@ -1,3 +1,26 @@
+# HyperCore v6.8.0 — Dynamic Thermal Guard & Xiaomi Thermal Throttling Mitigation Release
+
+## What's Changed
+
+### 🛡️ Dynamic Thermal Guard with Tropical Climate Headroom
+- **Dynamic 3-Tier Thermal Protection**: Replaced stock thermal limitations with an intelligent, balanced thermal guard engineered for tropical climates:
+  - **Tier 0 (Optimal / Cool)**: Full uncapped hardware maximum frequencies (Big 2.2 GHz, Little 2.0 GHz) below 45°C battery and 70°C CPU.
+  - **Tier 1 (Warm / Active Mitigation)**: Smoothly caps Big and Little cores to 1.8 GHz when battery reaches 45°C or CPU reaches 70°C, with 3°C hysteresis to prevent frequency flutter. Zero core hotplug, zero micro-stutter.
+  - **Tier 2 (Hot / Safety Protection)**: Safety cap to 1.5 GHz Big / 1.4 GHz Little when battery reaches 48°C or CPU reaches 75°C to arrest thermal runaway while maintaining full device stability.
+- **IPC Telemetry & Status Integration**: Embedded `thermal_tier` directly into `/dev/hypercore_status.json` and the `GET_STATUS` IPC endpoint for real-time monitoring.
+
+### ⚡ Xiaomi Stock Throttling Bypass (`sconfig 10`)
+- **Stock 37°C Throttle Bypass**: Automatically engages Xiaomi `sconfig 10` (`thermal-nolimits.conf`) in Interactive and Gaming profiles, eliminating stock thermal throttling that aggressively capped CPU clocks and forced artificial minimum frequencies (`boost:1`) at merely 37°C.
+- **Node Permission Hardening**: Automatically configures and enforces write permissions for `/sys/class/thermal/thermal_message/sconfig` and `cpu_limits` across boot (`service.sh`) and runtime.
+- **Graceful Baseline Restoration**: Reliably restores `sconfig` to stock `"0"` and resets node permissions upon daemon termination and module uninstallation (`uninstall.sh`).
+
+### 🧹 Purge of Redundant Sysfs Mutation Auditing
+- **Zero Log Mutation Spam**: Completely eliminated `audit_active_profile_state()` and redundant 5-second sysfs mutation checks.
+- **Tug-of-War Elimination**: Terminated the cyclic fight between HyperCore's re-enforcing guard and vendor thermal daemons, reducing background CPU wakeups and preserving deep sleep idle states.
+- **True Idle Frequency Recovery**: Restored proper idle clock states (Little 500 MHz, Big 725 MHz), significantly improving battery longevity and lowering device temperatures during ambient interactive use.
+
+---
+
 # HyperCore v6.7.0 — Unconstrained Performance, Zero Thermal Throttling & Seamless Profiler Release
 
 ## What's Changed
