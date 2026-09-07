@@ -76,6 +76,10 @@ void sysfs_write(const char *path, const char *val) {
     }
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0 && errno == EACCES) {
+        chmod(path, 0666);
+        fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+    }
     if (fd < 0) {
         if (errno != ENOENT && sysfs_should_log_err(path)) {
             log_info("Kernel", "Vendor sysfs node access error (errno=%d, target: '%s')", errno, path);
@@ -229,7 +233,10 @@ void restore_baseline_nodes(void) {
     /* Restore charger nodes to safe ROM defaults on daemon exit/shutdown */
     sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+    chmod("/sys/class/thermal/thermal_message/sconfig", 0664);
+    chmod("/sys/devices/virtual/thermal/thermal_message/sconfig", 0664);
     sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
+    sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", "0");
 
     /* Clear runtime gaming properties so no residue remains */
     system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");

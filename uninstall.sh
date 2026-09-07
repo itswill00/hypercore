@@ -36,7 +36,9 @@ done
 [ -f "/sys/module/ged/parameters/enable_gpu_boost" ] && echo 0 > /sys/module/ged/parameters/enable_gpu_boost 2>/dev/null
 [ -f "/sys/kernel/fpsgo/fbt/thrm_enable" ] && echo 1 > /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
 [ -f "/sys/kernel/fpsgo/fbt/ultra_rescue" ] && echo 0 > /sys/kernel/fpsgo/fbt/ultra_rescue 2>/dev/null
+chmod 664 /sys/class/thermal/thermal_message/sconfig /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null || true
 [ -f "/sys/class/thermal/thermal_message/sconfig" ] && echo 0 > /sys/class/thermal/thermal_message/sconfig 2>/dev/null
+[ -f "/sys/devices/virtual/thermal/thermal_message/sconfig" ] && echo 0 > /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null
 
 # Reset charging control
 [ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null

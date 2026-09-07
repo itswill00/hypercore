@@ -2,6 +2,7 @@
 #include "gpu.hpp"
 #include "memory.hpp"
 #include "io.hpp"
+#include "thermal.hpp"
 #include "log.hpp"
 
 /* Forward declaration — defined later in this file as a static function */
@@ -104,6 +105,17 @@ static void write_rate_limit_fallback(const char *paths[], const char *val) {
         if (!paths[i] || paths[i][0] == '\0') continue;
         if (access(paths[i], F_OK) != 0) continue;
         chmod(paths[i], 0644);
+        sysfs_write(paths[i], val);
+        chmod(paths[i], 0444);
+    }
+}
+
+static void write_locked_node_fallback(const char *paths[], const char *val) {
+    if (!paths || !val) return;
+    for (int i = 0; paths[i]; i++) {
+        if (!paths[i] || paths[i][0] == '\0') continue;
+        if (access(paths[i], F_OK) != 0) continue;
+        chmod(paths[i], 0666);
         sysfs_write(paths[i], val);
         chmod(paths[i], 0444);
     }
@@ -536,11 +548,21 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->touch_edge = "0";
             break;
 
-        case PROFILE_Interactive:
+        case PROFILE_Interactive: {
+            int tier = get_thermal_tier();
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Uncapped to hardware max (2.0 GHz) for rapid task completion */
             m->big_min_freq = g_nodes.big_hw_min_freq;
-            m->big_max_freq = g_nodes.big_hw_max_freq;    /* Full 2.2 GHz burst capability — Race-to-Sleep efficiency */
+
+            if (tier == 2) {
+                m->lit_max_freq = 1400000;
+                m->big_max_freq = 1500000;
+            } else if (tier == 1) {
+                m->lit_max_freq = 1800000;
+                m->big_max_freq = 1800000;
+            } else {
+                m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Uncapped to hardware max (2.0 GHz) for rapid task completion */
+                m->big_max_freq = g_nodes.big_hw_max_freq;    /* Full 2.2 GHz burst capability — Race-to-Sleep efficiency */
+            }
 
             m->up_rate_limit = "1000";    /* 1ms filter — instant touch & UI frame response without lag */
             m->down_rate_limit = "20000"; /* 20ms hold — eliminates UI stutter across 60/90/120Hz frame boundaries */
@@ -579,20 +601,32 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->fpsgo_light_loading = "20";
             m->fpsgo_thrm_enable = "1";
 
-            m->sconfig = "0";
+            m->sconfig = "10";            /* Engage Xiaomi NOLIMITS thermal profile to bypass 37°C-41°C CPU throttling */
             m->touch_thp_smooth = "1";     /* Enable touch sampling smoothness during active interaction */
             m->touch_game_mode = "0";
             m->touch_sensitivity = "0";
             m->touch_edge = "0";
             break;
+        }
 
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
+            int tier = get_thermal_tier();
             m->devfreq_gov = "performance";
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = g_nodes.lit_hw_max_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
-            m->big_max_freq = g_nodes.big_hw_max_freq;
+
+            if (tier == 2) {
+                m->lit_max_freq = 1800000;
+                m->big_max_freq = 1800000;
+            } else if (tier == 1 && prof == PROFILE_Gaming_MOBA) {
+                m->lit_max_freq = g_nodes.lit_hw_max_freq;
+                m->big_max_freq = 2000000;
+            } else {
+                m->lit_max_freq = g_nodes.lit_hw_max_freq;
+                m->big_max_freq = g_nodes.big_hw_max_freq;
+            }
+
             m->up_rate_limit = "0";
             m->down_rate_limit = "30000";
 
@@ -702,7 +736,7 @@ void apply_profile(profile_t prof, int gpu_load) {
     sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", m.fpsgo_ultra_rescue);
     sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", m.fpsgo_light_loading);
     sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", m.fpsgo_idleprefer);
-    sysfs_write_fallback(s_sconfig_nodes, m.sconfig);
+    write_locked_node_fallback(s_sconfig_nodes, m.sconfig);
     sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", m.fpsgo_thrm_enable);
 
     sysfs_write(g_nodes.touch_thp_smooth, m.touch_thp_smooth);
@@ -734,65 +768,7 @@ void apply_profile(profile_t prof, int gpu_load) {
     }
 }
 
-int audit_active_profile_state(profile_t active_prof) {
-    if ((int)active_prof < 0 || (int)active_prof >= 4) return 0;
-
-    profile_matrix_t m;
-    build_profile_matrix(active_prof, &m);
-
-    int tampered = 0;
-
-    char curr_gov[64] = "";
-    if (sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", curr_gov, sizeof(curr_gov))) {
-        if (strcmp(curr_gov, m.cpu_gov) != 0) {
-            log_warn("Guard", "Governor mutation detected [%s -> %s]! Re-enforcing...", curr_gov, m.cpu_gov);
-            tampered = 1;
-        }
-    }
-
-    int cur_lit_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq");
-    if (cur_lit_min > 0 && cur_lit_min != m.lit_min_freq) {
-        log_warn("Guard", "Little CPU min freq mutation detected [%d -> %d]! Re-enforcing...", cur_lit_min, m.lit_min_freq);
-        tampered = 1;
-    }
-
-    int cur_lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
-    if (cur_lit_max > 0 && cur_lit_max != m.lit_max_freq) {
-        log_warn("Guard", "Little CPU max freq mutation detected [%d -> %d]! Re-enforcing...", cur_lit_max, m.lit_max_freq);
-        tampered = 1;
-    }
-
-    int cur_big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq");
-    if (cur_big_min > 0 && cur_big_min != m.big_min_freq) {
-        log_warn("Guard", "Big CPU min freq mutation detected [%d -> %d]! Re-enforcing...", cur_big_min, m.big_min_freq);
-        tampered = 1;
-    }
-
-    int cur_big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
-    if (cur_big_max > 0 && cur_big_max != m.big_max_freq) {
-        log_warn("Guard", "Big CPU max freq mutation detected [%d -> %d]! Re-enforcing...", cur_big_max, m.big_max_freq);
-        tampered = 1;
-    }
-
-    char curr_mali[64] = "";
-    if (read_mali_power_policy(curr_mali, sizeof(curr_mali))) {
-        if (strstr(curr_mali, m.power_policy) == NULL) {
-            log_warn("Guard", "GPU power_policy mutation detected! Re-enforcing...");
-            tampered = 1;
-        }
-    }
-
-    char curr_gpu_gov[64] = "";
-    if (read_mali_governor(curr_gpu_gov, sizeof(curr_gpu_gov))) {
-        if (strstr(curr_gpu_gov, m.devfreq_gov) == NULL) {
-            log_warn("Guard", "GPU governor mutation detected! Re-enforcing...");
-            tampered = 1;
-        }
-    }
-
-    return tampered;
-}
-
 void reset_to_interactive_baseline(void) {
     apply_profile(PROFILE_Interactive, 0);
 }
+

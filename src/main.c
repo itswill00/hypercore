@@ -338,10 +338,7 @@ static int is_process_alive(int pid) {
     return (access(cpath, F_OK) == 0);
 }
 
-static int check_and_recover_sysfs_tampering(profile_t current_prof) {
-    if ((int)current_prof < 0 || (int)current_prof >= 4) return 0;
-    return audit_active_profile_state(current_prof);
-}
+
 
 #include "integrity.hpp"
 
@@ -408,6 +405,8 @@ int main(int argc, char *argv[]) {
         if (cpu_temp > 1000) cpu_temp /= 1000;
         if (bat_temp > 1000) bat_temp /= 1000;
         else if (bat_temp > 100) bat_temp /= 10;
+
+        int tier_changed = update_thermal_guard(cpu_temp, bat_temp);
 
         g_state.is_charging = check_charging_status();
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
@@ -495,14 +494,7 @@ int main(int argc, char *argv[]) {
         int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;
         s_prev_cpu_temp = cpu_temp;
 
-        /* Rate-limit anti-tamper audit to every 5 ticks (≈5s) to avoid reading
-         * 3 sysfs nodes per second just for governor/GPU policy verification. */
-        static int s_audit_tick = 0;
-        int is_tampered = 0;
-        if (++s_audit_tick >= 5) {
-            s_audit_tick = 0;
-            is_tampered = check_and_recover_sysfs_tampering(g_state.current_profile);
-        }
+
 
         static int s_prev_gpu_load = 0;
         int gpu_spike = (gpu_load - s_prev_gpu_load >= 30);
@@ -530,7 +522,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (next_profile != g_state.current_profile || is_tampered) {
+        if (next_profile != g_state.current_profile || tier_changed) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
             if (next_profile != g_state.current_profile) {
                 char status_buf[128];
@@ -546,6 +538,9 @@ int main(int argc, char *argv[]) {
                               g_state.is_charging ? "[CHG]" : "", gpu_load);
                 }
                 update_module_prop_status(status_buf);
+            } else if (tier_changed) {
+                log_info("Thermal", "Thermal Guard adjustment applied to %s (Tier %d)",
+                         g_profile_names[next_profile], g_state.thermal_tier);
             }
             apply_profile(next_profile, gpu_load);
             g_state.current_profile = next_profile;

@@ -21,6 +21,12 @@ for script in /data/adb/service.d/* /data/adb/post-fs-data.d/*; do
     fi
 done
 
+# Ensure Xiaomi thermal control nodes are writable
+chmod 666 /sys/class/thermal/thermal_message/sconfig \
+          /sys/devices/virtual/thermal/thermal_message/sconfig \
+          /sys/class/thermal/thermal_message/cpu_limits \
+          /sys/devices/virtual/thermal/thermal_message/cpu_limits 2>/dev/null || true
+
 BIN="$MODDIR/system/bin/libhypercore.so"
 if [ -f "$BIN" ]; then
     chmod 755 "$BIN"

@@ -86,6 +86,7 @@ struct core_state {
     int night_charging;               /* 1 = night charging protection enabled (pauses at 80% overnight)                   */
     int smart_chg;                    /* 1 = smart charging curve enabled                                                  */
     int protect_80;                   /* 1 = stop charging at 80% capacity limit                                           */
+    int thermal_tier;                 /* 0 = Optimal, 1 = Warm mitigation, 2 = Hot safety protection                       */
 };
 
 extern volatile sig_atomic_t g_running;

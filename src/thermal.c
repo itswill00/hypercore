@@ -251,6 +251,64 @@ void sync_battery_cycle_count(void) {
     }
 }
 
+/* --------------------------------------------------------------------------
+ * HyperCore Dynamic Thermal Guard
+ * --------------------------------------------------------------------------
+ * Replaces aggressive vendor throttling (which kicks in at 35°C–39°C) with
+ * balanced, high-headroom protection designed for tropical climates:
+ *
+ * Tier 0 (Optimal / Cool):
+ *   - Normal operation below 45°C Battery & 70°C CPU.
+ *   - 100% uncapped performance (Big 2.2 GHz, Little 2.0 GHz).
+ *
+ * Tier 1 (Warm / Active Mitigation):
+ *   - Trigger: Bat >= 45°C OR CPU >= 70°C.
+ *   - Clear:   Bat <= 42°C AND CPU <= 64°C (3°C hysteresis).
+ *   - Action:  Gracefully cap Big cores at 1.8 GHz, Little at 1.8 GHz.
+ *              No core hotplug, zero micro-stutter.
+ *
+ * Tier 2 (Hot / Safety Protection):
+ *   - Trigger: Bat >= 48°C OR CPU >= 75°C.
+ *   - Clear:   Bat <= 44°C AND CPU <= 68°C.
+ *   - Action:  Cap Big cores at 1.5 GHz, Little at 1.4 GHz to arrest heat.
+ * -------------------------------------------------------------------------- */
+static int s_thermal_tier = 0;
+
+int get_thermal_tier(void) {
+    return s_thermal_tier;
+}
+
+int update_thermal_guard(int cpu_temp, int bat_temp) {
+    int prev_tier = s_thermal_tier;
+
+    if (s_thermal_tier == 2) {
+        if (bat_temp <= 44 && cpu_temp <= 68) {
+            s_thermal_tier = (bat_temp >= 42 || cpu_temp >= 65) ? 1 : 0;
+        }
+    } else if (s_thermal_tier == 1) {
+        if (bat_temp >= 48 || cpu_temp >= 75) {
+            s_thermal_tier = 2;
+        } else if (bat_temp <= 42 && cpu_temp <= 64) {
+            s_thermal_tier = 0;
+        }
+    } else {
+        if (bat_temp >= 48 || cpu_temp >= 75) {
+            s_thermal_tier = 2;
+        } else if (bat_temp >= 45 || cpu_temp >= 70) {
+            s_thermal_tier = 1;
+        }
+    }
+
+    g_state.thermal_tier = s_thermal_tier;
+
+    if (s_thermal_tier != prev_tier) {
+        log_warn("Thermal", "Thermal Guard: Tier %d -> Tier %d (CPU: %d°C, Bat: %d°C)",
+                 prev_tier, s_thermal_tier, cpu_temp, bat_temp);
+        return 1; /* Tier transition occurred */
+    }
+    return 0;
+}
+
 
 
 

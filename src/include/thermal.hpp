@@ -12,6 +12,8 @@ void scan_thermal_zones(void);
 int check_charging_status(void);
 int get_true_battery_cycles(void);
 void sync_battery_cycle_count(void);
+int get_thermal_tier(void);
+int update_thermal_guard(int cpu_temp, int bat_temp);
 
 #ifdef __cplusplus
 }
