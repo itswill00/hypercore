@@ -14,7 +14,6 @@
  * ------------------------------------------------------------------------- */
 #define CHG_LIMIT_NODE  "/sys/class/power_supply/battery/charge_control_limit"
 #define CHG_SUSPEND_NODE "/sys/class/power_supply/battery/input_suspend"
-#define CHG_SCONFIG_NODE "/sys/class/thermal/thermal_message/sconfig"
 #define CHG_CURRENT_NODE "/sys/class/power_supply/battery/current_now"
 #define CHG_CAPACITY_NODE "/sys/class/power_supply/battery/capacity"
 
@@ -269,7 +268,6 @@ static void apply_effective_mode(int effective_mode) {
     case CHARGE_MODE_VIOLENT:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
         sysfs_write("/sys/class/power_supply/battery/night_charging", "0");
         if (mode_changed) trigger_tcpc_pd_renegotiation();
@@ -277,7 +275,6 @@ static void apply_effective_mode(int effective_mode) {
     case CHARGE_MODE_FAST:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_FAST); /* 0 */
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
         sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         if (mode_changed) trigger_tcpc_pd_renegotiation();
@@ -285,14 +282,12 @@ static void apply_effective_mode(int effective_mode) {
     case CHARGE_MODE_BALANCED:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_BALANCED); /* 10 */
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
         sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         break;
     case CHARGE_MODE_SAFE:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(LIMIT_SAFE); /* 14 */
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
         sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         break;
@@ -300,12 +295,10 @@ static void apply_effective_mode(int effective_mode) {
         /* Force hardware cutoff limit=16 (0 mA) AND input_suspend=1 */
         apply_limit_if_needed(16);
         apply_suspend_if_needed(1);
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         break;
     case CHARGE_MODE_CUSTOM:
         apply_suspend_if_needed(0);
         apply_limit_if_needed(s_custom_charge_limit);
-        sysfs_write(CHG_SCONFIG_NODE, "0");
         sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
         sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
         if (mode_changed) trigger_tcpc_pd_renegotiation();

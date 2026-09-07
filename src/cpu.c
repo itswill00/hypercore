@@ -232,43 +232,60 @@ void apply_cpuset(void) {
     sysfs_write("/proc/sys/kernel/sched_nr_migrate", "32");
 }
 
-void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
+static void write_policy_freqs(const char *pol_path, int min_f, int max_f) {
     char path[256], buf[32];
+    snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
+    int cur_min = sysfs_read_int(path);
 
-    /* Always ensure max_freq is updated before min_freq so min <= max constraint is never violated */
-    snprintf(buf, sizeof(buf), "%d", max_lit);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq", buf);
-    snprintf(buf, sizeof(buf), "%d", min_lit);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq", buf);
-
-    for (int i = 0; i <= 5; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
-        snprintf(buf, sizeof(buf), "%d", max_lit);
+    /* If current min is higher than target max, lower min first to avoid kernel -EINVAL */
+    if (cur_min > max_f) {
+        snprintf(buf, sizeof(buf), "%d", min_f);
         sysfs_write(path, buf);
-
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-        snprintf(buf, sizeof(buf), "%d", min_lit);
+        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+    } else {
+        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+        snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", min_f);
         sysfs_write(path, buf);
     }
+}
 
-    snprintf(buf, sizeof(buf), "%d", max_big);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq", buf);
+static void write_cpu_freqs(int cpu, int min_f, int max_f) {
+    char path[256], buf[32];
+    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", cpu);
+    int cur_min = sysfs_read_int(path);
 
-    snprintf(buf, sizeof(buf), "%d", min_big);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq", buf);
+    if (cur_min > max_f) {
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(path, buf);
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+    } else {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", cpu);
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(path, buf);
+    }
+}
 
+void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
+    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy0", min_lit, max_lit);
+    for (int i = 0; i <= 5; i++) {
+        write_cpu_freqs(i, min_lit, max_lit);
+    }
+
+    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy4", min_big, max_big);
+    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy6", min_big, max_big);
+    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy7", min_big, max_big);
     for (int i = 6; i <= 7; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
-        snprintf(buf, sizeof(buf), "%d", max_big);
-        sysfs_write(path, buf);
-
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-        snprintf(buf, sizeof(buf), "%d", min_big);
-        sysfs_write(path, buf);
+        write_cpu_freqs(i, min_big, max_big);
     }
 
     set_rate_limits(up_rate, down_rate);
