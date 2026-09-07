@@ -223,38 +223,39 @@ void apply_cpuset(void) {
 void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
     char path[256], buf[32];
 
-    snprintf(buf, sizeof(buf), "%d", min_lit);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq", buf);
+    /* Always ensure max_freq is updated before min_freq so min <= max constraint is never violated */
     snprintf(buf, sizeof(buf), "%d", max_lit);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq", buf);
+    snprintf(buf, sizeof(buf), "%d", min_lit);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq", buf);
 
     for (int i = 0; i <= 5; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-        snprintf(buf, sizeof(buf), "%d", min_lit);
-        sysfs_write(path, buf);
-
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
         snprintf(buf, sizeof(buf), "%d", max_lit);
         sysfs_write(path, buf);
-    }
 
-    snprintf(buf, sizeof(buf), "%d", min_big);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq", buf);
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
+        snprintf(buf, sizeof(buf), "%d", min_lit);
+        sysfs_write(path, buf);
+    }
 
     snprintf(buf, sizeof(buf), "%d", max_big);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
     sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq", buf);
 
-    for (int i = 6; i <= 7; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
-        snprintf(buf, sizeof(buf), "%d", min_big);
-        sysfs_write(path, buf);
+    snprintf(buf, sizeof(buf), "%d", min_big);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq", buf);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq", buf);
 
+    for (int i = 6; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", i);
         snprintf(buf, sizeof(buf), "%d", max_big);
+        sysfs_write(path, buf);
+
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
+        snprintf(buf, sizeof(buf), "%d", min_big);
         sysfs_write(path, buf);
     }
 
@@ -537,26 +538,25 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
 
         case PROFILE_Interactive:
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = 1600000;    /* 1.6 GHz Little core ceiling — optimal efficiency on A55 cluster */
+            m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Uncapped to hardware max (2.0 GHz) for rapid task completion */
             m->big_min_freq = g_nodes.big_hw_min_freq;
-            /* Cap Big cores at 1.8GHz for daily UI & social media (thermal management disabled) */
-            m->big_max_freq = 1800000;
+            m->big_max_freq = g_nodes.big_hw_max_freq;    /* Full 2.2 GHz burst capability — Race-to-Sleep efficiency */
 
-            m->up_rate_limit = "4000";    /* 4ms filter — prevents jumping to high clocks on transient micro-spikes */
-            m->down_rate_limit = "3000";  /* 3ms ramp-down — drops CPU immediately to idle between frames to dissipate heat */
+            m->up_rate_limit = "1000";    /* 1ms filter — instant touch & UI frame response without lag */
+            m->down_rate_limit = "20000"; /* 20ms hold — eliminates UI stutter across 60/90/120Hz frame boundaries */
 
             m->nr_requests = "128";
             m->read_ahead = "256";
 
             m->bg_shares = "1024";
             m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "50";      /* Clamp background tasks to 50% max capacity — prevents background drain */
-            m->sys_bg_uclamp_max = "50";
+            m->bg_uclamp_max = "60";      /* 60% capacity ceiling — allows background tasks to finish without lingering */
+            m->sys_bg_uclamp_max = "60";
             m->top_app_shares = "1024";
-            m->top_app_uclamp_min = "0";
+            m->top_app_uclamp_min = "10";    /* 10% scheduler capacity floor for active foreground UI app */
             m->top_app_uclamp_max = "max";
 
-            m->devfreq_poll_ms = "50";
+            m->devfreq_poll_ms = "100";   /* 100ms polling — reduces timer interrupts compared to 50ms */
             m->devfreq_upthresh = "65";   /* Responsive 65% load threshold — ramps up GPU swiftly for smooth UI rendering */
             m->devfreq_downdiff = "20";
             m->devfreq_min_freq = "390000000";
@@ -574,13 +574,13 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->gx_fb_dvfs_margin = "10";
             m->gx_game_mode = "0";
 
-            m->fpsgo_boost_ta = "0";
+            m->fpsgo_boost_ta = "1";      /* Enable FPSGO Top-App boost for smooth 90/120Hz frame pacing */
             m->fpsgo_ultra_rescue = "0";
-            m->fpsgo_light_loading = "50";
+            m->fpsgo_light_loading = "20";
             m->fpsgo_thrm_enable = "1";
 
             m->sconfig = "0";
-            m->touch_thp_smooth = "0";     /* Reserve high touch sampling IC power for PROFILE_Gaming */
+            m->touch_thp_smooth = "1";     /* Enable touch sampling smoothness during active interaction */
             m->touch_game_mode = "0";
             m->touch_sensitivity = "0";
             m->touch_edge = "0";
@@ -748,6 +748,30 @@ int audit_active_profile_state(profile_t active_prof) {
             log_warn("Guard", "Governor mutation detected [%s -> %s]! Re-enforcing...", curr_gov, m.cpu_gov);
             tampered = 1;
         }
+    }
+
+    int cur_lit_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq");
+    if (cur_lit_min > 0 && cur_lit_min != m.lit_min_freq) {
+        log_warn("Guard", "Little CPU min freq mutation detected [%d -> %d]! Re-enforcing...", cur_lit_min, m.lit_min_freq);
+        tampered = 1;
+    }
+
+    int cur_lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
+    if (cur_lit_max > 0 && cur_lit_max != m.lit_max_freq) {
+        log_warn("Guard", "Little CPU max freq mutation detected [%d -> %d]! Re-enforcing...", cur_lit_max, m.lit_max_freq);
+        tampered = 1;
+    }
+
+    int cur_big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq");
+    if (cur_big_min > 0 && cur_big_min != m.big_min_freq) {
+        log_warn("Guard", "Big CPU min freq mutation detected [%d -> %d]! Re-enforcing...", cur_big_min, m.big_min_freq);
+        tampered = 1;
+    }
+
+    int cur_big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
+    if (cur_big_max > 0 && cur_big_max != m.big_max_freq) {
+        log_warn("Guard", "Big CPU max freq mutation detected [%d -> %d]! Re-enforcing...", cur_big_max, m.big_max_freq);
+        tampered = 1;
     }
 
     char curr_mali[64] = "";
