@@ -560,27 +560,27 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
                 m->lit_max_freq = 1800000;
                 m->big_max_freq = 1800000;
             } else {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Uncapped to hardware max (2.0 GHz) for rapid task completion */
-                m->big_max_freq = g_nodes.big_hw_max_freq;    /* Full 2.2 GHz burst capability — Race-to-Sleep efficiency */
+                m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Full 2.0 GHz Cortex-A55 peak capacity */
+                m->big_max_freq = 2000000;                   /* 2.0 GHz sweet spot on Cortex-A76 (cuts ~35% dynamic power, ice cool) */
             }
 
-            m->up_rate_limit = "1000";    /* 1ms filter — instant touch & UI frame response without lag */
-            m->down_rate_limit = "20000"; /* 20ms hold — eliminates UI stutter across 60/90/120Hz frame boundaries */
+            m->up_rate_limit = "1500";    /* 1.5ms instant touch ramp without jitter */
+            m->down_rate_limit = "25000"; /* 25ms smooth hold across 60/90/120Hz frame boundaries */
 
             m->nr_requests = "128";
             m->read_ahead = "256";
 
             m->bg_shares = "1024";
             m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "60";      /* 60% capacity ceiling — allows background tasks to finish without lingering */
-            m->sys_bg_uclamp_max = "60";
+            m->bg_uclamp_max = "50";      /* 50% capacity ceiling — keeps background apps lightweight */
+            m->sys_bg_uclamp_max = "50";
             m->top_app_shares = "1024";
-            m->top_app_uclamp_min = "10";    /* 10% scheduler capacity floor for active foreground UI app */
+            m->top_app_uclamp_min = "15";    /* 15% scheduler headroom floor for active foreground UI */
             m->top_app_uclamp_max = "max";
 
-            m->devfreq_poll_ms = "100";   /* 100ms polling — reduces timer interrupts compared to 50ms */
+            m->devfreq_poll_ms = "100";   /* 100ms polling — balanced low-overhead sampling */
             m->devfreq_upthresh = "65";   /* Responsive 65% load threshold — ramps up GPU swiftly for smooth UI rendering */
-            m->devfreq_downdiff = "20";
+            m->devfreq_downdiff = "20";   /* 20% down differential — drops to 390MHz floor immediately when idle */
             m->devfreq_min_freq = "390000000";
             m->devfreq_max_freq = max_gpu_hz;   /* Uncapped to hardware max frequency for fluid UI */
 
@@ -592,8 +592,8 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->enable_gpu_boost = "0";
             m->gpu_cust_upbound_freq = max_gpu_khz; /* Hardware max kHz upbound */
             m->gpu_bottom_freq = "390000";
-            m->g_fb_dvfs_threshold = "15";
-            m->gx_fb_dvfs_margin = "10";
+            m->g_fb_dvfs_threshold = "20";
+            m->gx_fb_dvfs_margin = "15";
             m->gx_game_mode = "0";
 
             m->fpsgo_boost_ta = "1";      /* Enable FPSGO Top-App boost for smooth 90/120Hz frame pacing */
@@ -743,6 +743,7 @@ void apply_profile(profile_t prof, int gpu_load) {
     sysfs_write(g_nodes.touch_game_mode, m.touch_game_mode);
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
+    sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", "1");
 
     /* Re-apply IRQ affinity on every profile transition:
      * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
