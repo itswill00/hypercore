@@ -1,14 +1,5 @@
 #include "gpu.hpp"
 
-static const char *s_mali_poll_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/polling_interval",
-    "/sys/class/devfreq/soc:mali/polling_interval",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
-    "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/polling_interval",
-    NULL
-};
-
 static const char *s_mali_gov_nodes[] = {
     "/sys/class/devfreq/13000000.mali/governor",
     "/sys/class/devfreq/soc:mali/governor",
@@ -30,14 +21,6 @@ static const char *s_mali_downdiff_nodes[] = {
     "/sys/class/devfreq/soc:mali/simple_ondemand/downdifferential",
     "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/simple_ondemand/downdifferential",
     "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/simple_ondemand/downdifferential",
-    NULL
-};
-
-static const char *s_mali_min_freq_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/min_freq",
-    "/sys/class/devfreq/soc:mali/min_freq",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
     NULL
 };
 
@@ -122,48 +105,6 @@ const char *get_max_gpu_freq_khz(void) {
     return s_max_gpu_freq_khz;
 }
 
-void enforce_interactive_gpu_polling(int target_poll_ms) {
-    detect_max_gpu_freq();
-
-    int needs_enforce = 0;
-    for (int i = 0; s_mali_poll_nodes[i]; i++) {
-        if (access(s_mali_poll_nodes[i], R_OK) == 0) {
-            int current_poll = sysfs_read_int(s_mali_poll_nodes[i]);
-            if (current_poll != target_poll_ms) {
-                needs_enforce = 1;
-            }
-            break;
-        }
-    }
-
-    long max_khz = atol(get_max_gpu_freq_khz());
-    long cust_upbound = (long)sysfs_read_int("/sys/module/ged/parameters/gpu_cust_upbound_freq");
-    if (cust_upbound < max_khz) {
-        needs_enforce = 1;
-    }
-
-    if (!needs_enforce) return;
-
-    // Apply enforcement writes only on state mismatch
-    char poll_buf[16];
-    snprintf(poll_buf, sizeof(poll_buf), "%d", target_poll_ms);
-
-    sysfs_write_fallback(s_mali_gov_nodes, "simple_ondemand");
-    sysfs_write_fallback(s_mali_poll_nodes, poll_buf);
-    sysfs_write_fallback(s_mali_upthreshold_nodes, "65");
-    sysfs_write_fallback(s_mali_downdiff_nodes, "20");
-    sysfs_write_fallback(s_mali_min_freq_nodes, "390000000");
-    sysfs_write_fallback(s_mali_max_freq_nodes, get_max_gpu_freq_hz());
-    sysfs_write_fallback(s_mali_power_policy_nodes, "coarse_demand");
-
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", get_max_gpu_freq_khz());
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
-    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
-    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
-    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
-    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
-}
-
 int read_mali_power_policy(char *out_buf, size_t max_len) {
     return sysfs_read_str_fallback(s_mali_power_policy_nodes, out_buf, max_len);
 }
@@ -194,6 +135,4 @@ void apply_gpu_tuning(void) {
         NULL
     };
     sysfs_write_fallback(game_mode_nodes, "0");
-
-    enforce_interactive_gpu_polling(50);
 }

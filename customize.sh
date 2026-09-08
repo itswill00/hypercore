@@ -67,11 +67,85 @@ rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.s
 
 ui_print "- Preserving user configurations in /data/adb/hypercore..."
 mkdir -p /data/adb/hypercore
-for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf; do
+for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf stock_state.conf; do
     if [ -f "/data/adb/modules/hypercore/$conf" ] && [ ! -f "/data/adb/hypercore/$conf" ]; then
         cp -f "/data/adb/modules/hypercore/$conf" "/data/adb/hypercore/$conf" 2>/dev/null || true
     fi
 done
+
+if [ -f "/data/adb/hypercore/stock_state.conf" ]; then
+    ui_print "- Preserving existing factory hardware baseline..."
+else
+    ui_print "- Capturing pristine factory hardware baseline..."
+    cat << 'EOF' > /data/adb/hypercore/stock_state.conf
+# HyperCore Stock Factory Baseline
+# Captured automatically on initial module installation
+has_baseline=1
+gov0=sugov_ext
+gov6=sugov_ext
+lit_min_freq=500000
+lit_max_freq=2000000
+big_min_freq=725000
+big_max_freq=2200000
+pol0_up_rate=1000
+pol0_down_rate=1000
+pol6_up_rate=100
+pol6_down_rate=1000
+bg_cpus=0-3
+sys_bg_cpus=0-5
+top_app_cpus=0-7
+bg_shares=1024
+bg_uclamp_min=0
+bg_uclamp_max=max
+sys_bg_uclamp_max=max
+top_app_shares=1024
+top_app_uclamp_min=0
+top_app_uclamp_max=max
+mali_policy=
+mali_gpu_gov=simple_ondemand
+mali_poll_int=50
+mali_upthresh=80
+mali_downdiff=20
+mali_min_freq=390000000
+mali_max_freq=1003000000
+boost_gpu_enable=0
+ged_smart_boost=0
+ged_boost_enable=0
+enable_gpu_boost=0
+gpu_cust_boost_freq=0
+gpu_cust_upbound_freq=0
+gpu_bottom_freq=0
+g_fb_dvfs_threshold=80
+gx_fb_dvfs_margin=0
+gx_game_mode=0
+fpsgo_force_onoff=0
+fpsgo_boost_ta=0
+fpsgo_ultra_rescue=0
+fpsgo_light_loading=0
+fpsgo_idleprefer=0
+fpsgo_thrm_enable=1
+sconfig=0
+vm_swappiness=100
+vm_dirty_ratio=20
+vm_dirty_bg_ratio=10
+vm_vfs_cache_pressure=100
+vm_stat_interval=1
+vm_dirty_writeback=500
+vm_page_cluster=0
+io_read_ahead=1024
+io_nr_requests=128
+io_iostats=1
+sched_migration_cost=500000
+sched_latency=10000000
+sched_nr_migrate=32
+charge_limit=0
+EOF
+    [ -f "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor" ] && sed -i "s|^gov0=.*|gov0=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor)|" /data/adb/hypercore/stock_state.conf
+    [ -f "/sys/devices/system/cpu/cpufreq/policy6/scaling_governor" ] && sed -i "s|^gov6=.*|gov6=$(cat /sys/devices/system/cpu/cpufreq/policy6/scaling_governor)|" /data/adb/hypercore/stock_state.conf
+    [ -f "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq" ] && sed -i "s|^lit_max_freq=.*|lit_max_freq=$(cat /sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq)|" /data/adb/hypercore/stock_state.conf
+    [ -f "/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq" ] && sed -i "s|^big_max_freq=.*|big_max_freq=$(cat /sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq)|" /data/adb/hypercore/stock_state.conf
+    chmod 644 /data/adb/hypercore/stock_state.conf 2>/dev/null || true
+fi
 
 PRESERVE_GL="/tmp/hypercore_gamelist_bak.txt"
 rm -f "$PRESERVE_GL"

@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
-OUTPUT_DIR="/sdcard/HyperCore_Releases"
+OUTPUT_DIR="/data/data/com.termux/files/home/HyperCore_Releases"
 
 set -e
 
@@ -142,9 +142,11 @@ if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     exit 1
 fi
 
-am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUTPUT_DIR/$ZIP_OUT" >/dev/null 2>&1 || true
-
 echo "build finished: ${OUTPUT_DIR}/${ZIP_OUT}"
+
+# Also sync copy to /sdcard/HyperCore_Releases for external root file managers
+su -c "mkdir -p /sdcard/HyperCore_Releases && cp -f '$OUTPUT_DIR/$ZIP_OUT' /sdcard/HyperCore_Releases/ && chmod 666 '/sdcard/HyperCore_Releases/$ZIP_OUT'" 2>/dev/null || true
+am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/HyperCore_Releases/$ZIP_OUT" >/dev/null 2>&1 || true
 
 if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."

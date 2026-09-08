@@ -377,7 +377,9 @@ int main(int argc, char *argv[]) {
 
     init_hardware_nodes();
     verify_module_integrity(g_nodes.mod_dir);
-    save_baseline_nodes();
+    detect_cpu_hardware_limits();
+    detect_max_gpu_freq();
+    init_stock_baseline();
     write_pid_file();
     init_ipc_socket();
 
@@ -387,16 +389,14 @@ int main(int argc, char *argv[]) {
     g_state.current_profile = (profile_t)-1;
     g_state.manual_profile = -1;
 
-    detect_cpu_hardware_limits();
-    apply_cpuset();
-    apply_memory_tuning();
-    apply_io_tuning();
-    apply_gpu_tuning();
-    apply_irq_tuning(PROFILE_Interactive);
     init_charge_control();
     sync_battery_cycle_count();
     load_gamelist();
     init_gamelist_watcher();
+
+    /* Apply initial Interactive profile (factory stock + touch smoothing) */
+    apply_profile(PROFILE_Interactive, 0);
+    g_state.current_profile = PROFILE_Interactive;
 
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);

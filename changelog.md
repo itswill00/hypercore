@@ -1,3 +1,23 @@
+# HyperCore v6.8.1 — Persistent Factory Baseline & Pure Touch-Enhanced Interactive Remap
+
+## What's Changed
+
+### 💾 Persistent Factory Baseline Snapshotting (`stock_state.conf`)
+- **Zero-Tamper Factory Baseline Capture**: On initial installation (via `customize.sh` or early daemon boot), HyperCore automatically snapshots and locks down the device's original, untouched factory hardware settings into `/data/adb/hypercore/stock_state.conf`.
+- **Permanent Stock Baseline Preservation**: Preserves stock CPU governors (`sugov_ext`), core frequencies, microsecond rate limits, cgroups, UCLAMP, GPU devfreq governor & frequency limits, MediaTek GED/FPSGO states, and memory VM settings across reboots, profile changes, and module updates.
+- **Uncompromised Exit-to-Stock Rollback**: Exiting gaming sessions or reverting to Interactive profile cleanly restores 100% factory hardware parameters, cooling the device down to ambient temperatures immediately.
+
+### 📱 Pure Touch-Enhanced Interactive Profile Concept
+- **Factory Stock Hardware Foundation**: Interactive mode now leaves all CPU clocks, governors, rate limits, cgroups, uclamp, devfreq, GED/FPSGO, VM, and scheduler nodes at their true factory stock defaults.
+- **Exclusive Touchscreen Hardware Acceleration**: The *only* enhancement applied during Interactive mode is hardware touchscreen smoothing and noise filtering (`touch_thp_smooth = 1` and `touch_thp_noisefilter = 1`), delivering silky smooth 90/120Hz scrolling and zero jitter without extra battery consumption or heat.
+- **Dynamic GPU Polling Freedom**: Removed all static enforcement locks on Mali GPU `polling_interval`, allowing the kernel devfreq driver to scale polling dynamically up and down based on workload.
+
+### 📦 Termux Home Release Output Migration
+- **Direct Workspace Output Packaging**: Migrated target package output directory from external `/sdcard` to Termux home: `~/HyperCore_Releases/` (`/data/data/com.termux/files/home/HyperCore_Releases/`).
+- **Storage Sandbox Immunity**: Prevents Android 11+ storage isolation / FUSE permission errors during command-line compilation while maintaining consistent release paths across all documentation and workflow runbooks.
+
+---
+
 # HyperCore v6.8.0 — Dynamic Thermal Guard & Xiaomi Thermal Throttling Mitigation Release
 
 ## What's Changed

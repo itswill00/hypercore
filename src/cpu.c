@@ -222,12 +222,12 @@ static const char *s_cpuctl_top_app_uclamp_max_nodes[] = {
 };
 
 void apply_cpuset(void) {
-    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
+    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, g_stock_baseline.top_app_cpus[0] ? g_stock_baseline.top_app_cpus : "0-7");
     sysfs_write_fallback(s_cpuset_fg_cpus_nodes, "0-7");
-    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
-    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
+    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, g_stock_baseline.bg_cpus[0] ? g_stock_baseline.bg_cpus : "0-3");
+    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, g_stock_baseline.sys_bg_cpus[0] ? g_stock_baseline.sys_bg_cpus : "0-5");
 
-    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
+    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost[0] ? g_stock_baseline.sched_migration_cost : "500000");
     sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
     sysfs_write("/proc/sys/kernel/sched_nr_migrate", "32");
 }
@@ -566,63 +566,65 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             break;
 
         case PROFILE_Interactive: {
-            int tier = get_thermal_tier();
-            m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->big_min_freq = g_nodes.big_hw_min_freq;
+            m->cpu_gov = g_stock_baseline.gov0[0] ? g_stock_baseline.gov0 : get_best_governor(prof);
+            m->lit_min_freq = g_stock_baseline.lit_min_freq > 0 ? g_stock_baseline.lit_min_freq : g_nodes.lit_hw_min_freq;
+            m->lit_max_freq = g_stock_baseline.lit_max_freq > 0 ? g_stock_baseline.lit_max_freq : g_nodes.lit_hw_max_freq;
+            m->big_min_freq = g_stock_baseline.big_min_freq > 0 ? g_stock_baseline.big_min_freq : g_nodes.big_hw_min_freq;
+            m->big_max_freq = g_stock_baseline.big_max_freq > 0 ? g_stock_baseline.big_max_freq : g_nodes.big_hw_max_freq;
 
-            if (tier == 2) {
-                m->lit_max_freq = 1400000;
-                m->big_max_freq = 1500000;
-            } else if (tier == 1) {
-                m->lit_max_freq = 1800000;
-                m->big_max_freq = 1800000;
-            } else {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;    /* Full 2.0 GHz Cortex-A55 peak capacity */
-                m->big_max_freq = 2000000;                   /* 2.0 GHz sweet spot on Cortex-A76 (cuts ~35% dynamic power, ice cool) */
-            }
+            m->up_rate_limit   = g_stock_baseline.pol0_up_rate[0] ? g_stock_baseline.pol0_up_rate : "1000";
+            m->down_rate_limit = g_stock_baseline.pol0_down_rate[0] ? g_stock_baseline.pol0_down_rate : "1000";
 
-            m->up_rate_limit = "1500";    /* 1.5ms instant touch ramp without jitter */
-            m->down_rate_limit = "25000"; /* 25ms smooth hold across 60/90/120Hz frame boundaries */
+            m->nr_requests = g_stock_baseline.io_nr_requests[0] ? g_stock_baseline.io_nr_requests : "128";
+            m->read_ahead  = g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024";
 
-            m->nr_requests = "128";
-            m->read_ahead = "256";
+            m->bg_cpus     = g_stock_baseline.bg_cpus[0] ? g_stock_baseline.bg_cpus : "0-3";
+            m->sys_bg_cpus = g_stock_baseline.sys_bg_cpus[0] ? g_stock_baseline.sys_bg_cpus : "0-5";
+            m->top_app_cpus= g_stock_baseline.top_app_cpus[0] ? g_stock_baseline.top_app_cpus : "0-7";
 
-            m->bg_shares = "1024";
-            m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "50";      /* 50% capacity ceiling — keeps background apps lightweight */
-            m->sys_bg_uclamp_max = "50";
-            m->top_app_shares = "1024";
-            m->top_app_uclamp_min = "15";    /* 15% scheduler headroom floor for active foreground UI */
-            m->top_app_uclamp_max = "max";
+            m->bg_shares         = g_stock_baseline.bg_shares[0] ? g_stock_baseline.bg_shares : "1024";
+            m->bg_uclamp_min     = g_stock_baseline.bg_uclamp_min[0] ? g_stock_baseline.bg_uclamp_min : "0";
+            m->bg_uclamp_max     = g_stock_baseline.bg_uclamp_max[0] ? g_stock_baseline.bg_uclamp_max : "max";
+            m->sys_bg_uclamp_max = g_stock_baseline.sys_bg_uclamp_max[0] ? g_stock_baseline.sys_bg_uclamp_max : "max";
+            m->top_app_shares    = g_stock_baseline.top_app_shares[0] ? g_stock_baseline.top_app_shares : "1024";
+            m->top_app_uclamp_min= g_stock_baseline.top_app_uclamp_min[0] ? g_stock_baseline.top_app_uclamp_min : "0";
+            m->top_app_uclamp_max= g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max";
 
-            m->devfreq_poll_ms = "100";   /* 100ms polling — balanced low-overhead sampling */
-            m->devfreq_upthresh = "65";   /* Responsive 65% load threshold — ramps up GPU swiftly for smooth UI rendering */
-            m->devfreq_downdiff = "20";   /* 20% down differential — drops to 390MHz floor immediately when idle */
-            m->devfreq_min_freq = "390000000";
-            m->devfreq_max_freq = max_gpu_hz;   /* Uncapped to hardware max frequency for fluid UI */
+            m->devfreq_gov      = g_stock_baseline.mali_gpu_gov[0] ? g_stock_baseline.mali_gpu_gov : "simple_ondemand";
+            m->power_policy     = g_stock_baseline.mali_policy;
+            m->devfreq_min_freq = g_stock_baseline.mali_min_freq[0] ? g_stock_baseline.mali_min_freq : "390000000";
+            m->devfreq_max_freq = g_stock_baseline.mali_max_freq[0] ? g_stock_baseline.mali_max_freq : max_gpu_hz;
+            m->devfreq_upthresh = g_stock_baseline.mali_upthresh[0] ? g_stock_baseline.mali_upthresh : "80";
+            m->devfreq_downdiff = g_stock_baseline.mali_downdiff[0] ? g_stock_baseline.mali_downdiff : "20";
+            m->devfreq_poll_ms  = ""; /* GPU polling interval left completely free to fluctuate up/down */
 
             m->dvfsrc_qos = "0";
 
-            m->boost_gpu_enable = "0";
-            m->ged_smart_boost = "0";
-            m->ged_boost_enable = "0";
-            m->enable_gpu_boost = "0";
-            m->gpu_cust_upbound_freq = max_gpu_khz; /* Hardware max kHz upbound */
-            m->gpu_bottom_freq = "390000";
-            m->g_fb_dvfs_threshold = "20";
-            m->gx_fb_dvfs_margin = "15";
-            m->gx_game_mode = "0";
+            m->boost_gpu_enable      = g_stock_baseline.boost_gpu_enable[0] ? g_stock_baseline.boost_gpu_enable : "0";
+            m->ged_smart_boost       = g_stock_baseline.ged_smart_boost[0] ? g_stock_baseline.ged_smart_boost : "0";
+            m->ged_boost_enable      = g_stock_baseline.ged_boost_enable[0] ? g_stock_baseline.ged_boost_enable : "0";
+            m->enable_gpu_boost      = g_stock_baseline.enable_gpu_boost[0] ? g_stock_baseline.enable_gpu_boost : "0";
+            m->gpu_cust_upbound_freq = g_stock_baseline.gpu_cust_upbound_freq[0] ? g_stock_baseline.gpu_cust_upbound_freq : "0";
+            m->gpu_cust_boost_freq   = g_stock_baseline.gpu_cust_boost_freq[0] ? g_stock_baseline.gpu_cust_boost_freq : "0";
+            m->gpu_bottom_freq       = g_stock_baseline.gpu_bottom_freq[0] ? g_stock_baseline.gpu_bottom_freq : "0";
+            m->g_fb_dvfs_threshold   = g_stock_baseline.g_fb_dvfs_threshold[0] ? g_stock_baseline.g_fb_dvfs_threshold : "80";
+            m->gx_fb_dvfs_margin     = g_stock_baseline.gx_fb_dvfs_margin[0] ? g_stock_baseline.gx_fb_dvfs_margin : "0";
+            m->gx_game_mode          = g_stock_baseline.gx_game_mode[0] ? g_stock_baseline.gx_game_mode : "0";
 
-            m->fpsgo_boost_ta = "1";      /* Enable FPSGO Top-App boost for smooth 90/120Hz frame pacing */
-            m->fpsgo_ultra_rescue = "0";
-            m->fpsgo_light_loading = "20";
-            m->fpsgo_thrm_enable = "1";
+            m->fpsgo_force_onoff   = g_stock_baseline.fpsgo_force_onoff[0] ? g_stock_baseline.fpsgo_force_onoff : "0";
+            m->fpsgo_boost_ta      = g_stock_baseline.fpsgo_boost_ta[0] ? g_stock_baseline.fpsgo_boost_ta : "0";
+            m->fpsgo_ultra_rescue  = g_stock_baseline.fpsgo_ultra_rescue[0] ? g_stock_baseline.fpsgo_ultra_rescue : "0";
+            m->fpsgo_light_loading = g_stock_baseline.fpsgo_light_loading[0] ? g_stock_baseline.fpsgo_light_loading : "0";
+            m->fpsgo_idleprefer    = g_stock_baseline.fpsgo_idleprefer[0] ? g_stock_baseline.fpsgo_idleprefer : "0";
+            m->fpsgo_thrm_enable   = g_stock_baseline.fpsgo_thrm_enable[0] ? g_stock_baseline.fpsgo_thrm_enable : "1";
 
-            m->sconfig = "10";            /* Engage Xiaomi NOLIMITS thermal profile to bypass 37°C-41°C CPU throttling */
-            m->touch_thp_smooth = "1";     /* Enable touch sampling smoothness during active interaction */
-            m->touch_game_mode = "0";
+            m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
+
+            /* Touchscreen nodes: The sole enhancement for Interactive profile! */
+            m->touch_thp_smooth  = "1"; /* Screen smoothing enabled for silky touch response */
+            m->touch_game_mode   = "0";
             m->touch_sensitivity = "0";
-            m->touch_edge = "0";
+            m->touch_edge        = "0";
             break;
         }
 
@@ -728,7 +730,9 @@ void apply_profile(profile_t prof, int gpu_load) {
     sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, m.top_app_uclamp_max);
 
     sysfs_write_fallback(s_devfreq_gov_nodes, m.devfreq_gov);
-    sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
+    if (m.devfreq_poll_ms && m.devfreq_poll_ms[0] != '\0') {
+        sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
+    }
     sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
     sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
@@ -760,7 +764,24 @@ void apply_profile(profile_t prof, int gpu_load) {
     sysfs_write(g_nodes.touch_game_mode, m.touch_game_mode);
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
-    sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", "1");
+    sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", (prof == PROFILE_Sleep) ? "0" : "1");
+
+    /* VM & Sched restoration for Interactive, optimization for Gaming */
+    if (prof == PROFILE_Interactive) {
+        if (g_stock_baseline.vm_swappiness[0]) sysfs_write("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness);
+        if (g_stock_baseline.vm_dirty_ratio[0]) sysfs_write("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio);
+        if (g_stock_baseline.vm_dirty_bg_ratio[0]) sysfs_write("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio);
+        if (g_stock_baseline.vm_vfs_cache_pressure[0]) sysfs_write("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure);
+        if (g_stock_baseline.vm_stat_interval[0]) sysfs_write("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval);
+        if (g_stock_baseline.vm_dirty_writeback[0]) sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback);
+        if (g_stock_baseline.sched_migration_cost[0]) sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
+    } else if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
+        sysfs_write("/proc/sys/vm/swappiness", "60");
+        sysfs_write("/proc/sys/vm/dirty_ratio", "15");
+        sysfs_write("/proc/sys/vm/dirty_background_ratio", "5");
+        sysfs_write("/proc/sys/vm/vfs_cache_pressure", "100");
+        sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
+    }
 
     /* Re-apply IRQ affinity on every profile transition:
      * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */

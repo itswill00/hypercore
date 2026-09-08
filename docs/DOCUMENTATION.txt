@@ -355,7 +355,7 @@ The repository build system (`build.sh`) manages the full build lifecycle:
 1. Compiles WebUI into single-file `webroot/index.html` via Vite.
 2. Updates `checksums.txt` and generates `src/include/embedded_checksums.hpp`.
 3. Compiles C sources with Termux/NDK Clang using `-O3 -flto -s` flags.
-4. Packages clean release zip into `/sdcard/HyperCore_Releases/HyperCore-vX.Y.Z-Unified.zip`.
+4. Packages clean release zip into `/data/data/com.termux/files/home/HyperCore_Releases/HyperCore-vX.Y.Z-Unified.zip` (`~/HyperCore_Releases/`).
 5. When `--deploy` is specified, updates `/data/adb/modules/hypercore/` in-place
    and restarts active daemon instances.
 
@@ -365,7 +365,7 @@ The repository build system (`build.sh`) manages the full build lifecycle:
 1. Zero Frequency Locking: Frequencies must remain dynamic under governor logic.
 2. Target Hardware Scope: Strictly MediaTek MT6789 Family (Helio G99/G100/G200).
 3. GKI Sysfs Fallback: Always use fallback arrays for Cgroup and kernel nodes.
-4. Zero Storage Pollution: Build release ZIPs exclusively in `/sdcard/HyperCore_Releases/`.
+4. Zero Storage Pollution: Build release ZIPs exclusively in `~/HyperCore_Releases/` (`/data/data/com.termux/files/home/HyperCore_Releases/`).
 5. Git Branch Workflow: Active development on `experimental`, fast-forward merged to `main`.
 6. Language Standard: 100% natural, clean English across all code, UI, and documentation.
 ================================================================================

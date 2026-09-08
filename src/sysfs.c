@@ -134,23 +134,246 @@ int sysfs_read_int(const char *path) {
     return atoi(buf);
 }
 
-static struct {
-    char gov0[64];
-    char gov6[64];
-    char mali_policy[64];
-    char mali_gpu_gov[64];
-    char mali_poll_int[64];
-    char migration_cost[64];
-    char charge_limit[64];
-    int  has_baseline;
-} s_baseline = { "", "", "", "", "", "", "", 0 };
+#include "log.hpp"
+#include "gpu.hpp"
 
-void save_baseline_nodes(void) {
-    if (s_baseline.has_baseline) return;
+stock_baseline_t g_stock_baseline;
 
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0, sizeof(s_baseline.gov0));
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6, sizeof(s_baseline.gov6));
+static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
+    if (min_f <= 0 || max_f <= 0) return;
+    char path[256], buf[32];
+    snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
+    int cur_min = sysfs_read_int(path);
+    if (cur_min > max_f) {
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(path, buf);
+        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+    } else {
+        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(path, buf);
+        snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(path, buf);
+    }
+}
 
+void save_stock_baseline(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+
+    fprintf(f, "# HyperCore Stock Factory Baseline\n");
+    fprintf(f, "# Captured on first installation\n");
+    fprintf(f, "has_baseline=1\n");
+    fprintf(f, "gov0=%s\n", g_stock_baseline.gov0);
+    fprintf(f, "gov6=%s\n", g_stock_baseline.gov6);
+    fprintf(f, "lit_min_freq=%d\n", g_stock_baseline.lit_min_freq);
+    fprintf(f, "lit_max_freq=%d\n", g_stock_baseline.lit_max_freq);
+    fprintf(f, "big_min_freq=%d\n", g_stock_baseline.big_min_freq);
+    fprintf(f, "big_max_freq=%d\n", g_stock_baseline.big_max_freq);
+    fprintf(f, "pol0_up_rate=%s\n", g_stock_baseline.pol0_up_rate);
+    fprintf(f, "pol0_down_rate=%s\n", g_stock_baseline.pol0_down_rate);
+    fprintf(f, "pol6_up_rate=%s\n", g_stock_baseline.pol6_up_rate);
+    fprintf(f, "pol6_down_rate=%s\n", g_stock_baseline.pol6_down_rate);
+    fprintf(f, "bg_cpus=%s\n", g_stock_baseline.bg_cpus);
+    fprintf(f, "sys_bg_cpus=%s\n", g_stock_baseline.sys_bg_cpus);
+    fprintf(f, "top_app_cpus=%s\n", g_stock_baseline.top_app_cpus);
+    fprintf(f, "bg_shares=%s\n", g_stock_baseline.bg_shares);
+    fprintf(f, "bg_uclamp_min=%s\n", g_stock_baseline.bg_uclamp_min);
+    fprintf(f, "bg_uclamp_max=%s\n", g_stock_baseline.bg_uclamp_max);
+    fprintf(f, "sys_bg_uclamp_max=%s\n", g_stock_baseline.sys_bg_uclamp_max);
+    fprintf(f, "top_app_shares=%s\n", g_stock_baseline.top_app_shares);
+    fprintf(f, "top_app_uclamp_min=%s\n", g_stock_baseline.top_app_uclamp_min);
+    fprintf(f, "top_app_uclamp_max=%s\n", g_stock_baseline.top_app_uclamp_max);
+    fprintf(f, "mali_policy=%s\n", g_stock_baseline.mali_policy);
+    fprintf(f, "mali_gpu_gov=%s\n", g_stock_baseline.mali_gpu_gov);
+    fprintf(f, "mali_poll_int=%s\n", g_stock_baseline.mali_poll_int);
+    fprintf(f, "mali_upthresh=%s\n", g_stock_baseline.mali_upthresh);
+    fprintf(f, "mali_downdiff=%s\n", g_stock_baseline.mali_downdiff);
+    fprintf(f, "mali_min_freq=%s\n", g_stock_baseline.mali_min_freq);
+    fprintf(f, "mali_max_freq=%s\n", g_stock_baseline.mali_max_freq);
+    fprintf(f, "boost_gpu_enable=%s\n", g_stock_baseline.boost_gpu_enable);
+    fprintf(f, "ged_smart_boost=%s\n", g_stock_baseline.ged_smart_boost);
+    fprintf(f, "ged_boost_enable=%s\n", g_stock_baseline.ged_boost_enable);
+    fprintf(f, "enable_gpu_boost=%s\n", g_stock_baseline.enable_gpu_boost);
+    fprintf(f, "gpu_cust_boost_freq=%s\n", g_stock_baseline.gpu_cust_boost_freq);
+    fprintf(f, "gpu_cust_upbound_freq=%s\n", g_stock_baseline.gpu_cust_upbound_freq);
+    fprintf(f, "gpu_bottom_freq=%s\n", g_stock_baseline.gpu_bottom_freq);
+    fprintf(f, "g_fb_dvfs_threshold=%s\n", g_stock_baseline.g_fb_dvfs_threshold);
+    fprintf(f, "gx_fb_dvfs_margin=%s\n", g_stock_baseline.gx_fb_dvfs_margin);
+    fprintf(f, "gx_game_mode=%s\n", g_stock_baseline.gx_game_mode);
+    fprintf(f, "fpsgo_force_onoff=%s\n", g_stock_baseline.fpsgo_force_onoff);
+    fprintf(f, "fpsgo_boost_ta=%s\n", g_stock_baseline.fpsgo_boost_ta);
+    fprintf(f, "fpsgo_ultra_rescue=%s\n", g_stock_baseline.fpsgo_ultra_rescue);
+    fprintf(f, "fpsgo_light_loading=%s\n", g_stock_baseline.fpsgo_light_loading);
+    fprintf(f, "fpsgo_idleprefer=%s\n", g_stock_baseline.fpsgo_idleprefer);
+    fprintf(f, "fpsgo_thrm_enable=%s\n", g_stock_baseline.fpsgo_thrm_enable);
+    fprintf(f, "sconfig=%s\n", g_stock_baseline.sconfig);
+    fprintf(f, "vm_swappiness=%s\n", g_stock_baseline.vm_swappiness);
+    fprintf(f, "vm_dirty_ratio=%s\n", g_stock_baseline.vm_dirty_ratio);
+    fprintf(f, "vm_dirty_bg_ratio=%s\n", g_stock_baseline.vm_dirty_bg_ratio);
+    fprintf(f, "vm_vfs_cache_pressure=%s\n", g_stock_baseline.vm_vfs_cache_pressure);
+    fprintf(f, "vm_stat_interval=%s\n", g_stock_baseline.vm_stat_interval);
+    fprintf(f, "vm_dirty_writeback=%s\n", g_stock_baseline.vm_dirty_writeback);
+    fprintf(f, "vm_page_cluster=%s\n", g_stock_baseline.vm_page_cluster);
+    fprintf(f, "io_read_ahead=%s\n", g_stock_baseline.io_read_ahead);
+    fprintf(f, "io_nr_requests=%s\n", g_stock_baseline.io_nr_requests);
+    fprintf(f, "io_iostats=%s\n", g_stock_baseline.io_iostats);
+    fprintf(f, "sched_migration_cost=%s\n", g_stock_baseline.sched_migration_cost);
+    fprintf(f, "sched_latency=%s\n", g_stock_baseline.sched_latency);
+    fprintf(f, "sched_nr_migrate=%s\n", g_stock_baseline.sched_nr_migrate);
+    fprintf(f, "charge_limit=%s\n", g_stock_baseline.charge_limit);
+    fclose(f);
+    chmod(path, 0644);
+}
+
+int load_stock_baseline(void) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
+    FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.mod_dir);
+        f = fopen(path, "r");
+    }
+    if (!f) return 0;
+
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *key = line;
+        char *val = eq + 1;
+        char *nl = strpbrk(val, "\r\n");
+        if (nl) *nl = '\0';
+
+        if (strcmp(key, "has_baseline") == 0) g_stock_baseline.has_baseline = atoi(val);
+        else if (strcmp(key, "gov0") == 0) strncpy(g_stock_baseline.gov0, val, sizeof(g_stock_baseline.gov0)-1);
+        else if (strcmp(key, "gov6") == 0) strncpy(g_stock_baseline.gov6, val, sizeof(g_stock_baseline.gov6)-1);
+        else if (strcmp(key, "lit_min_freq") == 0) g_stock_baseline.lit_min_freq = atoi(val);
+        else if (strcmp(key, "lit_max_freq") == 0) g_stock_baseline.lit_max_freq = atoi(val);
+        else if (strcmp(key, "big_min_freq") == 0) g_stock_baseline.big_min_freq = atoi(val);
+        else if (strcmp(key, "big_max_freq") == 0) g_stock_baseline.big_max_freq = atoi(val);
+        else if (strcmp(key, "pol0_up_rate") == 0) strncpy(g_stock_baseline.pol0_up_rate, val, sizeof(g_stock_baseline.pol0_up_rate)-1);
+        else if (strcmp(key, "pol0_down_rate") == 0) strncpy(g_stock_baseline.pol0_down_rate, val, sizeof(g_stock_baseline.pol0_down_rate)-1);
+        else if (strcmp(key, "pol6_up_rate") == 0) strncpy(g_stock_baseline.pol6_up_rate, val, sizeof(g_stock_baseline.pol6_up_rate)-1);
+        else if (strcmp(key, "pol6_down_rate") == 0) strncpy(g_stock_baseline.pol6_down_rate, val, sizeof(g_stock_baseline.pol6_down_rate)-1);
+        else if (strcmp(key, "bg_cpus") == 0) strncpy(g_stock_baseline.bg_cpus, val, sizeof(g_stock_baseline.bg_cpus)-1);
+        else if (strcmp(key, "sys_bg_cpus") == 0) strncpy(g_stock_baseline.sys_bg_cpus, val, sizeof(g_stock_baseline.sys_bg_cpus)-1);
+        else if (strcmp(key, "top_app_cpus") == 0) strncpy(g_stock_baseline.top_app_cpus, val, sizeof(g_stock_baseline.top_app_cpus)-1);
+        else if (strcmp(key, "bg_shares") == 0) strncpy(g_stock_baseline.bg_shares, val, sizeof(g_stock_baseline.bg_shares)-1);
+        else if (strcmp(key, "bg_uclamp_min") == 0) strncpy(g_stock_baseline.bg_uclamp_min, val, sizeof(g_stock_baseline.bg_uclamp_min)-1);
+        else if (strcmp(key, "bg_uclamp_max") == 0) strncpy(g_stock_baseline.bg_uclamp_max, val, sizeof(g_stock_baseline.bg_uclamp_max)-1);
+        else if (strcmp(key, "sys_bg_uclamp_max") == 0) strncpy(g_stock_baseline.sys_bg_uclamp_max, val, sizeof(g_stock_baseline.sys_bg_uclamp_max)-1);
+        else if (strcmp(key, "top_app_shares") == 0) strncpy(g_stock_baseline.top_app_shares, val, sizeof(g_stock_baseline.top_app_shares)-1);
+        else if (strcmp(key, "top_app_uclamp_min") == 0) strncpy(g_stock_baseline.top_app_uclamp_min, val, sizeof(g_stock_baseline.top_app_uclamp_min)-1);
+        else if (strcmp(key, "top_app_uclamp_max") == 0) strncpy(g_stock_baseline.top_app_uclamp_max, val, sizeof(g_stock_baseline.top_app_uclamp_max)-1);
+        else if (strcmp(key, "mali_policy") == 0) strncpy(g_stock_baseline.mali_policy, val, sizeof(g_stock_baseline.mali_policy)-1);
+        else if (strcmp(key, "mali_gpu_gov") == 0) strncpy(g_stock_baseline.mali_gpu_gov, val, sizeof(g_stock_baseline.mali_gpu_gov)-1);
+        else if (strcmp(key, "mali_poll_int") == 0) strncpy(g_stock_baseline.mali_poll_int, val, sizeof(g_stock_baseline.mali_poll_int)-1);
+        else if (strcmp(key, "mali_upthresh") == 0) strncpy(g_stock_baseline.mali_upthresh, val, sizeof(g_stock_baseline.mali_upthresh)-1);
+        else if (strcmp(key, "mali_downdiff") == 0) strncpy(g_stock_baseline.mali_downdiff, val, sizeof(g_stock_baseline.mali_downdiff)-1);
+        else if (strcmp(key, "mali_min_freq") == 0) strncpy(g_stock_baseline.mali_min_freq, val, sizeof(g_stock_baseline.mali_min_freq)-1);
+        else if (strcmp(key, "mali_max_freq") == 0) strncpy(g_stock_baseline.mali_max_freq, val, sizeof(g_stock_baseline.mali_max_freq)-1);
+        else if (strcmp(key, "boost_gpu_enable") == 0) strncpy(g_stock_baseline.boost_gpu_enable, val, sizeof(g_stock_baseline.boost_gpu_enable)-1);
+        else if (strcmp(key, "ged_smart_boost") == 0) strncpy(g_stock_baseline.ged_smart_boost, val, sizeof(g_stock_baseline.ged_smart_boost)-1);
+        else if (strcmp(key, "ged_boost_enable") == 0) strncpy(g_stock_baseline.ged_boost_enable, val, sizeof(g_stock_baseline.ged_boost_enable)-1);
+        else if (strcmp(key, "enable_gpu_boost") == 0) strncpy(g_stock_baseline.enable_gpu_boost, val, sizeof(g_stock_baseline.enable_gpu_boost)-1);
+        else if (strcmp(key, "gpu_cust_boost_freq") == 0) strncpy(g_stock_baseline.gpu_cust_boost_freq, val, sizeof(g_stock_baseline.gpu_cust_boost_freq)-1);
+        else if (strcmp(key, "gpu_cust_upbound_freq") == 0) strncpy(g_stock_baseline.gpu_cust_upbound_freq, val, sizeof(g_stock_baseline.gpu_cust_upbound_freq)-1);
+        else if (strcmp(key, "gpu_bottom_freq") == 0) strncpy(g_stock_baseline.gpu_bottom_freq, val, sizeof(g_stock_baseline.gpu_bottom_freq)-1);
+        else if (strcmp(key, "g_fb_dvfs_threshold") == 0) strncpy(g_stock_baseline.g_fb_dvfs_threshold, val, sizeof(g_stock_baseline.g_fb_dvfs_threshold)-1);
+        else if (strcmp(key, "gx_fb_dvfs_margin") == 0) strncpy(g_stock_baseline.gx_fb_dvfs_margin, val, sizeof(g_stock_baseline.gx_fb_dvfs_margin)-1);
+        else if (strcmp(key, "gx_game_mode") == 0) strncpy(g_stock_baseline.gx_game_mode, val, sizeof(g_stock_baseline.gx_game_mode)-1);
+        else if (strcmp(key, "fpsgo_force_onoff") == 0) strncpy(g_stock_baseline.fpsgo_force_onoff, val, sizeof(g_stock_baseline.fpsgo_force_onoff)-1);
+        else if (strcmp(key, "fpsgo_boost_ta") == 0) strncpy(g_stock_baseline.fpsgo_boost_ta, val, sizeof(g_stock_baseline.fpsgo_boost_ta)-1);
+        else if (strcmp(key, "fpsgo_ultra_rescue") == 0) strncpy(g_stock_baseline.fpsgo_ultra_rescue, val, sizeof(g_stock_baseline.fpsgo_ultra_rescue)-1);
+        else if (strcmp(key, "fpsgo_light_loading") == 0) strncpy(g_stock_baseline.fpsgo_light_loading, val, sizeof(g_stock_baseline.fpsgo_light_loading)-1);
+        else if (strcmp(key, "fpsgo_idleprefer") == 0) strncpy(g_stock_baseline.fpsgo_idleprefer, val, sizeof(g_stock_baseline.fpsgo_idleprefer)-1);
+        else if (strcmp(key, "fpsgo_thrm_enable") == 0) strncpy(g_stock_baseline.fpsgo_thrm_enable, val, sizeof(g_stock_baseline.fpsgo_thrm_enable)-1);
+        else if (strcmp(key, "sconfig") == 0) strncpy(g_stock_baseline.sconfig, val, sizeof(g_stock_baseline.sconfig)-1);
+        else if (strcmp(key, "vm_swappiness") == 0) strncpy(g_stock_baseline.vm_swappiness, val, sizeof(g_stock_baseline.vm_swappiness)-1);
+        else if (strcmp(key, "vm_dirty_ratio") == 0) strncpy(g_stock_baseline.vm_dirty_ratio, val, sizeof(g_stock_baseline.vm_dirty_ratio)-1);
+        else if (strcmp(key, "vm_dirty_bg_ratio") == 0) strncpy(g_stock_baseline.vm_dirty_bg_ratio, val, sizeof(g_stock_baseline.vm_dirty_bg_ratio)-1);
+        else if (strcmp(key, "vm_vfs_cache_pressure") == 0) strncpy(g_stock_baseline.vm_vfs_cache_pressure, val, sizeof(g_stock_baseline.vm_vfs_cache_pressure)-1);
+        else if (strcmp(key, "vm_stat_interval") == 0) strncpy(g_stock_baseline.vm_stat_interval, val, sizeof(g_stock_baseline.vm_stat_interval)-1);
+        else if (strcmp(key, "vm_dirty_writeback") == 0) strncpy(g_stock_baseline.vm_dirty_writeback, val, sizeof(g_stock_baseline.vm_dirty_writeback)-1);
+        else if (strcmp(key, "vm_page_cluster") == 0) strncpy(g_stock_baseline.vm_page_cluster, val, sizeof(g_stock_baseline.vm_page_cluster)-1);
+        else if (strcmp(key, "io_read_ahead") == 0) strncpy(g_stock_baseline.io_read_ahead, val, sizeof(g_stock_baseline.io_read_ahead)-1);
+        else if (strcmp(key, "io_nr_requests") == 0) strncpy(g_stock_baseline.io_nr_requests, val, sizeof(g_stock_baseline.io_nr_requests)-1);
+        else if (strcmp(key, "io_iostats") == 0) strncpy(g_stock_baseline.io_iostats, val, sizeof(g_stock_baseline.io_iostats)-1);
+        else if (strcmp(key, "sched_migration_cost") == 0) strncpy(g_stock_baseline.sched_migration_cost, val, sizeof(g_stock_baseline.sched_migration_cost)-1);
+        else if (strcmp(key, "sched_latency") == 0) strncpy(g_stock_baseline.sched_latency, val, sizeof(g_stock_baseline.sched_latency)-1);
+        else if (strcmp(key, "sched_nr_migrate") == 0) strncpy(g_stock_baseline.sched_nr_migrate, val, sizeof(g_stock_baseline.sched_nr_migrate)-1);
+        else if (strcmp(key, "charge_limit") == 0) strncpy(g_stock_baseline.charge_limit, val, sizeof(g_stock_baseline.charge_limit)-1);
+    }
+    fclose(f);
+    g_stock_baseline.has_baseline = 1;
+    return 1;
+}
+
+void init_stock_baseline(void) {
+    if (g_stock_baseline.has_baseline) return;
+
+    if (load_stock_baseline()) {
+        log_info("Baseline", "Loaded existing factory stock baseline from stock_state.conf");
+        return;
+    }
+
+    log_info("Baseline", "No saved stock baseline found. Capturing untouched factory baseline...");
+    memset(&g_stock_baseline, 0, sizeof(g_stock_baseline));
+
+    /* Governor */
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0, sizeof(g_stock_baseline.gov0));
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6, sizeof(g_stock_baseline.gov6));
+    if (g_stock_baseline.gov0[0] == '\0') strcpy(g_stock_baseline.gov0, "sugov_ext");
+    if (g_stock_baseline.gov6[0] == '\0') strcpy(g_stock_baseline.gov6, "sugov_ext");
+
+    /* Frequencies */
+    int l_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq");
+    int l_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq");
+    if (l_max <= 0) l_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
+    int b_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq");
+    int b_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
+    if (b_max <= 0) b_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
+
+    g_stock_baseline.lit_min_freq = (l_min > 0) ? l_min : (g_nodes.lit_hw_min_freq > 0 ? g_nodes.lit_hw_min_freq : 500000);
+    g_stock_baseline.lit_max_freq = (l_max > 0) ? l_max : (g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000);
+    g_stock_baseline.big_min_freq = (b_min > 0) ? b_min : (g_nodes.big_hw_min_freq > 0 ? g_nodes.big_hw_min_freq : 725000);
+    g_stock_baseline.big_max_freq = (b_max > 0) ? b_max : (g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000);
+
+    /* Rate limits */
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate, sizeof(g_stock_baseline.pol0_up_rate));
+    if (g_stock_baseline.pol0_up_rate[0] == '\0') strcpy(g_stock_baseline.pol0_up_rate, "1000");
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate, sizeof(g_stock_baseline.pol0_down_rate));
+    if (g_stock_baseline.pol0_down_rate[0] == '\0') strcpy(g_stock_baseline.pol0_down_rate, "1000");
+
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate, sizeof(g_stock_baseline.pol6_up_rate));
+    if (g_stock_baseline.pol6_up_rate[0] == '\0') strcpy(g_stock_baseline.pol6_up_rate, "100");
+    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate, sizeof(g_stock_baseline.pol6_down_rate));
+    if (g_stock_baseline.pol6_down_rate[0] == '\0') strcpy(g_stock_baseline.pol6_down_rate, "1000");
+
+    /* Cgroups & UCLAMP */
+    sysfs_read_str("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus, sizeof(g_stock_baseline.bg_cpus));
+    if (g_stock_baseline.bg_cpus[0] == '\0') strcpy(g_stock_baseline.bg_cpus, "0-3");
+    sysfs_read_str("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus, sizeof(g_stock_baseline.sys_bg_cpus));
+    if (g_stock_baseline.sys_bg_cpus[0] == '\0') strcpy(g_stock_baseline.sys_bg_cpus, "0-5");
+    sysfs_read_str("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus, sizeof(g_stock_baseline.top_app_cpus));
+    if (g_stock_baseline.top_app_cpus[0] == '\0') strcpy(g_stock_baseline.top_app_cpus, "0-7");
+
+    strcpy(g_stock_baseline.bg_shares, "1024");
+    strcpy(g_stock_baseline.bg_uclamp_min, "0");
+    strcpy(g_stock_baseline.bg_uclamp_max, "max");
+    strcpy(g_stock_baseline.sys_bg_uclamp_max, "max");
+    strcpy(g_stock_baseline.top_app_shares, "1024");
+    strcpy(g_stock_baseline.top_app_uclamp_min, "0");
+    strcpy(g_stock_baseline.top_app_uclamp_max, "max");
+
+    /* GPU Devfreq */
     const char *power_policy_nodes[] = {
         "/sys/devices/platform/soc/13000000.mali/power_policy",
         "/sys/devices/platform/soc/soc:mali/power_policy",
@@ -159,7 +382,7 @@ void save_baseline_nodes(void) {
         NULL
     };
     for (int i = 0; power_policy_nodes[i]; i++) {
-        if (sysfs_read_str(power_policy_nodes[i], s_baseline.mali_policy, sizeof(s_baseline.mali_policy))) break;
+        if (sysfs_read_str(power_policy_nodes[i], g_stock_baseline.mali_policy, sizeof(g_stock_baseline.mali_policy))) break;
     }
 
     const char *devfreq_gov_nodes[] = {
@@ -170,8 +393,9 @@ void save_baseline_nodes(void) {
         NULL
     };
     for (int i = 0; devfreq_gov_nodes[i]; i++) {
-        if (sysfs_read_str(devfreq_gov_nodes[i], s_baseline.mali_gpu_gov, sizeof(s_baseline.mali_gpu_gov))) break;
+        if (sysfs_read_str(devfreq_gov_nodes[i], g_stock_baseline.mali_gpu_gov, sizeof(g_stock_baseline.mali_gpu_gov))) break;
     }
+    if (g_stock_baseline.mali_gpu_gov[0] == '\0') strcpy(g_stock_baseline.mali_gpu_gov, "simple_ondemand");
 
     const char *devfreq_poll_nodes[] = {
         "/sys/class/devfreq/13000000.mali/polling_interval",
@@ -181,21 +405,117 @@ void save_baseline_nodes(void) {
         NULL
     };
     for (int i = 0; devfreq_poll_nodes[i]; i++) {
-        if (sysfs_read_str(devfreq_poll_nodes[i], s_baseline.mali_poll_int, sizeof(s_baseline.mali_poll_int))) break;
+        if (sysfs_read_str(devfreq_poll_nodes[i], g_stock_baseline.mali_poll_int, sizeof(g_stock_baseline.mali_poll_int))) break;
+    }
+    if (g_stock_baseline.mali_poll_int[0] == '\0') strcpy(g_stock_baseline.mali_poll_int, "50");
+
+    strcpy(g_stock_baseline.mali_upthresh, "80");
+    strcpy(g_stock_baseline.mali_downdiff, "20");
+    strcpy(g_stock_baseline.mali_min_freq, "390000000");
+    strcpy(g_stock_baseline.mali_max_freq, get_max_gpu_freq_hz());
+
+    /* MediaTek GED & FPSGO */
+    strcpy(g_stock_baseline.boost_gpu_enable, "0");
+    strcpy(g_stock_baseline.ged_smart_boost, "0");
+    strcpy(g_stock_baseline.ged_boost_enable, "0");
+    strcpy(g_stock_baseline.enable_gpu_boost, "0");
+    strcpy(g_stock_baseline.gpu_cust_boost_freq, "0");
+    strcpy(g_stock_baseline.gpu_cust_upbound_freq, "0");
+    strcpy(g_stock_baseline.gpu_bottom_freq, "0");
+    strcpy(g_stock_baseline.g_fb_dvfs_threshold, "80");
+    strcpy(g_stock_baseline.gx_fb_dvfs_margin, "0");
+    strcpy(g_stock_baseline.gx_game_mode, "0");
+    strcpy(g_stock_baseline.fpsgo_force_onoff, "0");
+    strcpy(g_stock_baseline.fpsgo_boost_ta, "0");
+    strcpy(g_stock_baseline.fpsgo_ultra_rescue, "0");
+    strcpy(g_stock_baseline.fpsgo_light_loading, "0");
+    strcpy(g_stock_baseline.fpsgo_idleprefer, "0");
+    strcpy(g_stock_baseline.fpsgo_thrm_enable, "1");
+
+    /* Xiaomi Thermal / sconfig */
+    sysfs_read_str("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig, sizeof(g_stock_baseline.sconfig));
+    if (g_stock_baseline.sconfig[0] == '\0' || strcmp(g_stock_baseline.sconfig, "10") == 0) {
+        strcpy(g_stock_baseline.sconfig, "0");
     }
 
-    sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost, sizeof(s_baseline.migration_cost));
-    sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit, sizeof(s_baseline.charge_limit));
+    /* Memory VM */
+    sysfs_read_str("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness, sizeof(g_stock_baseline.vm_swappiness));
+    if (g_stock_baseline.vm_swappiness[0] == '\0') strcpy(g_stock_baseline.vm_swappiness, "100");
+    sysfs_read_str("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio, sizeof(g_stock_baseline.vm_dirty_ratio));
+    if (g_stock_baseline.vm_dirty_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_ratio, "20");
+    sysfs_read_str("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof(g_stock_baseline.vm_dirty_bg_ratio));
+    if (g_stock_baseline.vm_dirty_bg_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_bg_ratio, "10");
+    strcpy(g_stock_baseline.vm_vfs_cache_pressure, "100");
+    strcpy(g_stock_baseline.vm_stat_interval, "1");
+    strcpy(g_stock_baseline.vm_dirty_writeback, "500");
+    strcpy(g_stock_baseline.vm_page_cluster, "0");
 
-    s_baseline.has_baseline = 1;
+    /* Storage I/O */
+    strcpy(g_stock_baseline.io_read_ahead, "1024");
+    strcpy(g_stock_baseline.io_nr_requests, "128");
+    strcpy(g_stock_baseline.io_iostats, "1");
+
+    /* Scheduler */
+    sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost, sizeof(g_stock_baseline.sched_migration_cost));
+    if (g_stock_baseline.sched_migration_cost[0] == '\0') strcpy(g_stock_baseline.sched_migration_cost, "500000");
+    strcpy(g_stock_baseline.sched_latency, "10000000");
+    strcpy(g_stock_baseline.sched_nr_migrate, "32");
+
+    /* Charger */
+    sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit, sizeof(g_stock_baseline.charge_limit));
+
+    g_stock_baseline.has_baseline = 1;
+    save_stock_baseline();
+    log_info("Baseline", "Untouched factory baseline captured and saved to %s/stock_state.conf", g_nodes.data_dir);
+}
+
+void save_baseline_nodes(void) {
+    init_stock_baseline();
 }
 
 void restore_baseline_nodes(void) {
-    if (!s_baseline.has_baseline) return;
+    if (!g_stock_baseline.has_baseline) return;
 
-    if (s_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", s_baseline.gov0);
-    if (s_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", s_baseline.gov6);
+    /* Restore CPU Governors */
+    if (g_stock_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0);
+    if (g_stock_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6);
 
+    /* Restore CPU Frequencies */
+    restore_policy_freqs("/sys/devices/system/cpu/cpufreq/policy0", g_stock_baseline.lit_min_freq, g_stock_baseline.lit_max_freq);
+    restore_policy_freqs("/sys/devices/system/cpu/cpufreq/policy6", g_stock_baseline.big_min_freq, g_stock_baseline.big_max_freq);
+
+    /* Restore CPU rate limits */
+    if (g_stock_baseline.pol0_up_rate[0] != '\0') {
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us", g_stock_baseline.pol0_up_rate);
+    }
+    if (g_stock_baseline.pol0_down_rate[0] != '\0') {
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us", g_stock_baseline.pol0_down_rate);
+    }
+    if (g_stock_baseline.pol6_up_rate[0] != '\0') {
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us", g_stock_baseline.pol6_up_rate);
+    }
+    if (g_stock_baseline.pol6_down_rate[0] != '\0') {
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us", g_stock_baseline.pol6_down_rate);
+    }
+
+    /* Restore Cgroups & UCLAMP */
+    if (g_stock_baseline.bg_cpus[0] != '\0') sysfs_write("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus);
+    if (g_stock_baseline.sys_bg_cpus[0] != '\0') sysfs_write("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus);
+    if (g_stock_baseline.top_app_cpus[0] != '\0') sysfs_write("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus);
+
+    sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
+    sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
+    sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
+    sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
+    sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
+    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");
+    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+
+    /* Restore GPU Devfreq */
     const char *power_policy_nodes[] = {
         "/sys/devices/platform/soc/13000000.mali/power_policy",
         "/sys/devices/platform/soc/soc:mali/power_policy",
@@ -203,7 +523,7 @@ void restore_baseline_nodes(void) {
         "/sys/class/devfreq/soc:mali/power_policy",
         NULL
     };
-    if (s_baseline.mali_policy[0] != '\0') sysfs_write_fallback(power_policy_nodes, s_baseline.mali_policy);
+    if (g_stock_baseline.mali_policy[0] != '\0') sysfs_write_fallback(power_policy_nodes, g_stock_baseline.mali_policy);
 
     const char *devfreq_gov_nodes[] = {
         "/sys/class/devfreq/13000000.mali/governor",
@@ -212,7 +532,7 @@ void restore_baseline_nodes(void) {
         "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
         NULL
     };
-    if (s_baseline.mali_gpu_gov[0] != '\0') sysfs_write_fallback(devfreq_gov_nodes, s_baseline.mali_gpu_gov);
+    if (g_stock_baseline.mali_gpu_gov[0] != '\0') sysfs_write_fallback(devfreq_gov_nodes, g_stock_baseline.mali_gpu_gov);
 
     const char *devfreq_poll_nodes[] = {
         "/sys/class/devfreq/13000000.mali/polling_interval",
@@ -221,49 +541,87 @@ void restore_baseline_nodes(void) {
         "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
         NULL
     };
-    if (s_baseline.mali_poll_int[0] != '\0' && atoi(s_baseline.mali_poll_int) > 0) {
-        sysfs_write_fallback(devfreq_poll_nodes, s_baseline.mali_poll_int);
+    if (g_stock_baseline.mali_poll_int[0] != '\0' && atoi(g_stock_baseline.mali_poll_int) > 0) {
+        sysfs_write_fallback(devfreq_poll_nodes, g_stock_baseline.mali_poll_int);
     } else {
         sysfs_write_fallback(devfreq_poll_nodes, "50");
     }
 
-    if (s_baseline.migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", s_baseline.migration_cost);
-    if (s_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", s_baseline.charge_limit);
+    const char *devfreq_min_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/min_freq",
+        "/sys/class/devfreq/soc:mali/min_freq",
+        NULL
+    };
+    if (g_stock_baseline.mali_min_freq[0] != '\0') sysfs_write_fallback(devfreq_min_nodes, g_stock_baseline.mali_min_freq);
 
-    /* Restore charger nodes to safe ROM defaults on daemon exit/shutdown */
-    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
-    sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+    const char *devfreq_max_nodes[] = {
+        "/sys/class/devfreq/13000000.mali/max_freq",
+        "/sys/class/devfreq/soc:mali/max_freq",
+        NULL
+    };
+    if (g_stock_baseline.mali_max_freq[0] != '\0') sysfs_write_fallback(devfreq_max_nodes, g_stock_baseline.mali_max_freq);
+
+    /* Restore MediaTek GED & FPSGO */
+    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", "0");
+    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", "0");
+    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", "0");
+    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", "0");
+    sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", "0");
+    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", "0");
+    sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", "0");
+    sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", "80");
+    sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", "0");
+    sysfs_write("/sys/module/ged/parameters/gx_game_mode", "0");
+    sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "0");
+    sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
+
+    /* Restore Xiaomi Thermal / sconfig */
     chmod("/sys/class/thermal/thermal_message/sconfig", 0664);
     chmod("/sys/devices/virtual/thermal/thermal_message/sconfig", 0664);
-    sysfs_write("/sys/class/thermal/thermal_message/sconfig", "0");
-    sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", "0");
+    sysfs_write("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
+    sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
 
-    /* Clear runtime gaming properties so no residue remains */
+    /* Restore Touchscreen nodes to factory default (0) */
+    sysfs_write(g_nodes.touch_thp_smooth, "0");
+    sysfs_write(g_nodes.touch_game_mode, "0");
+    sysfs_write(g_nodes.touch_sensitivity, "0");
+    sysfs_write(g_nodes.touch_edge, "0");
+    sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", "0");
+
+    /* Restore Memory VM */
+    if (g_stock_baseline.vm_swappiness[0] != '\0') sysfs_write("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness);
+    if (g_stock_baseline.vm_dirty_ratio[0] != '\0') sysfs_write("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio);
+    if (g_stock_baseline.vm_dirty_bg_ratio[0] != '\0') sysfs_write("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio);
+    if (g_stock_baseline.vm_vfs_cache_pressure[0] != '\0') sysfs_write("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure);
+    if (g_stock_baseline.vm_stat_interval[0] != '\0') sysfs_write("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval);
+    if (g_stock_baseline.vm_dirty_writeback[0] != '\0') sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback);
+    if (g_stock_baseline.sched_migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
+
+    /* Restore Charger */
+    if (g_stock_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit);
+    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
+    sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+
+    /* Clear runtime gaming properties */
     system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
     system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
 
-    /* Restore CPU governor rate limit permissions across all policies and governors */
+    /* Restore rate limit node permissions */
     const char *rate_limit_restore_paths[] = {
         "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us",
         "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
         NULL
     };
     for (int i = 0; rate_limit_restore_paths[i]; i++) {

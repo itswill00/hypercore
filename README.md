@@ -130,7 +130,7 @@ To compile the native C daemon, generate embedded checksums, build the WebUI fro
 ```
 
 Output package:
-- `/sdcard/HyperCore_Releases/HyperCore-v6.8.0-b6800-Unified.zip`
+- `~/HyperCore_Releases/HyperCore-v6.8.1-b6810-Unified.zip` (`/data/data/com.termux/files/home/HyperCore_Releases/`)
 
 ---
 
