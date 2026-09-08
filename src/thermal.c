@@ -79,6 +79,21 @@ void scan_thermal_zones(void) {
                "/sys/class/thermal/thermal_zone25/temp" : "/sys/class/thermal/thermal_zone1/temp");
     }
 
+    /* Discover GPU devfreq cooling device to prevent thermal downclocking during gaming */
+    for (int i = 0; i < 16; i++) {
+        char type_path[256], cur_path[256];
+        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/cooling_device%d/type", i);
+        snprintf(cur_path, sizeof(cur_path), "/sys/class/thermal/cooling_device%d/cur_state", i);
+        if (access(type_path, F_OK) != 0) continue;
+
+        char ctype[64] = "";
+        sysfs_read_str(type_path, ctype, sizeof(ctype));
+        if (strstr(ctype, "thermal-devfreq") || strstr(ctype, "mali") || strstr(ctype, "gpu")) {
+            strncpy(g_nodes.devfreq_cooler, cur_path, sizeof(g_nodes.devfreq_cooler) - 1);
+            log_info("Thermal", "GPU Devfreq cooling device detected: %s (%s)", cur_path, ctype);
+            break;
+        }
+    }
 
     if (access("/sys/class/power_supply/battery/status", F_OK) == 0) {
         strcpy(g_nodes.bat_status, "/sys/class/power_supply/battery/status");
@@ -307,6 +322,78 @@ int update_thermal_guard(int cpu_temp, int bat_temp) {
         return 1; /* Tier transition occurred */
     }
     return 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Gaming Thermal Bypass Engine
+ * --------------------------------------------------------------------------
+ * Active throttling mitigation during gaming workloads:
+ * 1. Enforces Xiaomi sconfig 10 (thermal-nolimits.conf) against mi_thermald resets
+ * 2. Suppresses Xiaomi cpu_limits injection
+ * 3. Prevents MediaTek FPSGO thermal frametime degradation (thrm_enable = 0)
+ * 4. Clears GPU devfreq cooler state to prevent Mali downclocking
+ * 5. Restores scaling_max_freq if vendor thermald artificially caps CPU clocks
+ * -------------------------------------------------------------------------- */
+void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
+    if (prof != PROFILE_Gaming && prof != PROFILE_Gaming_MOBA) return;
+
+    /* 1. Enforce Xiaomi sconfig 10 (thermal-nolimits.conf) */
+    char sconfig_val[32] = "";
+    if (sysfs_read_str("/sys/class/thermal/thermal_message/sconfig", sconfig_val, sizeof(sconfig_val))) {
+        if (strcmp(sconfig_val, "10") != 0) {
+            chmod("/sys/class/thermal/thermal_message/sconfig", 0666);
+            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+        }
+    }
+    if (sysfs_read_str("/sys/devices/virtual/thermal/thermal_message/sconfig", sconfig_val, sizeof(sconfig_val))) {
+        if (strcmp(sconfig_val, "10") != 0) {
+            chmod("/sys/devices/virtual/thermal/thermal_message/sconfig", 0666);
+            sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", "10");
+        }
+    }
+
+    /* 2. Clear Xiaomi cpu_limits message */
+    char cpu_limits[64] = "";
+    if (sysfs_read_str("/sys/class/thermal/thermal_message/cpu_limits", cpu_limits, sizeof(cpu_limits))) {
+        if (cpu_limits[0] != '\0') {
+            chmod("/sys/class/thermal/thermal_message/cpu_limits", 0666);
+            sysfs_write("/sys/class/thermal/thermal_message/cpu_limits", "");
+        }
+    }
+
+    /* 3. MediaTek FPSGO thermal bypass */
+    char fpsgo_thrm[16] = "";
+    if (sysfs_read_str("/sys/kernel/fpsgo/fbt/thrm_enable", fpsgo_thrm, sizeof(fpsgo_thrm))) {
+        if (strcmp(fpsgo_thrm, "0") != 0) {
+            sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "0");
+        }
+    }
+
+    /* 4. Reset GPU Devfreq cooler if vendor thermal attempted to throttle */
+    if (g_nodes.devfreq_cooler[0] != '\0') {
+        int cooler_state = sysfs_read_int(g_nodes.devfreq_cooler);
+        if (cooler_state > 0) {
+            sysfs_write(g_nodes.devfreq_cooler, "0");
+        }
+    }
+
+    /* 5. CPU scaling_max_freq protection: prevent mi_thermald from capping clocks */
+    int target_lit_max = (tier == 2) ? 1800000 : (g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000);
+    int target_big_max = (tier == 2) ? 1800000 : ((tier == 1 && prof == PROFILE_Gaming_MOBA) ? 2000000 : (g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000));
+
+    int cur_lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
+    if (cur_lit_max > 0 && cur_lit_max < target_lit_max) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", target_lit_max);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq", buf);
+    }
+
+    int cur_big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
+    if (cur_big_max > 0 && cur_big_max < target_big_max) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", target_big_max);
+        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
+    }
 }
 
 

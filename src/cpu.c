@@ -602,13 +602,13 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
 
             m->boost_gpu_enable      = g_stock_baseline.boost_gpu_enable[0] ? g_stock_baseline.boost_gpu_enable : "0";
             m->ged_smart_boost       = g_stock_baseline.ged_smart_boost[0] ? g_stock_baseline.ged_smart_boost : "0";
-            m->ged_boost_enable      = g_stock_baseline.ged_boost_enable[0] ? g_stock_baseline.ged_boost_enable : "0";
-            m->enable_gpu_boost      = g_stock_baseline.enable_gpu_boost[0] ? g_stock_baseline.enable_gpu_boost : "0";
-            m->gpu_cust_upbound_freq = g_stock_baseline.gpu_cust_upbound_freq[0] ? g_stock_baseline.gpu_cust_upbound_freq : "0";
-            m->gpu_cust_boost_freq   = g_stock_baseline.gpu_cust_boost_freq[0] ? g_stock_baseline.gpu_cust_boost_freq : "0";
-            m->gpu_bottom_freq       = g_stock_baseline.gpu_bottom_freq[0] ? g_stock_baseline.gpu_bottom_freq : "0";
+            m->ged_boost_enable      = g_stock_baseline.ged_boost_enable[0] ? g_stock_baseline.ged_boost_enable : "1";
+            m->enable_gpu_boost      = g_stock_baseline.enable_gpu_boost[0] ? g_stock_baseline.enable_gpu_boost : "1";
+            m->gpu_cust_upbound_freq = g_stock_baseline.gpu_cust_upbound_freq[0] ? g_stock_baseline.gpu_cust_upbound_freq : "1003000";
+            m->gpu_cust_boost_freq   = g_stock_baseline.gpu_cust_boost_freq[0] ? g_stock_baseline.gpu_cust_boost_freq : "390000";
+            m->gpu_bottom_freq       = g_stock_baseline.gpu_bottom_freq[0] ? g_stock_baseline.gpu_bottom_freq : "390000";
             m->g_fb_dvfs_threshold   = g_stock_baseline.g_fb_dvfs_threshold[0] ? g_stock_baseline.g_fb_dvfs_threshold : "80";
-            m->gx_fb_dvfs_margin     = g_stock_baseline.gx_fb_dvfs_margin[0] ? g_stock_baseline.gx_fb_dvfs_margin : "0";
+            m->gx_fb_dvfs_margin     = g_stock_baseline.gx_fb_dvfs_margin[0] ? g_stock_baseline.gx_fb_dvfs_margin : "40";
             m->gx_game_mode          = g_stock_baseline.gx_game_mode[0] ? g_stock_baseline.gx_game_mode : "0";
 
             m->fpsgo_force_onoff   = g_stock_baseline.fpsgo_force_onoff[0] ? g_stock_baseline.fpsgo_force_onoff : "0";
@@ -764,7 +764,11 @@ void apply_profile(profile_t prof, int gpu_load) {
     sysfs_write(g_nodes.touch_game_mode, m.touch_game_mode);
     sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
     sysfs_write(g_nodes.touch_edge, m.touch_edge);
-    sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", (prof == PROFILE_Sleep) ? "0" : "1");
+    if (g_nodes.touch_thp_noisefilter[0]) {
+        sysfs_write(g_nodes.touch_thp_noisefilter, (prof == PROFILE_Sleep) ? "0" : "1");
+    } else {
+        sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", (prof == PROFILE_Sleep) ? "0" : "1");
+    }
 
     /* VM & Sched restoration for Interactive, optimization for Gaming */
     if (prof == PROFILE_Interactive) {

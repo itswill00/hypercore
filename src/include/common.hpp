@@ -52,7 +52,9 @@ struct hw_nodes {
     char bat_temp[256];
     char bat_status[256];
     char backlight[256];
+    char devfreq_cooler[256];
     char touch_thp_smooth[256];
+    char touch_thp_noisefilter[256];
     char touch_edge[256];
     char touch_game_mode[256];
     char touch_sensitivity[256];

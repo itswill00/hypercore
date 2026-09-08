@@ -138,6 +138,7 @@ static void init_hardware_nodes(void) {
 
     const char *thp_paths[] = {
         "/sys/class/touch/touch_dev/touch_thp_smooth",
+        "/sys/devices/virtual/touch/touch_dev/touch_thp_smooth",
         "/sys/class/touch/touch_dev/thp_smooth",
         "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_thp_smooth",
         NULL
@@ -145,6 +146,20 @@ static void init_hardware_nodes(void) {
     for (int i = 0; thp_paths[i]; i++) {
         if (access(thp_paths[i], F_OK) == 0) {
             strcpy(g_nodes.touch_thp_smooth, thp_paths[i]);
+            break;
+        }
+    }
+
+    const char *noise_paths[] = {
+        "/sys/class/touch/touch_dev/touch_thp_noisefilter",
+        "/sys/devices/virtual/touch/touch_dev/touch_thp_noisefilter",
+        "/sys/class/touch/touch_dev/thp_noisefilter",
+        "/sys/devices/platform/goodix_ts.0/touch_thp_noisefilter",
+        NULL
+    };
+    for (int i = 0; noise_paths[i]; i++) {
+        if (access(noise_paths[i], F_OK) == 0) {
+            strcpy(g_nodes.touch_thp_noisefilter, noise_paths[i]);
             break;
         }
     }
@@ -544,6 +559,12 @@ int main(int argc, char *argv[]) {
             }
             apply_profile(next_profile, gpu_load);
             g_state.current_profile = next_profile;
+        }
+
+        /* Active thermal bypass guard during gaming:
+         * Prevents mi_thermald & FPSGO from prematurely capping frequencies or dropping frames */
+        if (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA) {
+            enforce_gaming_thermal_bypass(g_state.current_profile, g_state.thermal_tier);
         }
 
         tune_memory_pressure();

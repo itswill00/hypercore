@@ -16,6 +16,13 @@
 - **Direct Workspace Output Packaging**: Migrated target package output directory from external `/sdcard` to Termux home: `~/HyperCore_Releases/` (`/data/data/com.termux/files/home/HyperCore_Releases/`).
 - **Storage Sandbox Immunity**: Prevents Android 11+ storage isolation / FUSE permission errors during command-line compilation while maintaining consistent release paths across all documentation and workflow runbooks.
 
+### 🛡️ Active Gaming Thermal Bypass Engine
+- **Continuous Thermal Throttle Mitigation**: Actively shields Gaming and Gaming MOBA profiles from premature vendor thermal degradation during long gaming sessions.
+- **Persistent Xiaomi `sconfig 10` Lockdown**: Continuously enforces `sconfig 10` (`thermal-nolimits.conf`) and suppresses `mi_thermald`'s `cpu_limits` downclock directives.
+- **MediaTek FPSGO Throttle Bypass**: Keeps `/sys/kernel/fpsgo/fbt/thrm_enable = 0` during active games to prevent artificial framerate capping.
+- **GPU Devfreq Cooler State Reset**: Automatically resets `cur_state` on Mali GPU cooling devices (`thermal-devfreq-0`) to prevent thermal devfreq downclocks.
+- **CPU Scaling Max Frequency Protection**: Actively detects and restores Little (2.0 GHz) and Big (2.2 GHz) maximum CPU frequencies if vendor thermald attempts to clamp them down prematurely, preserving steady 60/90/120 FPS frame delivery.
+
 ---
 
 # HyperCore v6.8.0 — Dynamic Thermal Guard & Xiaomi Thermal Throttling Mitigation Release
