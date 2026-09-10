@@ -1,3 +1,13 @@
+# HyperCore v6.8.3 — Status JSON & Boot Fixes
+
+## What's Changed
+
+### 🐛 Bug Fixes
+- **`gpu_temp` / `chg_temp` Missing from `status.json`**: WebUI reads `status.json` as primary data source; these fields were present in live `GET_STATUS` IPC response but missing from the written file. WebUI now correctly displays GPU and charger temperatures instead of falling back to CPU/battery values.
+- **Boot Status "Stopped" Fix** *(v6.8.2)*: Daemon status in `module.prop` now updates immediately to `Interactive` on startup.
+
+---
+
 # HyperCore v6.8.2 — Boot Status Fix
 
 ## What's Changed

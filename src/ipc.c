@@ -397,14 +397,41 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
     int bat_cycles = get_true_battery_cycles();
 
+    /* Read gpu_temp and chg_temp for status.json consistency with GET_STATUS IPC response */
+    int gpu_temp = 0;
+    const char *gpu_therm_nodes[] = {
+        "/sys/class/thermal/thermal_zone30/temp",
+        "/sys/class/thermal/thermal_zone28/temp",
+        "/sys/class/thermal/thermal_zone26/temp",
+        NULL
+    };
+    for (int gi = 0; gpu_therm_nodes[gi]; gi++) {
+        int v = sysfs_read_int(gpu_therm_nodes[gi]);
+        if (v > 0) { gpu_temp = (v > 1000) ? v / 1000 : v; break; }
+    }
+    if (gpu_temp <= 0) gpu_temp = cpu_temp;
+
+    int chg_temp = 0;
+    const char *chg_therm_nodes[] = {
+        "/sys/class/power_supply/mtk-master-charger/temp",
+        "/sys/class/power_supply/charger/temp",
+        "/sys/class/power_supply/battery/temp_ambient",
+        NULL
+    };
+    for (int ci = 0; chg_therm_nodes[ci]; ci++) {
+        int v = sysfs_read_int(chg_therm_nodes[ci]);
+        if (v > 0) { chg_temp = (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v; break; }
+    }
+    if (chg_temp <= 0) chg_temp = bat_temp;
+
     char json[1024];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
-        "\"cpu_temp\":%d,\"bat_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
         "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
         "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
         "\"charger_supported\":%d,\"thermal_tier\":%d}\n",
-        getpid(), prof_str, cpu_temp, bat_temp,
+        getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
         g_state.is_charging, gpu_load, bat_cycles,
         g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
         g_state.custom_charge_limit,
