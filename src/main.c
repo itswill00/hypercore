@@ -412,6 +412,7 @@ int main(int argc, char *argv[]) {
     /* Apply initial Interactive profile (factory stock + touch smoothing) */
     apply_profile(PROFILE_Interactive, 0);
     g_state.current_profile = PROFILE_Interactive;
+    update_module_prop_status("Interactive"); /* Fix: update status immediately on boot, not waiting for profile change */
 
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);

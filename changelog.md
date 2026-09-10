@@ -1,3 +1,12 @@
+# HyperCore v6.8.2 — Boot Status Fix
+
+## What's Changed
+
+### 🐛 Bug Fixes
+- **Boot Status "Stopped" Fix**: Daemon status in `module.prop` now updates immediately to `Interactive` on startup without requiring a manual profile trigger to Gaming/Sleep first. Root cause: `update_module_prop_status()` was only called on *profile change*, so if the initial profile was already `Interactive`, no change was detected and the status remained stuck as "Stopped" from the previous shutdown.
+
+---
+
 # HyperCore v6.8.1 — Persistent Factory Baseline & Pure Touch-Enhanced Interactive Remap
 
 ## What's Changed
