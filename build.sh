@@ -151,8 +151,9 @@ am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard
 if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     echo "deploying to live device modules..."
     if su -c "
+        pkill -9 -x hypercore_daemon 2>/dev/null || true
         pkill -9 -x libhypercore.so 2>/dev/null || true
-        kill -9 $(pidof hypermoon_daemon 2>/dev/null) 2>/dev/null || true
+        pkill -9 -x hypermoon_daemon 2>/dev/null || true
         for p in \$(pgrep -f '[H]yperMoonOverlay' 2>/dev/null); do [ \"\$p\" != \"\$\$\" ] && kill -9 \"\$p\" 2>/dev/null || true; done
         MOD_TARGET=\"/data/adb/modules/hypercore\"
         DATA_TARGET=\"/data/adb/hypercore\"

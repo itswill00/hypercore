@@ -280,7 +280,7 @@ AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|lege
 if [ -n "$AUTO_GAMES" ]; then
     for pkg in $AUTO_GAMES; do
         if ! grep -q -E "^${pkg}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
-            echo "$pkg" >> /data/adb/hypercore/gamelist.txt
+            echo "${pkg}:GAMING" >> /data/adb/hypercore/gamelist.txt
             ui_print "  + Auto-added game: $pkg"
         fi
     done
@@ -294,7 +294,7 @@ for c in /data/adb/hypercore/*.conf; do
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.8.0"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.8.3"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

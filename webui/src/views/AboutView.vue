@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.6.0' }} · Stable
+              {{ store.moduleVersion || 'v6.8.3' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.6.0' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.3' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,13 +85,13 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.6.0' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.3' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>HyperMoon HUD Overhaul &amp; Governor Telemetry</strong>: Native CPU and Mali GPU scaling governors live on-screen with real-time ZRAM swap monitoring.</li>
-                  <li><strong>Granular Geometry &amp; Appearance Engine</strong>: Direct Card Width and Height control, 50%–180% scale, font sizes, corner radius, and opacity.</li>
-                  <li><strong>Instant Reactive Master Switch</strong>: Sub-millisecond toggle response linked via Linux kernel FileObserver inotify.</li>
-                  <li><strong>Quick Presets &amp; Theme Accents</strong>: Instant 1-tap switching between Compact, Minimal, and Detailed layouts with AMOLED Dark and custom accent coloring.</li>
+                  <li><strong>Status JSON &amp; Thermal Sensor Telemetry</strong>: Direct hardware sensor discovery for Mali GPU and Charger thermal zones, and full telemetry persistence in status.json.</li>
+                  <li><strong>Active Gaming Thermal Bypass Engine</strong>: Protects Little (2.0 GHz) and Big (2.2 GHz) CPU clocks from vendor downclocking with automated Xiaomi sconfig 10 enforcement.</li>
+                  <li><strong>Zero-Tamper Persistent Baseline</strong>: Automatic capture of factory stock hardware governors and parameters into stock_state.conf for 100% clean exit-to-stock recovery.</li>
+                  <li><strong>Smart Hardware Charger Guard</strong>: Precision 80% stop-limit protection, Bypass mode hysteresis, and dynamic 16-level custom charging speed control.</li>
                 </ul>
               </div>
             </div>

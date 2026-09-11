@@ -49,6 +49,7 @@ int get_custom_charge_limit(void);
  *   thermal override is active).
  */
 int get_charge_mode(void);
+int is_charge_override_active(void);
 
 /*
  * charge_mode_name(mode)

@@ -7,8 +7,12 @@ void scan_thermal_zones(void) {
     /* Score-based thermal zone selection to pick core sensor over broad SoC envelope */
     char best_cpu_path[256] = "";
     char best_bat_path[256] = "";
+    char best_gpu_path[256] = "";
+    char best_chg_path[256] = "";
     int  best_cpu_score = 0;
     int  best_bat_score = 0;
+    int  best_gpu_score = 0;
+    int  best_chg_score = 0;
 
     DIR *d = opendir("/sys/class/thermal");
     if (d) {
@@ -56,6 +60,27 @@ void scan_thermal_zones(void) {
                 strncpy(best_bat_path, temp_path, sizeof(best_bat_path) - 1);
                 best_bat_path[sizeof(best_bat_path) - 1] = '\0';
             }
+
+            int gpu_score = 0;
+            if (strstr(type, "gpu1") || strstr(type, "gpu2")) gpu_score = 12;
+            else if (strstr(type, "gpu") || strstr(type, "GPU")) gpu_score = 10;
+            else if (strstr(type, "mali")) gpu_score = 8;
+
+            if (gpu_score > best_gpu_score) {
+                best_gpu_score = gpu_score;
+                strncpy(best_gpu_path, temp_path, sizeof(best_gpu_path) - 1);
+                best_gpu_path[sizeof(best_gpu_path) - 1] = '\0';
+            }
+
+            int chg_score = 0;
+            if (strstr(type, "charge_therm") || strstr(type, "chg_therm")) chg_score = 12;
+            else if (strstr(type, "charger") || strstr(type, "charge")) chg_score = 8;
+
+            if (chg_score > best_chg_score) {
+                best_chg_score = chg_score;
+                strncpy(best_chg_path, temp_path, sizeof(best_chg_path) - 1);
+                best_chg_path[sizeof(best_chg_path) - 1] = '\0';
+            }
         }
         closedir(d);
     }
@@ -69,6 +94,16 @@ void scan_thermal_zones(void) {
         strncpy(g_nodes.bat_temp, best_bat_path, sizeof(g_nodes.bat_temp) - 1);
         g_nodes.bat_temp[sizeof(g_nodes.bat_temp) - 1] = '\0';
     }
+    if (best_gpu_path[0] != '\0') {
+        strncpy(g_nodes.gpu_temp, best_gpu_path, sizeof(g_nodes.gpu_temp) - 1);
+        g_nodes.gpu_temp[sizeof(g_nodes.gpu_temp) - 1] = '\0';
+        log_info("Thermal", "GPU thermal zone selected (score=%d): %s", best_gpu_score, g_nodes.gpu_temp);
+    }
+    if (best_chg_path[0] != '\0') {
+        strncpy(g_nodes.chg_temp, best_chg_path, sizeof(g_nodes.chg_temp) - 1);
+        g_nodes.chg_temp[sizeof(g_nodes.chg_temp) - 1] = '\0';
+        log_info("Thermal", "Charger thermal zone selected (score=%d): %s", best_chg_score, g_nodes.chg_temp);
+    }
 
     if (g_nodes.cpu_temp[0] == '\0') {
         strcpy(g_nodes.cpu_temp, access("/sys/class/thermal/thermal_zone16/temp", F_OK) == 0 ?
@@ -77,6 +112,20 @@ void scan_thermal_zones(void) {
     if (g_nodes.bat_temp[0] == '\0') {
         strcpy(g_nodes.bat_temp, access("/sys/class/thermal/thermal_zone25/temp", F_OK) == 0 ?
                "/sys/class/thermal/thermal_zone25/temp" : "/sys/class/thermal/thermal_zone1/temp");
+    }
+    if (g_nodes.gpu_temp[0] == '\0') {
+        if (access("/sys/class/thermal/thermal_zone10/temp", F_OK) == 0)
+            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone10/temp");
+        else if (access("/sys/class/thermal/thermal_zone9/temp", F_OK) == 0)
+            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone9/temp");
+    }
+    if (g_nodes.chg_temp[0] == '\0') {
+        if (access("/sys/class/thermal/thermal_zone17/temp", F_OK) == 0)
+            strcpy(g_nodes.chg_temp, "/sys/class/thermal/thermal_zone17/temp");
+        else if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
+            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
+        else if (access("/sys/class/power_supply/charger/temp", F_OK) == 0)
+            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/charger/temp");
     }
 
     /* Discover GPU devfreq cooling device to prevent thermal downclocking during gaming */

@@ -50,6 +50,8 @@ struct hw_nodes {
     char lock_file[256];
     char cpu_temp[256];
     char bat_temp[256];
+    char gpu_temp[256];
+    char chg_temp[256];
     char bat_status[256];
     char backlight[256];
     char devfreq_cooler[256];
@@ -89,6 +91,7 @@ struct core_state {
     int smart_chg;                    /* 1 = smart charging curve enabled                                                  */
     int protect_80;                   /* 1 = stop charging at 80% capacity limit                                           */
     int thermal_tier;                 /* 0 = Optimal, 1 = Warm mitigation, 2 = Hot safety protection                       */
+    int charge_override;              /* 1 = safety / low battery / thermal override currently active                     */
 };
 
 typedef struct {

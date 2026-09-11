@@ -391,7 +391,7 @@ void enforce_charge_mode(void) {
     if (bat_cap <= 0) bat_cap = 50; /* safe default if node unavailable */
 
     int effective_mode = s_user_charge_mode;
-    int override_active = 0;
+    static int s_override_active = 0;
 
     /* Battery Protect 80% Cap Toggle: If user enabled 80% stop limit,
      * suspend input charging once battery capacity reaches >= 80%. */
@@ -410,29 +410,34 @@ void enforce_charge_mode(void) {
          * Without hysteresis, the mode would toggle rapidly at the 10% boundary. */
         if (bat_cap < CAP_MIN_BYPASS) {
             effective_mode = CHARGE_MODE_SAFE;
-            if (!override_active) {
+            if (!s_override_active) {
                 log_warn("Charger", "BYPASS: battery critically low (%d%%) — auto-resume to SAFE",
                          bat_cap);
             }
-            override_active = 1;
-        } else if (override_active && bat_cap >= CAP_MIN_BYPASS_RESTORE) {
+            s_override_active = 1;
+        } else if (s_override_active && bat_cap >= CAP_MIN_BYPASS_RESTORE) {
             /* Hysteresis clear: only restore BYPASS after cap recovers above 12% */
-            override_active = 0;
+            s_override_active = 0;
             log_info("Charger", "BYPASS low-bat override cleared: bat_cap=%d%% >= %d%% — restoring BYPASS",
                      bat_cap, CAP_MIN_BYPASS_RESTORE);
-        } else if (override_active) {
+        } else if (s_override_active) {
             /* Still recovering (cap between 10-12%) — stay in SAFE */
             effective_mode = CHARGE_MODE_SAFE;
         }
     } else {
         /* Thermal ladder disabled — user selected mode is maintained */
         effective_mode = s_user_charge_mode;
-        override_active = 0;
+        s_override_active = 0;
     }
 
     /* Update global state & apply to hardware nodes */
     g_state.charge_mode = effective_mode;
+    g_state.charge_override = s_override_active || (effective_mode != s_user_charge_mode);
     apply_effective_mode(effective_mode);
+}
+
+int is_charge_override_active(void) {
+    return g_state.charge_override;
 }
 
 void set_charge_mode(int mode) {

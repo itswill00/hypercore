@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Arch-ARM64-lightgrey.svg" alt="Architecture">
   <img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20APatch%20%7C%20Magisk-brightgreen.svg" alt="Root">
   <img src="https://img.shields.io/badge/Language-C99%20%7C%20Vue%203-blueviolet.svg" alt="Language">
-  <img src="https://img.shields.io/badge/Release-v6.8.0-purple.svg" alt="Release">
+  <img src="https://img.shields.io/badge/Release-v6.8.3-purple.svg" alt="Release">
 </p>
 
 <p align="center">
@@ -130,7 +130,7 @@ To compile the native C daemon, generate embedded checksums, build the WebUI fro
 ```
 
 Output package:
-- `~/HyperCore_Releases/HyperCore-v6.8.1-b6810-Unified.zip` (`/data/data/com.termux/files/home/HyperCore_Releases/`)
+- `~/HyperCore_Releases/HyperCore-v6.8.3-b6830-Unified.zip` (`/data/data/com.termux/files/home/HyperCore_Releases/`)
 
 ---
 

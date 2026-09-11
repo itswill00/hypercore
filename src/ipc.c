@@ -15,6 +15,22 @@ static int  s_server_fd = -1;
 static char s_sock_path[256] = "";
 static time_t s_start_time = 0;
 
+static int read_gpu_temp(int cpu_fallback) {
+    if (g_nodes.gpu_temp[0] != '\0') {
+        int v = sysfs_read_int(g_nodes.gpu_temp);
+        if (v > 0) return (v > 1000) ? v / 1000 : v;
+    }
+    return cpu_fallback;
+}
+
+static int read_chg_temp(int bat_fallback) {
+    if (g_nodes.chg_temp[0] != '\0') {
+        int v = sysfs_read_int(g_nodes.chg_temp);
+        if (v > 0) return (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v;
+    }
+    return bat_fallback;
+}
+
 int init_ipc_socket(void) {
     s_start_time = time(NULL);
 
@@ -136,47 +152,24 @@ static void process_client(int client_fd) {
         }
 
         /* Read dedicated GPU and charger thermal zones with CPU/battery fallback */
-        int gpu_temp = 0;
-        const char *gpu_therm_nodes[] = {
-            "/sys/class/thermal/thermal_zone30/temp",
-            "/sys/class/thermal/thermal_zone28/temp",
-            "/sys/class/thermal/thermal_zone26/temp",
-            NULL
-        };
-        for (int gi = 0; gpu_therm_nodes[gi]; gi++) {
-            int v = sysfs_read_int(gpu_therm_nodes[gi]);
-            if (v > 0) { gpu_temp = (v > 1000) ? v / 1000 : v; break; }
-        }
-        if (gpu_temp <= 0) gpu_temp = cpu_temp;
-
-        int chg_temp = 0;
-        const char *chg_therm_nodes[] = {
-            "/sys/class/power_supply/mtk-master-charger/temp",
-            "/sys/class/power_supply/charger/temp",
-            "/sys/class/power_supply/battery/temp_ambient",
-            NULL
-        };
-        for (int ci = 0; chg_therm_nodes[ci]; ci++) {
-            int v = sysfs_read_int(chg_therm_nodes[ci]);
-            if (v > 0) { chg_temp = (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v; break; }
-        }
-        if (chg_temp <= 0) chg_temp = bat_temp;
+        int gpu_temp = read_gpu_temp(cpu_temp);
+        int chg_temp = read_chg_temp(bat_temp);
 
         char json[1024];
         snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
             "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
-            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
+            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
             "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charger_supported\":%d,\"thermal_tier\":%d}\n",
+            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d}\n",
             getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
             bat_health, bat_status, bat_tech,
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-            g_state.custom_charge_limit,
+            g_state.charge_mode, g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charger_supported, g_state.thermal_tier);
+            g_state.charge_override, g_state.charger_supported, g_state.thermal_tier);
 
         write(client_fd, json, strlen(json));
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
@@ -398,45 +391,22 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     int bat_cycles = get_true_battery_cycles();
 
     /* Read gpu_temp and chg_temp for status.json consistency with GET_STATUS IPC response */
-    int gpu_temp = 0;
-    const char *gpu_therm_nodes[] = {
-        "/sys/class/thermal/thermal_zone30/temp",
-        "/sys/class/thermal/thermal_zone28/temp",
-        "/sys/class/thermal/thermal_zone26/temp",
-        NULL
-    };
-    for (int gi = 0; gpu_therm_nodes[gi]; gi++) {
-        int v = sysfs_read_int(gpu_therm_nodes[gi]);
-        if (v > 0) { gpu_temp = (v > 1000) ? v / 1000 : v; break; }
-    }
-    if (gpu_temp <= 0) gpu_temp = cpu_temp;
-
-    int chg_temp = 0;
-    const char *chg_therm_nodes[] = {
-        "/sys/class/power_supply/mtk-master-charger/temp",
-        "/sys/class/power_supply/charger/temp",
-        "/sys/class/power_supply/battery/temp_ambient",
-        NULL
-    };
-    for (int ci = 0; chg_therm_nodes[ci]; ci++) {
-        int v = sysfs_read_int(chg_therm_nodes[ci]);
-        if (v > 0) { chg_temp = (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v; break; }
-    }
-    if (chg_temp <= 0) chg_temp = bat_temp;
+    int gpu_temp = read_gpu_temp(cpu_temp);
+    int chg_temp = read_chg_temp(bat_temp);
 
     char json[1024];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
         "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
-        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,"
+        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
         "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-        "\"charger_supported\":%d,\"thermal_tier\":%d}\n",
+        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d}\n",
         getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
         g_state.is_charging, gpu_load, bat_cycles,
         g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-        g_state.custom_charge_limit,
+        g_state.charge_mode, g_state.custom_charge_limit,
         g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-        g_state.charger_supported, g_state.thermal_tier);
+        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier);
 
     char data_status[300];
     snprintf(data_status, sizeof(data_status), "%s/status.json", g_nodes.data_dir);
