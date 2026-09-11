@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.8.3' }} · Stable
+              {{ store.moduleVersion || 'v6.8.4' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.3' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.4' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,7 +85,7 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.3' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.4' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
                   <li><strong>Status JSON &amp; Thermal Sensor Telemetry</strong>: Direct hardware sensor discovery for Mali GPU and Charger thermal zones, and full telemetry persistence in status.json.</li>

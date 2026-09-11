@@ -1,3 +1,16 @@
+# HyperCore v6.8.4 — Charger Bypass Hysteresis & Sensor Discovery Hardening
+
+## What's Changed
+
+### 🐛 Bug Fixes & Architecture Hardening
+- **Charger Bypass Hysteresis Preservation**: Fixed a bug in `enforce_charge_mode()` where non-static local variable `override_active` reset every 2-second daemon tick, preventing clean hysteresis recovery when battery level climbs back above 12% in Bypass mode.
+- **Dynamic Thermal Zone Discovery for GPU & Charger**: Integrated automatic scanning for MT6789 GPU sensor nodes (`gpu1`, `gpu2`, `mali`) and Charger nodes (`charge_therm`, `charger`) into `scan_thermal_zones()`, replacing non-existent hardcoded thermal zones.
+- **State Synchronization & WebUI Telemetry**: Added `effective_charge_mode` and `charge_thermal_override` to IPC responses and `status.json`. Synchronized real-time `thermalTier` and thermal protection warning banners in WebUI.
+- **Stock Baseline Rollback in Uninstaller**: `uninstall.sh` now reads and restores untouched hardware baseline parameters from `/data/adb/hypercore/stock_state.conf` before removing the data directory.
+- **Installer & Shell Hardening**: Standardized game auto-detection format in `customize.sh` (`${pkg}:GAMING`), fixed subshell quoting in `build.sh` deploy command, and updated all fallback version references to v6.8.4.
+
+---
+
 # HyperCore v6.8.3 — Status JSON & Boot Fixes
 
 ## What's Changed
