@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.8.4' }} · Stable
+              {{ store.moduleVersion || 'v6.8.5' }} · Stable
             </span>
           </div>
 
@@ -72,7 +72,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.4' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.5' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -85,13 +85,15 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.4' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.5' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Status JSON &amp; Thermal Sensor Telemetry</strong>: Direct hardware sensor discovery for Mali GPU and Charger thermal zones, and full telemetry persistence in status.json.</li>
-                  <li><strong>Active Gaming Thermal Bypass Engine</strong>: Protects Little (2.0 GHz) and Big (2.2 GHz) CPU clocks from vendor downclocking with automated Xiaomi sconfig 10 enforcement.</li>
-                  <li><strong>Zero-Tamper Persistent Baseline</strong>: Automatic capture of factory stock hardware governors and parameters into stock_state.conf for 100% clean exit-to-stock recovery.</li>
-                  <li><strong>Smart Hardware Charger Guard</strong>: Precision 80% stop-limit protection, Bypass mode hysteresis, and dynamic 16-level custom charging speed control.</li>
+                  <li><strong>Swappiness Baseline Integrity</strong>: Fixed memory pressure tuning to respect profile context, preserving stock factory swappiness in Interactive &amp; Sleep.</li>
+                  <li><strong>Protect 80% Anti-Oscillation Hysteresis</strong>: Eliminated rapid 79%–80% charging flutter by maintaining bypass cutoff until battery level drops to 77%.</li>
+                  <li><strong>Resilient Inotify Directory Watcher</strong>: Directory-level watching prevents watcher death on atomic gamelist file renames.</li>
+                  <li><strong>Instant Profile IPC Synchronization</strong>: Synchronized module.prop active status and status.json immediately on IPC profile switches.</li>
+                  <li><strong>Display State Authority Hardening</strong>: Hardware backlight check is now strictly authoritative, preventing false screen-on detections.</li>
+                  <li><strong>Big Core Hotspot Priority</strong>: Prioritized MT6789 Big Core thermal zones and added multi-policy fallbacks for gaming thermal bypass.</li>
                 </ul>
               </div>
             </div>

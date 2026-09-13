@@ -1,3 +1,18 @@
+# HyperCore v6.8.5 — Logic Flaw Hardening, Baseline Integrity & Inotify Resilience
+
+## What's Changed
+
+### 🐛 Bug Fixes & Architectural Hardening
+- **Swappiness Baseline Integrity**: `tune_memory_pressure()` now respects the active profile context, ensuring factory default swappiness from `stock_state.conf` is never clobbered down to 60 during Interactive and Sleep profiles.
+- **Protect 80% Anti-Oscillation Hysteresis**: Added `s_protect_active` hysteresis to `enforce_charge_mode()`. Charging remains bypassed at 80% until capacity drops to 77%, preventing rapid 79%–80% charging flutter and repeated TCPC renegotiation stress.
+- **Resilient Gamelist Inotify Watcher**: Rewrote `init_gamelist_watcher()` to watch parent directories for `IN_CLOSE_WRITE | IN_MOVED_TO`. The daemon now reliably reloads `gamelist.txt` even after atomic file replacements from WebUI or text editors.
+- **Instant Profile IPC Status Synchronization**: `process_client()` now immediately invokes `update_module_prop_status()` and `update_status_json_file()` upon manual profile switches via IPC, eliminating status display lag in root managers and WebUI.
+- **Display State Detection Authority Hardening**: Made hardware backlight readings strictly authoritative (`bl_val >= 0`), preventing screen-off states from falling through to legacy fb0/DRM checks that could prevent device sleep.
+- **Big Core Thermal Priority & Multi-Policy Support**: Prioritized MT6789 Big Core thermal zones (`cpu_big` / `cpu-big`, score 14) over little cores, and added multi-policy iteration (`policy6`, `policy4`, `policy7`) in `enforce_gaming_thermal_bypass()`.
+- **Shell Command PATH Resilience**: Hardened `resetprop` calls across `cpu.c` and `sysfs.c` with unified shell execution and comprehensive PATH resolution across KernelSU, APatch, and Magisk.
+
+---
+
 # HyperCore v6.8.4 — Charger Bypass Hysteresis & Sensor Discovery Hardening
 
 ## What's Changed
