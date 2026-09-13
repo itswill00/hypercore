@@ -629,8 +629,8 @@ void restore_baseline_nodes(void) {
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
 
     /* Clear runtime gaming properties */
-    system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
-    system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+    system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
+           "sh -c 'resetprop debug.sf.latch_unsignaled 0; resetprop --delete persist.sys.wifi.low_latency' 2>/dev/null || true");
 
     /* Restore rate limit node permissions */
     const char *rate_limit_restore_paths[] = {

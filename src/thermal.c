@@ -37,13 +37,15 @@ void scan_thermal_zones(void) {
             if (val <= 0) continue;
 
             int cpu_score = 0;
-            if (strstr(type, "cpu-0"))        cpu_score = 12;
-            else if (strstr(type, "cpu0"))     cpu_score = 11;
-            else if (strstr(type, "cpu-1"))    cpu_score = 10;
-            else if (strstr(type, "cpu"))      cpu_score = 8;
-            else if (strstr(type, "CPU"))      cpu_score = 7;
-            else if (strstr(type, "soc-max"))  cpu_score = 6;
-            else if (strstr(type, "soc"))      cpu_score = 4;
+            if (strstr(type, "cpu_big") || strstr(type, "cpu-big")) cpu_score = 14;
+            else if (strstr(type, "cpu-0"))                         cpu_score = 12;
+            else if (strstr(type, "cpu0"))                          cpu_score = 11;
+            else if (strstr(type, "cpu-1"))                         cpu_score = 10;
+            else if (strstr(type, "cpu_little") || strstr(type, "cpu-little")) cpu_score = 9;
+            else if (strstr(type, "cpu"))                           cpu_score = 8;
+            else if (strstr(type, "CPU"))                           cpu_score = 7;
+            else if (strstr(type, "soc-max"))                       cpu_score = 6;
+            else if (strstr(type, "soc"))                           cpu_score = 4;
 
             if (cpu_score > best_cpu_score) {
                 best_cpu_score = cpu_score;
@@ -437,11 +439,22 @@ void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
         sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq", buf);
     }
 
-    int cur_big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
-    if (cur_big_max > 0 && cur_big_max < target_big_max) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%d", target_big_max);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq", buf);
+    const char *big_policies[] = {
+        "/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq",
+        "/sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq",
+        "/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq",
+        NULL
+    };
+    for (int i = 0; big_policies[i]; i++) {
+        if (access(big_policies[i], F_OK) == 0) {
+            int cur_big_max = sysfs_read_int(big_policies[i]);
+            if (cur_big_max > 0 && cur_big_max < target_big_max) {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%d", target_big_max);
+                sysfs_write(big_policies[i], buf);
+            }
+            break;
+        }
     }
 }
 

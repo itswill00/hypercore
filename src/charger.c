@@ -394,11 +394,21 @@ void enforce_charge_mode(void) {
     static int s_override_active = 0;
 
     /* Battery Protect 80% Cap Toggle: If user enabled 80% stop limit,
-     * suspend input charging once battery capacity reaches >= 80%. */
+     * suspend input charging once battery capacity reaches >= 80%.
+     * Hysteresis: remain in BYPASS until capacity drops to <= 77% before resuming,
+     * eliminating rapid 79%-80% charging flutter and PMIC renegotiation stress. */
+    static int s_protect_active = 0;
     if (s_protect_80 && s_user_charge_mode != CHARGE_MODE_BYPASS) {
         if (bat_cap >= 80) {
+            s_protect_active = 1;
+        } else if (s_protect_active && bat_cap <= 77) {
+            s_protect_active = 0;
+        }
+        if (s_protect_active) {
             effective_mode = CHARGE_MODE_BYPASS;
         }
+    } else {
+        s_protect_active = 0;
     }
 
     /* --- Safety Override Logic --- */

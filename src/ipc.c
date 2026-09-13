@@ -189,6 +189,15 @@ static void process_client(int client_fd) {
             g_state.manual_profile = (int)new_prof;
             apply_profile(new_prof, 0);
             g_state.current_profile = new_prof;
+            update_module_prop_status(g_profile_names[new_prof]);
+
+            int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+            int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+            if (cpu_temp > 1000) cpu_temp /= 1000;
+            if (bat_temp > 1000) bat_temp /= 1000;
+            else if (bat_temp > 100) bat_temp /= 10;
+            update_status_json_file(cpu_temp, bat_temp);
+
             log_state("Ipc", "Manual profile switch via IPC -> %s (locked)", g_profile_names[new_prof]);
 
             char res[256];

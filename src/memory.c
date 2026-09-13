@@ -70,14 +70,21 @@ void tune_memory_pressure(void) {
      * Devices with < 6GB RAM (e.g. 4GB) trigger pressure relief earlier (< 450MB),
      * while 6GB+ devices trigger at < 350MB. */
     int pressure_threshold = (s_total_ram_kb > 0 && s_total_ram_kb < 6291456) ? 460800 : 358400;
+    int is_gaming = (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA);
+    int under_pressure = (mem_avail_kb > 0 && mem_avail_kb < pressure_threshold);
 
-    if (mem_avail_kb > 0 && mem_avail_kb < pressure_threshold) {
-        sysfs_write("/proc/sys/vm/swappiness", "80");
-        sysfs_write("/proc/sys/vm/compaction_proactiveness", "50");
+    const char *target_swap;
+    const char *target_compact = under_pressure ? "50" : "20";
+
+    if (is_gaming) {
+        target_swap = under_pressure ? "80" : "60";
     } else {
-        sysfs_write("/proc/sys/vm/swappiness", "60");
-        sysfs_write("/proc/sys/vm/compaction_proactiveness", "20");
+        const char *stock_swap = g_stock_baseline.vm_swappiness[0] ? g_stock_baseline.vm_swappiness : "100";
+        target_swap = (under_pressure && atoi(stock_swap) < 100) ? "100" : stock_swap;
     }
+
+    sysfs_write("/proc/sys/vm/swappiness", target_swap);
+    sysfs_write("/proc/sys/vm/compaction_proactiveness", target_compact);
 }
 
 int trigger_purge_ram_cache(void) {

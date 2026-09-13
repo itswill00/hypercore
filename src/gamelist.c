@@ -115,28 +115,41 @@ void load_gamelist(void) {
 
 
 void init_gamelist_watcher(void) {
+    if (s_inotify_fd >= 0) {
+        close(s_inotify_fd);
+        s_inotify_fd = -1;
+    }
     s_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (s_inotify_fd < 0) return;
 
-    char data_gl[256];
-    snprintf(data_gl, sizeof(data_gl), "%s/gamelist.txt", g_nodes.data_dir);
-
-    /* Ensure watch file exists before inotify_add_watch to prevent ENOENT */
-    {
-        int touch_fd = open(data_gl, O_CREAT | O_WRONLY | O_CLOEXEC, 0644);
-        if (touch_fd >= 0) close(touch_fd);
+    /* Watch parent directories for IN_CLOSE_WRITE | IN_MOVED_TO.
+     * Watching directories ensures atomic replacements (mv tmp gamelist.txt)
+     * and in-place file edits both reliably trigger reloads without inode invalidation. */
+    if (g_nodes.data_dir[0] != '\0') {
+        inotify_add_watch(s_inotify_fd, g_nodes.data_dir, IN_CLOSE_WRITE | IN_MOVED_TO);
     }
-
-    inotify_add_watch(s_inotify_fd, data_gl, IN_MODIFY | IN_CLOSE_WRITE);
-    inotify_add_watch(s_inotify_fd, "/sdcard/Android/gamelist.txt", IN_MODIFY | IN_CLOSE_WRITE);
+    if (access("/sdcard/Android", F_OK) == 0) {
+        inotify_add_watch(s_inotify_fd, "/sdcard/Android", IN_CLOSE_WRITE | IN_MOVED_TO);
+    }
 }
 
 void check_gamelist_inotify(void) {
     if (s_inotify_fd < 0) return;
 
-    char buf[512];
-    ssize_t len = read(s_inotify_fd, buf, sizeof(buf));
-    if (len > 0) {
+    char buf[1024];
+    int need_reload = 0;
+    ssize_t len;
+    while ((len = read(s_inotify_fd, buf, sizeof(buf))) > 0) {
+        ssize_t i = 0;
+        while (i < len) {
+            struct inotify_event *event = (struct inotify_event *)&buf[i];
+            if (event->len > 0 && strcmp(event->name, "gamelist.txt") == 0) {
+                need_reload = 1;
+            }
+            i += sizeof(struct inotify_event) + event->len;
+        }
+    }
+    if (need_reload) {
         load_gamelist();
     }
 }

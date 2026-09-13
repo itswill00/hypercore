@@ -152,13 +152,24 @@ static void get_gpu_stats(char *load_out, size_t load_len, char *freq_out, size_
     int found_gpu_load = 0;
 
     // 1. MediaTek GED
-    read_file_string("/sys/kernel/ged/hal/gpu_utilization", buf, sizeof(buf));
+    read_file_string("/sys/module/ged/parameters/gpu_loading", buf, sizeof(buf));
     if (buf[0]) {
         int v = atoi(buf);
         if (v >= 0) {
             if (v > 100) v = 100;
             snprintf(load_out, load_len, "%d", v);
             found_gpu_load = 1;
+        }
+    }
+    if (!found_gpu_load) {
+        read_file_string("/sys/kernel/ged/hal/gpu_utilization", buf, sizeof(buf));
+        if (buf[0]) {
+            int v = atoi(buf);
+            if (v >= 0) {
+                if (v > 100) v = 100;
+                snprintf(load_out, load_len, "%d", v);
+                found_gpu_load = 1;
+            }
         }
     }
     read_file_string("/sys/kernel/ged/hal/current_frequency", buf, sizeof(buf));

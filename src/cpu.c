@@ -802,11 +802,11 @@ void apply_profile(profile_t prof, int gpu_load) {
     if (is_gaming != s_prev_gaming_state) {
         s_prev_gaming_state = is_gaming;
         if (is_gaming) {
-            system("resetprop debug.sf.latch_unsignaled 1 2>/dev/null || true");
-            system("resetprop persist.sys.wifi.low_latency 1 2>/dev/null || true");
+            system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
+                   "sh -c 'resetprop debug.sf.latch_unsignaled 1; resetprop persist.sys.wifi.low_latency 1' 2>/dev/null || true");
         } else {
-            system("resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true");
-            system("resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true");
+            system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
+                   "sh -c 'resetprop debug.sf.latch_unsignaled 0; resetprop --delete persist.sys.wifi.low_latency' 2>/dev/null || true");
         }
     }
 }
