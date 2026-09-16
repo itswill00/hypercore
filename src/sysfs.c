@@ -160,75 +160,50 @@ static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
     }
 }
 
+/* ponytail: table-driven baseline ser/de — 120 LOC of fprintf/if-else collapsed into loops, same file format */
 void save_stock_baseline(void) {
     char path[300];
     snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
     FILE *f = fopen(path, "w");
     if (!f) return;
-
-    fprintf(f, "# HyperCore Stock Factory Baseline\n");
-    fprintf(f, "# Captured on first installation\n");
+    fprintf(f, "# HyperCore Stock Factory Baseline\n# Captured on first installation\n");
     fprintf(f, "has_baseline=1\n");
-    fprintf(f, "gov0=%s\n", g_stock_baseline.gov0);
-    fprintf(f, "gov6=%s\n", g_stock_baseline.gov6);
-    fprintf(f, "lit_min_freq=%d\n", g_stock_baseline.lit_min_freq);
-    fprintf(f, "lit_max_freq=%d\n", g_stock_baseline.lit_max_freq);
-    fprintf(f, "big_min_freq=%d\n", g_stock_baseline.big_min_freq);
-    fprintf(f, "big_max_freq=%d\n", g_stock_baseline.big_max_freq);
-    fprintf(f, "pol0_up_rate=%s\n", g_stock_baseline.pol0_up_rate);
-    fprintf(f, "pol0_down_rate=%s\n", g_stock_baseline.pol0_down_rate);
-    fprintf(f, "pol6_up_rate=%s\n", g_stock_baseline.pol6_up_rate);
-    fprintf(f, "pol6_down_rate=%s\n", g_stock_baseline.pol6_down_rate);
-    fprintf(f, "bg_cpus=%s\n", g_stock_baseline.bg_cpus);
-    fprintf(f, "sys_bg_cpus=%s\n", g_stock_baseline.sys_bg_cpus);
-    fprintf(f, "top_app_cpus=%s\n", g_stock_baseline.top_app_cpus);
-    fprintf(f, "bg_shares=%s\n", g_stock_baseline.bg_shares);
-    fprintf(f, "bg_uclamp_min=%s\n", g_stock_baseline.bg_uclamp_min);
-    fprintf(f, "bg_uclamp_max=%s\n", g_stock_baseline.bg_uclamp_max);
-    fprintf(f, "sys_bg_uclamp_max=%s\n", g_stock_baseline.sys_bg_uclamp_max);
-    fprintf(f, "top_app_shares=%s\n", g_stock_baseline.top_app_shares);
-    fprintf(f, "top_app_uclamp_min=%s\n", g_stock_baseline.top_app_uclamp_min);
-    fprintf(f, "top_app_uclamp_max=%s\n", g_stock_baseline.top_app_uclamp_max);
-    fprintf(f, "mali_policy=%s\n", g_stock_baseline.mali_policy);
-    fprintf(f, "mali_gpu_gov=%s\n", g_stock_baseline.mali_gpu_gov);
-    fprintf(f, "mali_poll_int=%s\n", g_stock_baseline.mali_poll_int);
-    fprintf(f, "mali_upthresh=%s\n", g_stock_baseline.mali_upthresh);
-    fprintf(f, "mali_downdiff=%s\n", g_stock_baseline.mali_downdiff);
-    fprintf(f, "mali_min_freq=%s\n", g_stock_baseline.mali_min_freq);
-    fprintf(f, "mali_max_freq=%s\n", g_stock_baseline.mali_max_freq);
-    fprintf(f, "boost_gpu_enable=%s\n", g_stock_baseline.boost_gpu_enable);
-    fprintf(f, "ged_smart_boost=%s\n", g_stock_baseline.ged_smart_boost);
-    fprintf(f, "ged_boost_enable=%s\n", g_stock_baseline.ged_boost_enable);
-    fprintf(f, "enable_gpu_boost=%s\n", g_stock_baseline.enable_gpu_boost);
-    fprintf(f, "gpu_cust_boost_freq=%s\n", g_stock_baseline.gpu_cust_boost_freq);
-    fprintf(f, "gpu_cust_upbound_freq=%s\n", g_stock_baseline.gpu_cust_upbound_freq);
-    fprintf(f, "gpu_bottom_freq=%s\n", g_stock_baseline.gpu_bottom_freq);
-    fprintf(f, "g_fb_dvfs_threshold=%s\n", g_stock_baseline.g_fb_dvfs_threshold);
-    fprintf(f, "gx_fb_dvfs_margin=%s\n", g_stock_baseline.gx_fb_dvfs_margin);
-    fprintf(f, "gx_game_mode=%s\n", g_stock_baseline.gx_game_mode);
-    fprintf(f, "fpsgo_force_onoff=%s\n", g_stock_baseline.fpsgo_force_onoff);
-    fprintf(f, "fpsgo_boost_ta=%s\n", g_stock_baseline.fpsgo_boost_ta);
-    fprintf(f, "fpsgo_ultra_rescue=%s\n", g_stock_baseline.fpsgo_ultra_rescue);
-    fprintf(f, "fpsgo_light_loading=%s\n", g_stock_baseline.fpsgo_light_loading);
-    fprintf(f, "fpsgo_idleprefer=%s\n", g_stock_baseline.fpsgo_idleprefer);
-    fprintf(f, "fpsgo_thrm_enable=%s\n", g_stock_baseline.fpsgo_thrm_enable);
-    fprintf(f, "sconfig=%s\n", g_stock_baseline.sconfig);
-    fprintf(f, "vm_swappiness=%s\n", g_stock_baseline.vm_swappiness);
-    fprintf(f, "vm_dirty_ratio=%s\n", g_stock_baseline.vm_dirty_ratio);
-    fprintf(f, "vm_dirty_bg_ratio=%s\n", g_stock_baseline.vm_dirty_bg_ratio);
-    fprintf(f, "vm_vfs_cache_pressure=%s\n", g_stock_baseline.vm_vfs_cache_pressure);
-    fprintf(f, "vm_stat_interval=%s\n", g_stock_baseline.vm_stat_interval);
-    fprintf(f, "vm_dirty_writeback=%s\n", g_stock_baseline.vm_dirty_writeback);
-    fprintf(f, "vm_page_cluster=%s\n", g_stock_baseline.vm_page_cluster);
-    fprintf(f, "io_read_ahead=%s\n", g_stock_baseline.io_read_ahead);
-    fprintf(f, "io_nr_requests=%s\n", g_stock_baseline.io_nr_requests);
-    fprintf(f, "io_iostats=%s\n", g_stock_baseline.io_iostats);
-    fprintf(f, "sched_migration_cost=%s\n", g_stock_baseline.sched_migration_cost);
-    fprintf(f, "sched_latency=%s\n", g_stock_baseline.sched_latency);
-    fprintf(f, "sched_nr_migrate=%s\n", g_stock_baseline.sched_nr_migrate);
-    fprintf(f, "charge_limit=%s\n", g_stock_baseline.charge_limit);
-    fclose(f);
-    chmod(path, 0644);
+    struct { const char *k; char *v; } strs[] = {
+        {"gov0", g_stock_baseline.gov0}, {"gov6", g_stock_baseline.gov6},
+        {"pol0_up_rate", g_stock_baseline.pol0_up_rate}, {"pol0_down_rate", g_stock_baseline.pol0_down_rate},
+        {"pol6_up_rate", g_stock_baseline.pol6_up_rate}, {"pol6_down_rate", g_stock_baseline.pol6_down_rate},
+        {"bg_cpus", g_stock_baseline.bg_cpus}, {"sys_bg_cpus", g_stock_baseline.sys_bg_cpus},
+        {"top_app_cpus", g_stock_baseline.top_app_cpus}, {"bg_shares", g_stock_baseline.bg_shares},
+        {"bg_uclamp_min", g_stock_baseline.bg_uclamp_min}, {"bg_uclamp_max", g_stock_baseline.bg_uclamp_max},
+        {"sys_bg_uclamp_max", g_stock_baseline.sys_bg_uclamp_max}, {"top_app_shares", g_stock_baseline.top_app_shares},
+        {"top_app_uclamp_min", g_stock_baseline.top_app_uclamp_min}, {"top_app_uclamp_max", g_stock_baseline.top_app_uclamp_max},
+        {"mali_policy", g_stock_baseline.mali_policy}, {"mali_gpu_gov", g_stock_baseline.mali_gpu_gov},
+        {"mali_poll_int", g_stock_baseline.mali_poll_int}, {"mali_upthresh", g_stock_baseline.mali_upthresh},
+        {"mali_downdiff", g_stock_baseline.mali_downdiff}, {"mali_min_freq", g_stock_baseline.mali_min_freq},
+        {"mali_max_freq", g_stock_baseline.mali_max_freq}, {"boost_gpu_enable", g_stock_baseline.boost_gpu_enable},
+        {"ged_smart_boost", g_stock_baseline.ged_smart_boost}, {"ged_boost_enable", g_stock_baseline.ged_boost_enable},
+        {"enable_gpu_boost", g_stock_baseline.enable_gpu_boost}, {"gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq},
+        {"gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq}, {"gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq},
+        {"g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold}, {"gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin},
+        {"gx_game_mode", g_stock_baseline.gx_game_mode}, {"fpsgo_force_onoff", g_stock_baseline.fpsgo_force_onoff},
+        {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue},
+        {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer},
+        {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig},
+        {"vm_swappiness", g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio},
+        {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure},
+        {"vm_stat_interval", g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback},
+        {"vm_page_cluster", g_stock_baseline.vm_page_cluster}, {"io_read_ahead", g_stock_baseline.io_read_ahead},
+        {"io_nr_requests", g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats},
+        {"sched_migration_cost", g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency},
+        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit},
+    };
+    struct { const char *k; int *v; } ints[] = {
+        {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
+        {"big_min_freq", &g_stock_baseline.big_min_freq}, {"big_max_freq", &g_stock_baseline.big_max_freq},
+    };
+    for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) fprintf(f, "%s=%d\n", ints[i].k, *ints[i].v);
+    for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) fprintf(f, "%s=%s\n", strs[i].k, strs[i].v);
+    fclose(f); chmod(path, 0644);
 }
 
 int load_stock_baseline(void) {
@@ -240,80 +215,54 @@ int load_stock_baseline(void) {
         f = fopen(path, "r");
     }
     if (!f) return 0;
-
+    struct { const char *k; char *v; size_t cap; } strs[] = {
+        {"gov0", g_stock_baseline.gov0, sizeof g_stock_baseline.gov0}, {"gov6", g_stock_baseline.gov6, sizeof g_stock_baseline.gov6},
+        {"pol0_up_rate", g_stock_baseline.pol0_up_rate, sizeof g_stock_baseline.pol0_up_rate}, {"pol0_down_rate", g_stock_baseline.pol0_down_rate, sizeof g_stock_baseline.pol0_down_rate},
+        {"pol6_up_rate", g_stock_baseline.pol6_up_rate, sizeof g_stock_baseline.pol6_up_rate}, {"pol6_down_rate", g_stock_baseline.pol6_down_rate, sizeof g_stock_baseline.pol6_down_rate},
+        {"bg_cpus", g_stock_baseline.bg_cpus, sizeof g_stock_baseline.bg_cpus}, {"sys_bg_cpus", g_stock_baseline.sys_bg_cpus, sizeof g_stock_baseline.sys_bg_cpus},
+        {"top_app_cpus", g_stock_baseline.top_app_cpus, sizeof g_stock_baseline.top_app_cpus}, {"bg_shares", g_stock_baseline.bg_shares, sizeof g_stock_baseline.bg_shares},
+        {"bg_uclamp_min", g_stock_baseline.bg_uclamp_min, sizeof g_stock_baseline.bg_uclamp_min}, {"bg_uclamp_max", g_stock_baseline.bg_uclamp_max, sizeof g_stock_baseline.bg_uclamp_max},
+        {"sys_bg_uclamp_max", g_stock_baseline.sys_bg_uclamp_max, sizeof g_stock_baseline.sys_bg_uclamp_max}, {"top_app_shares", g_stock_baseline.top_app_shares, sizeof g_stock_baseline.top_app_shares},
+        {"top_app_uclamp_min", g_stock_baseline.top_app_uclamp_min, sizeof g_stock_baseline.top_app_uclamp_min}, {"top_app_uclamp_max", g_stock_baseline.top_app_uclamp_max, sizeof g_stock_baseline.top_app_uclamp_max},
+        {"mali_policy", g_stock_baseline.mali_policy, sizeof g_stock_baseline.mali_policy}, {"mali_gpu_gov", g_stock_baseline.mali_gpu_gov, sizeof g_stock_baseline.mali_gpu_gov},
+        {"mali_poll_int", g_stock_baseline.mali_poll_int, sizeof g_stock_baseline.mali_poll_int}, {"mali_upthresh", g_stock_baseline.mali_upthresh, sizeof g_stock_baseline.mali_upthresh},
+        {"mali_downdiff", g_stock_baseline.mali_downdiff, sizeof g_stock_baseline.mali_downdiff}, {"mali_min_freq", g_stock_baseline.mali_min_freq, sizeof g_stock_baseline.mali_min_freq},
+        {"mali_max_freq", g_stock_baseline.mali_max_freq, sizeof g_stock_baseline.mali_max_freq}, {"boost_gpu_enable", g_stock_baseline.boost_gpu_enable, sizeof g_stock_baseline.boost_gpu_enable},
+        {"ged_smart_boost", g_stock_baseline.ged_smart_boost, sizeof g_stock_baseline.ged_smart_boost}, {"ged_boost_enable", g_stock_baseline.ged_boost_enable, sizeof g_stock_baseline.ged_boost_enable},
+        {"enable_gpu_boost", g_stock_baseline.enable_gpu_boost, sizeof g_stock_baseline.enable_gpu_boost}, {"gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq, sizeof g_stock_baseline.gpu_cust_boost_freq},
+        {"gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq, sizeof g_stock_baseline.gpu_cust_upbound_freq}, {"gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq, sizeof g_stock_baseline.gpu_bottom_freq},
+        {"g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold, sizeof g_stock_baseline.g_fb_dvfs_threshold}, {"gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin, sizeof g_stock_baseline.gx_fb_dvfs_margin},
+        {"gx_game_mode", g_stock_baseline.gx_game_mode, sizeof g_stock_baseline.gx_game_mode}, {"fpsgo_force_onoff", g_stock_baseline.fpsgo_force_onoff, sizeof g_stock_baseline.fpsgo_force_onoff},
+        {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta, sizeof g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue, sizeof g_stock_baseline.fpsgo_ultra_rescue},
+        {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading, sizeof g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer, sizeof g_stock_baseline.fpsgo_idleprefer},
+        {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable, sizeof g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig, sizeof g_stock_baseline.sconfig},
+        {"vm_swappiness", g_stock_baseline.vm_swappiness, sizeof g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio, sizeof g_stock_baseline.vm_dirty_ratio},
+        {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure, sizeof g_stock_baseline.vm_vfs_cache_pressure},
+        {"vm_stat_interval", g_stock_baseline.vm_stat_interval, sizeof g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback, sizeof g_stock_baseline.vm_dirty_writeback},
+        {"vm_page_cluster", g_stock_baseline.vm_page_cluster, sizeof g_stock_baseline.vm_page_cluster}, {"io_read_ahead", g_stock_baseline.io_read_ahead, sizeof g_stock_baseline.io_read_ahead},
+        {"io_nr_requests", g_stock_baseline.io_nr_requests, sizeof g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats, sizeof g_stock_baseline.io_iostats},
+        {"sched_migration_cost", g_stock_baseline.sched_migration_cost, sizeof g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency, sizeof g_stock_baseline.sched_latency},
+        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit, sizeof g_stock_baseline.charge_limit},
+    };
+    struct { const char *k; int *v; } ints[] = {
+        {"has_baseline", &g_stock_baseline.has_baseline},
+        {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
+        {"big_min_freq", &g_stock_baseline.big_min_freq}, {"big_max_freq", &g_stock_baseline.big_max_freq},
+    };
     char line[256];
     while (fgets(line, sizeof(line), f)) {
         char *eq = strchr(line, '=');
         if (!eq) continue;
-        *eq = '\0';
-        char *key = line;
-        char *val = eq + 1;
-        char *nl = strpbrk(val, "\r\n");
-        if (nl) *nl = '\0';
-
-        if (strcmp(key, "has_baseline") == 0) g_stock_baseline.has_baseline = atoi(val);
-        else if (strcmp(key, "gov0") == 0) strncpy(g_stock_baseline.gov0, val, sizeof(g_stock_baseline.gov0)-1);
-        else if (strcmp(key, "gov6") == 0) strncpy(g_stock_baseline.gov6, val, sizeof(g_stock_baseline.gov6)-1);
-        else if (strcmp(key, "lit_min_freq") == 0) g_stock_baseline.lit_min_freq = atoi(val);
-        else if (strcmp(key, "lit_max_freq") == 0) g_stock_baseline.lit_max_freq = atoi(val);
-        else if (strcmp(key, "big_min_freq") == 0) g_stock_baseline.big_min_freq = atoi(val);
-        else if (strcmp(key, "big_max_freq") == 0) g_stock_baseline.big_max_freq = atoi(val);
-        else if (strcmp(key, "pol0_up_rate") == 0) strncpy(g_stock_baseline.pol0_up_rate, val, sizeof(g_stock_baseline.pol0_up_rate)-1);
-        else if (strcmp(key, "pol0_down_rate") == 0) strncpy(g_stock_baseline.pol0_down_rate, val, sizeof(g_stock_baseline.pol0_down_rate)-1);
-        else if (strcmp(key, "pol6_up_rate") == 0) strncpy(g_stock_baseline.pol6_up_rate, val, sizeof(g_stock_baseline.pol6_up_rate)-1);
-        else if (strcmp(key, "pol6_down_rate") == 0) strncpy(g_stock_baseline.pol6_down_rate, val, sizeof(g_stock_baseline.pol6_down_rate)-1);
-        else if (strcmp(key, "bg_cpus") == 0) strncpy(g_stock_baseline.bg_cpus, val, sizeof(g_stock_baseline.bg_cpus)-1);
-        else if (strcmp(key, "sys_bg_cpus") == 0) strncpy(g_stock_baseline.sys_bg_cpus, val, sizeof(g_stock_baseline.sys_bg_cpus)-1);
-        else if (strcmp(key, "top_app_cpus") == 0) strncpy(g_stock_baseline.top_app_cpus, val, sizeof(g_stock_baseline.top_app_cpus)-1);
-        else if (strcmp(key, "bg_shares") == 0) strncpy(g_stock_baseline.bg_shares, val, sizeof(g_stock_baseline.bg_shares)-1);
-        else if (strcmp(key, "bg_uclamp_min") == 0) strncpy(g_stock_baseline.bg_uclamp_min, val, sizeof(g_stock_baseline.bg_uclamp_min)-1);
-        else if (strcmp(key, "bg_uclamp_max") == 0) strncpy(g_stock_baseline.bg_uclamp_max, val, sizeof(g_stock_baseline.bg_uclamp_max)-1);
-        else if (strcmp(key, "sys_bg_uclamp_max") == 0) strncpy(g_stock_baseline.sys_bg_uclamp_max, val, sizeof(g_stock_baseline.sys_bg_uclamp_max)-1);
-        else if (strcmp(key, "top_app_shares") == 0) strncpy(g_stock_baseline.top_app_shares, val, sizeof(g_stock_baseline.top_app_shares)-1);
-        else if (strcmp(key, "top_app_uclamp_min") == 0) strncpy(g_stock_baseline.top_app_uclamp_min, val, sizeof(g_stock_baseline.top_app_uclamp_min)-1);
-        else if (strcmp(key, "top_app_uclamp_max") == 0) strncpy(g_stock_baseline.top_app_uclamp_max, val, sizeof(g_stock_baseline.top_app_uclamp_max)-1);
-        else if (strcmp(key, "mali_policy") == 0) strncpy(g_stock_baseline.mali_policy, val, sizeof(g_stock_baseline.mali_policy)-1);
-        else if (strcmp(key, "mali_gpu_gov") == 0) strncpy(g_stock_baseline.mali_gpu_gov, val, sizeof(g_stock_baseline.mali_gpu_gov)-1);
-        else if (strcmp(key, "mali_poll_int") == 0) strncpy(g_stock_baseline.mali_poll_int, val, sizeof(g_stock_baseline.mali_poll_int)-1);
-        else if (strcmp(key, "mali_upthresh") == 0) strncpy(g_stock_baseline.mali_upthresh, val, sizeof(g_stock_baseline.mali_upthresh)-1);
-        else if (strcmp(key, "mali_downdiff") == 0) strncpy(g_stock_baseline.mali_downdiff, val, sizeof(g_stock_baseline.mali_downdiff)-1);
-        else if (strcmp(key, "mali_min_freq") == 0) strncpy(g_stock_baseline.mali_min_freq, val, sizeof(g_stock_baseline.mali_min_freq)-1);
-        else if (strcmp(key, "mali_max_freq") == 0) strncpy(g_stock_baseline.mali_max_freq, val, sizeof(g_stock_baseline.mali_max_freq)-1);
-        else if (strcmp(key, "boost_gpu_enable") == 0) strncpy(g_stock_baseline.boost_gpu_enable, val, sizeof(g_stock_baseline.boost_gpu_enable)-1);
-        else if (strcmp(key, "ged_smart_boost") == 0) strncpy(g_stock_baseline.ged_smart_boost, val, sizeof(g_stock_baseline.ged_smart_boost)-1);
-        else if (strcmp(key, "ged_boost_enable") == 0) strncpy(g_stock_baseline.ged_boost_enable, val, sizeof(g_stock_baseline.ged_boost_enable)-1);
-        else if (strcmp(key, "enable_gpu_boost") == 0) strncpy(g_stock_baseline.enable_gpu_boost, val, sizeof(g_stock_baseline.enable_gpu_boost)-1);
-        else if (strcmp(key, "gpu_cust_boost_freq") == 0) strncpy(g_stock_baseline.gpu_cust_boost_freq, val, sizeof(g_stock_baseline.gpu_cust_boost_freq)-1);
-        else if (strcmp(key, "gpu_cust_upbound_freq") == 0) strncpy(g_stock_baseline.gpu_cust_upbound_freq, val, sizeof(g_stock_baseline.gpu_cust_upbound_freq)-1);
-        else if (strcmp(key, "gpu_bottom_freq") == 0) strncpy(g_stock_baseline.gpu_bottom_freq, val, sizeof(g_stock_baseline.gpu_bottom_freq)-1);
-        else if (strcmp(key, "g_fb_dvfs_threshold") == 0) strncpy(g_stock_baseline.g_fb_dvfs_threshold, val, sizeof(g_stock_baseline.g_fb_dvfs_threshold)-1);
-        else if (strcmp(key, "gx_fb_dvfs_margin") == 0) strncpy(g_stock_baseline.gx_fb_dvfs_margin, val, sizeof(g_stock_baseline.gx_fb_dvfs_margin)-1);
-        else if (strcmp(key, "gx_game_mode") == 0) strncpy(g_stock_baseline.gx_game_mode, val, sizeof(g_stock_baseline.gx_game_mode)-1);
-        else if (strcmp(key, "fpsgo_force_onoff") == 0) strncpy(g_stock_baseline.fpsgo_force_onoff, val, sizeof(g_stock_baseline.fpsgo_force_onoff)-1);
-        else if (strcmp(key, "fpsgo_boost_ta") == 0) strncpy(g_stock_baseline.fpsgo_boost_ta, val, sizeof(g_stock_baseline.fpsgo_boost_ta)-1);
-        else if (strcmp(key, "fpsgo_ultra_rescue") == 0) strncpy(g_stock_baseline.fpsgo_ultra_rescue, val, sizeof(g_stock_baseline.fpsgo_ultra_rescue)-1);
-        else if (strcmp(key, "fpsgo_light_loading") == 0) strncpy(g_stock_baseline.fpsgo_light_loading, val, sizeof(g_stock_baseline.fpsgo_light_loading)-1);
-        else if (strcmp(key, "fpsgo_idleprefer") == 0) strncpy(g_stock_baseline.fpsgo_idleprefer, val, sizeof(g_stock_baseline.fpsgo_idleprefer)-1);
-        else if (strcmp(key, "fpsgo_thrm_enable") == 0) strncpy(g_stock_baseline.fpsgo_thrm_enable, val, sizeof(g_stock_baseline.fpsgo_thrm_enable)-1);
-        else if (strcmp(key, "sconfig") == 0) strncpy(g_stock_baseline.sconfig, val, sizeof(g_stock_baseline.sconfig)-1);
-        else if (strcmp(key, "vm_swappiness") == 0) strncpy(g_stock_baseline.vm_swappiness, val, sizeof(g_stock_baseline.vm_swappiness)-1);
-        else if (strcmp(key, "vm_dirty_ratio") == 0) strncpy(g_stock_baseline.vm_dirty_ratio, val, sizeof(g_stock_baseline.vm_dirty_ratio)-1);
-        else if (strcmp(key, "vm_dirty_bg_ratio") == 0) strncpy(g_stock_baseline.vm_dirty_bg_ratio, val, sizeof(g_stock_baseline.vm_dirty_bg_ratio)-1);
-        else if (strcmp(key, "vm_vfs_cache_pressure") == 0) strncpy(g_stock_baseline.vm_vfs_cache_pressure, val, sizeof(g_stock_baseline.vm_vfs_cache_pressure)-1);
-        else if (strcmp(key, "vm_stat_interval") == 0) strncpy(g_stock_baseline.vm_stat_interval, val, sizeof(g_stock_baseline.vm_stat_interval)-1);
-        else if (strcmp(key, "vm_dirty_writeback") == 0) strncpy(g_stock_baseline.vm_dirty_writeback, val, sizeof(g_stock_baseline.vm_dirty_writeback)-1);
-        else if (strcmp(key, "vm_page_cluster") == 0) strncpy(g_stock_baseline.vm_page_cluster, val, sizeof(g_stock_baseline.vm_page_cluster)-1);
-        else if (strcmp(key, "io_read_ahead") == 0) strncpy(g_stock_baseline.io_read_ahead, val, sizeof(g_stock_baseline.io_read_ahead)-1);
-        else if (strcmp(key, "io_nr_requests") == 0) strncpy(g_stock_baseline.io_nr_requests, val, sizeof(g_stock_baseline.io_nr_requests)-1);
-        else if (strcmp(key, "io_iostats") == 0) strncpy(g_stock_baseline.io_iostats, val, sizeof(g_stock_baseline.io_iostats)-1);
-        else if (strcmp(key, "sched_migration_cost") == 0) strncpy(g_stock_baseline.sched_migration_cost, val, sizeof(g_stock_baseline.sched_migration_cost)-1);
-        else if (strcmp(key, "sched_latency") == 0) strncpy(g_stock_baseline.sched_latency, val, sizeof(g_stock_baseline.sched_latency)-1);
-        else if (strcmp(key, "sched_nr_migrate") == 0) strncpy(g_stock_baseline.sched_nr_migrate, val, sizeof(g_stock_baseline.sched_nr_migrate)-1);
-        else if (strcmp(key, "charge_limit") == 0) strncpy(g_stock_baseline.charge_limit, val, sizeof(g_stock_baseline.charge_limit)-1);
+        *eq = '\0'; char *key = line; char *val = eq + 1;
+        char *nl = strpbrk(val, "\r\n"); if (nl) *nl = '\0';
+        int handled = 0;
+        for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) if (strcmp(key, ints[i].k)==0) { *ints[i].v = atoi(val); handled=1; break; }
+        if (handled) continue;
+        for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) if (strcmp(key, strs[i].k)==0) {
+            snprintf(strs[i].v, strs[i].cap, "%s", val); break;
+        }
     }
-    fclose(f);
-    g_stock_baseline.has_baseline = 1;
-    return 1;
+    fclose(f); g_stock_baseline.has_baseline = 1; return 1;
 }
 
 void init_stock_baseline(void) {
