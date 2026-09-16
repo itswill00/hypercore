@@ -160,11 +160,13 @@ static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
     }
 }
 
-/* ponytail: table-driven baseline ser/de — 120 LOC of fprintf/if-else collapsed into loops, same file format */
+/* ponytail: table-driven baseline ser/de — atomic tmp+rename so power loss never leaves half-written stock_state */
 void save_stock_baseline(void) {
     char path[300];
     snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "w");
+    char tmp[310];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
     if (!f) return;
     fprintf(f, "# HyperCore Stock Factory Baseline\n# Captured on first installation\n");
     fprintf(f, "has_baseline=1\n");
@@ -203,7 +205,7 @@ void save_stock_baseline(void) {
     };
     for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) fprintf(f, "%s=%d\n", ints[i].k, *ints[i].v);
     for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) fprintf(f, "%s=%s\n", strs[i].k, strs[i].v);
-    fclose(f); chmod(path, 0644);
+    fclose(f); rename(tmp, path); chmod(path, 0644);
 }
 
 int load_stock_baseline(void) {

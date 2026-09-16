@@ -378,8 +378,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    signal(SIGTERM, on_signal);
-    signal(SIGINT, on_signal);
+    { struct sigaction sa; memset(&sa, 0, sizeof(sa)); sa.sa_handler = on_signal; sigemptyset(&sa.sa_mask); sa.sa_flags = 0; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); }
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
