@@ -10,7 +10,6 @@
 #include "gamelist.hpp"
 #include "ipc.hpp"
 #include "charger.hpp"
-#include "thermal.hpp"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Gaming", "Gaming MOBA"

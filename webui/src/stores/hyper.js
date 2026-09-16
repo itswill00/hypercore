@@ -120,76 +120,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
   let chargerInterval = null
 
-  async function pollCpuGpu() {
-    try {
-      const res = await execCommand(
-        `echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";` +
-        `echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";` +
-        `echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";` +
-        `echo "STAT:$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || cat /data/adb/modules/hypercore/status.json 2>/dev/null)";` +
-        `echo "PID:$(cat /data/adb/hypercore/hypercore.pid 2>/dev/null || cat /data/adb/modules/hypercore/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)"`
-      )
-      if (!res) return
-      const kv = {}
-      res.trim().split('\n').forEach(line => {
-        const i = line.indexOf(':')
-        if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
-      })
-      if (kv.CT) cpuTemp.value = normTemp(kv.CT)
-      if (kv.GOV) cpuGov.value = kv.GOV.trim()
-      if (kv.GPU) {
-        const p = kv.GPU.split(':')
-        gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
-      }
-      if (kv.STAT && kv.STAT.includes('"status":"ok"')) {
-        try {
-          const s = JSON.parse(kv.STAT.substring(kv.STAT.indexOf('{')))
-          if (s.pid) daemonPid.value = String(s.pid).split(' ')[0]
-          if (s.profile) activeProfile.value = s.profile
-          if (s.battery_cycles && parseInt(s.battery_cycles) > 0) batteryCycles.value = parseInt(s.battery_cycles)
-        } catch {}
-      } else if (kv.PID && kv.PID.trim().length > 0) {
-        daemonPid.value = kv.PID.trim().split(' ')[0]
-      }
-    } catch {}
-  }
-
-  async function pollRamBat() {
-    try {
-      const res = await execCommand(
-        `echo "MEM:$(grep -E '^(MemTotal|MemAvailable):' /proc/meminfo 2>/dev/null | tr '\\n' ' ')";` +
-        `echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";` +
-        `echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";` +
-        `echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)"`
-      )
-      if (!res) return
-      const kv = {}
-      res.trim().split('\n').forEach(line => {
-        const i = line.indexOf(':')
-        if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
-      })
-      if (kv.MEM) {
-        const m = kv.MEM.match(/MemTotal:\s*(\d+)\s*kB.*MemAvailable:\s*(\d+)\s*kB/)
-        if (m) {
-          const tot = Math.round(parseInt(m[1]) / 1024)
-          const avail = Math.round(parseInt(m[2]) / 1024)
-          const used = tot - avail
-          ramPercent.value = Math.round((used / tot) * 100)
-          ramUsage.value = `${(used / 1024).toFixed(1)} GB / ${(tot / 1024).toFixed(1)} GB (${ramPercent.value}%)`
-        }
-      }
-      if (kv.BS) batStatus.value = kv.BS.trim()
-      if (kv.BT) batTemp.value = normTemp(kv.BT)
-      if (kv.BC) {
-        const rawCurr = Math.abs(parseInt(kv.BC || 0))
-        if (rawCurr > 0) {
-          const ma = Math.round(rawCurr > 10000 ? rawCurr / 1000 : rawCurr)
-          const sign = batStatus.value === 'Charging' ? '+' : '-'
-          batRate.value = `${sign}${ma} mA`
-        }
-      }
-    } catch {}
-  }
+  /* ponytail: pollCpuGpu/pollRamBat removed — dead code, refresh() already covers all KV in one syscall */
 
   function startCardPolling() {
     if (!chargerInterval) {

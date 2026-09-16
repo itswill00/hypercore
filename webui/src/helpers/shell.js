@@ -6,15 +6,19 @@ export function execCommand(cmd, timeoutMs = 6000) {
   return new Promise((resolve, reject) => {
     if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
       const id = `_hc_${++cbSeq}_${Date.now()}`
-      
+
+      let settled = false
       const timer = setTimeout(() => {
-        if (window[id]) {
+        if (!settled && window[id]) {
+          settled = true
           delete window[id]
           resolve('')
         }
       }, timeoutMs)
 
       window[id] = (errno, stdout, stderr) => {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
         delete window[id]
         resolve(stdout || stderr || '')
@@ -23,6 +27,8 @@ export function execCommand(cmd, timeoutMs = 6000) {
       try {
         ksu.exec(cmd, '{}', id)
       } catch (e) {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
         delete window[id]
         reject(e)

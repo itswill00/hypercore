@@ -243,16 +243,19 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     saveConfig()
   }
 
+  let _pollInFlight = false
   function startPollingStats() {
     if (pollingTimer) clearInterval(pollingTimer)
     pollingTimer = setInterval(async () => {
+      if (_pollInFlight) return
+      _pollInFlight = true
       try {
         const out = await execCommand(`cat ${STATS_FILE} 2>/dev/null`)
         if (out && out.trim().startsWith('{')) {
           const parsed = JSON.parse(out.trim())
           stats.value = { ...stats.value, ...parsed }
         }
-      } catch {}
+      } catch {} finally { _pollInFlight = false }
     }, 1500)
   }
 

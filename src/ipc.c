@@ -31,6 +31,14 @@ static int read_chg_temp(int bat_fallback) {
     return bat_fallback;
 }
 
+/* ponytail: one helper for the 6 copy-paste thermal→status sync blocks, ceiling is plain status.json refresh */
+static void ipc_sync_status(void) {
+    int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+    normalize_thermal_temps(&cpu_temp, &bat_temp);
+    update_status_json_file(cpu_temp, bat_temp);
+}
+
 int init_ipc_socket(void) {
     s_start_time = time(NULL);
 
@@ -153,8 +161,8 @@ static void process_client(int client_fd) {
         int gpu_temp = read_gpu_temp(cpu_temp);
         int chg_temp = read_chg_temp(bat_temp);
 
-        char json[1024];
-        snprintf(json, sizeof(json),
+        char json[1152];
+        int jn = snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
             "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
             "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
@@ -168,8 +176,7 @@ static void process_client(int client_fd) {
             g_state.charge_mode, g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
             g_state.charge_override, g_state.charger_supported, g_state.thermal_tier);
-
-        write(client_fd, json, strlen(json));
+        if (jn > 0 && (size_t)jn < sizeof(json)) write(client_fd, json, (size_t)jn);
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
         const char *pname = req + 12;
         if (strncasecmp(pname, "AUTO", 4) == 0 || strncasecmp(pname, "DYNAMIC", 7) == 0 || strncasecmp(pname, "DEFAULT", 7) == 0) {
@@ -188,11 +195,7 @@ static void process_client(int client_fd) {
             apply_profile(new_prof, 0);
             g_state.current_profile = new_prof;
             update_module_prop_status(g_profile_names[new_prof]);
-
-            int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-            int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            normalize_thermal_temps(&cpu_temp, &bat_temp);
-            update_status_json_file(cpu_temp, bat_temp);
+            ipc_sync_status();
 
             log_state("Ipc", "Manual profile switch via IPC -> %s (locked)", g_profile_names[new_prof]);
 
@@ -247,10 +250,7 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "SET_NIGHT_CHARGING:", 19) == 0) {
         int val = atoi(req + 19);
         set_night_charging(val ? 1 : 0);
-        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(&cpu_temp, &bat_temp);
-        update_status_json_file(cpu_temp, bat_temp);
+        ipc_sync_status();
 
         char res[256];
         snprintf(res, sizeof(res),
@@ -260,10 +260,7 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "SET_SMART_CHG:", 14) == 0) {
         int val = atoi(req + 14);
         set_smart_chg(val ? 1 : 0);
-        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(&cpu_temp, &bat_temp);
-        update_status_json_file(cpu_temp, bat_temp);
+        ipc_sync_status();
 
         char res[256];
         snprintf(res, sizeof(res),
@@ -273,10 +270,7 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "SET_PROTECT_80:", 15) == 0) {
         int val = atoi(req + 15);
         set_protect_80(val ? 1 : 0);
-        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(&cpu_temp, &bat_temp);
-        update_status_json_file(cpu_temp, bat_temp);
+        ipc_sync_status();
 
         char res[256];
         snprintf(res, sizeof(res),
@@ -388,7 +382,7 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     int gpu_temp = read_gpu_temp(cpu_temp);
     int chg_temp = read_chg_temp(bat_temp);
 
-    char json[1024];
+    char json[1152];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
         "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"

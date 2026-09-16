@@ -276,11 +276,10 @@ void init_stock_baseline(void) {
     log_info("Baseline", "No saved stock baseline found. Capturing untouched factory baseline...");
     memset(&g_stock_baseline, 0, sizeof(g_stock_baseline));
 
-    /* Governor */
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0, sizeof(g_stock_baseline.gov0));
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6, sizeof(g_stock_baseline.gov6));
-    if (g_stock_baseline.gov0[0] == '\0') strcpy(g_stock_baseline.gov0, "sugov_ext");
-    if (g_stock_baseline.gov6[0] == '\0') strcpy(g_stock_baseline.gov6, "sugov_ext");
+    /* Helper: read-or-default for baseline capture — ponytail: dedup ~15 if(empty)strcpy blocks */
+    #define BS_READ_OR_DEF(path, dst, def) do { sysfs_read_str((path), (dst), sizeof(dst)); if ((dst)[0]=='\0') strcpy((dst),(def)); } while(0)
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0, "sugov_ext");
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6, "sugov_ext");
 
     /* Frequencies */
     int l_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq");
@@ -296,23 +295,16 @@ void init_stock_baseline(void) {
     g_stock_baseline.big_max_freq = (b_max > 0) ? b_max : (g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000);
 
     /* Rate limits */
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate, sizeof(g_stock_baseline.pol0_up_rate));
-    if (g_stock_baseline.pol0_up_rate[0] == '\0') strcpy(g_stock_baseline.pol0_up_rate, "1000");
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate, sizeof(g_stock_baseline.pol0_down_rate));
-    if (g_stock_baseline.pol0_down_rate[0] == '\0') strcpy(g_stock_baseline.pol0_down_rate, "1000");
-
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate, sizeof(g_stock_baseline.pol6_up_rate));
-    if (g_stock_baseline.pol6_up_rate[0] == '\0') strcpy(g_stock_baseline.pol6_up_rate, "1000");
-    sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate, sizeof(g_stock_baseline.pol6_down_rate));
-    if (g_stock_baseline.pol6_down_rate[0] == '\0') strcpy(g_stock_baseline.pol6_down_rate, "1000");
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate, "1000");
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate, "1000");
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate, "1000");
+    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate, "1000");
 
     /* Cgroups & UCLAMP */
-    sysfs_read_str("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus, sizeof(g_stock_baseline.bg_cpus));
-    if (g_stock_baseline.bg_cpus[0] == '\0') strcpy(g_stock_baseline.bg_cpus, "0-3");
-    sysfs_read_str("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus, sizeof(g_stock_baseline.sys_bg_cpus));
-    if (g_stock_baseline.sys_bg_cpus[0] == '\0') strcpy(g_stock_baseline.sys_bg_cpus, "0-5");
-    sysfs_read_str("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus, sizeof(g_stock_baseline.top_app_cpus));
-    if (g_stock_baseline.top_app_cpus[0] == '\0') strcpy(g_stock_baseline.top_app_cpus, "0-7");
+    BS_READ_OR_DEF("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus, "0-3");
+    BS_READ_OR_DEF("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus, "0-5");
+    BS_READ_OR_DEF("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus, "0-7");
+    #undef BS_READ_OR_DEF
 
     strcpy(g_stock_baseline.bg_shares, "1024");
     strcpy(g_stock_baseline.bg_uclamp_min, "0");

@@ -197,8 +197,9 @@ onUnmounted(() => {
   height: 100dvh;
   max-height: 100dvh;
   background: rgba(10, 11, 13, 0.78);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* ponytail: solid bg already dark enough, soft blur only */
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 999;
   display: flex;
   align-items: center;

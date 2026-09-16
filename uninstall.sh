@@ -62,15 +62,22 @@ for i in /sys/class/devfreq/*.mali/polling_interval /sys/devices/platform/soc/*.
     [ -f "$i" ] && echo "$STOCK_MALI_POLL" > "$i" 2>/dev/null
 done
 
-# Reset GED & FPSGO thermal drivers
-[ -f "/sys/module/ged/parameters/boost_gpu_enable" ] && echo 0 > /sys/module/ged/parameters/boost_gpu_enable 2>/dev/null
-[ -f "/sys/module/ged/parameters/enable_gpu_boost" ] && echo 0 > /sys/module/ged/parameters/enable_gpu_boost 2>/dev/null
-[ -f "/sys/kernel/fpsgo/fbt/thrm_enable" ] && echo 1 > /sys/kernel/fpsgo/fbt/thrm_enable 2>/dev/null
-[ -f "/sys/kernel/fpsgo/fbt/ultra_rescue" ] && echo 0 > /sys/kernel/fpsgo/fbt/ultra_rescue 2>/dev/null
+# Restore full stock baseline via restore_baseline_nodes equivalent (fallback if daemon already dead)
+for _node in "/sys/module/ged/parameters/boost_gpu_enable:0" "/sys/module/ged/parameters/ged_smart_boost:0" "/sys/module/ged/parameters/ged_boost_enable:1" "/sys/module/ged/parameters/enable_gpu_boost:1" "/sys/kernel/fpsgo/common/force_onoff:0" "/sys/kernel/fpsgo/fbt/boost_ta:0" "/sys/kernel/fpsgo/fbt/ultra_rescue:0" "/sys/kernel/fpsgo/fbt/switch_idleprefer:0" "/sys/kernel/fpsgo/fbt/thrm_enable:1"; do
+  _p=${_node%%:*}; _v=${_node##*:}; [ -f "$_p" ] && echo "$_v" > "$_p" 2>/dev/null
+done
 [ -z "$STOCK_SCONFIG" ] && STOCK_SCONFIG="0"
 chmod 664 /sys/class/thermal/thermal_message/sconfig /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null || true
 [ -f "/sys/class/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/class/thermal/thermal_message/sconfig 2>/dev/null
 [ -f "/sys/devices/virtual/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null
+# Clear runtime props that would survive uninstall without daemon restore
+resetprop debug.sf.latch_unsignaled 0 2>/dev/null || true
+resetprop --delete persist.sys.wifi.low_latency 2>/dev/null || true
+# Restore VM nodes from stock_state.conf when daemon restore_baseline_nodes never ran
+if [ -f "$STOCK_CONF" ]; then
+  _sw=$(grep '^vm_swappiness=' "$STOCK_CONF" 2>/dev/null | cut -d= -f2); [ -n "$_sw" ] && [ -f /proc/sys/vm/swappiness ] && echo "$_sw" > /proc/sys/vm/swappiness 2>/dev/null
+  _dr=$(grep '^vm_dirty_ratio=' "$STOCK_CONF" 2>/dev/null | cut -d= -f2); [ -n "$_dr" ] && [ -f /proc/sys/vm/dirty_ratio ] && echo "$_dr" > /proc/sys/vm/dirty_ratio 2>/dev/null
+fi
 
 # Reset charging control
 [ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null

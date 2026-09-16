@@ -241,9 +241,7 @@ void enforce_charge_mode(void) {
         return;
     }
 
-    int bat_temp  = sysfs_read_int(g_nodes.bat_temp);
-    normalize_thermal_temps(NULL, &bat_temp);
-    (void)bat_temp;
+    (void)sysfs_read_int(g_nodes.bat_temp); /* keep thermal zone fresh, no throttling re-enabled */
 
     int bat_cap = sysfs_read_int(CHG_CAPACITY_NODE);
     if (bat_cap <= 0) bat_cap = 50; /* safe default if node unavailable */
