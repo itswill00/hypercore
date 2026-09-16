@@ -41,194 +41,52 @@ static int s_protect_80          = 0;  /* 1 = user hard limit to stop charging a
  * Internal helpers
  * -------------------------------------------------------------------------- */
 
-static void save_charge_mode_conf(int mode) {
+/* ponytail: generic int conf helpers — 10 copy-paste save/load funcs collapsed into 2, ceiling is plain text ints, no schema needed */
+static void save_int_conf(const char *fname, int val) {
     char path[300];
-    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.data_dir);
+    snprintf(path, sizeof(path), "%s/%s", g_nodes.data_dir, fname);
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
-    if (f) {
-        fprintf(f, "%d\n", mode);
-        fclose(f);
-        rename(tmp, path);
-    }
+    if (f) { fprintf(f, "%d\n", val); fclose(f); rename(tmp, path); }
 }
 
+static int load_int_conf(const char *fname, int dflt) {
+    char path[300];
+    snprintf(path, sizeof(path), "%s/%s", g_nodes.data_dir, fname);
+    FILE *f = fopen(path, "r");
+    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
+        char old_path[300];
+        snprintf(old_path, sizeof(old_path), "%s/%s", g_nodes.mod_dir, fname);
+        f = fopen(old_path, "r");
+        if (f) {
+            int v = dflt;
+            if (fscanf(f, "%d", &v) != 1) v = dflt;
+            fclose(f); unlink(old_path); save_int_conf(fname, v); return v;
+        }
+    }
+    if (!f) return dflt;
+    int v = dflt;
+    if (fscanf(f, "%d", &v) != 1) v = dflt;
+    fclose(f); return v;
+}
+
+static void save_charge_mode_conf(int mode) { save_int_conf("charge_mode.conf", mode); }
 static int load_charge_mode_conf(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/charge_mode.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/charge_mode.conf", g_nodes.mod_dir);
-        f = fopen(old_path, "r");
-        if (f) {
-            int mode = CHARGE_MODE_OEM;
-            if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
-            fclose(f);
-            unlink(old_path);
-            save_charge_mode_conf(mode);
-            if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) mode = CHARGE_MODE_OEM;
-            return mode;
-        }
-    }
-    if (!f) return CHARGE_MODE_OEM;
-    int mode = CHARGE_MODE_OEM;
-    if (fscanf(f, "%d", &mode) != 1) mode = CHARGE_MODE_OEM;
-    fclose(f);
-    if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) mode = CHARGE_MODE_OEM;
-    return mode;
+    int v = load_int_conf("charge_mode.conf", CHARGE_MODE_OEM);
+    if (v < CHARGE_MODE_OEM || v > CHARGE_MODE_CUSTOM) v = CHARGE_MODE_OEM; return v;
 }
-
-static void save_custom_charge_limit_conf(int limit) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.data_dir);
-    char tmp[310];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (f) {
-        fprintf(f, "%d\n", limit);
-        fclose(f);
-        rename(tmp, path);
-    }
-}
-
+static void save_custom_charge_limit_conf(int l) { save_int_conf("custom_charge_limit.conf", l); }
 static int load_custom_charge_limit_conf(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/custom_charge_limit.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/custom_charge_limit.conf", g_nodes.mod_dir);
-        f = fopen(old_path, "r");
-        if (f) {
-            int limit = LIMIT_BALANCED;
-            if (fscanf(f, "%d", &limit) != 1) limit = LIMIT_BALANCED;
-            fclose(f);
-            unlink(old_path);
-            save_custom_charge_limit_conf(limit);
-            if (limit < 0 || limit > 15) limit = LIMIT_BALANCED;
-            return limit;
-        }
-    }
-    if (!f) return LIMIT_BALANCED;
-    int limit = LIMIT_BALANCED;
-    if (fscanf(f, "%d", &limit) != 1) limit = LIMIT_BALANCED;
-    fclose(f);
-    if (limit < 0 || limit > 15) limit = LIMIT_BALANCED;
-    return limit;
+    int v = load_int_conf("custom_charge_limit.conf", LIMIT_BALANCED);
+    if (v < 0 || v > 15) v = LIMIT_BALANCED; return v;
 }
-
-static void save_night_charging_conf(int val) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.data_dir);
-    char tmp[310];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (f) {
-        fprintf(f, "%d\n", val ? 1 : 0);
-        fclose(f);
-        rename(tmp, path);
-    }
-}
-
-static int load_night_charging_conf(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/night_charging.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/night_charging.conf", g_nodes.mod_dir);
-        f = fopen(old_path, "r");
-        if (f) {
-            int val = 0;
-            if (fscanf(f, "%d", &val) != 1) val = 0;
-            fclose(f);
-            unlink(old_path);
-            save_night_charging_conf(val);
-            return (val == 1) ? 1 : 0;
-        }
-    }
-    if (!f) return 0;
-    int val = 0;
-    if (fscanf(f, "%d", &val) != 1) val = 0;
-    fclose(f);
-    return (val == 1) ? 1 : 0;
-}
-
-static void save_smart_chg_conf(int val) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.data_dir);
-    char tmp[310];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (f) {
-        fprintf(f, "%d\n", val ? 1 : 0);
-        fclose(f);
-        rename(tmp, path);
-    }
-}
-
-static int load_smart_chg_conf(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/smart_chg.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/smart_chg.conf", g_nodes.mod_dir);
-        f = fopen(old_path, "r");
-        if (f) {
-            int val = 0;
-            if (fscanf(f, "%d", &val) != 1) val = 0;
-            fclose(f);
-            unlink(old_path);
-            save_smart_chg_conf(val);
-            return (val == 1) ? 1 : 0;
-        }
-    }
-    if (!f) return 0;
-    int val = 0;
-    if (fscanf(f, "%d", &val) != 1) val = 0;
-    fclose(f);
-    return (val == 1) ? 1 : 0;
-}
-
-static void save_protect_80_conf(int val) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.data_dir);
-    char tmp[310];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (f) {
-        fprintf(f, "%d\n", val ? 1 : 0);
-        fclose(f);
-        rename(tmp, path);
-    }
-}
-
-static int load_protect_80_conf(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/protect_80.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/protect_80.conf", g_nodes.mod_dir);
-        f = fopen(old_path, "r");
-        if (f) {
-            int val = 0;
-            if (fscanf(f, "%d", &val) != 1) val = 0;
-            fclose(f);
-            unlink(old_path);
-            save_protect_80_conf(val);
-            return (val == 1) ? 1 : 0;
-        }
-    }
-    if (!f) return 0;
-    int val = 0;
-    if (fscanf(f, "%d", &val) != 1) val = 0;
-    fclose(f);
-    return (val == 1) ? 1 : 0;
-}
+static void save_night_charging_conf(int v) { save_int_conf("night_charging.conf", v ? 1 : 0); }
+static int load_night_charging_conf(void) { return load_int_conf("night_charging.conf", 0) == 1 ? 1 : 0; }
+static void save_smart_chg_conf(int v) { save_int_conf("smart_chg.conf", v ? 1 : 0); }
+static int load_smart_chg_conf(void) { return load_int_conf("smart_chg.conf", 0) == 1 ? 1 : 0; }
+static void save_protect_80_conf(int v) { save_int_conf("protect_80.conf", v ? 1 : 0); }
+static int load_protect_80_conf(void) { return load_int_conf("protect_80.conf", 0) == 1 ? 1 : 0; }
 
 /* Write charge_control_limit only if it differs from current value.
  * Read-before-write prevents unnecessary sysfs churn and mi_thermald
