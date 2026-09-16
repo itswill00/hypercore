@@ -127,7 +127,17 @@ static void get_cpu_gov_and_policy(char *gov_out, size_t gov_len, char *pol_out,
         }
         globfree(&g_min);
     }
-    if (glob("/sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq", 0, NULL, &g_max) == 0) {
+    /* ponytail: read hardware ceiling cpuinfo_max_freq, not throttled scaling_max_freq — fixes 2.0GHz cap on MT6789 where big cluster is 2.2GHz */
+    if (glob("/sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq", 0, NULL, &g_max) == 0) {
+        for (size_t i = 0; i < g_max.gl_pathc; i++) {
+            char buf[64];
+            read_file_string(g_max.gl_pathv[i], buf, sizeof(buf));
+            int v = atoi(buf) / 1000;
+            if (v > max_mhz) max_mhz = v;
+        }
+        globfree(&g_max);
+    }
+    if (max_mhz == 0 && glob("/sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq", 0, NULL, &g_max) == 0) {
         for (size_t i = 0; i < g_max.gl_pathc; i++) {
             char buf[64];
             read_file_string(g_max.gl_pathv[i], buf, sizeof(buf));
