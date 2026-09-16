@@ -1,3 +1,24 @@
+# HyperCore v6.9.0 — Foundation Hardening & MT6789 Consistency Release
+
+## What's Changed
+
+### Refactor & Hardening
+- **Charger dedup**: collapsed 10 copy-paste `save/load_*_conf` pairs into `save_int_conf`/`load_int_conf` + thin wrappers (`src/charger.c`, -142 LOC).
+- **Baseline table-drive**: `stock_state.conf` save/load now loops over descriptor tables (`src/sysfs.c`).
+- **Thermal normalization**: single `normalize_thermal_temps()` inline replaces 8 duplicated mili-degree blocks in `main`/`ipc`/`charger`.
+- **Chmod guard dedup**: unified `write_chmod_guarded()` for rate-limit vs sconfig chmod variants (`src/cpu.c`).
+- **Atomic baseline**: `save_stock_baseline()` writes `tmp+rename` so power loss never leaves half-written `stock_state.conf`.
+- **IPC resilience**: status JSON buffer 1024->1152 with bounds check, `ipc_sync_status()` helper, `sigaction()` for SIGTERM/SIGINT.
+- **WebUI guards**: `shell.js` double-resolve fix (`settled` flag), removed dead `pollCpuGpu`/`pollRamBat`, `hypermoon.js` `_pollInFlight` guard.
+- **MT6789 lock**: `customize.sh` now requires GED+Mali+FPSGO (was `||`), strict parity with daemon `validate_hardware_target()`.
+- **HyperMoon fix**: overlay `cpu_policy` now shows hardware ceiling `cpuinfo_max_freq` (500-2200 MHz) instead of throttled `scaling_max_freq` (500-2000).
+
+### Build & Docs
+- `service.sh` graceful SIGTERM before SIGKILL so `restore_baseline_nodes()` runs; `uninstall.sh` restores full GED/FPSGO/VM set.
+- Version fallbacks in WebUI no longer hard-code `v6.8.5` (`store.moduleVersion` is live truth).
+
+---
+
 # HyperCore v6.8.5 — Logic Flaw Hardening, Baseline Integrity & Inotify Resilience
 
 ## What's Changed
