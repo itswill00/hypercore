@@ -99,27 +99,19 @@ static const char *s_policy7_down_rate_nodes[] = {
     NULL
 };
 
-static void write_rate_limit_fallback(const char *paths[], const char *val) {
+/* ponytail: one helper for chmod-guarded sysfs writes — rate nodes (0644) and sconfig lock (0666) were identical loops */
+static void write_chmod_guarded(const char *paths[], const char *val, mode_t open_mode) {
     if (!paths || !val) return;
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
         if (access(paths[i], F_OK) != 0) continue;
-        chmod(paths[i], 0644);
+        chmod(paths[i], open_mode);
         sysfs_write(paths[i], val);
         chmod(paths[i], 0444);
     }
 }
-
-static void write_locked_node_fallback(const char *paths[], const char *val) {
-    if (!paths || !val) return;
-    for (int i = 0; paths[i]; i++) {
-        if (!paths[i] || paths[i][0] == '\0') continue;
-        if (access(paths[i], F_OK) != 0) continue;
-        chmod(paths[i], 0666);
-        sysfs_write(paths[i], val);
-        chmod(paths[i], 0444);
-    }
-}
+static void write_rate_limit_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0644); }
+static void write_locked_node_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0666); }
 
 void set_rate_limits(const char *up, const char *down) {
     write_rate_limit_fallback(s_policy0_up_rate_nodes, up);

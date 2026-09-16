@@ -124,9 +124,7 @@ static void process_client(int client_fd) {
     if (strncmp(req, "GET_STATUS", 10) == 0 || strncmp(req, "STATUS", 6) == 0) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(&cpu_temp, &bat_temp);
 
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
         const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4) ?
@@ -193,9 +191,7 @@ static void process_client(int client_fd) {
 
             int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
             int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            if (cpu_temp > 1000) cpu_temp /= 1000;
-            if (bat_temp > 1000) bat_temp /= 1000;
-            else if (bat_temp > 100) bat_temp /= 10;
+            normalize_thermal_temps(&cpu_temp, &bat_temp);
             update_status_json_file(cpu_temp, bat_temp);
 
             log_state("Ipc", "Manual profile switch via IPC -> %s (locked)", g_profile_names[new_prof]);
@@ -220,9 +216,7 @@ static void process_client(int client_fd) {
             set_charge_mode(mode);
             int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
             int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            if (cpu_temp > 1000) cpu_temp /= 1000;
-            if (bat_temp > 1000) bat_temp /= 1000;
-            else if (bat_temp > 100) bat_temp /= 10;
+            normalize_thermal_temps(&cpu_temp, &bat_temp);
             update_status_json_file(cpu_temp, bat_temp);
 
             char res[256];
@@ -240,9 +234,7 @@ static void process_client(int client_fd) {
             set_custom_charge_limit(limit);
             int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
             int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            if (cpu_temp > 1000) cpu_temp /= 1000;
-            if (bat_temp > 1000) bat_temp /= 1000;
-            else if (bat_temp > 100) bat_temp /= 10;
+            normalize_thermal_temps(&cpu_temp, &bat_temp);
             update_status_json_file(cpu_temp, bat_temp);
 
             char res[256];
@@ -257,9 +249,7 @@ static void process_client(int client_fd) {
         set_night_charging(val ? 1 : 0);
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(&cpu_temp, &bat_temp);
         update_status_json_file(cpu_temp, bat_temp);
 
         char res[256];
@@ -272,9 +262,7 @@ static void process_client(int client_fd) {
         set_smart_chg(val ? 1 : 0);
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(&cpu_temp, &bat_temp);
         update_status_json_file(cpu_temp, bat_temp);
 
         char res[256];
@@ -287,9 +275,7 @@ static void process_client(int client_fd) {
         set_protect_80(val ? 1 : 0);
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(&cpu_temp, &bat_temp);
         update_status_json_file(cpu_temp, bat_temp);
 
         char res[256];
@@ -299,8 +285,7 @@ static void process_client(int client_fd) {
         write(client_fd, res, strlen(res));
     } else if (strncmp(req, "GET_CHARGE_MODE", 15) == 0) {
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(NULL, &bat_temp);
         char res[320];
         snprintf(res, sizeof(res),
             "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","

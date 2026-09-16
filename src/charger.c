@@ -1,6 +1,7 @@
 
 #include "charger.hpp"
 #include "sysfs.hpp"
+#include "thermal.hpp"
 #include "log.hpp"
 
 /* -------------------------------------------------------------------------
@@ -241,8 +242,7 @@ void enforce_charge_mode(void) {
     }
 
     int bat_temp  = sysfs_read_int(g_nodes.bat_temp);
-    if (bat_temp > 1000) bat_temp /= 1000;
-    else if (bat_temp > 100) bat_temp /= 10;
+    normalize_thermal_temps(NULL, &bat_temp);
     (void)bat_temp;
 
     int bat_cap = sysfs_read_int(CHG_CAPACITY_NODE);

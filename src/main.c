@@ -10,6 +10,7 @@
 #include "gamelist.hpp"
 #include "ipc.hpp"
 #include "charger.hpp"
+#include "thermal.hpp"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Gaming", "Gaming MOBA"
@@ -410,10 +411,7 @@ int main(int argc, char *argv[]) {
     while (g_running) {
         int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-
-        if (cpu_temp > 1000) cpu_temp /= 1000;
-        if (bat_temp > 1000) bat_temp /= 1000;
-        else if (bat_temp > 100) bat_temp /= 10;
+        normalize_thermal_temps(&cpu_temp, &bat_temp);
 
         int tier_changed = update_thermal_guard(cpu_temp, bat_temp);
 
