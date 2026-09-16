@@ -47,8 +47,14 @@ for dvf_path in /sys/kernel/helio-dvfsrc /sys/devices/platform/10012000.dvfsrc /
     fi
 done
 
-if [ $HAS_GED -eq 1 ] || [ $HAS_MALI_DEVFREQ -eq 1 ]; then
-    ui_print "- MediaTek MT6789 Family Hardware Verified (GED & Mali GPU OK)."
+HAS_FPSGO=0
+if [ -d "/sys/kernel/fpsgo" ]; then
+    HAS_FPSGO=1
+fi
+
+# ponytail: strictly GED + Mali + FPSGO — matches daemon validate_hardware_target() so install never lies
+if [ $HAS_GED -eq 1 ] && [ $HAS_MALI_DEVFREQ -eq 1 ] && [ $HAS_FPSGO -eq 1 ]; then
+    ui_print "- MediaTek MT6789 Family Hardware Verified (GED + Mali GPU + FPSGO OK)."
 else
     ui_print "--------------------------------------------------"
     ui_print "! ERROR: INCOMPATIBLE HARDWARE PLATFORM DETECTED!"

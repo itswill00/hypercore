@@ -20,7 +20,7 @@
               <span>MT6789 Family</span>
             </div>
             <span class="about-version-badge">
-              {{ store.moduleVersion || 'v6.8.5' }} · Stable
+              {{ store.moduleVersion || '—' }} · Stable
             </span>
           </div>
 
