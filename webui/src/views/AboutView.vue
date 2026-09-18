@@ -1,14 +1,5 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    
-    <!-- Page Header -->
-    <div class="page-header">
-      <div>
-        <div class="page-header-title">About Device</div>
-        <div class="page-header-sub">System &amp; Community</div>
-      </div>
-    </div>
-
     <div class="content-area">
 
       <!-- About Hero Showcase Card with banner.jpg Background -->

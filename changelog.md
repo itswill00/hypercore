@@ -1,3 +1,19 @@
+# HyperCore v6.9.1 — Snap Navigation, Logs Stability & Transition Hardening
+
+## What's Changed
+
+### Navigation & WebUI
+- **Snap navigation rebuilt**: replaced overlay `router-view` transitions with `scroll-snap` horizontal tab strip (`Home → Charger → Games → About → Logs`). Single live daemon-driven header, `mandatory` snap with `always` stop, one-page-per-swipe.
+- **About/Logs order**: swapped so `About` is penultimate and `Logs` is last — matches nav weight and prevents `Games → Logs` skip on strong flings.
+- **Header shutter fix**: Logs header unified to outer header via delayed `headerIdx` vs live `snapIdx`; terminal header removed to eliminate double-header reflow and statusbar bleed.
+- **Logs drawer polish**: moved `btn-icon-md3`/`dropdown-menu` styles to `App.vue` scoped so outer 3-dot keeps its pill styling after header migration.
+- **Swipe isolation**: terminal `pan-y pan-x`, `snapSuspend` during log-viewport gesture, and programmatic-scroll guards eliminate horizontal log scroll vs tab snap contention.
+
+### Daemon & Foundations
+- No daemon bump this cycle — full pre-bump audit of `main.c`/`cpu.c`/`thermal.c`/`charger.c`/`ipc.c`/`sysfs.c`/`gamelist.c` passed with only minor deferrable notes (sleep hold residual, OEM `charge_override` flag clear, TCPC 100 ms main-thread pulse).
+
+---
+
 # HyperCore v6.9.0 — Foundation Hardening & MT6789 Consistency Release
 
 ## What's Changed

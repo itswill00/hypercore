@@ -1,16 +1,5 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    
-    <div class="page-header">
-      <div>
-        <div class="page-header-title">Dashboard</div>
-        <div class="page-header-sub">Performance &amp; Status Overview</div>
-      </div>
-      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;">
-        {{ store.moduleVersion || '—' }}
-      </span>
-    </div>
-
     <div class="content-area">
       
       <!-- Home Hero Banner Card with banner.jpg Background -->

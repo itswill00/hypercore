@@ -1,18 +1,8 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    
-    <div class="page-header">
-      <div>
-        <div class="page-header-title">Detected Games</div>
-        <div class="page-header-sub">Installed games configured for automated profile switching</div>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <button
-          class="btn-md3 btn-md3-secondary btn-md3-sm"
-          :disabled="scanning"
-          @click="onAutoDetect"
-          title="Scan device for installed games"
-        >
+    <div class="content-area">
+      <div style="display:flex; justify-content:flex-start; gap:8px; margin-bottom:10px;">
+        <button class="btn-md3 btn-md3-secondary btn-md3-sm" :disabled="scanning" @click="onAutoDetect">
           <Icons name="search" :size="13" />
           <span>{{ scanning ? 'Scanning...' : 'Auto-detect' }}</span>
         </button>
@@ -21,9 +11,6 @@
           <span>Add game</span>
         </button>
       </div>
-    </div>
-
-    <div class="content-area">
       <GameList @open-picker="showPicker = true" />
     </div>
 

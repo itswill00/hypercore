@@ -1,17 +1,5 @@
 <template>
   <div style="height: 100%; display: flex; flex-direction: column;">
-    
-    <!-- Page Header -->
-    <div class="page-header">
-      <div>
-        <div class="page-header-title">Charger Control</div>
-        <div class="page-header-sub">Hardware charging speed &amp; battery protection</div>
-      </div>
-      <span class="badge-pill" style="font-size: 11px; padding: 4px 10px;" :style="!store.chargerSupported ? 'background: var(--surface-container-highest); color: var(--on-surface-variant);' : ''">
-        {{ activeModeName }}
-      </span>
-    </div>
-
     <div class="content-area">
 
       <!-- Device Unsupported Warning Banner -->
@@ -394,11 +382,6 @@ async function toggleProtect80() {
   await store.setProtect80(next)
   if (toast) toast(`80% Battery Limit ${next ? 'enabled (stops at 80%)' : 'disabled (unrestricted to 100%)'}`)
 }
-
-const activeModeName = computed(() => {
-  if (!store.chargerSupported) return 'Unsupported'
-  return `${currentStep.value.label} (${currentStep.value.current})`
-})
 
 const displayCurrentMa = computed(() => {
   const ma = store.chargeCurrentMa

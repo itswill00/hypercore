@@ -1,41 +1,5 @@
 <template>
   <div class="logs-page-container" @click="closeMenu">
-    
-    <div class="page-header">
-      <div>
-        <div class="page-header-title">Activity Log</div>
-        <div class="page-header-sub">History of profile switches and system events</div>
-      </div>
-      <div class="menu-relative-container" @click.stop>
-        <button
-          class="btn-icon-md3"
-          title="Log options"
-          @click="toggleMenu"
-          :class="{ 'active': menuOpen }"
-        >
-          <Icons name="more-vertical" :size="18" />
-        </button>
-
-        <Transition name="menu-pop">
-          <div v-if="menuOpen" class="dropdown-menu-md3">
-            <button class="menu-item" @click="handleAction(copyLog)">
-              <span>Copy All Logs</span>
-            </button>
-            <button class="menu-item" @click="handleAction(saveLog)">
-              <span>Export Bugreport</span>
-            </button>
-            <button class="menu-item" @click="handleAction(resetDisclaimer)">
-              <span>Terms Disclaimer</span>
-            </button>
-            <div class="menu-divider"></div>
-            <button class="menu-item menu-item-danger" @click="handleAction(clearLog)">
-              <span>Clear Log</span>
-            </button>
-          </div>
-        </Transition>
-      </div>
-    </div>
-
     <div
       ref="logContainer"
       class="terminal-viewport"
@@ -199,10 +163,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: #08080a;
+  min-height: 0;
 }
 
 .terminal-viewport {
   flex: 1;
+  min-height: 0;
   background: #070709;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -213,6 +179,9 @@ onUnmounted(() => {
   padding: 8px 12px calc(92px + var(--window-inset-bottom, 0px)) 12px;
   scrollbar-width: thin;
   scrollbar-color: var(--surface-container-highest) transparent;
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pan-x;
 }
 
 .terminal-content {
