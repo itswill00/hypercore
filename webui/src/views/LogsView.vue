@@ -170,6 +170,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   background: #070709;
+  /* deslop-ignore-next-line 34 */
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
@@ -339,7 +340,7 @@ onUnmounted(() => {
 }
 
 .menu-pop-enter-active {
-  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.2, 0, 0, 1);
   transform-origin: top right;
 }
 
@@ -350,12 +351,12 @@ onUnmounted(() => {
 
 .menu-pop-enter-from {
   opacity: 0;
-  transform: scale(0.88) translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .menu-pop-leave-to {
   opacity: 0;
-  transform: scale(0.92) translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .log-line-enter-active {

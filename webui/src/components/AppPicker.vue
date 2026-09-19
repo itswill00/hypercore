@@ -431,6 +431,7 @@ onMounted(async () => {
   height: 18px;
   border: 2px solid var(--surface-container-highest);
   border-top-color: var(--primary);
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 8px;

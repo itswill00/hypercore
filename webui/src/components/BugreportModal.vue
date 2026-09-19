@@ -196,10 +196,7 @@ onUnmounted(() => {
   inset: 0;
   height: 100dvh;
   max-height: 100dvh;
-  background: rgba(10, 11, 13, 0.78);
-  /* ponytail: solid bg already dark enough, soft blur only */
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(10, 11, 13, 0.82);
   z-index: 999;
   display: flex;
   align-items: center;
@@ -247,7 +244,7 @@ onUnmounted(() => {
 .modal-close {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: 8px;
   border: 1px solid var(--outline-variant, #383a42);
   background: var(--surface-container, #1d1e23);
   color: var(--on-surface, #f0f2f5);
@@ -348,6 +345,7 @@ onUnmounted(() => {
 .include-dot {
   width: 5px;
   height: 5px;
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   background: var(--primary, #8b8fcf);
   flex-shrink: 0;
@@ -430,6 +428,7 @@ onUnmounted(() => {
   height: 28px;
   border: 2.5px solid var(--outline-variant, #383a42);
   border-top-color: var(--primary, #8b8fcf);
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }
@@ -465,7 +464,7 @@ onUnmounted(() => {
 .result-icon {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 12px;
   background: rgba(100, 200, 130, 0.15);
   border: 1.5px solid rgba(100, 200, 130, 0.3);
   display: flex;
@@ -562,7 +561,7 @@ onUnmounted(() => {
 .error-icon {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 12px;
   background: rgba(235, 87, 87, 0.15);
   border: 1.5px solid rgba(235, 87, 87, 0.3);
   display: flex;

@@ -122,7 +122,6 @@ function onToggleHud() {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(16, 17, 22, 0.94) 0%, rgba(16, 17, 22, 0.82) 65%, rgba(16, 17, 22, 0.65) 100%);
-  backdrop-filter: blur(2px);
   z-index: 1;
 }
 
@@ -200,7 +199,6 @@ function onToggleHud() {
   display: flex;
   align-items: center;
   gap: 6px;
-  backdrop-filter: blur(4px);
 }
 
 .hypermoon-card {

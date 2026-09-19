@@ -443,7 +443,6 @@ function toggleExpand(key) {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(14, 15, 20, 0.94) 0%, rgba(18, 19, 26, 0.84) 60%, rgba(12, 13, 18, 0.68) 100%);
-  backdrop-filter: blur(2px);
   z-index: 1;
 }
 
@@ -474,10 +473,9 @@ function toggleExpand(key) {
   color: var(--primary);
   background: rgba(255, 255, 255, 0.08);
   padding: 3px 9px;
-  border-radius: 20px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   letter-spacing: 0.2px;
-  backdrop-filter: blur(4px);
 }
 
 .about-version-badge {
@@ -486,11 +484,10 @@ function toggleExpand(key) {
   font-size: 10px;
   font-weight: 600;
   padding: 3px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--on-surface);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(4px);
 }
 
 .about-title-block {
@@ -545,13 +542,12 @@ function toggleExpand(key) {
   font-variant-numeric: tabular-nums;
   font-size: 10px;
   padding: 3px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   gap: 5px;
-  backdrop-filter: blur(4px);
 }
 
 .about-glass-chip .chip-label {

@@ -533,13 +533,13 @@ onUnmounted(() => {
   justify-content: center;
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 50%;
+  border-radius: 8px;
   color: var(--on-surface);
   font-size: 18px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -547,8 +547,6 @@ onUnmounted(() => {
 .step-arrow-btn:active:not(:disabled) {
   background: var(--primary-container);
   color: var(--on-primary-container);
-  transform: scale(0.88);
-  transition: transform 0.08s ease;
 }
 
 .step-arrow-btn:disabled {
@@ -569,19 +567,19 @@ onUnmounted(() => {
 .md3-range-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   background: var(--primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   border: 2px solid var(--surface);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .md3-range-slider::-webkit-slider-thumb:active {
-  transform: scale(1.22);
-  box-shadow: 0 0 0 8px rgba(200, 198, 215, 0.18), 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 6px rgba(200, 198, 215, 0.18), 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .slider-axis-labels {
@@ -608,10 +606,10 @@ onUnmounted(() => {
   padding: 7px 4px;
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--on-surface);
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }

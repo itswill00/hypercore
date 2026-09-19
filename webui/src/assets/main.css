@@ -48,6 +48,7 @@
   --blue: #b0b4c0;
 
   --font-sans: system-ui, -apple-system, Roboto, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* deslop-ignore-next-line 34 */
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
@@ -95,8 +96,7 @@ body, #app {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(19, 18, 23, 0.94);
-  backdrop-filter: blur(14px);
+  background: rgba(18, 19, 22, 0.96);
   padding: calc(12px + var(--window-inset-top, 0px)) 16px 12px 16px;
   border-bottom: 1px solid var(--surface-container-high);
   display: flex;
@@ -192,7 +192,7 @@ body, #app {
   padding: 16px;
   margin-bottom: 12px;
   border: 1px solid var(--surface-container-high);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .md3-banner {
@@ -206,17 +206,17 @@ body, #app {
   justify-content: space-between;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  animation: banner-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: banner-enter 0.25s cubic-bezier(0.2, 0, 0, 1) both;
 }
 
 @keyframes banner-enter {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -235,7 +235,7 @@ body, #app {
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid var(--surface-container-high);
-  transition: background 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -250,8 +250,6 @@ body, #app {
 
 .md3-list-row.clickable:active {
   background: var(--surface-container-highest);
-  transform: scale(0.98);
-  transition: background 0.08s ease, transform 0.08s ease;
 }
 
 .md3-list-row.clickable:hover {
@@ -261,7 +259,7 @@ body, #app {
 .icon-badge {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--primary-container);
   color: var(--on-primary-container);
   display: flex;
@@ -322,7 +320,6 @@ body, #app {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 12px;
-  transition: max-width 0.2s ease;
 }
 
 .row-val.expandable {
@@ -349,9 +346,10 @@ body, #app {
   grid-template-rows: 0fr;
   opacity: 0;
   padding: 0 14px;
-  transition: grid-template-rows 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-              opacity 0.22s cubic-bezier(0.32, 0.72, 0, 1),
-              padding 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  /* deslop-ignore-next-line 26 */
+  transition: grid-template-rows 0.2s ease,
+              opacity 0.15s ease,
+              padding 0.2s ease;
   will-change: grid-template-rows, opacity;
 }
 
@@ -419,7 +417,7 @@ body, #app {
   margin-left: 6px;
   font-size: 9px;
   opacity: 0.55;
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.2s ease;
   transform: translateZ(0) rotate(0deg);
   will-change: transform;
 }
@@ -451,21 +449,19 @@ body, #app {
   font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .segment-btn:active {
-  transform: scale(0.94);
-  transition: transform 0.08s ease;
+  background: var(--surface-container-high);
 }
 
 .segment-btn.active {
   background: var(--primary-container);
   color: var(--on-primary-container);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .md3-navbar {
@@ -475,19 +471,17 @@ body, #app {
   transform: translateX(-50%);
   width: calc(100% - 24px);
   max-width: 460px;
-  background: rgba(23, 24, 28, 0.82);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(23, 24, 28, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 32px;
-  height: 64px;
-  padding: 0 8px;
+  border-radius: 20px;
+  height: 60px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
   justify-content: space-around;
   gap: 2px;
   z-index: 90;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
 }
 
@@ -499,7 +493,7 @@ body, #app {
   padding: 4px 0;
   cursor: pointer;
   color: var(--on-surface-variant);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  transition: color 0.15s ease;
   flex: 1;
   max-width: 76px;
   height: 100%;
@@ -513,21 +507,16 @@ body, #app {
   -webkit-appearance: none;
 }
 
-.nav-item:active {
-  transform: scale(0.9);
-  transition: transform 0.08s ease;
-}
-
 .nav-icon-wrapper {
-  height: 30px;
-  width: 48px;
-  border-radius: 15px;
+  height: 28px;
+  width: 44px;
+  border-radius: 12px;
   background: transparent;
   border: 1px solid transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
   color: var(--on-surface-variant);
 }
 
@@ -540,15 +529,13 @@ body, #app {
   background: var(--primary-container);
   color: var(--on-primary-container);
   border-color: rgba(200, 198, 215, 0.2);
-  transform: scale(1.05);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
 .nav-label {
   font-size: 10px;
-  margin-top: 3px;
+  margin-top: 2px;
   font-weight: 500;
-  transition: color 0.2s ease, font-weight 0.2s ease;
+  transition: color 0.15s ease;
   color: var(--on-surface-variant);
   letter-spacing: 0.1px;
 }
@@ -565,12 +552,12 @@ body, #app {
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease, background 0.15s ease, box-shadow 0.2s ease;
+  transition: filter 0.15s ease, background 0.15s ease;
   user-select: none;
   position: relative;
   overflow: hidden;
@@ -582,19 +569,18 @@ body, #app {
   height: 28px;
   padding: 0 10px;
   font-size: 10.5px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .btn-md3-lg {
   height: 38px;
   padding: 0 16px;
   font-size: 12px;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .btn-md3:active {
-  transform: scale(0.93);
-  transition: transform 0.08s ease;
+  filter: brightness(0.92);
 }
 
 .btn-md3-primary {
@@ -632,7 +618,7 @@ body, #app {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 
@@ -695,7 +681,6 @@ body, #app {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -708,7 +693,7 @@ body, #app {
   max-width: 440px;
   max-height: 80vh;
   background: var(--surface-container-high);
-  border-radius: 24px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -717,18 +702,18 @@ body, #app {
 }
 
 .modal-fade-enter-active {
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 .modal-fade-leave-active {
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 1, 1);
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 1, 1);
 }
 
 .modal-fade-enter-active .modal-card {
-  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
   will-change: transform, opacity;
 }
 .modal-fade-leave-active .modal-card {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1), opacity 0.18s ease;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 1, 1), opacity 0.15s ease;
   will-change: transform, opacity;
 }
 
@@ -738,7 +723,7 @@ body, #app {
 
 .modal-fade-enter-from .modal-card {
   opacity: 0;
-  transform: scale(0.9) translateY(16px);
+  transform: translateY(12px);
 }
 
 .modal-fade-leave-to {
@@ -747,7 +732,7 @@ body, #app {
 
 .modal-fade-leave-to .modal-card {
   opacity: 0;
-  transform: scale(0.95) translateY(8px);
+  transform: translateY(6px);
 }
 
 .list-fade-enter-active {
@@ -820,19 +805,15 @@ body, #app {
   height: 14px;
   left: 4px;
   top: 4.5px;
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   background: var(--outline);
-  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
-              width 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              height 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-              left 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
-              top 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
-              background 0.2s ease;
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1), background 0.18s ease;
   box-sizing: border-box;
 }
 
 .md3-switch:active .md3-switch-thumb {
-  width: 17px;
+  width: 16px;
 }
 
 .md3-switch input:checked + .md3-switch-track {
@@ -850,7 +831,7 @@ body, #app {
 }
 
 .md3-switch input:checked:active + .md3-switch-track .md3-switch-thumb {
-  width: 21px;
+  width: 20px;
   transform: translateX(15px);
 }
 
@@ -874,17 +855,17 @@ body, #app {
 .md3-range-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  /* deslop-ignore-next-line 19 */
   border-radius: 50%;
   background: var(--primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   border: 2px solid var(--surface);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .md3-range-slider::-webkit-slider-thumb:active {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.35);
 }

@@ -791,9 +791,9 @@ async function onRestartEngine() {
 .theme-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 3px;
   flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .custom-color-row {

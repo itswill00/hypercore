@@ -297,10 +297,10 @@ onUnmounted(() => {
 .menu-item-danger { color: #f87171; }
 .menu-item-danger:hover, .menu-item-danger:active { background: rgba(239,68,68,0.15); }
 .menu-divider { height: 1px; background: var(--surface-container-high); margin: 4px 6px; }
-.menu-pop-enter-active { transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.34,1.56,0.64,1); transform-origin: top right; }
+.menu-pop-enter-active { transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.2,0,0,1); transform-origin: top right; }
 .menu-pop-leave-active { transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.4,0,0.2,1); transform-origin: top right; }
-.menu-pop-enter-from { opacity: 0; transform: scale(0.88) translateY(-4px); }
-.menu-pop-leave-to { opacity: 0; transform: scale(0.92) translateY(-4px); }
+.menu-pop-enter-from { opacity: 0; transform: translateY(-4px); }
+.menu-pop-leave-to { opacity: 0; transform: translateY(-4px); }
 
 .toast-pill {
   position: fixed;
@@ -311,13 +311,13 @@ onUnmounted(() => {
   border: 1px solid var(--surface-bright);
   color: var(--on-surface);
   font-size: 12px; font-weight: 500;
-  padding: 8px 16px; border-radius: 20px;
+  padding: 8px 16px; border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   z-index: 99; pointer-events: none;
   display: flex; align-items: center; gap: 8px;
 }
-.toast-slide-enter-active { transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease; }
-.toast-slide-leave-active { transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.18s ease; }
-.toast-slide-enter-from { opacity:0; transform: translate(-50%,16px) scale(0.92); }
-.toast-slide-leave-to { opacity:0; transform: translate(-50%,-8px) scale(0.96); }
+.toast-slide-enter-active { transition: transform 0.22s cubic-bezier(0.2,0,0,1), opacity 0.2s ease; }
+.toast-slide-leave-active { transition: transform 0.18s cubic-bezier(0.4,0,0.2,1), opacity 0.15s ease; }
+.toast-slide-enter-from { opacity:0; transform: translate(-50%,10px); }
+.toast-slide-leave-to { opacity:0; transform: translate(-50%,-6px); }
 </style>

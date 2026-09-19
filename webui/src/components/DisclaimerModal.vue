@@ -133,9 +133,7 @@ function acceptDisclaimer() {
 .disclaimer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(0, 0, 0, 0.85);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -148,7 +146,7 @@ function acceptDisclaimer() {
   max-width: 420px;
   background: var(--surface-container-high);
   border: 1px solid var(--surface-bright);
-  border-radius: 24px;
+  border-radius: 16px;
   padding: 24px 20px;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
   display: flex;
@@ -277,7 +275,6 @@ function acceptDisclaimer() {
 .progress-bar-fill {
   height: 100%;
   background: var(--primary);
-  transition: width 0.1s ease-out;
 }
 
 .scroll-hint {
@@ -362,12 +359,12 @@ function acceptDisclaimer() {
 }
 
 .disclaimer-fade-enter-active .disclaimer-card {
-  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
   will-change: transform, opacity;
 }
 
 .disclaimer-fade-leave-active .disclaimer-card {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1), opacity 0.18s ease;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 1, 1), opacity 0.15s ease;
   will-change: transform, opacity;
 }
 
@@ -377,7 +374,7 @@ function acceptDisclaimer() {
 
 .disclaimer-fade-enter-from .disclaimer-card {
   opacity: 0;
-  transform: scale(0.9) translateY(14px);
+  transform: translateY(12px);
 }
 
 .disclaimer-fade-leave-to {
@@ -386,6 +383,6 @@ function acceptDisclaimer() {
 
 .disclaimer-fade-leave-to .disclaimer-card {
   opacity: 0;
-  transform: scale(0.95) translateY(8px);
+  transform: translateY(6px);
 }
 </style>
