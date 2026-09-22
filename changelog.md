@@ -1,3 +1,21 @@
+# HyperCore v6.9.2 — Daemon Transition & Factory Baseline Hardening
+
+## What's Changed
+
+### Daemon
+- **Profile-aware read-ahead revert**: fixed `Interactive`/`Sleep` clobber after boost expiry (`src/main.c`)
+- **Boot log**: added `INIT -> Interactive (boot)` so restart always logs profile apply (`src/main.c`)
+
+### Baseline & Installer
+- **Factory baseline capture**: extracted to `scripts/stock_baseline.sh` and made 100% read-first (mali/vm/io/sched) with zero hardcoded stock values (`src/sysfs.c`, `customize.sh`)
+- **No bare /tmp**: moved temp gamelist backup to `/data/local/tmp/hypercore` (`customize.sh`)
+
+### Build & Docs
+- **Build portability**: `PROJECT_DIR` relative, version auto-sync from `module.prop` to README/docs, Termux Bionic `javac`/`d8` fallback for HUD dex (`build.sh`)
+- **Docs sync**: bumped `README`/`docs/DOCUMENTATION` to `v6.9.2-b6920`
+
+---
+
 # HyperCore v6.9.1 — Snap Navigation, Logs Stability & Transition Hardening
 
 ## What's Changed
