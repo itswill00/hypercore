@@ -23,12 +23,13 @@ sed -i "s/VERSION_NAME=\"v.*\"/VERSION_NAME=\"${VERSION}\"/" customize.sh 2>/dev
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
-for tool in clang zip node npm ecj; do
+for tool in clang zip node npm; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "error: $tool is not installed"
         exit 1
     fi
 done
+# ecj/dx optional for hypermoon dex (skipped if missing, ponytail: no hard fail for HUD)
 
 if [ -d "webui" ]; then
     if [ ! -d "webui/node_modules" ]; then
@@ -109,21 +110,27 @@ clang -O3 -Wall -Wextra \
 chmod 755 system/bin/hypermoon_daemon
 
 echo "compiling hypermoon java overlay dex..."
+if command -v ecj >/dev/null 2>&1 && [ -f "src/hud/HyperMoonOverlay.java" ]; then
 ANDROID_JAR="/data/data/com.termux/files/usr/share/java/android.jar"
 if [ ! -f "$ANDROID_JAR" ]; then
     ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
 fi
 rm -rf build/classes
 mkdir -p build/classes
-ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java
+if ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null || javac -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null; then
 if command -v dx >/dev/null 2>&1; then
     dx --dex --output=system/bin/hypermoon.dex build/classes
 elif command -v d8 >/dev/null 2>&1; then
-    d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class
-    mv system/bin/classes.dex system/bin/hypermoon.dex
+    d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class 2>/dev/null
+    mv system/bin/classes.dex system/bin/hypermoon.dex 2>/dev/null || true
+fi
 fi
 rm -rf build/classes
-chmod 644 system/bin/hypermoon.dex
+[ -f system/bin/hypermoon.dex ] && chmod 644 system/bin/hypermoon.dex || echo "warning: hypermoon.dex not built (ecj/dx missing), continuing"
+else
+    echo "warning: ecj not found, skipping hypermoon dex build"
+    [ -f system/bin/hypermoon.dex ] || touch system/bin/hypermoon.dex 2>/dev/null || true
+fi
 
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR/HyperCore-${VERSION}-b${VERSION_CODE}"*.zip
