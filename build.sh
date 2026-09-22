@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-PROJECT_DIR="/data/data/com.termux/files/home/HyperCore_Module"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="/data/data/com.termux/files/home/HyperCore_Releases"
 
 set -e
@@ -14,6 +14,12 @@ fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
 ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip"
+# ponytail: single source of truth = module.prop, ceiling sed is best-effort, no VERSION file dup
+sed -i "s/badge\/Release-v[^-\"]*/badge\/Release-${VERSION}/" README.md 2>/dev/null || true
+sed -i "s/HyperCore-v[^-\"]*-b[0-9][0-9]*/HyperCore-${VERSION}-b${VERSION_CODE}/" README.md 2>/dev/null || true
+sed -i "s/Version.*: v.*/Version        : ${VERSION} (Build ${VERSION_CODE})/" docs/DOCUMENTATION.txt 2>/dev/null || true
+sed -i "s/Release ZIP.*: HyperCore.*/Release ZIP    : HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip/" docs/DOCUMENTATION.txt 2>/dev/null || true
+sed -i "s/VERSION_NAME=\"v.*\"/VERSION_NAME=\"${VERSION}\"/" customize.sh 2>/dev/null || true
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 

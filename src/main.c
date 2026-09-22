@@ -404,6 +404,7 @@ int main(int argc, char *argv[]) {
     /* Apply initial Interactive profile (factory stock + touch smoothing) */
     apply_profile(PROFILE_Interactive, 0);
     g_state.current_profile = PROFILE_Interactive;
+    log_state("Profiler", "Profile: INIT -> Interactive (boot)");
     update_module_prop_status("Interactive"); /* Fix: update status immediately on boot, not waiting for profile change */
 
     while (g_running) {
@@ -432,7 +433,8 @@ int main(int argc, char *argv[]) {
         if (g_state.app_boost_ticks > 0) {
             g_state.app_boost_ticks--;
             if (g_state.app_boost_ticks == 0 && g_state.launch_boost_ticks == 0) {
-                set_read_ahead("256");
+                const char *ra = (g_state.current_profile == PROFILE_Sleep) ? "128" : (g_state.current_profile == PROFILE_Interactive) ? (g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024") : "256";
+                set_read_ahead(ra);
             }
         }
 
@@ -470,7 +472,8 @@ int main(int argc, char *argv[]) {
         if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
             if (g_state.launch_boost_ticks == 0 && g_state.app_boost_ticks == 0) {
-                set_read_ahead("256");
+                const char *ra = (g_state.current_profile == PROFILE_Sleep) ? "128" : (g_state.current_profile == PROFILE_Interactive) ? (g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024") : "256";
+                set_read_ahead(ra);
             }
         }
 

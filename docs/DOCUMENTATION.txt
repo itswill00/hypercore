@@ -3,12 +3,12 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v6.9.0 (Build 6900)
+ Version        : v6.9.1 (Build 6910)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
  Inspiration    : encore @Rem01Gaming
- Release ZIP    : HyperCore-v6.9.0-b6900-Unified.zip
+ Release ZIP    : HyperCore-v6.9.1-b6910-Unified.zip
 ================================================================================
 
 TABLE OF CONTENTS
@@ -77,7 +77,7 @@ CORE ARCHITECTURAL PRINCIPLES:
 ================================================================================
 2. REPOSITORY & DIRECTORY STRUCTURE
 ================================================================================
-HyperCore_Module/
+hypercore/
 ├── customize.sh                 # Root installer script for Magisk/KernelSU/APatch
 ├── service.sh                   # Boot completion daemon and HUD launcher
 ├── post-fs-data.sh              # Early boot virtual memory optimization
