@@ -135,6 +135,7 @@ if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     service.sh \
     post-fs-data.sh \
     customize.sh \
+    scripts/stock_baseline.sh \
     system/bin/libhypercore.so \
     system/bin/hypercore-bugreport \
     system/bin/hypermoon_daemon \

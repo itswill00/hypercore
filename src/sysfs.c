@@ -353,9 +353,12 @@ void init_stock_baseline(void) {
     }
     if (g_stock_baseline.mali_poll_int[0] == '\0') strcpy(g_stock_baseline.mali_poll_int, "0");
 
-    strcpy(g_stock_baseline.mali_upthresh, "80");
-    strcpy(g_stock_baseline.mali_downdiff, "20");
-    strcpy(g_stock_baseline.mali_min_freq, "390000000");
+    const char *upthresh_nodes[] = {"/sys/class/devfreq/13000000.mali/simple_ondemand/upthreshold","/sys/class/devfreq/soc:mali/simple_ondemand/upthreshold",NULL};
+    if (!sysfs_read_str_fallback(upthresh_nodes, g_stock_baseline.mali_upthresh, sizeof(g_stock_baseline.mali_upthresh))) strcpy(g_stock_baseline.mali_upthresh, "80");
+    const char *downdiff_nodes[] = {"/sys/class/devfreq/13000000.mali/simple_ondemand/downdifferential","/sys/class/devfreq/soc:mali/simple_ondemand/downdifferential",NULL};
+    if (!sysfs_read_str_fallback(downdiff_nodes, g_stock_baseline.mali_downdiff, sizeof(g_stock_baseline.mali_downdiff))) strcpy(g_stock_baseline.mali_downdiff, "20");
+    const char *mali_min_nodes[] = {"/sys/class/devfreq/13000000.mali/min_freq","/sys/class/devfreq/soc:mali/min_freq",NULL};
+    if (!sysfs_read_str_fallback(mali_min_nodes, g_stock_baseline.mali_min_freq, sizeof(g_stock_baseline.mali_min_freq))) strcpy(g_stock_baseline.mali_min_freq, "390000000");
     strcpy(g_stock_baseline.mali_max_freq, get_max_gpu_freq_hz());
 
     /* MediaTek GED & FPSGO */
@@ -407,23 +410,31 @@ void init_stock_baseline(void) {
     if (g_stock_baseline.vm_dirty_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_ratio, "20");
     sysfs_read_str("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof(g_stock_baseline.vm_dirty_bg_ratio));
     if (g_stock_baseline.vm_dirty_bg_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_bg_ratio, "10");
-    strcpy(g_stock_baseline.vm_vfs_cache_pressure, "100");
-    strcpy(g_stock_baseline.vm_stat_interval, "1");
-    strcpy(g_stock_baseline.vm_dirty_writeback, "500");
+    sysfs_read_str("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure, sizeof(g_stock_baseline.vm_vfs_cache_pressure));
+    if (g_stock_baseline.vm_vfs_cache_pressure[0]=='\0') strcpy(g_stock_baseline.vm_vfs_cache_pressure, "100");
+    sysfs_read_str("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval, sizeof(g_stock_baseline.vm_stat_interval));
+    if (g_stock_baseline.vm_stat_interval[0]=='\0') strcpy(g_stock_baseline.vm_stat_interval, "1");
+    sysfs_read_str("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback, sizeof(g_stock_baseline.vm_dirty_writeback));
+    if (g_stock_baseline.vm_dirty_writeback[0]=='\0') strcpy(g_stock_baseline.vm_dirty_writeback, "500");
 
     sysfs_read_str("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster, sizeof(g_stock_baseline.vm_page_cluster));
     if (g_stock_baseline.vm_page_cluster[0] == '\0') strcpy(g_stock_baseline.vm_page_cluster, "3");
 
     /* Storage I/O */
-    strcpy(g_stock_baseline.io_read_ahead, "1024");
-    strcpy(g_stock_baseline.io_nr_requests, "128");
-    strcpy(g_stock_baseline.io_iostats, "1");
+    const char *ra_nodes[] = {"/sys/block/mmcblk0/queue/read_ahead_kb","/sys/block/sda/queue/read_ahead_kb","/sys/block/dm-0/queue/read_ahead_kb",NULL};
+    if (!sysfs_read_str_fallback(ra_nodes, g_stock_baseline.io_read_ahead, sizeof(g_stock_baseline.io_read_ahead))) strcpy(g_stock_baseline.io_read_ahead, "1024");
+    const char *nr_nodes[] = {"/sys/block/mmcblk0/queue/nr_requests","/sys/block/sda/queue/nr_requests","/sys/block/dm-0/queue/nr_requests",NULL};
+    if (!sysfs_read_str_fallback(nr_nodes, g_stock_baseline.io_nr_requests, sizeof(g_stock_baseline.io_nr_requests))) strcpy(g_stock_baseline.io_nr_requests, "128");
+    const char *iostat_nodes[] = {"/sys/block/mmcblk0/queue/iostats","/sys/block/sda/queue/iostats",NULL};
+    if (!sysfs_read_str_fallback(iostat_nodes, g_stock_baseline.io_iostats, sizeof(g_stock_baseline.io_iostats))) strcpy(g_stock_baseline.io_iostats, "1");
 
     /* Scheduler */
     sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost, sizeof(g_stock_baseline.sched_migration_cost));
     if (g_stock_baseline.sched_migration_cost[0] == '\0') strcpy(g_stock_baseline.sched_migration_cost, "200000");
-    strcpy(g_stock_baseline.sched_latency, "10000000");
-    strcpy(g_stock_baseline.sched_nr_migrate, "32");
+    sysfs_read_str("/proc/sys/kernel/sched_latency_ns", g_stock_baseline.sched_latency, sizeof(g_stock_baseline.sched_latency));
+    if (g_stock_baseline.sched_latency[0]=='\0') strcpy(g_stock_baseline.sched_latency, "10000000");
+    sysfs_read_str("/proc/sys/kernel/sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof(g_stock_baseline.sched_nr_migrate));
+    if (g_stock_baseline.sched_nr_migrate[0]=='\0') strcpy(g_stock_baseline.sched_nr_migrate, "32");
 
     /* Charger */
     sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit, sizeof(g_stock_baseline.charge_limit));
