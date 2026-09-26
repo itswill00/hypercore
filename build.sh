@@ -29,6 +29,23 @@ for tool in clang zip node npm; do
         exit 1
     fi
 done
+
+# The kernel truncates a process name to 15 characters (TASK_COMM_LEN - 1) in
+# /proc/PID/comm, which is what `pkill -x` and `pidof` match against. A longer
+# name is silently invisible to them, so a long-running daemon can never be
+# stopped and never be found again. `hypermoon_daemon` was 16 chars and leaked
+# one process per HUD toggle, then survived uninstall entirely.
+#
+# This applies to daemons only. One-shot helpers such as hypercore-bugreport are
+# invoked synchronously and, if they ever hang, `pkill -f <path>` matches the
+# full command line and is unaffected by the truncation.
+for daemon in libhypercore.so hypermoon_d; do
+    name=$(basename "$daemon")
+    if [ "${#name}" -gt 15 ]; then
+        echo "error: daemon binary name '$name' is ${#name} chars; must be <= 15 to stay visible to pkill -x / pidof"
+        exit 1
+    fi
+done
 # ecj/dx optional for hypermoon dex (skipped if missing, ponytail: no hard fail for HUD)
 
 if [ -d "webui" ]; then
@@ -54,14 +71,18 @@ if [ -d "webui" ]; then
 fi
 
 echo "generating sha256 checksums..."
-rm -f checksums.txt
-for file in system.prop service.sh post-fs-data.sh webroot/index.html changelog.md uninstall.sh banner.jpg; do
-    if [ -f "$file" ]; then
-        sha256sum "$file" >> checksums.txt
-    fi
-done
+# Shipped payload, verified at install time by customize.sh (sha256sum -c) and
+# re-checked from inside the daemon. This MUST cover the executables — a manifest
+# of non-executable files verifies nothing, since the files that can actually
+# compromise the device are the ones it skipped.
+#
+# libhypercore.so is the one unavoidable exclusion: a binary cannot contain its
+# own hash. It is covered by checksums.txt (generated after the final link) and
+# verified by customize.sh before the daemon is ever started.
+CHECKSUM_FILES="system.prop service.sh post-fs-data.sh customize.sh uninstall.sh changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
 
-cat << 'EOF' > src/include/embedded_checksums.hpp
+write_embedded_table() {
+    cat << 'EOF' > src/include/embedded_checksums.hpp
 #ifndef EMBEDDED_CHECKSUMS_HPP
 #define EMBEDDED_CHECKSUMS_HPP
 
@@ -72,42 +93,26 @@ typedef struct {
 
 static const file_checksum_t g_embedded_checksums[] = {
 EOF
-
-while read -r hash path; do
-    rel_path=$(echo "$path" | sed 's|^\./||')
-    echo "    { \"$rel_path\", \"$hash\" }," >> src/include/embedded_checksums.hpp
-done < checksums.txt
-
-cat << 'EOF' >> src/include/embedded_checksums.hpp
+    while read -r hash path; do
+        rel_path=$(echo "$path" | sed 's|^\./||')
+        echo "    { \"$rel_path\", \"$hash\" }," >> src/include/embedded_checksums.hpp
+    done < "$1"
+    cat << 'EOF' >> src/include/embedded_checksums.hpp
 };
 
 #endif /* EMBEDDED_CHECKSUMS_HPP */
 EOF
+}
 
-echo "compiling c daemon..."
-clang -O3 -Wall -Werror \
-    -DVERSION=\"${VERSION}\" \
-    -I./src/include \
-    src/main.c \
-    src/cpu.c \
-    src/gpu.c \
-    src/thermal.c \
-    src/memory.c \
-    src/io.c \
-    src/gamelist.c \
-    src/ipc.c \
-    src/log.c \
-    src/sysfs.c \
-    src/integrity.c \
-    src/sha256.c \
-    src/charger.c \
-    -o system/bin/libhypercore.so
+# Pass 1: a stub table so the pre-hash link has something valid to include.
+rm -f checksums.txt
+write_embedded_table /dev/null
 
 echo "compiling hypermoon c daemon..."
 clang -O3 -Wall -Wextra \
     src/hud/hypermoon_daemon.c \
-    -o system/bin/hypermoon_daemon
-chmod 755 system/bin/hypermoon_daemon
+    -o system/bin/hypermoon_d
+chmod 755 system/bin/hypermoon_d
 
 echo "compiling hypermoon java overlay dex..."
 if command -v ecj >/dev/null 2>&1 && [ -f "src/hud/HyperMoonOverlay.java" ]; then
@@ -132,6 +137,48 @@ else
     [ -f system/bin/hypermoon.dex ] || touch system/bin/hypermoon.dex 2>/dev/null || true
 fi
 
+# All non-daemon payloads now exist, so the manifest can be hashed for real.
+for file in $CHECKSUM_FILES; do
+    if [ ! -f "$file" ]; then
+        echo "error: expected payload missing, cannot build a trustworthy manifest: $file"
+        exit 1
+    fi
+    sha256sum "$file" >> checksums.txt
+done
+write_embedded_table checksums.txt
+
+echo "compiling c daemon..."
+clang -O3 -Wall -Werror \
+    -DVERSION=\"${VERSION}\" \
+    -I./src/include \
+    src/main.c \
+    src/cpu.c \
+    src/gpu.c \
+    src/thermal.c \
+    src/memory.c \
+    src/io.c \
+    src/gamelist.c \
+    src/ipc.c \
+    src/log.c \
+    src/sysfs.c \
+    src/integrity.c \
+    src/sha256.c \
+    src/charger.c \
+    -o system/bin/libhypercore.so
+chmod 755 system/bin/libhypercore.so
+
+# The daemon cannot embed its own hash, so append it to the shipped manifest
+# only after the final link. customize.sh verifies this before starting it.
+sha256sum system/bin/libhypercore.so >> checksums.txt
+
+# Fail loudly rather than shipping a manifest that does not match the payload.
+if ! sha256sum -c checksums.txt >/dev/null 2>&1; then
+    echo "error: checksums.txt does not match the built payload"
+    sha256sum -c checksums.txt || true
+    exit 1
+fi
+echo "manifest verified: $(wc -l < checksums.txt) files"
+
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR/HyperCore-${VERSION}-b${VERSION_CODE}"*.zip
 
@@ -142,10 +189,11 @@ if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     service.sh \
     post-fs-data.sh \
     customize.sh \
+    checksums.txt \
     scripts/stock_baseline.sh \
     system/bin/libhypercore.so \
     system/bin/hypercore-bugreport \
-    system/bin/hypermoon_daemon \
+    system/bin/hypermoon_d \
     system/bin/hypermoon.dex \
     webroot/index.html \
     gamelist.txt \
@@ -167,7 +215,7 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
     if su -c "
         pkill -9 -x hypercore_daemon 2>/dev/null || true
         pkill -9 -x libhypercore.so 2>/dev/null || true
-        pkill -9 -x hypermoon_daemon 2>/dev/null || true
+        pkill -9 -x hypermoon_d 2>/dev/null || true
         for p in \$(pgrep -f '[H]yperMoonOverlay' 2>/dev/null); do [ \"\$p\" != \"\$\$\" ] && kill -9 \"\$p\" 2>/dev/null || true; done
         MOD_TARGET=\"/data/adb/modules/hypercore\"
         DATA_TARGET=\"/data/adb/hypercore\"
@@ -189,10 +237,10 @@ if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
 
             mkdir -p \$MOD_TARGET/system/bin
             mkdir -p \$MOD_TARGET/webroot
-            rm -f \$MOD_TARGET/system/bin/libhypercore.so \$MOD_TARGET/system/bin/hypermoon_daemon \$MOD_TARGET/system/bin/hypermoon.dex
+            rm -f \$MOD_TARGET/system/bin/libhypercore.so \$MOD_TARGET/system/bin/hypermoon_d \$MOD_TARGET/system/bin/hypermoon.dex
             cp system/bin/libhypercore.so \$MOD_TARGET/system/bin/libhypercore.so
             [ -f system/bin/hypercore-bugreport ] && cp system/bin/hypercore-bugreport \$MOD_TARGET/system/bin/hypercore-bugreport
-            [ -f system/bin/hypermoon_daemon ] && cp system/bin/hypermoon_daemon \$MOD_TARGET/system/bin/hypermoon_daemon
+            [ -f system/bin/hypermoon_d ] && cp system/bin/hypermoon_d \$MOD_TARGET/system/bin/hypermoon_d
             [ -f system/bin/hypermoon.dex ] && cp system/bin/hypermoon.dex \$MOD_TARGET/system/bin/hypermoon.dex
             cp webroot/index.html \$MOD_TARGET/webroot/index.html
             cp banner.jpg \$MOD_TARGET/banner.jpg

@@ -3,7 +3,7 @@ build/
 hypercore
 libhypercore.so
 system/bin/libhypercore.so
-system/bin/hypermoon_daemon
+system/bin/hypermoon_d
 system/bin/hypermoon.dex
 *.dex
 *.so

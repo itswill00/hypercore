@@ -9,11 +9,14 @@ export function execCommand(cmd, timeoutMs = 6000) {
 
       let settled = false
       const timer = setTimeout(() => {
-        if (!settled && window[id]) {
-          settled = true
-          delete window[id]
-          resolve('')
-        }
+        if (settled) return
+        settled = true
+        delete window[id]
+        // Reject rather than resolve(''): a timeout is not the same thing as
+        // "command produced no output", and callers cannot tell them apart if
+        // we hand back an empty string. That turned every stuck root call into
+        // a silent, unexplained no-op in the UI.
+        reject(new Error(`Command timed out after ${timeoutMs}ms`))
       }, timeoutMs)
 
       window[id] = (errno, stdout, stderr) => {
@@ -41,6 +44,13 @@ export function execCommand(cmd, timeoutMs = 6000) {
       reject(new Error('No root manager bridge available'))
     }
   })
+}
+
+/* Single-quote a value for safe interpolation into a `sh -c` string.
+ * Everything up to the next quote is emitted literally, and a literal quote is
+ * closed-escaped-reopened ('\''), which is safe for every byte except NUL. */
+export function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`
 }
 
 export function base64EncodeUtf8(str) {
@@ -198,6 +208,10 @@ export function getIconUrl(pkg) {
 export async function openExternal(url) {
   if (!url) return
   const cleanUrl = String(url).trim()
+  // Only ever handed to `am start -d`, which resolves it as a URI. Refuse
+  // anything that is not http(s) so this can never become a launcher for
+  // intent:// or file:// payloads if a caller is ever added.
+  if (!/^https?:\/\//i.test(cleanUrl)) return
 
   try {
     if (typeof ksu !== 'undefined' && typeof ksu.open === 'function') {
@@ -207,7 +221,10 @@ export async function openExternal(url) {
   } catch (e) {}
 
   try {
-    const res = await execCommand(`am start -a android.intent.action.VIEW -d "${cleanUrl}" 2>&1`)
+    // Quoted, not bare: this string reaches a root shell, and the old
+    // `-d "${cleanUrl}"` let a double quote or backtick out of the value run
+    // commands as root.
+    const res = await execCommand(`am start -a android.intent.action.VIEW -d ${shellQuote(cleanUrl)} 2>&1`)
     if (res && res.includes('Starting: Intent')) {
       return
     }

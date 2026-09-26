@@ -1,3 +1,5 @@
+/* Required for struct ucred / SO_PEERCRED before any header is pulled in. */
+#define _GNU_SOURCE
 
 #include "ipc.hpp"
 #include "cpu.hpp"
@@ -39,6 +41,59 @@ static void ipc_sync_status(void) {
     update_status_json_file(cpu_temp, bat_temp);
 }
 
+/* ---------------------------------------------------------------------------
+ * Client authorisation
+ *
+ * The socket handles privileged actions (charge control, profile switching,
+ * global page-cache purge), so "can connect" must not imply "may command".
+ * /dev is world-traversable and the socket file mode cannot express
+ * "root or shell", so the file stays connectable and the real gate is the
+ * kernel-reported peer credential.
+ *
+ * Trusted UIDs:
+ *   0    — root: KSU/APatch/Magisk WebUI bridges and hypercore-bugreport all
+ *          spawn their helper as root, so every legitimate client lands here.
+ *   2000 — adb shell, for `echo GET_STATUS | nc -U /dev/hypercore.sock`.
+ *
+ * Adding a UID here is a privilege grant. Do not add 1000/1001 (system) or any
+ * app UID: any app in those UIDs would gain charger and profile control.
+ * ------------------------------------------------------------------------- */
+static int client_is_trusted(int client_fd) {
+    struct ucred cred;
+    socklen_t cred_len = sizeof(cred);
+
+    if (getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &cred, &cred_len) != 0) {
+        return 0;
+    }
+    if (cred_len != sizeof(cred)) {
+        return 0; /* kernel returned a short struct — refuse rather than guess */
+    }
+    return cred.uid == 0 || cred.uid == 2000;
+}
+
+/* Read a full request. A single read() truncates commands that arrive split
+ * across segments, which silently mis-routed "SET_PROFILE:GAM" to Interactive
+ * because the prefix compare fell through. Loop until newline, EOF, or full
+ * buffer, and rely on SO_RCVTIMEO to bound the wait. */
+static int read_request(int client_fd, char *buf, size_t cap) {
+    size_t total = 0;
+
+    while (total + 1 < cap) {
+        ssize_t n = read(client_fd, buf + total, cap - 1 - total);
+        if (n > 0) {
+            total += (size_t)n;
+            buf[total] = '\0';
+            if (memchr(buf, '\n', total) != NULL) break; /* complete request */
+            continue;
+        }
+        if (n == 0) break;              /* peer closed */
+        if (errno == EINTR) continue;
+        break;                          /* EAGAIN / recv timeout */
+    }
+    buf[total] = '\0';
+    return (int)total;
+}
+
 int init_ipc_socket(void) {
     s_start_time = time(NULL);
 
@@ -73,7 +128,11 @@ int init_ipc_socket(void) {
         return -1;
     }
 
-    /* Allow root, webui sandbox, and shell clients to connect to socket (0666) */
+    /* The socket file must stay connectable so that non-root clients (adb
+     * shell, uid 2000) can reach accept() and be evaluated by
+     * client_is_trusted(). Authorisation is enforced from the kernel-reported
+     * peer credential, not from this mode — a mode of 0600 would lock out
+     * `adb shell` without adding any real protection. */
     chmod(s_sock_path, 0666);
 
     if (listen(s_server_fd, 5) < 0) {
@@ -118,12 +177,11 @@ void close_ipc_socket(void) {
 
 static void process_client(int client_fd) {
     char req[256];
-    ssize_t n = read(client_fd, req, sizeof(req) - 1);
+    int n = read_request(client_fd, req, sizeof(req));
     if (n <= 0) {
         close(client_fd);
         return;
     }
-    req[n] = '\0';
 
     while (n > 0 && (req[n - 1] == '\r' || req[n - 1] == '\n' || req[n - 1] == ' ')) {
         req[--n] = '\0';
@@ -337,16 +395,38 @@ void handle_ipc_events(int timeout_ms) {
         for (int i = 0; i < nfds; i++) {
             if (pfds[i].revents & POLLIN) {
                 if (pfds[i].fd == s_server_fd) {
-                    /* Drain pending client connections up to 8 per poll cycle to prevent backlog stall */
+                    /* Drain pending client connections, but bound the work per
+                     * poll cycle: each client can cost up to the SO_RCVTIMEO
+                     * below, and an unbounded drain lets a single peer stall
+                     * the tuning loop indefinitely. */
                     int client_fd;
-                    int max_accept = 8;
+                    int max_accept = 4;
                     while (max_accept-- > 0 && (client_fd = accept(s_server_fd, NULL, NULL)) >= 0) {
-                        /* Use SO_RCVTIMEO instead of O_NONBLOCK on the client socket.
-                         * O_NONBLOCK causes read() to return EAGAIN immediately if the
-                         * client hasn't written the request yet (e.g. nc takes ~1-2ms
-                         * after connect to write). A 50ms recv timeout is generous enough
-                         * to always receive the command without hanging on rogue clients. */
-                        struct timeval tv = { .tv_sec = 0, .tv_usec = 50000 };
+                        /* Authorise BEFORE reading. Rejecting untrusted peers
+                         * without a syscall on their socket is what keeps this
+                         * from being a cheap way to hold up the main loop. */
+                        if (!client_is_trusted(client_fd)) {
+                            static int s_reject_logged = 0;
+                            if (!s_reject_logged) {
+                                struct ucred c;
+                                socklen_t cl = sizeof(c);
+                                uid_t uid = (uid_t)-1;
+                                if (getsockopt(client_fd, SOL_SOCKET, SO_PEERCRED, &c, &cl) == 0)
+                                    uid = c.uid;
+                                log_warn("Security", "Rejected unprivileged IPC client (uid=%u) — further attempts will not be logged", (unsigned)uid);
+                                s_reject_logged = 1;
+                            }
+                            close(client_fd);
+                            continue;
+                        }
+
+                        /* Use SO_RCVTIMEO instead of O_NONBLOCK on the client
+                         * socket. O_NONBLOCK makes read() return EAGAIN the
+                         * instant a client connects but has not written yet
+                         * (nc takes ~1-2ms to do so). The peer is already
+                         * trusted at this point, so the timeout only guards
+                         * against a stalled root client. */
+                        struct timeval tv = { .tv_sec = 0, .tv_usec = 25000 };
                         setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
                         process_client(client_fd);
                     }

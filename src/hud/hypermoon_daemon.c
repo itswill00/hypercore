@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <errno.h>
 
 static char state_dir[256] = "/data/adb/hypercore/hud";
 static char stats_file[512] = "/data/adb/hypercore/hud/stats.json";
@@ -22,6 +23,7 @@ static long long prev_gpu_total = 0;
 static char cached_hz[32] = "60Hz";
 
 static void read_file_string(const char *path, char *buf, size_t max_len) {
+    if (!buf || max_len == 0) return;
     buf[0] = '\0';
     int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd < 0) return;
@@ -64,10 +66,14 @@ static void get_cpu_freq_and_load(char *freq_out, size_t freq_len, char *load_ou
     snprintf(load_out, load_len, "0");
 
     glob_t g;
-    if (glob("/sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq", 0, NULL, &g) != 0 || g.gl_pathc == 0) {
-        glob("/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq", 0, NULL, &g);
+    int glob_ok = (glob("/sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq", 0, NULL, &g) == 0);
+    if (!glob_ok || g.gl_pathc == 0) {
+        /* A failed glob() leaves its glob_t undefined, so release whatever the
+         * first call produced before reusing the struct. */
+        if (glob_ok) globfree(&g);
+        glob_ok = (glob("/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq", 0, NULL, &g) == 0);
     }
-    if (g.gl_pathc > 0) {
+    if (glob_ok && g.gl_pathc > 0) {
         long long sum = 0;
         int count = 0;
         for (size_t i = 0; i < g.gl_pathc; i++) {
@@ -204,20 +210,24 @@ static void get_gpu_stats(char *load_out, size_t load_len, char *freq_out, size_
         "/sys/class/kgsl/kgsl-3d0/devfreq/governor",
         NULL
     };
-    for (int i = 0; gov_patterns[i] != NULL; i++) {
-        if (glob(gov_patterns[i], 0, NULL, &g_gov) == 0) {
-            if (g_gov.gl_pathc > 0) {
-                for (size_t k = 0; k < g_gov.gl_pathc; k++) {
-                    read_file_string(g_gov.gl_pathv[k], buf, sizeof(buf));
-                    if (buf[0]) {
-                        snprintf(gov_out, gov_len, "%s", buf);
-                        break;
-                    }
-                }
-            }
-            globfree(&g_gov);
-            if (buf[0]) break;
+    // `buf` is reused across the patterns below, so the "did we find one?"
+    // test has to look at a value this loop actually produced. Testing buf
+    // directly made a pattern that matched zero paths fall through on the
+    // previous iteration's leftover and exit before setting gov_out at all.
+    int gov_found = 0;
+    for (int i = 0; gov_patterns[i] != NULL && !gov_found; i++) {
+        if (glob(gov_patterns[i], 0, NULL, &g_gov) != 0) {
+            continue;   /* glob failed: g_gov is left undefined, do not touch it */
         }
+        for (size_t k = 0; k < g_gov.gl_pathc; k++) {
+            read_file_string(g_gov.gl_pathv[k], buf, sizeof(buf));
+            if (buf[0]) {
+                snprintf(gov_out, gov_len, "%s", buf);
+                gov_found = 1;
+                break;
+            }
+        }
+        globfree(&g_gov);
     }
 
     // 2. Qualcomm Adreno (kgsl)
@@ -654,20 +664,66 @@ int main() {
 
             if (is_vis && system("pgrep -f com.hypermoon.HyperMoonOverlay >/dev/null 2>&1") != 0 &&
                 system("pgrep -f com.fpsmoon.FPSMoonOverlay >/dev/null 2>&1") != 0) {
-                char dex_path[512] = "/data/adb/modules/hypercore/system/bin/hypermoon.dex";
-                if (access(dex_path, F_OK) != 0) {
-                    snprintf(dex_path, sizeof(dex_path), "%s/../bin/hypermoon.dex", state_dir);
+                /* The old fallback was "<state_dir>/../bin/hypermoon.dex", which
+                 * resolves to /data/adb/hypercore/bin/ — a directory that does not
+                 * exist. Resolve against the module dir, and derive it from argv[0]
+                 * so a relocated install still works. */
+                char dex_path[512];
+                const char *candidates[] = {
+                    "/data/adb/modules/hypercore/system/bin/hypermoon.dex",
+                    "/data/adb/modules_update/hypercore/system/bin/hypermoon.dex",
+                    NULL
+                };
+                dex_path[0] = '\0';
+                for (int c = 0; candidates[c]; c++) {
+                    if (access(candidates[c], R_OK) == 0) {
+                        snprintf(dex_path, sizeof(dex_path), "%s", candidates[c]);
+                        break;
+                    }
                 }
-                char respawn_cmd[1024];
-                snprintf(respawn_cmd, sizeof(respawn_cmd),
-                         "( CLASSPATH=\"%s\" /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay \"%s\" > \"%s/overlay.log\" 2>&1 & )",
-                         dex_path, state_dir, state_dir);
-                system(respawn_cmd);
+                if (!dex_path[0]) {
+                    /* Last resort: <dir of this binary>/../hypermoon.dex, which
+                     * holds when the module tree is copied elsewhere intact. */
+                    char self[512] = "";
+                    ssize_t n = readlink("/proc/self/exe", self, sizeof(self) - 1);
+                    if (n > 0) {
+                        self[n] = '\0';
+                        char *slash = strrchr(self, '/');
+                        if (slash) {
+                            *slash = '\0';
+                            snprintf(dex_path, sizeof(dex_path), "%s/hypermoon.dex", self);
+                        }
+                    }
+                }
+                if (!dex_path[0] || access(dex_path, R_OK) != 0) {
+                    /* Nothing to respawn from. Say so once instead of forking a
+                     * shell every 30s for the rest of the session. */
+                    static int s_warned = 0;
+                    if (!s_warned) {
+                        fprintf(stderr, "[HyperMoon] overlay dex not found — watchdog respawn disabled\n");
+                        s_warned = 1;
+                    }
+                } else {
+                    char respawn_cmd[1200];
+                    snprintf(respawn_cmd, sizeof(respawn_cmd),
+                             "( CLASSPATH=\"%s\" /system/bin/app_process /system/bin com.hypermoon.HyperMoonOverlay \"%s\" > \"%s/overlay.log\" 2>&1 & )",
+                             dex_path, state_dir, state_dir);
+                    system(respawn_cmd);
+                }
             }
         }
 
         int interval_ms = get_refresh_interval();
-        usleep(interval_ms * 1000);
+        /* refresh_interval is user-controlled and may exceed 1000ms, where
+         * usleep() is only defined for values < 1000000. nanosleep has no such
+         * limit and is what the interval actually means. */
+        struct timespec sleep_for = {
+            .tv_sec  = interval_ms / 1000,
+            .tv_nsec = (long)(interval_ms % 1000) * 1000000L
+        };
+        while (nanosleep(&sleep_for, &sleep_for) != 0 && errno == EINTR) {
+            /* resume with the remaining time */
+        }
     }
     return 0;
 }

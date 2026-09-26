@@ -16,9 +16,11 @@ static int s_log_fd = -1;
 
 static void ensure_log_open(void) {
     if (s_log_fd >= 0) return;
-    s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
+    s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0640);
+    /* Fallback for the degraded path where /data/adb/hypercore does not exist
+     * (init_hardware_nodes() fell back to /data/local/tmp). */
     if (s_log_fd < 0) {
-        s_log_fd = open("/data/adb/hypercore/hypercore.log", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
+        s_log_fd = open("/data/local/tmp/hypercore/hypercore.log", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0640);
     }
 }
 

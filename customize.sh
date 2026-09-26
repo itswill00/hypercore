@@ -79,7 +79,9 @@ for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_
     fi
 done
 
-# stock baseline capture handled post-extract via scripts/stock_baseline.sh (ponytail: one function, zero dupe)
+# Stock baseline capture happens via scripts/stock_baseline.sh, but only AFTER
+# the payload integrity check below — it is sourced as root, so it must not run
+# on an unverified file.
 
 PRESERVE_GL="/data/local/tmp/hypercore/hypercore_gamelist_bak.txt"
 mkdir -p /data/local/tmp/hypercore 2>/dev/null || true
@@ -92,11 +94,6 @@ fi
 
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
-# capture factory baseline via dedicated script (post-extract, ponytail: single source)
-if [ -f "$MODPATH/scripts/stock_baseline.sh" ]; then
-    . "$MODPATH/scripts/stock_baseline.sh"
-    capture_stock_baseline
-fi
 
 if [ -f "$PRESERVE_GL" ]; then
     ui_print "- Merging preserved user gamelist entries..."
@@ -115,22 +112,58 @@ rm -f "$MODPATH"/*.conf
 rm -f "$MODPATH/hypercore" "$MODPATH/libhypercore.so"
 rm -f "$MODPATH/hypercore.sock" "$MODPATH/hypercore.pid" "$MODPATH/status.json"
 
-ui_print "- Verifying embedded binary SHA-256 integrity..."
+ui_print "- Verifying SHA-256 integrity of the extracted payload..."
+# This runs BEFORE any payload file is sourced or executed. It used to run after
+# scripts/stock_baseline.sh had already been sourced as root, so a tampered
+# payload got to execute before anything was verified.
 chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
-if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
-    INTEGRITY_OUT=$("$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" 2>&1)
-    if [ $? -eq 0 ]; then
-        ui_print "- Embedded binary SHA-256 integrity verified successfully."
-    else
-        ui_print "--------------------------------------"
-        ui_print "! ERROR: File tampering or corruption detected!"
-        ui_print "$INTEGRITY_OUT"
-        ui_print "! Installation aborted for security."
-        ui_print "--------------------------------------"
-        rm -rf "$MODPATH"
-        abort "! Embedded Binary Checksum Mismatch"
-        exit 1
+
+INTEGRITY_OK=1
+INTEGRITY_OUT=""
+
+# Layer 1: the shipped manifest, which also covers libhypercore.so (a binary
+# cannot embed its own hash, so it is verified from here instead).
+if [ -f "$MODPATH/checksums.txt" ] && command -v sha256sum >/dev/null 2>&1; then
+    INTEGRITY_OUT=$(cd "$MODPATH" && sha256sum -c checksums.txt 2>&1)
+    if [ $? -ne 0 ]; then
+        INTEGRITY_OK=0
     fi
+elif [ ! -f "$MODPATH/checksums.txt" ]; then
+    ui_print "! WARNING: checksums.txt missing from package — cannot verify binaries."
+    INTEGRITY_OK=0
+else
+    ui_print "! WARNING: sha256sum unavailable — binary manifest cannot be verified."
+    INTEGRITY_OK=0
+fi
+
+# Layer 2: the table compiled into the daemon, which re-checks every script
+# independently of the shell tooling.
+if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
+    EMBEDDED_OUT=$("$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" 2>&1)
+    if [ $? -ne 0 ]; then
+        INTEGRITY_OK=0
+        INTEGRITY_OUT="$INTEGRITY_OUT
+$EMBEDDED_OUT"
+    fi
+fi
+
+if [ $INTEGRITY_OK -eq 1 ]; then
+    ui_print "- Payload SHA-256 integrity verified successfully."
+else
+    ui_print "--------------------------------------"
+    ui_print "! ERROR: File tampering or corruption detected!"
+    ui_print "$INTEGRITY_OUT"
+    ui_print "! Installation aborted for security."
+    ui_print "--------------------------------------"
+    rm -rf "$MODPATH"
+    abort "! Embedded Binary Checksum Mismatch"
+    exit 1
+fi
+
+# Verified — now it is safe to run payload code.
+if [ -f "$MODPATH/scripts/stock_baseline.sh" ]; then
+    . "$MODPATH/scripts/stock_baseline.sh"
+    capture_stock_baseline
 fi
 
 ui_print "- Setting permissions & PATH symlinks..."
@@ -141,6 +174,7 @@ set_perm "$MODPATH/uninstall.sh" 0 0 0755
 set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/system.prop" 0 0 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
+set_perm "$MODPATH/checksums.txt" 0 0 0644
 [ -f "$MODPATH/banner.jpg" ] && set_perm "$MODPATH/banner.jpg" 0 0 0644
 [ -f "$MODPATH/changelog.md" ] && set_perm "$MODPATH/changelog.md" 0 0 0644
 
@@ -150,7 +184,7 @@ for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
         ui_print "- Creating PATH symlink in $manager_dir"
         ln -sf "$MODPATH/system/bin/libhypercore.so" "$manager_dir/libhypercore.so" 2>/dev/null || true
         [ -f "$MODPATH/system/bin/hypercore-bugreport" ] && ln -sf "$MODPATH/system/bin/hypercore-bugreport" "$manager_dir/hypercore-bugreport" 2>/dev/null || true
-        [ -f "$MODPATH/system/bin/hypermoon_daemon" ] && ln -sf "$MODPATH/system/bin/hypermoon_daemon" "$manager_dir/hypermoon_daemon" 2>/dev/null || true
+        [ -f "$MODPATH/system/bin/hypermoon_d" ] && ln -sf "$MODPATH/system/bin/hypermoon_d" "$manager_dir/hypermoon_d" 2>/dev/null || true
     fi
 done
 
@@ -225,7 +259,7 @@ for c in /data/adb/hypercore/*.conf; do
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.9.2"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.9.3"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

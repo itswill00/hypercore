@@ -4,9 +4,11 @@ import { execCommand, sanitize, isKSU, base64EncodeUtf8 } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/hypercore'
 const DATA = '/data/adb/hypercore'
-const LOG = '/sdcard/Android/hypercore.log'
+// Telemetry lives under /data/adb (root-only), not /sdcard where any app with
+// storage access could read the thermal and charging history.
+const LOG = '/data/adb/hypercore/hypercore.log'
+const LOG_LEGACY = '/sdcard/Android/hypercore.log'
 const GL_PERM = '/data/adb/hypercore/gamelist.txt'
-const GL_SD = '/sdcard/Android/gamelist.txt'
 
 export const useHyperStore = defineStore('hyper', () => {
   
@@ -166,7 +168,7 @@ echo "KV:$(uname -r 2>/dev/null)";
 echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || grep '^version=' ${MOD}/module.prop 2>/dev/null | cut -d= -f2 || true)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || true;
-if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 /data/adb/hypercore/hypercore.log 2>/dev/null || true; fi`
+if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 ${LOG_LEGACY} 2>/dev/null || true; fi`
 
     try {
       const res = await execCommand(cmd)
@@ -587,7 +589,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
   async function clearLogs() {
     loading.value = true
-    await execCommand(`> ${LOG} 2>/dev/null || true; > /sdcard/Android/hypercore.log 2>/dev/null || true`)
+    await execCommand(`> ${LOG} 2>/dev/null || true`)
     logs.value = ''
     loading.value = false
     return 'Log cleared'
@@ -613,7 +615,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
     const cmd = [
       `mkdir -p /data/adb/hypercore 2>/dev/null`,
-      `for f in ${GL_PERM} ${GL_SD}; do`,
+      `for f in ${GL_PERM}; do`,
       `  touch "$f" 2>/dev/null`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
@@ -636,7 +638,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
 
     const cmd = [
-      `for f in ${GL_PERM} ${GL_SD}; do`,
+      `for f in ${GL_PERM}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
@@ -659,7 +661,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     }
 
     const cmd = [
-      `for f in ${GL_PERM} ${GL_SD}; do`,
+      `for f in ${GL_PERM}; do`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    echo '${pkg}:${profile}' >> "$f.tmp"`,
@@ -692,7 +694,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       const appendLines = toAdd.map(pkg => `${pkg}:GAMING`).join('\n')
       const cmd = [
         `mkdir -p /data/adb/hypercore 2>/dev/null`,
-        `for f in ${GL_PERM} ${GL_SD}; do`,
+        `for f in ${GL_PERM}; do`,
         `  touch "$f" 2>/dev/null`,
         `  printf '%s\\n' "${appendLines}" >> "$f" 2>/dev/null`,
         `done`

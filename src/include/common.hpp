@@ -19,8 +19,11 @@
 #include <linux/netlink.h>
 #include <sys/inotify.h>
 #include <sys/resource.h>
+#include <sys/file.h>
 
-#define LOG_PATH        "/sdcard/Android/hypercore.log"
+/* Telemetry stays inside /data/adb (root-only, 0700-ish) rather than /sdcard,
+ * where every app with storage access could read thermal and charging history. */
+#define LOG_PATH        "/data/adb/hypercore/hypercore.log"
 #define FREQ_LITTLE_MAX 2000000
 #define FREQ_BIG_MAX    2200000
 
@@ -37,7 +40,7 @@ typedef enum {
     CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=10 (~2.3A / ~9.3W) */
     CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=14 (~0.73A / ~2.8W) */
     CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA) */
-    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + sconfig=10 + smart_chg=0 (19-33W) */
+    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + smart_chg=0 + night_charging=0 (19-33W) */
     CHARGE_MODE_CUSTOM   = 6,  /* Custom user-defined limit via slider (level 0-15) */
 } charge_mode_t;
 

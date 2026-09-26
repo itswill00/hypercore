@@ -1,11 +1,22 @@
 #!/system/bin/sh
 
-pkill -9 -x hypercore_daemon >/dev/null 2>&1 || true
-pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
-pkill -9 -x hypermoon_daemon >/dev/null 2>&1 || true
-pkill -9 -f com.hypermoon.HyperMoonOverlay >/dev/null 2>&1 || true
-
 # Restore factory stock baseline from stock_state.conf if available
+
+# SIGTERM first so the daemon can run restore_baseline_nodes() and put the
+# sysfs nodes back the way it found them. Only then escalate.
+pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
+for _i in 1 2 3 4 5; do
+    pidof libhypercore.so >/dev/null 2>&1 || break
+    sleep 1
+done
+# `pkill -x` matches the kernel's 15-char comm field, so it cannot see a longer
+# name. hypermoon_d is 11 chars and matches fine; the -f form is belt-and-braces
+# in case the binary is ever renamed again.
+pkill -9 -x hypermoon_d >/dev/null 2>&1 || true
+pkill -9 -f 'hypermoon_d' >/dev/null 2>&1 || true
+pkill -9 -f 'HyperMoonOverlay' >/dev/null 2>&1 || true
+pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
+
 STOCK_CONF="/data/adb/hypercore/stock_state.conf"
 STOCK_GOV0=""
 STOCK_GOV6=""
@@ -83,15 +94,15 @@ fi
 [ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null
 [ -f "/sys/class/power_supply/battery/charge_control_limit" ] && echo 0 > /sys/class/power_supply/battery/charge_control_limit 2>/dev/null
 
-# Clean up symlinks & lock files
+# Clean up symlinks, lock files & runtime state
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
 rm -f /data/adb/ap/bin/hypercore-bugreport /data/adb/ksu/bin/hypercore-bugreport /data/adb/modules/bin/hypercore-bugreport 2>/dev/null
-rm -f /data/adb/ap/bin/hypermoon_daemon /data/adb/ksu/bin/hypermoon_daemon /data/adb/modules/bin/hypermoon_daemon 2>/dev/null
+rm -f /data/adb/ap/bin/hypermoon_d /data/adb/ksu/bin/hypermoon_d /data/adb/modules/bin/hypermoon_d 2>/dev/null
 rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/modules/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid 2>/dev/null
 rm -f /data/adb/modules/hypercore/status.json /data/adb/modules/hypercore/*.conf /data/adb/modules/hypercore/gamelist.txt 2>/dev/null
+# Legacy log location from before the daemon moved it under /data/adb
+rm -f /sdcard/Android/hypercore.log 2>/dev/null
 rm -rf /data/adb/hypercore 2>/dev/null || true
 rm -f /data/local/tmp/.hypercore_lock /data/local/tmp/hypercore.sock /data/local/tmp/hypercore.pid 2>/dev/null
 rm -rf /data/local/tmp/hypercore 2>/dev/null || true
 rm -f /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null
-rm -f /sdcard/Android/.hypercore_lock 2>/dev/null
-rm -f /sdcard/Android/hypercore.log 2>/dev/null

@@ -1,3 +1,45 @@
+# HyperCore v6.9.3 — Security Audit Remediation
+
+Full source audit (daemon, installer, build pipeline, WebUI) with 22 findings remediated.
+
+## Breaking
+
+- **Install contract**: `customize.sh` now requires `checksums.txt` in the ZIP and verifies the entire extracted payload *before* any payload file is sourced or executed. Always package via `build.sh`, which now generates the manifest and fails if any expected file is missing.
+
+## Security
+
+- **Charging thermal ladder restored** (`src/charger.c`): the ladder was disabled in `cb6a602`, leaving `TEMP_OVERRIDE_ENTER`/`TEMP_EMERGENCY`/`TEMP_OVERRIDE_CLEAR` as dead constants while `README` still claimed charging thermal protection existed. The selected mode is now a ceiling that temperature may only lower — one rung down at 45 °C (Violent → Fast → Balanced → Safe), hard floor to Safe Mode at 50 °C, restored only after 180 s continuously ≤41 °C. Dead band between 41–45 °C freezes position to prevent flapping. OEM and Bypass are exempt.
+- **IPC socket authorised** (`src/ipc.c`): `/dev/hypercore.sock` accepted any UID, so any app on the device could set charge modes, force Bypass, or trigger a global page-cache purge as root. Clients are now vetted with `SO_PEERCRED` (uid 0 for WebUI bridges and `hypercore-bugreport`, uid 2000 for adb shell) and untrusted peers are closed *before* the daemon reads from them, which also removes a main-loop stall vector.
+- **Integrity manifest covers executables** (`build.sh`, `customize.sh`): the manifest previously listed 7 non-executable files while ignoring every binary and every root-executed script — including `customize.sh` itself. Now 13 files, covering `customize.sh`, `uninstall.sh`, `scripts/stock_baseline.sh`, `hypermoon_d`, `hypermoon.dex` and `hypercore-bugreport`. Two-pass build: hash payload → embed table → relink → append `libhypercore.so`, which cannot embed its own hash. Verified by test: tampering with the daemon or the installer is now detected; previously both passed silently.
+- **No cross-module tampering** (`service.sh`): removed a loop that chmod'd any `service.d` / `post-fs-data.d` entry matching `thermal|tweak|encore|ktweak` to 0644, silently disabling third-party modules, recording no original mode, and never restored on uninstall.
+- **Logs moved off `/sdcard`** (`src/include/common.hpp`, `src/log.c`): telemetry is written to `/data/adb/hypercore/hypercore.log` instead of a world-readable path.
+- **Root-shell injection hardening** (`webui/src/helpers/shell.js`): `am start -d` now receives a single-quoted argument and only `http(s)` URLs.
+
+## Correctness
+
+- **`hypermoon_daemon` → `hypermoon_d`**: at 16 characters the name exceeded the kernel's 15-character `comm` limit, so `pkill -x` and `pidof` could never match it. One daemon leaked per HUD toggle and it survived uninstall entirely, still globbing sysfs and forking `app_process` every 30 s. `build.sh` now fails the build if a daemon binary name exceeds 15 characters.
+- **Single-instance lock implemented** (`src/main.c`): `struct hw_nodes.lock_file` was declared and never used, so nothing prevented two daemons fighting over the same sysfs nodes. Now an advisory `flock(LOCK_EX|LOCK_NB)` taken after `daemon()`.
+- **Gaming thermal bypass tier-gated** (`src/thermal.c`): `sconfig=10`, FPSGO `thrm_enable=0` and the GPU devfreq cooler reset ran at every tier, fighting `mi_thermald` even at 75 °C. Now Tier 0 only; from Tier 1 up the daemon defers to the vendor thermal stack.
+- **Tier 2 ceilings corrected** (`src/thermal.c`): documented as 1.5/1.4 GHz but implemented as 1.8/1.8 GHz. Now matches the documented intent.
+- **`popen` no longer in the hot loop** (`src/gamelist.c`): with an empty gamelist and no matching games, `pm list packages` was spawning `app_process` up to twice a second forever. Auto-detection is now capped at once per hour; the `dumpsys window` fallback went 3 s → 10 s and is skipped when the screen is off or asleep.
+- **Overlay watchdog** (`src/hud/hypermoon_daemon.c`): the dex fallback resolved to `/data/adb/hypercore/bin/`, a directory that never existed. Now checks real install paths, then `/proc/self/exe`, then disables itself with one warning instead of forking a shell every 30 s forever.
+- **IPC read loop** (`src/ipc.c`): a single `read()` truncated split commands, so `SET_PROFILE:GAM` silently fell through to `Interactive`. Now loops to newline under `SO_RCVTIMEO`.
+- **GPU governor detection** (`src/hud/hypermoon_daemon.c`): a pattern matching zero paths exited the loop on a stale buffer and never set the governor. Also fixed a `glob()` reuse without `globfree()` and a `usleep()` call with a >1 s user-controlled interval.
+- **HyperMoon "restart"** (`webui/src/stores/hypermoon.js`): now actually kills the processes instead of re-running a liveness check against the still-running daemon.
+- **Exec timeout** (`webui/src/helpers/shell.js`): rejects instead of resolving `''`, so a stuck root call is no longer indistinguishable from an empty result.
+- **SIGTERM grace** (`service.sh`, `uninstall.sh`): waits up to 10 s / 5 s for `restore_baseline_nodes()` to rewrite ~60 sysfs nodes before escalating to SIGKILL.
+
+## Docs
+
+- Corrected the "4-Tier thermal mitigation (Tier 0–3)" claim in `README` and `docs/DOCUMENTATION.txt` — there are three tiers; the fourth was removed in `cb6a602` and the docs were never updated. Same for the `GET_PROFILE` and `ADD_GAME` IPC commands, which do not exist, and the documented socket path.
+- Documented the security model: two-layer integrity, `SO_PEERCRED` trust list, single-instance lock, log location.
+
+## Housekeeping
+
+- Untracked `webui/node_modules` (1263 files already listed in `.gitignore` but committed before it existed). Repository `.git` shrinks from 64 MB to 17 MB.
+
+---
+
 # HyperCore v6.9.2 — Daemon Transition & Factory Baseline Hardening
 
 ## What's Changed

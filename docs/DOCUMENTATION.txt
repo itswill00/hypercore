@@ -3,12 +3,12 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v6.9.2 (Build 6920)
+ Version        : v6.9.3 (Build 6930)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
  Inspiration    : encore @Rem01Gaming
- Release ZIP    : HyperCore-v6.9.2-b6920-Unified.zip
+ Release ZIP    : HyperCore-v6.9.3-b6930-Unified.zip
 ================================================================================
 
 TABLE OF CONTENTS
@@ -20,7 +20,7 @@ TABLE OF CONTENTS
    3.2. Universal Dual-Kernel Sysfs I/O (src/sysfs.c)
    3.3. CPU Cluster, Governor & Uclamp Management (src/cpu.c)
    3.4. Mali GPU & MediaTek GED Driver Optimization (src/gpu.c)
-   3.5. Dynamic 4-Tier Thermal Mitigation System (src/thermal.c)
+   3.5. Dynamic 3-Tier Thermal Guard (src/thermal.c)
    3.6. Auto Game Detector & Foreground Process Scanner (src/gamelist.c)
    3.7. UNIX Domain Socket IPC & Atomic Telemetry Storage (src/ipc.c)
    3.8. Storage I/O Queue & Memory / VM Optimization (src/io.c & src/memory.c)
@@ -28,7 +28,7 @@ TABLE OF CONTENTS
    3.10. SHA-256 Binary Integrity Verification (src/integrity.c & src/sha256.c)
    3.11. System Logging Infrastructure (src/log.c)
 4. HYPERMOON IN-GAME PERFORMANCE HUD SUBSYSTEM
-   4.1. Dual-Engine Architecture (hypermoon_daemon & HyperMoonOverlay.java)
+   4.1. Dual-Engine Architecture (hypermoon_d & HyperMoonOverlay.java)
    4.2. Linux Kernel Inotify FileObserver Synchronization
    4.3. Instant Master Switch & Dynamic Geometry Engine
    4.4. Telemetry Metrics, Presets & Color Themes
@@ -65,7 +65,7 @@ CORE ARCHITECTURAL PRINCIPLES:
    (`/dev/cpuset/`) and Cgroup v2 (`/sys/fs/cgroup/`).
 3. DYNAMIC MULTI-SENSOR THERMAL PROTECTION:
    Continuous thermal telemetry collected from CPU, GPU, Battery, and PMIC Charger
-   sensors with 4-tier progressive mitigation (Tier 0 to Tier 3) and hysteresis.
+   sensors with 3-tier progressive mitigation (Tier 0 to Tier 2) and hysteresis.
 4. UNIFIED CONSOLIDATION (ZERO MODULE BLOAT):
    Integrated native HUD subsystem (HyperMoon) and charging protection directly
    within the core module, eliminating redundant background services and
@@ -98,7 +98,7 @@ hypercore/
 │   ├── sysfs.c                  # Universal Dual-Kernel sysfs/procfs I/O driver
 │   ├── cpu.c                    # CPU cluster frequencies, governor & uclamp
 │   ├── gpu.c                    # Mali GPU devfreq & MediaTek GED manager
-│   ├── thermal.c                # 4-tier thermal monitoring and mitigation
+│   ├── thermal.c                # 3-tier thermal guard and gaming bypass
 │   ├── gamelist.c               # Foreground package scanner and game detector
 │   ├── ipc.c                    # UNIX domain socket IPC & atomic JSON exporter
 │   ├── io.c                     # Block storage read-ahead and queue tuning
@@ -108,7 +108,7 @@ hypercore/
 │   ├── sha256.c                 # Self-contained native SHA-256 implementation
 │   ├── log.c                    # Rotating filesystem logger
 │   ├── hud/                     # HyperMoon HUD native subsystem
-│   │   ├── hypermoon_daemon.c   # Lightweight C telemetry collector
+│   │   ├── hypermoon_d.c   # Lightweight C telemetry collector
 │   │   └── HyperMoonOverlay.java# Dalvik/Surface overlay renderer
 │   └── include/                 # C headers and data structures
 │       ├── common.hpp           # Global structs (hw_nodes, core_state, profiles)
@@ -160,7 +160,7 @@ Function `apply_cpu_profile(profile_t profile)`:
   * `cpu.uclamp.min`: Sets baseline task utilization floor to eliminate initial
     frame hesitation when intensive bursts occur.
   * `cpu.uclamp.max`: Clamps maximum CPU utilization ceiling during Sleep mode
-    or Tier 3 thermal emergency.
+    or Tier 2 thermal emergency.
 - Governor Rate Limits:
   * Adjusts `up_rate_limit_us` (1000 µs in Gaming) and `down_rate_limit_us`
     allowing instantaneous frequency escalation under graphics loads.
@@ -176,18 +176,35 @@ Function `apply_gpu_profile(profile_t profile)`:
   * `ged_smart_boost`: Allocates GPU frequency dynamically aligned with target FPS.
   * `gx_game_mode`: Engages dedicated low-latency gaming mode in the driver.
 
-3.5. Dynamic 4-Tier Thermal Mitigation System (src/thermal.c)
-A 4-tier progressive thermal mitigation algorithm driven by peak hardware sensor
+3.5. Dynamic 3-Tier Thermal Guard (src/thermal.c)
+A progressive thermal mitigation algorithm driven by peak hardware sensor
 readings with built-in hysteresis guards:
 
 +--------+-------------------+--------------------------------------------------+
 | Tier   | Temperature Range | Mitigation Actions                               |
 +--------+-------------------+--------------------------------------------------+
-| Tier 0 | < 42°C (Optimal)  | Full Performance Unthrottled                     |
-| Tier 1 | 42°C – 45°C       | Mild Mitigation: Modest reduction in uclamp min  |
-| Tier 2 | 45°C – 48°C       | Moderate Mitigation: Big core frequency ceiling  |
-| Tier 3 | > 48°C (Critical) | Emergency Mitigation: Enforced Sleep state clock |
+| Tier 0 | Bat < 45°C,       | Full performance. While gaming, the vendor         |
+|        | CPU < 70°C        | thermal stack is suppressed (see 3.9).            |
 +--------+-------------------+--------------------------------------------------+
+| Tier 1 | Bat >= 45°C or    | Ceiling: Little 1.8 GHz, Big 1.8 GHz               |
+|        | CPU >= 70°C       | (2.0 GHz for MOBA). Vendor suppression OFF.        |
+|        |                   | Clears at Bat <= 42°C and CPU <= 64°C.            |
++--------+-------------------+--------------------------------------------------+
+| Tier 2 | Bat >= 48°C or    | Ceiling: Little 1.4 GHz, Big 1.5 GHz               |
+|        | CPU >= 75°C       | Vendor suppression OFF.                           |
+|        |                   | Clears to Tier 0/1 at Bat <= 44°C, CPU <= 68°C.  |
++--------+-------------------+--------------------------------------------------+
+
+Note: there is no Tier 3. Earlier revisions had four tiers; the top tier was
+removed in cb6a602 and this table was corrected to match the implementation.
+
+Charging has its own, independent ladder (src/charger.c). The user's selected
+charge mode is a ceiling that temperature may only lower:
+  >= 45°C  step down one rung (Violent -> Fast -> Balanced -> Safe)
+  >= 50°C  hard floor, force Safe Mode
+  <= 41°C  for 180s continuous  -> restore the user's mode
+OEM Stock and Bypass modes are exempt (OEM is hands-off; Bypass is already the
+coolest user-selectable state).
 
 Sensor inputs monitored: CPU (`thermal_zone16`/`thermal_zone0`), Battery (`battery/temp`),
 GPU (`thermal_zone30`), and Charger IC (`mtk-master-charger`).
@@ -200,13 +217,27 @@ GPU (`thermal_zone30`), and Charger IC (`mtk-master-charger`).
 - When the application is dismissed or minimized, the daemon restores `Interactive`.
 
 3.7. UNIX Domain Socket IPC & Atomic Telemetry Storage (src/ipc.c)
-- Listens on UNIX domain socket `/data/adb/hypercore/hypercore.sock`.
-- Processes commands:
-  * `GET_STATUS`          : Returns complete system telemetry in JSON format.
-  * `GET_PROFILE`         : Returns current active profile name.
-  * `SET_PROFILE:<name>`  : Manual override to Sleep, Interactive, Gaming, or MOBA.
-  * `ADD_GAME:<pkg>`      : Adds a game package to the dynamic gamelist.
-  * `REMOVE_GAME:<pkg>`   : Removes a game package from gamelist.
+- Listens on UNIX domain socket `/dev/hypercore.sock` (a compatibility symlink is
+  kept at `<data_dir>/hypercore.sock` for older external scripts).
+- Every client is authorised with `SO_PEERCRED` before the daemon reads from it.
+  Accepted UIDs: 0 (root — all KernelSU/APatch/Magisk WebUI bridges and
+  hypercore-bugreport spawn helpers as root) and 2000 (adb shell). Untrusted
+  peers are closed immediately, so they cannot stall the tuning loop.
+- Commands:
+  * `GET_STATUS` / `STATUS`  : Returns complete system telemetry in JSON.
+  * `SET_PROFILE:<name>`    : Manual override to AUTO, Sleep, Interactive,
+                              Gaming, or MOBA.
+  * `PURGE_RAM` / `CLEAR_CACHE` : Drop page cache and reclaim.
+  * `PING`                  : Liveness check, replies `PONG`.
+  * `GET_CHARGE_MODE`       : Current + effective charge mode.
+  * `SET_CHARGE_MODE:<0-6>` : OEM / Fast / Balanced / Safe / Bypass /
+                              Violent / Custom.
+  * `SET_CHARGE_LIMIT:<0-15>`: Custom hardware limit level (implies Custom).
+  * `SET_NIGHT_CHARGING:<0|1>`, `SET_SMART_CHG:<0|1>`, `SET_PROTECT_80:<0|1>`.
+- Telemetry is also written atomically (tmp + rename) to `/dev/hypercore_status.json`
+  and `<data_dir>/status.json`.
+- Telemetry logs live at `/data/adb/hypercore/hypercore.log` (root-only), not
+  under `/sdcard`.
 - Function `update_status_json_file()` writes telemetry atomically using temporary
   files (`.tmp`) and `rename()`, preventing corrupt reads by the WebUI.
 
@@ -221,27 +252,45 @@ GPU (`thermal_zone30`), and Charger IC (`mtk-master-charger`).
 3.9. Hardware Charging & Battery Protection Engine (src/charger.c)
 - Interacts directly with physical charging controllers via kernel sysfs nodes
   (`/sys/class/power_supply/battery/charge_control_limit`).
-- Provides 16 discrete hardware charging levels (0 through 15) with dynamic thermal
-  override protection if battery temperatures exceed 43°C.
-- Night charging protection (`night_charging`) and 80% state-of-charge limits (`protect_80`).
+- Provides 16 discrete hardware charging levels (0 through 15) for the Custom
+  slider, plus the OEM / Fast / Balanced / Safe / Bypass / Violent presets.
+- Thermal ladder (see 3.5): the selected mode is a ceiling that temperature may
+  only lower — one rung down at 45°C, forced to Safe Mode at 50°C, restored only
+  after 180 s at or below 41°C. This is a real, enforced limit, not advisory.
+- Night charging protection (`night_charging`) and 80% state-of-charge limits
+  (`protect_80`, with 80%/77% hysteresis).
+- OEM Stock mode writes nothing on periodic ticks and hands all charging
+  regulation back to the kernel and `mi_thermald`.
 
-3.10. SHA-256 Binary Integrity Verification (src/integrity.c & src/sha256.c)
+3.10. SHA-256 Payload Integrity Verification (src/integrity.c & src/sha256.c)
 - Self-contained implementation of the SHA-256 hashing algorithm.
-- Invoked during installation via `--verify-integrity` to compare module file
-  hashes against embedded checksums, preventing unauthorized binary tampering.
+- Layer 1 (install): `customize.sh` runs `sha256sum -c checksums.txt` over the
+  whole extracted payload *before* sourcing or executing any of it. The manifest
+  covers the shipped scripts, `scripts/stock_baseline.sh`, and the
+  `hypermoon_d` / `hypermoon.dex` / `hypercore-bugreport` binaries, plus
+  `libhypercore.so` itself.
+- Layer 2 (runtime): the daemon re-verifies the same set via a table compiled
+  into the binary (`--verify-integrity`), minus `libhypercore.so` — a binary
+  cannot contain its own hash, which is why layer 1 exists.
 
-3.11. System Logging Infrastructure (src/log.c)
+3.11. Single-Instance Lock (src/main.c)
+- An advisory `flock(LOCK_EX | LOCK_NB)` on `<data_dir>/.hypercore_lock`,
+  acquired after `daemon()` and released on exit. Two live daemons would fight
+  over the same sysfs nodes and the loser's `restore_baseline_nodes()` would
+  stomp the survivor's tuning, so a second instance refuses to start.
+
+3.12. System Logging Infrastructure (src/log.c)
 - Appends operational records, thermal events, and profile switches to
-  `/sdcard/Android/hypercore.log`.
-- Features automated log rotation to keep file sizes lightweight.
+  `/data/adb/hypercore/hypercore.log` (root-only; deliberately not `/sdcard`).
+- Features automated log rotation at 512 KB to keep file sizes lightweight.
 
 ================================================================================
 4. HYPERMOON IN-GAME PERFORMANCE HUD SUBSYSTEM
 ================================================================================
 
-4.1. Dual-Engine Architecture (hypermoon_daemon & HyperMoonOverlay.java)
+4.1. Dual-Engine Architecture (hypermoon_d & HyperMoonOverlay.java)
 HyperMoon is an integrated, low-latency on-screen performance monitor:
-- Native C Collector (`hypermoon_daemon`): Gathers sub-millisecond FPS metrics
+- Native C Collector (`hypermoon_d`): Gathers sub-millisecond FPS metrics
   from SurfaceFlinger / Mali GPU devfreq, CPU cluster loads, battery wattage,
   and network throughput, writing state to `/data/adb/hypercore/hud/stats.json`.
 - Java DEX Overlay (`HyperMoonOverlay.java`): Executed via Android `app_process`,
@@ -333,14 +382,22 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
   charging configurations from `/data/adb/hypercore/`.
 - Automatic Game Detection: Scans installed non-system packages (`pm list packages -3`)
   and registers detected games automatically.
-- Integrity Check: Executes `libhypercore.so --verify-integrity` against `checksums.txt`.
+- Integrity Check: Verifies the entire extracted payload with
+  `sha256sum -c checksums.txt` and then again via
+  `libhypercore.so --verify-integrity` — both *before* any payload file is
+  sourced or executed. Aborts the install on any mismatch.
 
 7.2. Boot Service Launcher (service.sh)
 - Awaits complete system initialization (`sys.boot_completed == 1`).
-- Universal ROM Shield: Scans and neutralizes conflicting thermal or tweaking
-  scripts in `service.d` and `post-fs-data.d`.
+- Stops any previous daemon with SIGTERM, waits up to 10 s for it to restore
+  baseline nodes, then escalates to SIGKILL.
 - Launches `libhypercore.so` with automatic failure retry.
-- Launches HyperMoon daemon and overlay processes if configured active.
+- Launches the HyperMoon daemon and overlay if the HUD is configured visible.
+- Note: HyperCore does not touch other modules' scripts. Earlier revisions
+  chmod'd any `service.d` / `post-fs-data.d` entry matching
+  `thermal|tweak|encore|ktweak` to 0644, which silently disabled third-party
+  modules, recorded no original file mode, and was never undone on uninstall.
+  If you run a competing thermal module, disable one of them yourself.
 
 7.3. Post-FS-Data Initialization (post-fs-data.sh) & Uninstaller (uninstall.sh)
 - `post-fs-data.sh`: Directly writes early boot virtual memory settings.

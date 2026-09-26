@@ -11,8 +11,8 @@ int verify_module_integrity(const char *mod_dir) {
     size_t count = sizeof(g_embedded_checksums) / sizeof(g_embedded_checksums[0]);
 
     if (count == 0) {
-        /* Treat empty embedded checksum table as verification failure */
-        log_warn("Security", "No embedded checksums present — integrity verification skipped (treat as failure).");
+        /* No embedded table means the build never populated it. Fail closed. */
+        log_error("Security", "No embedded checksums present — integrity verification FAILED.");
         return 1;
     }
 

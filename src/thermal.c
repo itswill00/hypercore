@@ -376,17 +376,47 @@ int update_thermal_guard(int cpu_temp, int bat_temp) {
 }
 
 /* --------------------------------------------------------------------------
- * Gaming Thermal Bypass Engine
+ * Gaming Thermal Bypass Engine  (tier 0 only)
  * --------------------------------------------------------------------------
- * Active throttling mitigation during gaming workloads:
+ * While the SoC is cool, stop over-eager vendor throttling from costing frames:
  * 1. Enforces Xiaomi sconfig 10 (thermal-nolimits.conf) against mi_thermald resets
  * 2. Suppresses Xiaomi cpu_limits injection
  * 3. Prevents MediaTek FPSGO thermal frametime degradation (thrm_enable = 0)
  * 4. Clears GPU devfreq cooler state to prevent Mali downclocking
  * 5. Restores scaling_max_freq if vendor thermald artificially caps CPU clocks
+ *
+ * At tier >= 1 items 1-4 are skipped: we stop fighting the vendor thermal stack
+ * and fall back to our own frequency ceilings. See update_thermal_guard() for
+ * the tier definitions.
  * -------------------------------------------------------------------------- */
 void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
     if (prof != PROFILE_Gaming && prof != PROFILE_Gaming_MOBA) return;
+
+    /* Frequency ceilings are the module's own thermal guard and apply at every
+     * tier. Tier 2 pins both clusters well below the hardware ceiling so heat
+     * has somewhere to go. */
+    int target_lit_max, target_big_max;
+    switch (tier) {
+        case 2:
+            target_lit_max = 1400000;
+            target_big_max = 1500000;
+            break;
+        case 1:
+            target_lit_max = 1800000;
+            target_big_max = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
+            break;
+        default:
+            target_lit_max = (g_nodes.lit_hw_max_freq > 0) ? g_nodes.lit_hw_max_freq : 2000000;
+            target_big_max = (g_nodes.big_hw_max_freq > 0) ? g_nodes.big_hw_max_freq : 2200000;
+            break;
+    }
+
+    /* At tier >= 1 we stop suppressing the vendor thermal stack entirely and
+     * rely on the ceilings above. The bypass below exists to stop over-eager
+     * throttling during gameplay while the SoC is genuinely cool — it is not a
+     * substitute for thermal protection, and winning the race against
+     * mi_thermald at 75°C is how you cook the device. */
+    if (tier >= 1) return;
 
     /* 1. Enforce Xiaomi sconfig 10 (thermal-nolimits.conf) */
     char sconfig_val[32] = "";
@@ -428,10 +458,9 @@ void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
         }
     }
 
-    /* 5. CPU scaling_max_freq protection: prevent mi_thermald from capping clocks */
-    int target_lit_max = (tier == 2) ? 1800000 : (g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000);
-    int target_big_max = (tier == 2) ? 1800000 : ((tier == 1 && prof == PROFILE_Gaming_MOBA) ? 2000000 : (g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000));
-
+    /* 5. CPU scaling_max_freq protection: restore any cap the vendor thermal
+     *    daemon applied. Only ever raises a ceiling, and only up to what the
+     *    active tier permits. */
     int cur_lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
     if (cur_lit_max > 0 && cur_lit_max < target_lit_max) {
         char buf[32];

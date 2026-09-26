@@ -93,7 +93,15 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
   async function checkStatus() {
     try {
       const opid = await execCommand("pgrep -f 'com.hypermoon.HyperMoonOverlay|com.fpsmoon.FPSMoonOverlay' 2>/dev/null | head -n1")
-      const dpid = await execCommand("pidof hypermoon_daemon 2>/dev/null || pidof fpsmoon_daemon 2>/dev/null")
+      // The binary is `hypermoon_d` (11 chars), not `hypermoon_daemon` (16).
+      // pidof/pkill match the kernel's 15-char comm field, so the old name was
+      // invisible to them: the liveness check below always reported "not
+      // running" and every HUD toggle spawned another daemon. The -f form is
+      // kept as a fallback so a future rename cannot silently reintroduce it.
+      const dpid = await execCommand(
+        "pidof hypermoon_d 2>/dev/null || pidof fpsmoon_d 2>/dev/null || " +
+        "pgrep -f '/system/bin/hypermoon_d' 2>/dev/null | head -n1"
+      )
 
       overlayPid.value = opid ? opid.trim() : ''
       daemonPid.value = dpid ? dpid.trim() : ''
@@ -115,9 +123,9 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     if (enable) {
       const ensureCmd = `
         mkdir -p ${HUD_DIR} 2>/dev/null
-        if ! pidof hypermoon_daemon >/dev/null 2>&1; then
+        if ! pidof hypermoon_d >/dev/null 2>&1 && ! pgrep -f '/system/bin/hypermoon_d' >/dev/null 2>&1; then
           export HYPERMOON_STATE_DIR="${HUD_DIR}"
-          nohup /data/adb/modules/hypercore/system/bin/hypermoon_daemon > "${HUD_DIR}/daemon.log" 2>&1 &
+          nohup /data/adb/modules/hypercore/system/bin/hypermoon_d > "${HUD_DIR}/daemon.log" 2>&1 &
         fi
         if ! pgrep -f 'com.hypermoon.HyperMoonOverlay' >/dev/null 2>&1; then
           export HYPERMOON_STATE_DIR="${HUD_DIR}"
@@ -148,7 +156,15 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     loading.value = true
     try {
       await toggleMaster(false)
-      await new Promise(r => setTimeout(r, 300))
+      // Actually stop the processes. Toggling visible off only writes config —
+      // without this the "restart" just re-ran the liveness check against the
+      // still-running daemon and reported success without restarting anything.
+      await execCommand(
+        "pkill -f 'com.hypermoon.HyperMoonOverlay' 2>/dev/null || true; " +
+        "pkill -9 -x hypermoon_d 2>/dev/null || true; " +
+        "pkill -9 -f '/system/bin/hypermoon_d' 2>/dev/null || true"
+      ).catch(() => {})
+      await new Promise(r => setTimeout(r, 600))
       await toggleMaster(true)
       return 'Overlay restarted'
     } catch {

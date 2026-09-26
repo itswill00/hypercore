@@ -23,10 +23,16 @@
 #define LIMIT_BALANCED 10  /* Level 10: 2,318 mA (~2.3A / ~9.3W)  - Balanced (cool active usage) */
 #define LIMIT_SAFE     14  /* Level 14: 727 mA   (~0.73A / ~2.8W) - Safe (overnight & GPS) */
 
-/* Safety thresholds */
-#define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: start gradual step-down            */
-#define TEMP_EMERGENCY        50   /* >= 50°C: force BYPASS (emergency cutoff)    */
-#define TEMP_OVERRIDE_CLEAR   41   /* <= 41°C: sustained cool temp for step-up    */
+/* Thermal ladder thresholds.
+ * The user's selected mode is a CEILING, never a guarantee: temperature may
+ * only lower it. Without this, a 30W+ mode charges a Li-Po cell at full rate
+ * regardless of temperature and we depend entirely on mi_thermald to stop us —
+ * which several ROMs do not do for charge current. */
+#define TEMP_OVERRIDE_ENTER   45   /* >= 45°C: step down one rung                 */
+#define TEMP_EMERGENCY        50   /* >= 50°C: hard floor, force Safe Mode        */
+#define TEMP_OVERRIDE_CLEAR   41   /* <= 41°C: eligible to climb back up          */
+#define TEMP_STEP_UP_HOLD    180   /* seconds below CLEAR before climbing back up */
+
 #define CAP_MIN_BYPASS        10   /* <  10%:  auto-resume from BYPASS to SAFE    */
 #define CAP_MIN_BYPASS_RESTORE 12  /* >= 12%:  hysteresis clear for BYPASS resume */
 
@@ -37,6 +43,44 @@ static int s_custom_charge_limit = LIMIT_BALANCED;   /* custom slider hardware l
 static int s_night_charging      = 0;  /* 1 = night charging protection (pauses at 80% overnight) */
 static int s_smart_chg           = 0;  /* 1 = smart charging curve enabled */
 static int s_protect_80          = 0;  /* 1 = user hard limit to stop charging at 80% */
+
+/* Thermal ladder state. s_thermal_rung is the rung currently forced by
+ * temperature (-1 = user's own mode is in effect). */
+static int   s_thermal_rung   = -1;
+static time_t s_cool_since    = 0;
+
+/* Rung 0 = most aggressive, rung 3 = coolest. OEM and BYPASS are deliberately
+ * absent: OEM means "hands off to the vendor stack" and BYPASS means the user
+ * already asked for the coolest thing possible — neither is ours to override. */
+#define RUNG_VIOLENT  0
+#define RUNG_FAST     1
+#define RUNG_BALANCED 2
+#define RUNG_SAFE     3
+
+static const int s_ladder_modes[] = {
+    CHARGE_MODE_VIOLENT, CHARGE_MODE_FAST, CHARGE_MODE_BALANCED, CHARGE_MODE_SAFE
+};
+#define LADDER_COUNT ((int)(sizeof(s_ladder_modes) / sizeof(s_ladder_modes[0])))
+
+/* Map a mode to its rung, or -1 if the mode is not ladder-managed. */
+static int ladder_rung(int mode) {
+    switch (mode) {
+        case CHARGE_MODE_VIOLENT:  return RUNG_VIOLENT;
+        case CHARGE_MODE_FAST:     return RUNG_FAST;
+        /* Custom is user-tuned but sits between FAST and BALANCED in risk. */
+        case CHARGE_MODE_CUSTOM:   return RUNG_FAST;
+        case CHARGE_MODE_BALANCED: return RUNG_BALANCED;
+        case CHARGE_MODE_SAFE:     return RUNG_SAFE;
+        default:                   return -1;
+    }
+}
+
+/* Rung back to a mode, clamping anything out of range to the coolest rung. */
+static int rung_mode(int rung) {
+    if (rung < 0) rung = 0;
+    if (rung >= LADDER_COUNT) rung = LADDER_COUNT - 1;
+    return s_ladder_modes[rung];
+}
 
 /* --------------------------------------------------------------------------
  * Internal helpers
@@ -241,7 +285,9 @@ void enforce_charge_mode(void) {
         return;
     }
 
-    (void)sysfs_read_int(g_nodes.bat_temp); /* keep thermal zone fresh, no throttling re-enabled */
+    /* Raw zone value is un-normalised (milli- or deci-degrees on most OEMs). */
+    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+    normalize_thermal_temps(NULL, &bat_temp);
 
     int bat_cap = sysfs_read_int(CHG_CAPACITY_NODE);
     if (bat_cap <= 0) bat_cap = 50; /* safe default if node unavailable */
@@ -291,9 +337,62 @@ void enforce_charge_mode(void) {
             effective_mode = CHARGE_MODE_SAFE;
         }
     } else {
-        /* Thermal ladder disabled — user selected mode is maintained */
-        effective_mode = s_user_charge_mode;
+        /* --- Thermal ladder ------------------------------------------------
+         * The user's mode is a ceiling; temperature may only lower it.
+         *   >= TEMP_EMERGENCY  hard floor to Safe Mode
+         *   >= TEMP_OVERRIDE_ENTER  step down one rung
+         *   <= TEMP_OVERRIDE_CLEAR   start a TEMP_STEP_UP_HOLD timer; only
+         *                             climb back after it expires
+         * Anything in the band between CLEAR and ENTER freezes the current
+         * rung, which keeps a cell hovering near the threshold from flapping
+         * between charge rates. */
+        int base_rung = ladder_rung(s_user_charge_mode);
+        time_t now = time(NULL);
+
+        /* Not BYPASS, so the low-battery BYPASS override no longer applies. */
         s_override_active = 0;
+
+        if (base_rung < 0) {
+            /* OEM / BYPASS: not ladder-managed — drop any stale override. */
+            if (s_thermal_rung >= 0) {
+                s_thermal_rung = -1;
+                s_cool_since = 0;
+            }
+        } else if (bat_temp >= TEMP_EMERGENCY) {
+            if (s_thermal_rung != RUNG_SAFE) {
+                log_warn("Charger", "Battery %d°C >= %d°C — thermal override: forcing Safe Mode",
+                         bat_temp, TEMP_EMERGENCY);
+            }
+            s_thermal_rung = RUNG_SAFE;
+            s_cool_since = 0;
+        } else if (bat_temp >= TEMP_OVERRIDE_ENTER) {
+            if (s_thermal_rung < 0) {
+                s_thermal_rung = base_rung + 1;
+                log_warn("Charger", "Battery %d°C >= %d°C — thermal override: stepping down to %s",
+                         bat_temp, TEMP_OVERRIDE_ENTER, charge_mode_name(rung_mode(s_thermal_rung)));
+            }
+            s_cool_since = 0;
+        } else if (bat_temp <= TEMP_OVERRIDE_CLEAR) {
+            if (s_cool_since == 0) {
+                s_cool_since = now;
+            } else if (now - s_cool_since >= TEMP_STEP_UP_HOLD) {
+                if (s_thermal_rung >= 0) {
+                    log_info("Charger", "Battery %d°C cool for %ds — thermal override cleared, restoring %s",
+                             bat_temp, TEMP_STEP_UP_HOLD, charge_mode_name(s_user_charge_mode));
+                }
+                s_thermal_rung = -1;
+                s_cool_since = 0;
+            }
+        } else {
+            /* Dead band: neither hot nor cool. Hold position. */
+            s_cool_since = 0;
+        }
+
+        if (s_thermal_rung >= 0) {
+            effective_mode = rung_mode(s_thermal_rung);
+        } else {
+            effective_mode = s_user_charge_mode;
+        }
     }
 
     /* Update global state & apply to hardware nodes */
@@ -323,6 +422,8 @@ void set_charge_mode(int mode) {
     if (mode == CHARGE_MODE_OEM) {
         /* User switched to OEM Stock: restore hardware baseline ONCE,
          * then completely release control to OEM kernel/thermal engine. */
+        s_thermal_rung = -1;
+        s_cool_since = 0;
         apply_suspend_if_needed(0);
         apply_limit_if_needed(0);
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");

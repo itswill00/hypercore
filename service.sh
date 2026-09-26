@@ -10,18 +10,23 @@ sleep 2
 
 mkdir -p /data/adb/hypercore 2>/dev/null || true
 
-# Graceful stop old daemon so it restores baseline nodes before new one takes over
+# Graceful stop old daemon so it restores baseline nodes before new one takes over.
+# Give restore_baseline_nodes() (it rewrites ~60 sysfs nodes) room to finish
+# before escalating to SIGKILL, otherwise a killed daemon leaves nodes stranded.
 pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
-sleep 1
-pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
-rm -f "$MODDIR/hypercore.sock" "$MODDIR/hypercore.pid" /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null || true
-
-# Universal ROM Shield: scan and suppress conflicting legacy boot scripts in service.d or post-fs-data.d
-for script in /data/adb/service.d/* /data/adb/post-fs-data.d/*; do
-    if [ -f "$script" ] && echo "$script" | grep -v "hypercore" | grep -iE 'thermal|tweak|encore|ktweak' >/dev/null 2>&1; then
-        chmod 644 "$script" 2>/dev/null || true
-    fi
+for _i in 1 2 3 4 5 6 7 8 9 10; do
+    pidof libhypercore.so >/dev/null 2>&1 || break
+    sleep 1
 done
+pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
+rm -f "$MODDIR/hypercore.sock" "$MODDIR/hypercore.pid" /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid /data/adb/hypercore/.hypercore_lock /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null || true
+
+# NOTE: HyperCore deliberately does NOT touch other modules' scripts.
+# An earlier version chmod'd any /data/adb/service.d/* or post-fs-data.d/*
+# entry matching 'thermal|tweak|encore|ktweak' to 0644 to "win" conflicts.
+# That silently disabled third-party modules, recorded no original mode, and
+# was never undone on uninstall. Documented conflicts in docs/DOCUMENTATION.txt
+# instead.
 
 # Ensure Xiaomi thermal control nodes are writable
 chmod 666 /sys/class/thermal/thermal_message/sconfig \
@@ -52,9 +57,9 @@ mkdir -p "$HUD_STATE" 2>/dev/null
 chmod 777 "$HUD_STATE" 2>/dev/null || true
 
 if [ -f "$HUD_STATE/config.json" ] && grep -q '"visible"[[:space:]]*:[[:space:]]*true' "$HUD_STATE/config.json" 2>/dev/null; then
-    if [ -f "$MODDIR/system/bin/hypermoon_daemon" ]; then
+    if [ -f "$MODDIR/system/bin/hypermoon_d" ]; then
         export HYPERMOON_STATE_DIR="$HUD_STATE"
-        nohup "$MODDIR/system/bin/hypermoon_daemon" > "$HUD_STATE/daemon.log" 2>&1 &
+        nohup "$MODDIR/system/bin/hypermoon_d" > "$HUD_STATE/daemon.log" 2>&1 &
     fi
     if [ -f "$MODDIR/system/bin/hypermoon.dex" ]; then
         export HYPERMOON_STATE_DIR="$HUD_STATE"

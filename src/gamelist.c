@@ -1,5 +1,6 @@
 
 #include "gamelist.hpp"
+#include "sysfs.hpp"
 
 #define MAX_GAMES 256
 #define PKG_NAME_LEN 128
@@ -12,6 +13,17 @@ static int       s_inotify_fd = -1;
 static size_t    s_pkg_lens[MAX_GAMES];
 static int       s_lens_cached = 0;
 
+
+/* Auto-detection shells out to `pm list packages`, which spawns app_process and
+ * costs a few hundred milliseconds. is_game_in_foreground() re-enters
+ * load_gamelist() on every main-loop tick while the list is empty, so without a
+ * rate limit a device with no recognisable games would fork a Java process up
+ * to twice a second, forever. */
+#define AUTODETECT_INTERVAL 3600  /* re-probe at most hourly */
+#define DUMPSYS_INTERVAL     10   /* `dumpsys window` fallback scan, seconds  */
+
+static time_t s_last_autodetect = 0;
+static int    s_autodetect_done = 0;
 
 void load_gamelist(void) {
     s_game_count = 0;
@@ -79,7 +91,14 @@ void load_gamelist(void) {
         fclose(f);
     }
 
-    if (s_game_count == 0) {
+    if (s_game_count == 0 && !s_autodetect_done) {
+        time_t now = time(NULL);
+        if (now - s_last_autodetect < AUTODETECT_INTERVAL) {
+            return;   /* f is already closed by the parse block above */
+        }
+        s_last_autodetect = now;
+        s_autodetect_done = 1;
+
         FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom'", "r");
         if (pp) {
             char pkg_buf[128];
@@ -267,10 +286,16 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
         fclose(fp);
     }
 
-    /* Rate-limited dumpsys window fallback scan (every 3s) for OEM game spaces (e.g. Game Turbo) */
+    /* Rate-limited dumpsys window fallback for OEM game spaces (e.g. Game Turbo)
+     * that do not place the game in the top-app cgroup. `dumpsys window` dumps
+     * the whole WindowManager state and costs ~100ms, so it only runs while the
+     * screen is on and never more than once per DUMPSYS_INTERVAL. */
     static time_t s_last_dumpsys = 0;
     time_t now_ds = time(NULL);
-    if (now_ds - s_last_dumpsys >= 3) {
+    int screen_on = (g_nodes.backlight[0] != '\0') ? (sysfs_read_int(g_nodes.backlight) > 0) : 1;
+
+    if (screen_on && g_state.current_profile != PROFILE_Sleep &&
+        now_ds - s_last_dumpsys >= DUMPSYS_INTERVAL) {
         s_last_dumpsys = now_ds;
         FILE *pp = popen("dumpsys window 2>/dev/null | grep -m1 -E 'mCurrentFocus|mFocusedApp'", "r");
         if (pp) {

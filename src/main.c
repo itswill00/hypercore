@@ -240,6 +240,54 @@ static void remove_pid_file(void) {
     unlink(g_nodes.pid_file);
 }
 
+/* Single-instance guard.
+ *
+ * service.sh kills the old daemon by name before starting a new one, but that
+ * leaves a race window, and build.sh --deploy can overlap. Two live daemons
+ * fight over the same sysfs nodes — one applying Gaming while the other applies
+ * Sleep — and whichever exits last runs restore_baseline_nodes(), stomping the
+ * survivor's tuning. An advisory flock closes the window properly.
+ *
+ * The lock is taken after daemon() so it belongs to the final process, and the
+ * fd is >= 3 so daemon()'s close of stdin/stdout/stderr does not drop it. The
+ * kernel releases it when the process exits, including on SIGKILL. */
+static int s_lock_fd = -1;
+
+static int acquire_single_instance_lock(void) {
+    snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file),
+             "%s/.hypercore_lock", g_nodes.data_dir);
+
+    s_lock_fd = open(g_nodes.lock_file, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+    if (s_lock_fd < 0) {
+        /* Refusing to start over an unwritable data dir would be worse than
+         * running unprotected, so degrade with a loud warning instead. */
+        log_warn("Lock", "Cannot open lock file '%s' (errno=%d) — running WITHOUT single-instance guard",
+                 g_nodes.lock_file, errno);
+        return 0;
+    }
+
+    if (flock(s_lock_fd, LOCK_EX | LOCK_NB) != 0) {
+        int err = errno;
+        close(s_lock_fd);
+        s_lock_fd = -1;
+        if (err == EWOULDBLOCK) {
+            log_error("Lock", "Another HyperCore daemon already holds %s — refusing to start a second instance.",
+                      g_nodes.lock_file);
+        } else {
+            log_error("Lock", "flock() failed on %s (errno=%d) — refusing to start.", g_nodes.lock_file, err);
+        }
+        return -1;
+    }
+
+    /* Record the owning pid so `pidof`-free debugging is possible. */
+    if (ftruncate(s_lock_fd, 0) == 0) {
+        char pidbuf[16];
+        int n = snprintf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
+        if (n > 0) { ssize_t w = pwrite(s_lock_fd, pidbuf, (size_t)n, 0); (void)w; }
+    }
+    return 0;
+}
+
 static int is_screen_on(void) {
     int bl_val = -1;
     if (g_nodes.backlight[0] != '\0' && access(g_nodes.backlight, F_OK) == 0) {
@@ -383,6 +431,9 @@ int main(int argc, char *argv[]) {
     signal(SIGPIPE, SIG_IGN);
 
     init_hardware_nodes();
+    if (acquire_single_instance_lock() != 0) {
+        return 1;
+    }
     verify_module_integrity(g_nodes.mod_dir);
     detect_cpu_hardware_limits();
     detect_max_gpu_freq();
@@ -598,9 +649,10 @@ int main(int argc, char *argv[]) {
 
         handle_ipc_events(poll_timeout_ms);
 
-        if (g_screen_changed) {
-            g_screen_changed = 0;
-        }
+        /* g_screen_changed / g_uevent_received are edge triggers used to pull
+         * the poll() forward; the loop re-evaluates every tick regardless, so
+         * there is nothing left to do but clear them. */
+        g_screen_changed = 0;
         g_uevent_received = 0;
     }
 
@@ -616,6 +668,11 @@ int main(int argc, char *argv[]) {
     if (g_nodes.netlink_fd >= 0) {
         close(g_nodes.netlink_fd);
         g_nodes.netlink_fd = -1;
+    }
+    if (s_lock_fd >= 0) {
+        close(s_lock_fd);   /* releases the flock */
+        s_lock_fd = -1;
+        unlink(g_nodes.lock_file);
     }
     remove_pid_file();
     return 0;
