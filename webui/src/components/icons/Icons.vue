@@ -104,6 +104,14 @@
       <polyline points="15 18 9 12 15 6" />
     </g>
 
+    <g v-else-if="name === 'chevron-up' || name === 'arrow-up'">
+      <polyline points="18 15 12 9 6 15" />
+    </g>
+
+    <g v-else-if="name === 'chevron-down' || name === 'arrow-down'">
+      <polyline points="6 9 12 15 18 9" />
+    </g>
+
     <g v-else-if="name === 'hud' || name === 'monitor' || name === 'overlay'">
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
       <line x1="8" y1="21" x2="16" y2="21" />

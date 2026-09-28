@@ -58,9 +58,44 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
 
   let debounceTimer = null
   let pollingTimer = null
+  let posTimer = null
+
+  const position = ref({ x: 697, y: 411 })
+
+  async function loadPosition() {
+    try {
+      const out = await execCommand(`cat ${POS_FILE} 2>/dev/null`)
+      if (out && out.trim().startsWith('{')) {
+        const parsed = JSON.parse(out.trim())
+        if (Number.isFinite(+parsed.x)) position.value.x = Math.max(0, Math.round(+parsed.x))
+        if (Number.isFinite(+parsed.y)) position.value.y = Math.max(0, Math.round(+parsed.y))
+      }
+    } catch {}
+  }
+
+  function setPosition(x, y, immediate = false) {
+    position.value.x = Math.max(0, Math.round(x))
+    position.value.y = Math.max(0, Math.round(y))
+    // The overlay (WindowManager AND hardware SurfaceControl paths) re-reads
+    // position.json every refresh tick and clamps to screen bounds, so this
+    // is the universal move primitive — including on Android 14 QPR3+/15
+    // where direct finger-drag is impossible (no input channel on raw surfaces).
+    if (posTimer) clearTimeout(posTimer)
+    const write = () => {
+      const json = JSON.stringify({ x: position.value.x, y: position.value.y })
+      execCommand(`echo '${json}' > ${POS_FILE} && chmod 666 ${POS_FILE} 2>/dev/null`).catch(() => {})
+    }
+    if (immediate) write()
+    else posTimer = setTimeout(write, 120)
+  }
+
+  function nudgePosition(dx, dy) {
+    setPosition(position.value.x + dx, position.value.y + dy)
+  }
 
   async function init() {
     await loadConfig()
+    await loadPosition()
     await checkStatus()
     startPollingStats()
   }
@@ -144,8 +179,7 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
 
   async function resetPosition() {
     try {
-      const defPos = JSON.stringify({ x: 697, y: 411 }, null, 2)
-      await execCommand(`echo '${defPos}' > ${POS_FILE} && chmod 666 ${POS_FILE} 2>/dev/null`)
+      setPosition(697, 411, true)
       return 'Position reset'
     } catch {
       return 'Failed to reset position'
@@ -285,12 +319,16 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
   return {
     config,
     stats,
+    position,
     isRunning,
     overlayPid,
     daemonPid,
     loading,
     init,
     loadConfig,
+    loadPosition,
+    setPosition,
+    nudgePosition,
     saveConfig,
     saveConfigDebounced,
     checkStatus,

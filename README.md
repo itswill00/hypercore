@@ -216,6 +216,7 @@ HyperMoonOverlay (Java DEX via app_process)    →  draws floating pill / card
 - **Metrics:** FPS, frametime, CPU load + freq + governor, GPU load + freq + governor, RAM, ZRAM, battery W/temp, network throughput
 - **Layouts:** horizontal pill ↔ vertical card • Minimal / Compact / Detailed one-tap presets • Cyber Neon, AMOLED Dark, Matrix Green, Crimson Red + custom hex
 - **Auto-gaming:** appears in games, hides in daily use • sub-ms config sync via kernel `inotify`
+- **Positioning:** drag with a finger on Android ≤14, or WebUI D-pad + X/Y sliders on any version — required on Android 14 QPR3+/15 where the overlay runs on a hardware surface with no input channel
 - **Geometry:** width, height, scale, font, radius, opacity, refresh interval — all live sliders
 
 ---

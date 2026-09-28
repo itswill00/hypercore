@@ -326,6 +326,73 @@
 
       </div>
 
+      <!-- Overlay Position (works on all Android versions — direct drag is
+           unavailable on Android 14 QPR3+/15 where the overlay runs on a
+           hardware surface without an input channel) -->
+      <div class="section-title">Position</div>
+      <div class="md3-list-group" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <div class="dpad-grid">
+            <span></span>
+            <button class="dpad-btn" @click="hudStore.nudgePosition(0, -20)" title="Move up">
+              <Icons name="chevron-up" :size="18" />
+            </button>
+            <span></span>
+            <button class="dpad-btn" @click="hudStore.nudgePosition(-20, 0)" title="Move left">
+              <Icons name="chevron-left" :size="18" />
+            </button>
+            <div class="dpad-center">{{ hudStore.position.x }}, {{ hudStore.position.y }}</div>
+            <button class="dpad-btn" @click="hudStore.nudgePosition(20, 0)" title="Move right">
+              <Icons name="chevron-right" :size="18" />
+            </button>
+            <span></span>
+            <button class="dpad-btn" @click="hudStore.nudgePosition(0, 20)" title="Move down">
+              <Icons name="chevron-down" :size="18" />
+            </button>
+            <span></span>
+          </div>
+          <div style="flex: 1; font-size: 11px; line-height: 1.5; color: var(--on-surface-variant);">
+            Tap arrows to nudge 20&nbsp;px. The overlay clamps itself to screen bounds automatically.
+          </div>
+        </div>
+
+        <!-- Position X -->
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">Position X</span>
+            <span class="slider-val">{{ hudStore.position.x }} px</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1440"
+            step="5"
+            class="md3-range-slider"
+            :value="hudStore.position.x"
+            @input="onPosX($event)"
+          />
+        </div>
+
+        <!-- Position Y -->
+        <div class="slider-row">
+          <div class="slider-header">
+            <span class="slider-label">Position Y</span>
+            <span class="slider-val">{{ hudStore.position.y }} px</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="3200"
+            step="5"
+            class="md3-range-slider"
+            :value="hudStore.position.y"
+            @input="onPosY($event)"
+          />
+        </div>
+
+      </div>
+
       <!-- Smart Game Auto-Trigger Option -->
       <div class="section-title">Automation</div>
       <div class="md3-list-group">
@@ -363,7 +430,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">Reset Position</div>
-              <div class="row-sub">Move overlay back to top-left corner</div>
+              <div class="row-sub">Move overlay back to the default spot</div>
             </div>
           </div>
           <Icons name="chevron-right" :size="18" style="color: var(--on-surface-variant);" />
@@ -520,6 +587,14 @@ function toggleItem(key) {
 async function onResetPosition() {
   const msg = await hudStore.resetPosition()
   if (msg && toast) toast(msg)
+}
+
+function onPosX(e) {
+  hudStore.setPosition(+e.target.value, hudStore.position.y)
+}
+
+function onPosY(e) {
+  hudStore.setPosition(hudStore.position.x, +e.target.value)
 }
 
 async function onRestartEngine() {
@@ -696,6 +771,46 @@ async function onRestartEngine() {
 
 .clickable {
   cursor: pointer;
+}
+
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--surface-container-high);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dpad-btn:active {
+  transform: scale(0.92);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+
+.dpad-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-variant);
+  text-align: center;
+  line-height: 1.2;
 }
 
 .clickable:active {
