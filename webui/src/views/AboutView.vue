@@ -418,7 +418,7 @@ function toggleExpand(key) {
 
 .about-hero-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--on-surface);
   letter-spacing: -0.4px;
@@ -492,7 +492,7 @@ function toggleExpand(key) {
   font-size: 10px;
   color: var(--on-surface-variant);
   opacity: 0.45;
-  padding: 16px 0 24px 0;
+  padding: 12px 0 20px 0;
   font-family: inherit;
 }
 </style>

@@ -6,11 +6,11 @@
       <div class="md3-banner" :style="{ backgroundImage: `url(${bannerImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }">
         <div class="banner-overlay"></div>
         <div class="row-left">
-          <div class="icon-badge" style="width: 44px; height: 44px;">
+          <div class="icon-badge" style="width: 40px; height: 40px;">
             <Icons name="chip" :size="22" />
           </div>
           <div class="row-meta">
-            <div class="row-title" style="font-size: 16px;">HyperCore</div>
+            <div class="row-title" style="font-size: 15px;">HyperCore</div>
             <div class="row-sub">Kernel Optimizer for MediaTek MT6789 Family</div>
           </div>
         </div>
@@ -54,7 +54,7 @@
 
       <ActionButtons />
 
-      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0;">
+      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 8px 0 16px 0;">
         Inspired by encore @Rem01Gaming
       </div>
     </div>
