@@ -2,7 +2,7 @@
   <img src="banner.jpg" alt="HyperCore Banner" width="100%">
 </p>
 
-<h1 align="center">⚡ HyperCore</h1>
+<h1 align="center">HyperCore</h1>
 
 <p align="center">
   <strong>Universal Dual-Kernel performance & thermal optimizer for MediaTek MT6789 Family</strong><br>
@@ -22,35 +22,35 @@
 </p>
 
 <p align="center">
-  <a href="#-installation">📦 Installation</a> •
-  <a href="#-operational-profiles">🎯 Profiles</a> •
-  <a href="#-thermal--charging">🌡️ Thermal</a> •
-  <a href="#-hypermoon-hud">🌕 HUD</a> •
-  <a href="#-webui">🖥️ WebUI</a> •
-  <a href="#-security-model">🔒 Security</a> •
-  <a href="#-troubleshooting">🛠️ Troubleshooting</a>
+  <a href="#-installation">Installation</a> •
+  <a href="#-operational-profiles">Profiles</a> •
+  <a href="#-thermal--charging">Thermal</a> •
+  <a href="#-hypermoon-hud">HUD</a> •
+  <a href="#-webui">WebUI</a> •
+  <a href="#-security-model">Security</a> •
+  <a href="#-troubleshooting">Troubleshooting</a>
 </p>
 
 ---
 
 ## 📑 Table of Contents
 
-- [✨ Overview](#-overview)
-- [🚀 Key Features](#-key-features)
-- [🎯 Operational Profiles](#-operational-profiles)
-- [🌡️ Thermal & Charging](#️-thermal--charging)
-- [🌕 HyperMoon HUD](#-hypermoon-hud)
-- [🖥️ WebUI](#️-webui)
-- [🔒 Security Model](#-security-model)
-- [🔌 IPC Protocol](#-ipc-protocol)
-- [🔄 Daemon Lifecycle](#-daemon-lifecycle)
-- [🏗️ Codebase Architecture](#️-codebase-architecture)
-- [📦 Installation](#-installation)
-- [🎮 Game List Configuration](#-game-list-configuration)
-- [🔨 Building from Source](#-building-from-source)
-- [✅ Requirements](#-requirements)
-- [🛠️ Troubleshooting](#️-troubleshooting)
-- [📜 License & Attribution](#-license--attribution)
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [Operational Profiles](#-operational-profiles)
+- [Thermal & Charging](#-thermal--charging)
+- [HyperMoon HUD](#-hypermoon-hud)
+- [WebUI](#-webui)
+- [Security Model](#-security-model)
+- [IPC Protocol](#-ipc-protocol)
+- [Daemon Lifecycle](#-daemon-lifecycle)
+- [Codebase Architecture](#-codebase-architecture)
+- [Installation](#-installation)
+- [Game List Configuration](#-game-list-configuration)
+- [Building from Source](#-building-from-source)
+- [Requirements](#-requirements)
+- [Troubleshooting](#-troubleshooting)
+- [License & Attribution](#-license--attribution)
 
 ---
 
@@ -58,72 +58,72 @@
 
 Android devices often suffer frame drops and scrolling stutters from conservative CPU/GPU scaling and governor delays. **HyperCore** runs a native C daemon (`libhypercore.so`) in the background that dynamically tunes — based on real-time workload state:
 
-> CPU governors &bull; uclamp targets &bull; Mali GPU devfreq scaling &bull; MediaTek GED / FPSGO drivers &bull; DVFSRC bandwidth &bull; storage read-ahead &bull; thermal limits &bull; charging current
+> CPU governors • uclamp targets • Mali GPU devfreq scaling • MediaTek GED / FPSGO drivers • DVFSRC bandwidth • storage read-ahead • thermal limits • charging current
 
 | | |
 | :--- | :--- |
-| 🎯 **What it does** | Kills stutter, stabilizes gaming FPS, cools sustained load, protects the battery — automatically, no manual toggling |
-| 🧠 **How it decides** | Foreground-app scan + screen state + system load → one of 4 profiles, re-evaluated every tick |
-| 🤝 **How it coexists** | Never replaces the kernel thermal stack — it works *alongside* `mi_thermald` / vendor drivers and defers to them when hot |
+| **What it does** | Kills stutter, stabilizes gaming FPS, cools sustained load, protects the battery — automatically, no manual toggling |
+| **How it decides** | Foreground-app scan + screen state + system load → one of 4 profiles, re-evaluated every tick |
+| **How it coexists** | Never replaces the kernel thermal stack — it works *alongside* `mi_thermald` / vendor drivers and defers to them when hot |
 
 ---
 
 ## 🚀 Key Features
 
 <details open>
-<summary><b>🧩 Core Engine</b></summary>
+<summary><b>Core Engine</b></summary>
 
 <br>
 
 | Feature | Description |
 | :--- | :--- |
-| 🔀 **Universal Dual-Kernel** | One binary across Linux 5.10 → 6.12+ GKI (Android 12–16), with Cgroup v1 (`/dev/cpuset/`) + v2 (`/sys/fs/cgroup/`) sysfs fallback drivers |
-| ⚡ **Non-blocking loop** | POSIX process management, zero heap allocation in the hot loop, adaptive poll intervals (0.5 s gaming → 8 s sleep) |
-| 📝 **Read-before-write sysfs** | Every node is read first — no redundant kernel writes, no wakeup spam |
-| 👁️ **Event-driven watchers** | `inotify` on backlight nodes + `netlink` uevents wake the loop early on screen/battery changes |
-| 🔁 **Boot settle (v6.9.4)** | Re-applies Interactive at ticks 5/15/30 to cover late-probing drivers and vendor overwrites, then verifies the result in the log |
+| **Universal Dual-Kernel** | One binary across Linux 5.10 → 6.12+ GKI (Android 12–16), with Cgroup v1 (`/dev/cpuset/`) + v2 (`/sys/fs/cgroup/`) sysfs fallback drivers |
+| **Non-blocking loop** | POSIX process management, zero heap allocation in the hot loop, adaptive poll intervals (0.5 s gaming → 8 s sleep) |
+| **Read-before-write sysfs** | Every node is read first — no redundant kernel writes, no wakeup spam |
+| **Event-driven watchers** | `inotify` on backlight nodes + `netlink` uevents wake the loop early on screen/battery changes |
+| **Boot settle (v6.9.4)** | Re-applies Interactive at ticks 5/15/30 to cover late-probing drivers and vendor overwrites, then verifies the result in the log |
 
 </details>
 
 <details>
-<summary><b>🎮 Performance</b></summary>
+<summary><b>Performance</b></summary>
 
 <br>
 
 | Feature | Description |
 | :--- | :--- |
-| 🎯 **Automated profile switcher** | Sleep / Interactive / Gaming / Gaming MOBA from foreground app + screen + load — fully automatic |
-| 🎲 **MOBA low-latency mode** | Separate frame-pacing tuning (`g_fb_dvfs` / margin) for MLBB-style titles |
-| 🖥️ **Mali + GED + FPSGO** | Devfreq governor, polling, GED boost params and FPSGO frame-stabilization per active profile |
-| 🌉 **DVFSRC bandwidth unlock** | Raises interconnect QoS during gaming to remove RAM-bus bottlenecks |
-| 🚀 **Launch boost** | Fresh game launches get temporary read-ahead + notification toast |
+| **Automated profile switcher** | Sleep / Interactive / Gaming / Gaming MOBA from foreground app + screen + load — fully automatic |
+| **MOBA low-latency mode** | Separate frame-pacing tuning (`g_fb_dvfs` / margin) for MLBB-style titles |
+| **Mali + GED + FPSGO** | Devfreq governor, polling, GED boost params and FPSGO frame-stabilization per active profile |
+| **DVFSRC bandwidth unlock** | Raises interconnect QoS during gaming to remove RAM-bus bottlenecks |
+| **Launch boost** | Fresh game launches get temporary read-ahead + notification toast |
 
 </details>
 
 <details>
-<summary><b>🌡️ Thermals & Battery</b></summary>
+<summary><b>Thermals & Battery</b></summary>
 
 <br>
 
 | Feature | Description |
 | :--- | :--- |
-| 🛡️ **3-tier thermal guard** | Hysteresis-guarded CPU ceiling caps; defers to the vendor stack from Tier 1 up |
-| 🪜 **Charging thermal ladder** | Selected mode is a *ceiling* — heat steps it down automatically to a Safe floor |
-| 🔋 **7 charge modes + 16-level slider** | OEM Stock → Violent plus precision hardware slider, night / smart / 80% protection toggles |
-| ❤️ **BMS cycle healing** | Rejects bogus auth-chip cycle counts, syncs the genuine fuel-gauge counter |
+| **3-tier thermal guard** | Hysteresis-guarded CPU ceiling caps; defers to the vendor stack from Tier 1 up |
+| **Charging thermal ladder** | Selected mode is a *ceiling* — heat steps it down automatically to a Safe floor |
+| **7 charge modes + 16-level slider** | OEM Stock → Violent plus precision hardware slider, night / smart / 80% protection toggles |
+| **BMS cycle healing** | Rejects bogus auth-chip cycle counts, syncs the genuine fuel-gauge counter |
 
 </details>
 
 <details>
-<summary><b>🌕 Experience</b></summary>
+<summary><b>Experience</b></summary>
 
 <br>
 
 | Feature | Description |
 | :--- | :--- |
-| 📊 **HyperMoon HUD** | Dual-engine overlay (C daemon + Java DEX): FPS, frametime, CPU/GPU, battery watts, network — pill or card, auto-shows in games |
-| 🎨 **Material Design 3 WebUI** | Status, charger control, games, HUD designer, logs, RAM tools — single-file app, no server needed |
-| 🧹 **Zero footprint exit** | Uninstall / daemon stop restores ~60 factory nodes from the captured baseline |
+| **HyperMoon HUD** | Dual-engine overlay (C daemon + Java DEX): FPS, frametime, CPU/GPU, battery watts, network — pill or card, auto-shows in games |
+| **Material Design 3 WebUI** | Status, charger control, games, HUD designer, logs, RAM tools — single-file app, no server needed |
+| **Zero footprint exit** | Uninstall / daemon stop restores ~60 factory nodes from the captured baseline |
 
 </details>
 
@@ -135,65 +135,65 @@ The daemon re-evaluates state every tick and applies exactly one profile:
 
 | Profile | Target workload | Little 0–5 | Big 6–7 | GPU gov | GPU range | Touch | `sconfig` |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 😴 **Sleep** | Screen off | 500 – 1000 MHz | 725 – 850 MHz | `simple_ondemand` | locked 390 MHz | off | `0` |
-| 📱 **Interactive** | Daily use | stock¹ | stock¹ | stock¹ | stock¹ | smoothing + noise filter | stock¹ |
-| 🎮 **Gaming** | 3D / AAA | 500 – 2000 MHz | 725 – 2200 MHz | `performance` (20 ms) | 390 – 1003 MHz | game + edge | `10` |
-| 🏆 **Gaming MOBA** | Low-latency MOBA | 500 – 2000 MHz | 725 – 2200 MHz² | `performance` (20 ms) | 390 – 1003 MHz | game, no edge | `10` |
+| **Sleep** | Screen off | 500 – 1000 MHz | 725 – 850 MHz | `simple_ondemand` | locked 390 MHz | off | `0` |
+| **Interactive** | Daily use | stock¹ | stock¹ | stock¹ | stock¹ | smoothing + noise filter | stock¹ |
+| **Gaming** | 3D / AAA | 500 – 2000 MHz | 725 – 2200 MHz | `performance` (20 ms) | 390 – 1003 MHz | game + edge | `10` |
+| **Gaming MOBA** | Low-latency MOBA | 500 – 2000 MHz | 725 – 2200 MHz² | `performance` (20 ms) | 390 – 1003 MHz | game, no edge | `10` |
 
 > ¹ **Interactive = factory stock + touch.** Every CPU/GPU/GED/FPSGO/VM/cgroup node is restored to the captured `stock_state.conf` — the *only* enhancement is touchscreen smoothing + noise filtering for silky 90/120 Hz scrolling.
 > ² MOBA keeps Big at 2.0 GHz under Tier 1 for latency headroom.
 
 ```mermaid
 flowchart TD
-    A[Screen off?] -->|yes| S[😴 Sleep]
+    A[Screen off?] -->|yes| S[Sleep]
     A -->|no| B[Game in foreground?]
-    B -->|MOBA title| M[🏆 Gaming MOBA]
-    B -->|3D / AAA| G[🎮 Gaming]
+    B -->|MOBA title| M[Gaming MOBA]
+    B -->|3D / AAA| G[Gaming]
     B -->|no| C{Hold / manual lock?}
     C -->|yes| H[Keep held profile]
-    C -->|no| I[📱 Interactive]
+    C -->|no| I[Interactive]
 ```
 
 ---
 
 ## 🌡️ Thermal & Charging
 
-### 🛡️ 3-Tier Thermal Guard
+### 3-Tier Thermal Guard
 
 HyperCore caps frequency ceilings as heat rises — and from Tier 1 up it **stops fighting the vendor stack** (`mi_thermald`, FPSGO thermal, GPU devfreq cooler) and defers to it.
 
 | Tier | Enter when | Release when | Little cap | Big cap |
 | :--- | :--- | :--- | :--- | :--- |
-| 🟢 **Tier 0** — Optimal | batt < 45 °C **and** CPU < 70 °C | — | 2.0 GHz | 2.2 GHz |
-| 🟡 **Tier 1** — Warm | batt ≥ 45 °C **or** CPU ≥ 70 °C | batt ≤ 42 °C **and** CPU ≤ 64 °C | 1.8 GHz | 1.8 GHz |
-| 🔴 **Tier 2** — Hot | batt ≥ 48 °C **or** CPU ≥ 75 °C | batt ≤ 44 °C **and** CPU ≤ 68 °C | 1.4 GHz | 1.5 GHz |
+| **Tier 0** — Optimal | batt < 45 °C **and** CPU < 70 °C | — | 2.0 GHz | 2.2 GHz |
+| **Tier 1** — Warm | batt ≥ 45 °C **or** CPU ≥ 70 °C | batt ≤ 42 °C **and** CPU ≤ 64 °C | 1.8 GHz | 1.8 GHz |
+| **Tier 2** — Hot | batt ≥ 48 °C **or** CPU ≥ 75 °C | batt ≤ 44 °C **and** CPU ≤ 68 °C | 1.4 GHz | 1.5 GHz |
 
 > [!NOTE]
 > Hysteresis gaps between enter/release thresholds prevent frequency flutter. No core hotplug, no micro-stutter — only ceiling caps.
 
-### ⚡ Charge Modes
+### Charge Modes
 
 | # | Mode | Hardware behavior |
 | :-: | :--- | :--- |
-| 0 | **OEM Stock** | 🙌 Hands-off — vendor stack owns everything, zero daemon writes |
+| 0 | **OEM Stock** | Hands-off — vendor stack owns everything, zero daemon writes |
 | 1 | **Fast Charge** | `limit=0` (~3.9 A) |
 | 2 | **Balanced** | `limit=10` (~2.3 A / ~9.3 W) — cool gaming/usage pick |
 | 3 | **Safe Mode** | `limit=14` (~0.73 A) — overnight / GPS pick |
 | 4 | **Bypass Mode** | `input_suspend=1` — true 0 mA passthrough, exempt from ladder |
-| 5 | **Violent Charge** | Full factory speed (19–33 W), thermal limits off — acknowledge the risk 🔥 |
+| 5 | **Violent Charge** | Full factory speed (19–33 W), thermal limits off — acknowledge the risk |
 | 6 | **Custom Slider** | 16 hardware levels (0–15) with live mA/W feedback |
 
-### 🪜 Charging Thermal Ladder
+### Charging Thermal Ladder
 
 Your selected mode is a **ceiling, never a guarantee**:
 
 ```mermaid
 flowchart LR
-    V[⚡ Violent] -->|batt ≥ 45°C| F[🔌 Fast]
-    F -->|hotter| B[⚖️ Balanced]
-    B -->|hotter| S[🛡️ Safe]
+    V[Violent] -->|batt ≥ 45°C| F[Fast]
+    F -->|hotter| B[Balanced]
+    B -->|hotter| S[Safe]
     S -->|batt ≥ 50°C| S
-    S -->|≤ 41°C for 180s| UP[🧗 climb back up]
+    S -->|≤ 41°C for 180s| UP[climb back up]
 ```
 
 - One rung down at **≥ 45 °C** (`Violent → Fast → Balanced → Safe`)
@@ -213,10 +213,10 @@ hypermoon_d (C daemon, 11 chars for pkill -x)  →  collects FPS / CPU / GPU / b
 HyperMoonOverlay (Java DEX via app_process)    →  draws floating pill / card
 ```
 
-- 📊 Metrics: FPS, frametime, CPU load + freq + governor, GPU load + freq + governor, RAM, ZRAM, battery W/temp, network throughput
-- 🎨 Layouts: horizontal pill ↔ vertical card • Minimal / Compact / Detailed one-tap presets • Cyber Neon, AMOLED Dark, Matrix Green, Crimson Red + custom hex
-- 🎮 Auto-gaming: appears in games, hides in daily use • sub-ms config sync via kernel `inotify`
-- ⚙️ Geometry: width, height, scale, font, radius, opacity, refresh interval — all live sliders
+- **Metrics:** FPS, frametime, CPU load + freq + governor, GPU load + freq + governor, RAM, ZRAM, battery W/temp, network throughput
+- **Layouts:** horizontal pill ↔ vertical card • Minimal / Compact / Detailed one-tap presets • Cyber Neon, AMOLED Dark, Matrix Green, Crimson Red + custom hex
+- **Auto-gaming:** appears in games, hides in daily use • sub-ms config sync via kernel `inotify`
+- **Geometry:** width, height, scale, font, radius, opacity, refresh interval — all live sliders
 
 ---
 
@@ -226,12 +226,12 @@ Single-file Vue 3 + Pinia app (`webroot/index.html`) served by your root manager
 
 | Tab | What you get |
 | :--- | :--- |
-| 🏠 **Home** | Live daemon status, profile, temps, one-tap HUD toggle |
-| 🔌 **Charger** | 16-level slider, mode presets, protection toggles, live mA/V/W |
-| 🎮 **Games** | Auto-detect scanner, per-title Gaming/MOBA mapping, 2-tap delete guard |
-| 🌕 **HUD** | Full HyperMoon designer with live preview |
-| 📋 **Logs** | Daemon log viewer + one-tap bugreport export (`hypercore-bugreport`) |
-| ℹ️ **About** | Version, baseline info, links |
+| **Home** | Live daemon status, profile, temps, one-tap HUD toggle |
+| **Charger** | 16-level slider, mode presets, protection toggles, live mA/V/W |
+| **Games** | Auto-detect scanner, per-title Gaming/MOBA mapping, 2-tap delete guard |
+| **HUD** | Full HyperMoon designer with live preview |
+| **Logs** | Daemon log viewer + one-tap bugreport export (`hypercore-bugreport`) |
+| **About** | Version, baseline info, links |
 
 > [!TIP]
 > Telemetry is written atomically (`tmp` + `rename`) so the dashboard never flickers mid-update.
@@ -243,10 +243,10 @@ Single-file Vue 3 + Pinia app (`webroot/index.html`) served by your root manager
 > [!WARNING]
 > A kernel module runs as root. HyperCore treats every install like hostile input:
 
-1. **🔐 Two-layer integrity** — `customize.sh` runs `sha256sum -c checksums.txt` over the *entire* payload **before sourcing or executing anything**, then the daemon re-verifies from an embedded checksum table (`--verify-integrity`). `libhypercore.so` can't embed its own hash, so it's covered by the shipped manifest.
-2. **🧑‍⚖️ IPC authorization** — `/dev/hypercore.sock` checks every peer with `SO_PEERCRED`: only **uid 0** (root bridges, bugreport) and **uid 2000** (adb shell). Strangers are dropped *before* the daemon reads a byte.
-3. **🔒 Single instance** — advisory `flock` on `<data_dir>/.hypercore_lock`; the kernel releases it even on `SIGKILL`.
-4. **🧹 Hygiene** — logs/telemetry live in `/data/adb/hypercore/` (never world-readable `/sdcard`), shell calls are quoted against injection, socket reads loop to newline under a 25 ms timeout.
+1. **Two-layer integrity** — `customize.sh` runs `sha256sum -c checksums.txt` over the *entire* payload **before sourcing or executing anything**, then the daemon re-verifies from an embedded checksum table (`--verify-integrity`). `libhypercore.so` can't embed its own hash, so it's covered by the shipped manifest.
+2. **IPC authorization** — `/dev/hypercore.sock` checks every peer with `SO_PEERCRED`: only **uid 0** (root bridges, bugreport) and **uid 2000** (adb shell). Strangers are dropped *before* the daemon reads a byte.
+3. **Single instance** — advisory `flock` on `<data_dir>/.hypercore_lock`; the kernel releases it even on `SIGKILL`.
+4. **Hygiene** — logs/telemetry live in `/data/adb/hypercore/` (never world-readable `/sdcard`), shell calls are quoted against injection, socket reads loop to newline under a 25 ms timeout.
 
 ---
 
@@ -279,9 +279,9 @@ Live mirror files: `/dev/hypercore.sock` • `/dev/hypercore_status.json` • `/
 
 ```mermaid
 flowchart TD
-    P[post-fs-data.sh<br/>mkdir /data/adb/hypercore] --> C[customize.sh<br/>verify → snapshot baseline → perms]
-    C --> S[service.sh<br/>wait boot_completed → graceful restart]
-    S --> D[libhypercore.so<br/>flock → integrity → INIT → Interactive]
+    P[post-fs-data.sh<br/>mkdir /data/adb/hypercore] --> C[customize.sh<br/>verify then snapshot baseline then perms]
+    C --> S[service.sh<br/>wait boot_completed then graceful restart]
+    S --> D[libhypercore.so<br/>flock then integrity then INIT to Interactive]
     D --> T5[tick 5/15/30<br/>boot settle re-apply + verify]
     T5 --> L{profile change?<br/>thermal tier change?}
     L -->|yes| A[apply_profile + status sync]
@@ -361,9 +361,9 @@ com.miHoYo.GenshinImpact:Gaming
 com.dts.freefireth:Gaming
 ```
 
-- 🔍 Flash-time auto-detect scans `pm list packages -3` for known titles
-- 🕐 Runtime detection prefers cgroup `top-app` scan (up to 64 PIDs), `dumpsys window` as 10 s rate-limited fallback
-- 🆕 New launches trigger a temporary boost + toast
+- Flash-time auto-detect scans `pm list packages -3` for known titles
+- Runtime detection prefers cgroup `top-app` scan (up to 64 PIDs), `dumpsys window` as 10 s rate-limited fallback
+- New launches trigger a temporary boost + toast
 
 ---
 
@@ -401,14 +401,14 @@ Deploy straight to the live device (root) after building:
 - [x] **Platform** — MediaTek MT6789 Family (Helio G99 / G100 / G200, Mali-G57 + GED + FPSGO)
 - [x] **Kernel** — GKI Linux 5.10 → 6.12+ (Android 12 → 16), ARM64
 - [x] **Root** — KernelSU, APatch, or Magisk
-- [ ] Everything else — ❌ Samsung / Snapdragon / Unisoc / Tensor are **not supported** (installer aborts)
+- [ ] Everything else — Samsung / Snapdragon / Unisoc / Tensor are **not supported** (installer aborts)
 
 ---
 
 ## 🛠️ Troubleshooting
 
 <details>
-<summary><b>❌ Flash aborts with "File tampering or corruption detected"</b></summary>
+<summary><b>Flash aborts with "File tampering or corruption detected"</b></summary>
 
 <br>
 
@@ -419,7 +419,7 @@ Deploy straight to the live device (root) after building:
 </details>
 
 <details>
-<summary><b>😴 After reboot it says Interactive but doesn't feel applied</b></summary>
+<summary><b>After reboot it says Interactive but doesn't feel applied</b></summary>
 
 <br>
 
@@ -433,7 +433,7 @@ grep -i "boot settle" /data/adb/hypercore/hypercore.log
 </details>
 
 <details>
-<summary><b>🌡️ Frequencies stuck below stock while "Interactive"</b></summary>
+<summary><b>Frequencies stuck below stock while "Interactive"</b></summary>
 
 <br>
 
@@ -444,7 +444,7 @@ grep -i "boot settle" /data/adb/hypercore/hypercore.log
 </details>
 
 <details>
-<summary><b>📊 WebUI shows stale / flickering data</b></summary>
+<summary><b>WebUI shows stale / flickering data</b></summary>
 
 <br>
 
@@ -462,5 +462,5 @@ This project is licensed under the **GNU General Public License v3.0** — see [
 Developed by **[@itswill00](https://github.com/itswill00)** · Inspired by encore **[@Rem01Gaming](https://github.com/Rem01Gaming)**
 
 <p align="center">
-  <a href="#-hypercore">⬆ Back to top</a>
+  <a href="#-hypercore">Back to top</a>
 </p>
