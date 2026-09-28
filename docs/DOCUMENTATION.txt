@@ -3,12 +3,12 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v6.9.3 (Build 6930)
+ Version        : v6.9.4 (Build 6940)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
  Inspiration    : encore @Rem01Gaming
- Release ZIP    : HyperCore-v6.9.3-b6930-Unified.zip
+ Release ZIP    : HyperCore-v6.9.4-b6940-Unified.zip
 ================================================================================
 
 TABLE OF CONTENTS

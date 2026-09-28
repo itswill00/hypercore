@@ -1,3 +1,25 @@
+# HyperCore v6.9.4 — Boot Settle & Late Touch Discovery
+
+After reboot the daemon reported Interactive while the profile was never
+really applied: one-shot boot apply, unconditional status, and touch paths
+cached before the touch IC probed meant writes silently never landed until
+the next Sleep cycle.
+
+## What's Changed
+
+- **Boot settle re-apply** (`src/main.c`): force re-apply of Interactive at
+  loop ticks 5/15/30 (~+10s/+30s/+60s) while still Interactive, skipped while
+  a game is active or the profile is manually locked — same pattern as the
+  charger enforce loop.
+- **Late touch rediscovery** (`src/sysfs.c`, `src/cpu.c`): new
+  `rediscover_touch_nodes()` fills touch sysfs paths that were still missing,
+  called on every profile transition.
+- **Boot verify** (`src/main.c`): `verify_boot_apply()` reads back touch
+  smoothing and the Little-cluster governor against the stock baseline at the
+  end of settle and logs mismatches instead of staying silent.
+
+---
+
 # HyperCore v6.9.3 — Security Audit Remediation
 
 Full source audit (daemon, installer, build pipeline, WebUI) with 22 findings remediated.
