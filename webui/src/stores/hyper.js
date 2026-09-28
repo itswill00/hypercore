@@ -243,7 +243,8 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       cpuCores.value = (kv.CORES || '0-7').trim()
 
       if (kv.GCUR && kv.GMAX) {
-        gpuInfo.value = `${fmtFreq(kv.GCUR)}/${fmtFreq(kv.GMAX)} MHz`
+        // devfreq cur/max_freq are in Hz (unlike cpufreq kHz) — normalize to MHz
+        gpuInfo.value = `${Math.round(parseInt(kv.GCUR || 0) / 1000000)}/${Math.round(parseInt(kv.GMAX || 0) / 1000000)} MHz`
       } else if (kv.GPU) {
         const p = kv.GPU.split(':')
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
