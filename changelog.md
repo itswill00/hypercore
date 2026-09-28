@@ -1,3 +1,22 @@
+# HyperCore v6.9.5 — Universal HyperMoon Positioning
+
+On Android 14 QPR3+/15 the WindowManager rejects the root overlay pid
+(`Unknown pid`), so HyperMoon falls back to a raw SurfaceControl surface
+with no input channel — finger-drag is impossible there by OS design, on
+this and every other affected device.
+
+## What's Changed
+
+- **Position controls** (`webui/`): new Position section in WebUI → HUD —
+  D-pad nudge (±20 px) + X/Y sliders + live coordinates, writing
+  `position.json`, honored by both render paths within one refresh tick with
+  automatic screen-bounds clamping.
+- **Chevron up/down icons** (`webui/`): missing D-pad glyphs added.
+- **Reset text fix** (`webui/`): Reset Position no longer claims "top-left
+  corner" — it restores the (697, 411) default.
+
+---
+
 # HyperCore v6.9.4 — Boot Settle & Late Touch Discovery
 
 After reboot the daemon reported Interactive while the profile was never
