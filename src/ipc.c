@@ -33,6 +33,21 @@ static int read_chg_temp(int bat_fallback) {
     return bat_fallback;
 }
 
+/* Read-only hardware telemetry for status/IPC (zero tuning, informational
+ * only). Missing nodes yield 0 and the WebUI hides the corresponding rows.
+ * NOTE: dvfsrc cur_freq is ~4.3 GHz, which overflows a 32-bit int, so it is
+ * reported in MHz (fits) and the WebUI formats GHz. */
+static void read_extra_telemetry(int *dvfsrc_mhz, int *chg_limit_max) {
+    char buf[32] = "";
+    long hz = 0;
+    if (sysfs_read_str("/sys/class/devfreq/mtk-dvfsrc-devfreq/cur_freq", buf, sizeof(buf))) {
+        hz = strtol(buf, NULL, 10);
+    }
+    *dvfsrc_mhz = (hz > 0) ? (int)(hz / 1000000L) : 0;
+    int lim = sysfs_read_int("/sys/class/power_supply/battery/charge_control_limit_max");
+    *chg_limit_max = (lim > 0) ? lim : 0;
+}
+
 /* ponytail: one helper for the 6 copy-paste thermal→status sync blocks, ceiling is plain status.json refresh */
 static void ipc_sync_status(void) {
     int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
@@ -219,6 +234,10 @@ static void process_client(int client_fd) {
         int gpu_temp = read_gpu_temp(cpu_temp);
         int chg_temp = read_chg_temp(bat_temp);
 
+        /* Read-only hardware telemetry (zero tuning, informational only) */
+        int dvfsrc_mhz = 0, chg_limit_max = 0;
+        read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
+
         char json[1152];
         int jn = snprintf(json, sizeof(json),
             "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
@@ -226,14 +245,16 @@ static void process_client(int client_fd) {
             "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
             "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
             "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d}\n",
+            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
+            "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
             getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
             bat_health, bat_status, bat_tech,
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.charge_mode, g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charge_override, g_state.charger_supported, g_state.thermal_tier);
+            g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
+            dvfsrc_mhz, chg_limit_max);
         if (jn > 0 && (size_t)jn < sizeof(json)) write(client_fd, json, (size_t)jn);
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
         const char *pname = req + 12;
@@ -462,19 +483,25 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     int gpu_temp = read_gpu_temp(cpu_temp);
     int chg_temp = read_chg_temp(bat_temp);
 
+    /* Read-only hardware telemetry (zero tuning, informational only) */
+    int dvfsrc_mhz = 0, chg_limit_max = 0;
+    read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
+
     char json[1152];
     snprintf(json, sizeof(json),
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
         "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
         "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
         "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d}\n",
+        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
+        "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
         getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
         g_state.is_charging, gpu_load, bat_cycles,
         g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
         g_state.charge_mode, g_state.custom_charge_limit,
         g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier);
+        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
+        dvfsrc_mhz, chg_limit_max);
 
     char data_status[300];
     snprintf(data_status, sizeof(data_status), "%s/status.json", g_nodes.data_dir);

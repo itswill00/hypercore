@@ -199,7 +199,8 @@
             <div class="expanded-inner">
               Platform: MediaTek MT6789 (6nm)<br/>
               CPU: 2x Cortex-A76 @ 2.2 GHz &amp; 6x Cortex-A55 @ 2.0 GHz<br/>
-              GPU: ARM Mali-G57 MC2 @ 950 MHz
+              GPU: ARM Mali-G57 MC2 @ 950 MHz<br/>
+              <span v-if="store.dvfsrcMhz > 0">DDR: {{ (store.dvfsrcMhz / 1000).toFixed(2) }} GHz live interconnect clock</span>
             </div>
           </div>
         </div>

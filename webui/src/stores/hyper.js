@@ -53,6 +53,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const protect80 = ref(false)           /* true = hard cap at 80% battery capacity */
   const chargeCurrentMa = ref(0)         /* real-time mA from current_now */
   const chargeVoltMv = ref(0)            /* real-time mV from voltage_now */
+  const dvfsrcMhz = ref(0)               /* live DDR clock MHz (read-only telemetry) */
+  const chgLimitMax = ref(0)             /* PMIC limit scale ceiling (read-only telemetry) */
 
   const thermalGuardState = computed(() => {
     if (batStatus.value !== 'Charging') return batStatus.value || 'Standby'
@@ -198,6 +200,8 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
           if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
+          if (ipcData.dvfsrc_mhz > 0) dvfsrcMhz.value = ipcData.dvfsrc_mhz
+          if (ipcData.chg_limit_max > 0) chgLimitMax.value = ipcData.chg_limit_max
           if (typeof ipcData.charge_mode !== 'undefined') chargeMode.value = ipcData.charge_mode
           if (typeof ipcData.custom_limit !== 'undefined') customLimit.value = ipcData.custom_limit
           if (typeof ipcData.night_charging !== 'undefined') nightCharging.value = !!ipcData.night_charging
@@ -723,6 +727,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
+    dvfsrcMhz, chgLimitMax,
     usbVoltMv, usbType, isNonOemCable,
     nightCharging, smartChg, protect80,
     games, logs, loading,
