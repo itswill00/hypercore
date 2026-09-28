@@ -1,6 +1,7 @@
 
 #include "gamelist.hpp"
 #include "sysfs.hpp"
+#include "log.hpp"
 
 #define MAX_GAMES 256
 #define PKG_NAME_LEN 128
@@ -77,10 +78,23 @@ void load_gamelist(void) {
             if (colon) {
                 *colon = '\0';
                 char *prof_str = colon + 1;
-                if (strcasecmp(prof_str, "INTERACTIVE") == 0 || strcasecmp(prof_str, "BALANCED") == 0) prof = PROFILE_Interactive;
-                else if (strcasecmp(prof_str, "SLEEP") == 0 || strcasecmp(prof_str, "SAVER") == 0) prof = PROFILE_Sleep;
-                else if (strcasecmp(prof_str, "GAMING_MOBA") == 0 || strcasecmp(prof_str, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
-                else prof = PROFILE_Gaming;
+                /* Normalize: uppercase + strip every non-letter so
+                 * "Gaming MOBA", "gaming-moba" and "GAMING_MOBA" all match. */
+                char norm[32];
+                size_t ni = 0;
+                for (const char *p = prof_str; *p && ni < sizeof(norm) - 1; p++) {
+                    if (*p >= 'a' && *p <= 'z') norm[ni++] = (char)(*p - 'a' + 'A');
+                    else if ((*p >= 'A' && *p <= 'Z')) norm[ni++] = *p;
+                }
+                norm[ni] = '\0';
+                if (strcmp(norm, "INTERACTIVE") == 0 || strcmp(norm, "BALANCED") == 0) prof = PROFILE_Interactive;
+                else if (strcmp(norm, "SLEEP") == 0 || strcmp(norm, "SAVER") == 0) prof = PROFILE_Sleep;
+                else if (strcmp(norm, "GAMINGMOBA") == 0 || strcmp(norm, "MOBA") == 0) prof = PROFILE_Gaming_MOBA;
+                else if (strcmp(norm, "GAMING") == 0 || norm[0] == '\0') prof = PROFILE_Gaming;
+                else {
+                    log_warn("Gamelist", "Unknown profile '%s', defaulting to Gaming", prof_str);
+                    prof = PROFILE_Gaming;
+                }
             }
 
             strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
@@ -99,7 +113,7 @@ void load_gamelist(void) {
         s_last_autodetect = now;
         s_autodetect_done = 1;
 
-        FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom'", "r");
+        FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite'", "r");
         if (pp) {
             char pkg_buf[128];
             FILE *fw = fopen(path, "a");
@@ -193,7 +207,7 @@ static int find_pid_by_pkg(const char *pkg) {
             close(fd);
             if (n > 0) {
                 cmdline[n] = '\0';
-                if (strncmp(cmdline, pkg, pkg_len) == 0 &&
+                if (strncasecmp(cmdline, pkg, pkg_len) == 0 &&
                     (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':' || cmdline[pkg_len] == ' ')) {
                     found_pid = pid;
                     break;
@@ -265,7 +279,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
                 size_t pkg_len = s_pkg_lens[i];
                 if (pkg_len == 0) continue;
 
-                if (strncmp(cmdline, s_games[i], pkg_len) == 0 &&
+                if (strncasecmp(cmdline, s_games[i], pkg_len) == 0 &&
                     (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':' || cmdline[pkg_len] == ' ')) {
                     fclose(fp);
 

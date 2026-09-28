@@ -661,7 +661,9 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
   function updateGameProfile(rawPkg, rawProfile) {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
-    const profile = sanitize(rawProfile).toUpperCase().replace(/[^A-Z_]/g, '')
+    // Spaces/hyphens become underscores so "Gaming MOBA" stays GAMING_MOBA,
+    // which is what the daemon parser accepts (not "GAMINGMOBA").
+    const profile = sanitize(rawProfile).toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z_]/g, '')
     if (!pkg || !profile) return
 
     const existing = games.value.find(g => g.pkg === pkg)
@@ -686,7 +688,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   async function autoDetectGames() {
     loading.value = true
     try {
-      const scanCmd = `pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subway|bussimulator|carx|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|pes20|fifa|tft|nintendo|sega|squareenix|capcom' 2>/dev/null`
+      const scanCmd = `pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite' 2>/dev/null`
       const out = await execCommand(scanCmd)
       if (!out || !out.trim()) {
         return 'No installed games detected'
