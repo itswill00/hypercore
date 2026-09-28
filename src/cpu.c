@@ -152,15 +152,6 @@ static const char *s_cpuset_top_app_cpus_nodes[] = {
     NULL
 };
 
-static const char *s_cpuset_fg_cpus_nodes[] = {
-    "/dev/cpuset/foreground/cpus",
-    "/sys/fs/cgroup/foreground/cpuset.cpus",
-    "/sys/fs/cgroup/foreground/cpus",
-    "/sys/fs/cgroup/app.slice/cpuset.cpus",
-    "/sys/fs/cgroup/app.slice/cpus",
-    NULL
-};
-
 static const char *s_cpuctl_bg_shares_nodes[] = {
     "/dev/cpuctl/background/cpu.shares",
     "/sys/fs/cgroup/background/cpu.shares",
@@ -213,17 +204,6 @@ static const char *s_cpuctl_top_app_uclamp_max_nodes[] = {
     "/sys/fs/cgroup/top-app.slice/cpu.uclamp.max",
     NULL
 };
-
-void apply_cpuset(void) {
-    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, g_stock_baseline.top_app_cpus[0] ? g_stock_baseline.top_app_cpus : "0-7");
-    sysfs_write_fallback(s_cpuset_fg_cpus_nodes, "0-7");
-    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, g_stock_baseline.bg_cpus[0] ? g_stock_baseline.bg_cpus : "0-3");
-    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, g_stock_baseline.sys_bg_cpus[0] ? g_stock_baseline.sys_bg_cpus : "0-5");
-
-    sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost[0] ? g_stock_baseline.sched_migration_cost : "500000");
-    sysfs_write("/proc/sys/kernel/sched_latency_ns", "10000000");
-    sysfs_write("/proc/sys/kernel/sched_nr_migrate", "32");
-}
 
 static void write_policy_freqs(const char *pol_path, int min_f, int max_f) {
     char path[256], buf[32];
@@ -294,35 +274,6 @@ void set_cpu_governor(const char *gov) {
     for (int i = 0; i <= 7; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
         sysfs_write(path, gov);
-    }
-}
-
-void apply_cgroup_gaming_policy(int enable) {
-    if (enable) {
-        sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
-        sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
-        sysfs_write_fallback(s_cpuctl_bg_shares_nodes, "256");
-        sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, "0");
-        sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, "40");
-        sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, "max");
-
-        sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
-        sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, "2048");
-        sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, "50");
-        sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, "max");
-    } else {
-        sysfs_write_fallback(s_cpuset_bg_cpus_nodes, "0-3");
-        sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, "0-3");
-        sysfs_write_fallback(s_cpuctl_bg_shares_nodes, "1024");
-        sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, "0");
-        sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, "max");
-        sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, "max");
-
-        sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, "0-7");
-        sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, "1024");
-        const char *uclamp_min = (g_state.app_boost_ticks > 0) ? "25" : "0";
-        sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, uclamp_min);
-        sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, "max");
     }
 }
 

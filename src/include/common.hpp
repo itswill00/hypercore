@@ -154,6 +154,13 @@ typedef struct {
     /* Xiaomi Thermal / sconfig */
     char sconfig[16];
 
+    /* Touchscreen stock (captured live; previously assumed 0 on restore) */
+    char touch_smooth[16];
+    char touch_noise[16];
+    char touch_game[16];
+    char touch_sens[16];
+    char touch_edge[16];
+
     /* Memory VM */
     char vm_swappiness[16];
     char vm_dirty_ratio[16];
@@ -162,6 +169,7 @@ typedef struct {
     char vm_stat_interval[16];
     char vm_dirty_writeback[16];
     char vm_page_cluster[16];
+    char vm_compaction[16];
 
     /* Storage I/O */
     char io_read_ahead[32];
@@ -175,6 +183,8 @@ typedef struct {
 
     /* Charger */
     char charge_limit[64];
+    char chg_smart[16];
+    char chg_night[16];
 } stock_baseline_t;
 
 extern volatile sig_atomic_t g_running;

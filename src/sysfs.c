@@ -1,5 +1,6 @@
 
 #include "sysfs.hpp"
+#include "io.hpp"
 
 int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
     if (!path || path[0] == '\0' || !out_buf || max_len == 0) return 0;
@@ -251,13 +252,17 @@ void save_stock_baseline(void) {
         {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue},
         {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer},
         {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig},
+        {"touch_smooth", g_stock_baseline.touch_smooth}, {"touch_noise", g_stock_baseline.touch_noise},
+        {"touch_game", g_stock_baseline.touch_game}, {"touch_sens", g_stock_baseline.touch_sens},
+        {"touch_edge", g_stock_baseline.touch_edge},
         {"vm_swappiness", g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio},
         {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure},
         {"vm_stat_interval", g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback},
-        {"vm_page_cluster", g_stock_baseline.vm_page_cluster}, {"io_read_ahead", g_stock_baseline.io_read_ahead},
+        {"vm_page_cluster", g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead},
         {"io_nr_requests", g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats},
         {"sched_migration_cost", g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency},
         {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit},
+        {"chg_smart", g_stock_baseline.chg_smart}, {"chg_night", g_stock_baseline.chg_night},
     };
     struct { const char *k; int *v; } ints[] = {
         {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
@@ -298,13 +303,17 @@ int load_stock_baseline(void) {
         {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta, sizeof g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue, sizeof g_stock_baseline.fpsgo_ultra_rescue},
         {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading, sizeof g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer, sizeof g_stock_baseline.fpsgo_idleprefer},
         {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable, sizeof g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig, sizeof g_stock_baseline.sconfig},
+        {"touch_smooth", g_stock_baseline.touch_smooth, sizeof g_stock_baseline.touch_smooth}, {"touch_noise", g_stock_baseline.touch_noise, sizeof g_stock_baseline.touch_noise},
+        {"touch_game", g_stock_baseline.touch_game, sizeof g_stock_baseline.touch_game}, {"touch_sens", g_stock_baseline.touch_sens, sizeof g_stock_baseline.touch_sens},
+        {"touch_edge", g_stock_baseline.touch_edge, sizeof g_stock_baseline.touch_edge},
         {"vm_swappiness", g_stock_baseline.vm_swappiness, sizeof g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio, sizeof g_stock_baseline.vm_dirty_ratio},
         {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure, sizeof g_stock_baseline.vm_vfs_cache_pressure},
         {"vm_stat_interval", g_stock_baseline.vm_stat_interval, sizeof g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback, sizeof g_stock_baseline.vm_dirty_writeback},
-        {"vm_page_cluster", g_stock_baseline.vm_page_cluster, sizeof g_stock_baseline.vm_page_cluster}, {"io_read_ahead", g_stock_baseline.io_read_ahead, sizeof g_stock_baseline.io_read_ahead},
+        {"vm_page_cluster", g_stock_baseline.vm_page_cluster, sizeof g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction, sizeof g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead, sizeof g_stock_baseline.io_read_ahead},
         {"io_nr_requests", g_stock_baseline.io_nr_requests, sizeof g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats, sizeof g_stock_baseline.io_iostats},
         {"sched_migration_cost", g_stock_baseline.sched_migration_cost, sizeof g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency, sizeof g_stock_baseline.sched_latency},
         {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit, sizeof g_stock_baseline.charge_limit},
+        {"chg_smart", g_stock_baseline.chg_smart, sizeof g_stock_baseline.chg_smart}, {"chg_night", g_stock_baseline.chg_night, sizeof g_stock_baseline.chg_night},
     };
     struct { const char *k; int *v; } ints[] = {
         {"has_baseline", &g_stock_baseline.has_baseline},
@@ -366,15 +375,15 @@ void init_stock_baseline(void) {
     BS_READ_OR_DEF("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus, "0-3");
     BS_READ_OR_DEF("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus, "0-5");
     BS_READ_OR_DEF("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus, "0-7");
+    /* Cgroups shares & UCLAMP — read live, never assumed (restore uses these) */
+    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.shares", g_stock_baseline.bg_shares, "1024");
+    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.uclamp.min", g_stock_baseline.bg_uclamp_min, "0");
+    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.uclamp.max", g_stock_baseline.bg_uclamp_max, "max");
+    BS_READ_OR_DEF("/dev/cpuctl/system-background/cpu.uclamp.max", g_stock_baseline.sys_bg_uclamp_max, "max");
+    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.shares", g_stock_baseline.top_app_shares, "1024");
+    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.uclamp.min", g_stock_baseline.top_app_uclamp_min, "0");
+    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.uclamp.max", g_stock_baseline.top_app_uclamp_max, "max");
     #undef BS_READ_OR_DEF
-
-    strcpy(g_stock_baseline.bg_shares, "1024");
-    strcpy(g_stock_baseline.bg_uclamp_min, "0");
-    strcpy(g_stock_baseline.bg_uclamp_max, "max");
-    strcpy(g_stock_baseline.sys_bg_uclamp_max, "max");
-    strcpy(g_stock_baseline.top_app_shares, "1024");
-    strcpy(g_stock_baseline.top_app_uclamp_min, "0");
-    strcpy(g_stock_baseline.top_app_uclamp_max, "max");
 
     /* GPU Devfreq */
     const char *power_policy_nodes[] = {
@@ -399,7 +408,7 @@ void init_stock_baseline(void) {
     for (int i = 0; devfreq_gov_nodes[i]; i++) {
         if (sysfs_read_str(devfreq_gov_nodes[i], g_stock_baseline.mali_gpu_gov, sizeof(g_stock_baseline.mali_gpu_gov))) break;
     }
-    if (g_stock_baseline.mali_gpu_gov[0] == '\0') strcpy(g_stock_baseline.mali_gpu_gov, "dummy");
+    /* No "dummy" fallback: restore skips empty, writing a fake governor would be worse than skipping. */
 
     const char *devfreq_poll_nodes[] = {
         "/sys/class/devfreq/13000000.mali/polling_interval",
@@ -449,16 +458,44 @@ void init_stock_baseline(void) {
     sysfs_read_str("/sys/module/ged/parameters/gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin, sizeof(g_stock_baseline.gx_fb_dvfs_margin));
     if (g_stock_baseline.gx_fb_dvfs_margin[0] == '\0') strcpy(g_stock_baseline.gx_fb_dvfs_margin, "40");
 
-    strcpy(g_stock_baseline.gx_game_mode, "0");
-    strcpy(g_stock_baseline.fpsgo_force_onoff, "0");
-    strcpy(g_stock_baseline.fpsgo_boost_ta, "0");
-    strcpy(g_stock_baseline.fpsgo_ultra_rescue, "0");
-    strcpy(g_stock_baseline.fpsgo_light_loading, "0");
-    strcpy(g_stock_baseline.fpsgo_idleprefer, "0");
-    strcpy(g_stock_baseline.fpsgo_thrm_enable, "1");
+    /* GX game mode + FPSGO — read live with safe defaults (previously assumed). */
+    sysfs_read_str("/sys/module/ged/parameters/gx_game_mode", g_stock_baseline.gx_game_mode, sizeof(g_stock_baseline.gx_game_mode));
+    if (g_stock_baseline.gx_game_mode[0] == '\0') strcpy(g_stock_baseline.gx_game_mode, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/common/force_onoff", g_stock_baseline.fpsgo_force_onoff, sizeof(g_stock_baseline.fpsgo_force_onoff));
+    if (g_stock_baseline.fpsgo_force_onoff[0] == '\0') strcpy(g_stock_baseline.fpsgo_force_onoff, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/fbt/boost_ta", g_stock_baseline.fpsgo_boost_ta, sizeof(g_stock_baseline.fpsgo_boost_ta));
+    if (g_stock_baseline.fpsgo_boost_ta[0] == '\0') strcpy(g_stock_baseline.fpsgo_boost_ta, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/fbt/ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue, sizeof(g_stock_baseline.fpsgo_ultra_rescue));
+    if (g_stock_baseline.fpsgo_ultra_rescue[0] == '\0') strcpy(g_stock_baseline.fpsgo_ultra_rescue, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/fbt/light_loading_policy", g_stock_baseline.fpsgo_light_loading, sizeof(g_stock_baseline.fpsgo_light_loading));
+    if (g_stock_baseline.fpsgo_light_loading[0] == '\0') strcpy(g_stock_baseline.fpsgo_light_loading, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/fbt/switch_idleprefer", g_stock_baseline.fpsgo_idleprefer, sizeof(g_stock_baseline.fpsgo_idleprefer));
+    if (g_stock_baseline.fpsgo_idleprefer[0] == '\0') strcpy(g_stock_baseline.fpsgo_idleprefer, "0");
+    sysfs_read_str("/sys/kernel/fpsgo/fbt/thrm_enable", g_stock_baseline.fpsgo_thrm_enable, sizeof(g_stock_baseline.fpsgo_thrm_enable));
+    if (g_stock_baseline.fpsgo_thrm_enable[0] == '\0') strcpy(g_stock_baseline.fpsgo_thrm_enable, "1");
 
     /* Xiaomi Thermal / sconfig */
     sysfs_read_str("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig, sizeof(g_stock_baseline.sconfig));
+    /* Touchscreen stock — read live (previously assumed 0 on restore).
+     * g_nodes paths may still be empty on late touch probe; fall back to the
+     * well-known class path, then to "0" (factory default on MTK panels). */
+    {
+        const char *smooth = g_nodes.touch_thp_smooth[0] ? g_nodes.touch_thp_smooth : "/sys/class/touch/touch_dev/touch_thp_smooth";
+        const char *noise = g_nodes.touch_thp_noisefilter[0] ? g_nodes.touch_thp_noisefilter : "/sys/class/touch/touch_dev/touch_thp_noisefilter";
+        const char *game = g_nodes.touch_game_mode[0] ? g_nodes.touch_game_mode : "/sys/class/touch/touch_dev/touch_thp_game";
+        const char *sens = g_nodes.touch_sensitivity[0] ? g_nodes.touch_sensitivity : "/sys/class/touch/touch_dev/touch_sensitivity";
+        const char *edge = g_nodes.touch_edge[0] ? g_nodes.touch_edge : "/sys/class/touch/touch_dev/touch_edge";
+        sysfs_read_str(smooth, g_stock_baseline.touch_smooth, sizeof(g_stock_baseline.touch_smooth));
+        if (g_stock_baseline.touch_smooth[0] == '\0') strcpy(g_stock_baseline.touch_smooth, "0");
+        sysfs_read_str(noise, g_stock_baseline.touch_noise, sizeof(g_stock_baseline.touch_noise));
+        if (g_stock_baseline.touch_noise[0] == '\0') strcpy(g_stock_baseline.touch_noise, "0");
+        sysfs_read_str(game, g_stock_baseline.touch_game, sizeof(g_stock_baseline.touch_game));
+        if (g_stock_baseline.touch_game[0] == '\0') strcpy(g_stock_baseline.touch_game, "0");
+        sysfs_read_str(sens, g_stock_baseline.touch_sens, sizeof(g_stock_baseline.touch_sens));
+        if (g_stock_baseline.touch_sens[0] == '\0') strcpy(g_stock_baseline.touch_sens, "0");
+        sysfs_read_str(edge, g_stock_baseline.touch_edge, sizeof(g_stock_baseline.touch_edge));
+        if (g_stock_baseline.touch_edge[0] == '\0') strcpy(g_stock_baseline.touch_edge, "0");
+    }
     if (g_stock_baseline.sconfig[0] == '\0' || strcmp(g_stock_baseline.sconfig, "10") == 0 || strcmp(g_stock_baseline.sconfig, "-1") == 0) {
         strcpy(g_stock_baseline.sconfig, "0");
     }
@@ -480,6 +517,9 @@ void init_stock_baseline(void) {
     sysfs_read_str("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster, sizeof(g_stock_baseline.vm_page_cluster));
     if (g_stock_baseline.vm_page_cluster[0] == '\0') strcpy(g_stock_baseline.vm_page_cluster, "3");
 
+    sysfs_read_str("/proc/sys/vm/compaction_proactiveness", g_stock_baseline.vm_compaction, sizeof(g_stock_baseline.vm_compaction));
+    if (g_stock_baseline.vm_compaction[0] == '\0') strcpy(g_stock_baseline.vm_compaction, "20");
+
     /* Storage I/O */
     const char *ra_nodes[] = {"/sys/block/mmcblk0/queue/read_ahead_kb","/sys/block/sda/queue/read_ahead_kb","/sys/block/dm-0/queue/read_ahead_kb",NULL};
     if (!sysfs_read_str_fallback(ra_nodes, g_stock_baseline.io_read_ahead, sizeof(g_stock_baseline.io_read_ahead))) strcpy(g_stock_baseline.io_read_ahead, "1024");
@@ -498,6 +538,10 @@ void init_stock_baseline(void) {
 
     /* Charger */
     sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit, sizeof(g_stock_baseline.charge_limit));
+    sysfs_read_str("/sys/class/power_supply/battery/smart_chg", g_stock_baseline.chg_smart, sizeof(g_stock_baseline.chg_smart));
+    if (g_stock_baseline.chg_smart[0] == '\0') strcpy(g_stock_baseline.chg_smart, "0");
+    sysfs_read_str("/sys/class/power_supply/battery/night_charging", g_stock_baseline.chg_night, sizeof(g_stock_baseline.chg_night));
+    if (g_stock_baseline.chg_night[0] == '\0') strcpy(g_stock_baseline.chg_night, "0");
 
     g_stock_baseline.has_baseline = 1;
     save_stock_baseline();
@@ -542,13 +586,13 @@ void restore_baseline_nodes(void) {
     if (g_stock_baseline.sys_bg_cpus[0] != '\0') sysfs_write("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus);
     if (g_stock_baseline.top_app_cpus[0] != '\0') sysfs_write("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus);
 
-    sysfs_write("/dev/cpuctl/background/cpu.shares", "1024");
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", "0");
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", "max");
-    sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", "max");
-    sysfs_write("/dev/cpuctl/top-app/cpu.shares", "1024");
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", "0");
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", "max");
+    sysfs_write("/dev/cpuctl/background/cpu.shares", g_stock_baseline.bg_shares[0] ? g_stock_baseline.bg_shares : "1024");
+    sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", g_stock_baseline.bg_uclamp_min[0] ? g_stock_baseline.bg_uclamp_min : "0");
+    sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", g_stock_baseline.bg_uclamp_max[0] ? g_stock_baseline.bg_uclamp_max : "max");
+    sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", g_stock_baseline.sys_bg_uclamp_max[0] ? g_stock_baseline.sys_bg_uclamp_max : "max");
+    sysfs_write("/dev/cpuctl/top-app/cpu.shares", g_stock_baseline.top_app_shares[0] ? g_stock_baseline.top_app_shares : "1024");
+    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", g_stock_baseline.top_app_uclamp_min[0] ? g_stock_baseline.top_app_uclamp_min : "0");
+    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max");
 
     /* Restore GPU Devfreq */
     const char *power_policy_nodes[] = {
@@ -618,14 +662,14 @@ void restore_baseline_nodes(void) {
     sysfs_write("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
     sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
 
-    /* Restore Touchscreen nodes to factory default (0) */
-    if (g_nodes.touch_thp_smooth[0]) sysfs_write(g_nodes.touch_thp_smooth, "0");
-    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_smooth", "0");
-    if (g_nodes.touch_thp_noisefilter[0]) sysfs_write(g_nodes.touch_thp_noisefilter, "0");
-    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", "0");
-    sysfs_write(g_nodes.touch_game_mode, "0");
-    sysfs_write(g_nodes.touch_sensitivity, "0");
-    sysfs_write(g_nodes.touch_edge, "0");
+    /* Restore Touchscreen nodes from captured stock (previously assumed 0) */
+    if (g_nodes.touch_thp_smooth[0]) sysfs_write(g_nodes.touch_thp_smooth, g_stock_baseline.touch_smooth[0] ? g_stock_baseline.touch_smooth : "0");
+    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_smooth", g_stock_baseline.touch_smooth[0] ? g_stock_baseline.touch_smooth : "0");
+    if (g_nodes.touch_thp_noisefilter[0]) sysfs_write(g_nodes.touch_thp_noisefilter, g_stock_baseline.touch_noise[0] ? g_stock_baseline.touch_noise : "0");
+    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", g_stock_baseline.touch_noise[0] ? g_stock_baseline.touch_noise : "0");
+    sysfs_write(g_nodes.touch_game_mode, g_stock_baseline.touch_game[0] ? g_stock_baseline.touch_game : "0");
+    sysfs_write(g_nodes.touch_sensitivity, g_stock_baseline.touch_sens[0] ? g_stock_baseline.touch_sens : "0");
+    sysfs_write(g_nodes.touch_edge, g_stock_baseline.touch_edge[0] ? g_stock_baseline.touch_edge : "0");
 
     /* Restore Memory VM */
     if (g_stock_baseline.vm_swappiness[0] != '\0') sysfs_write("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness);
@@ -635,12 +679,15 @@ void restore_baseline_nodes(void) {
     if (g_stock_baseline.vm_stat_interval[0] != '\0') sysfs_write("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval);
     if (g_stock_baseline.vm_dirty_writeback[0] != '\0') sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback);
     if (g_stock_baseline.vm_page_cluster[0] != '\0') sysfs_write("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster);
+    if (g_stock_baseline.vm_compaction[0] != '\0') sysfs_write("/proc/sys/vm/compaction_proactiveness", g_stock_baseline.vm_compaction);
     if (g_stock_baseline.sched_migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
 
     /* Restore Charger */
     if (g_stock_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit);
     sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
     sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
+    if (g_stock_baseline.chg_smart[0] != '\0') sysfs_write("/sys/class/power_supply/battery/smart_chg", g_stock_baseline.chg_smart);
+    if (g_stock_baseline.chg_night[0] != '\0') sysfs_write("/sys/class/power_supply/battery/night_charging", g_stock_baseline.chg_night);
 
     /* Clear runtime gaming properties */
     system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
@@ -665,6 +712,10 @@ void restore_baseline_nodes(void) {
             chmod(rate_limit_restore_paths[i], 0644);
         }
     }
+
+    /* Restore IRQ affinity to the non-gaming mask (all cores), matching the
+     * state apply_irq_tuning() leaves outside Gaming/MOBA. */
+    apply_irq_tuning(PROFILE_Interactive);
 }
 
 void update_module_prop_status(const char *status) {

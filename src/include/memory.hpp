@@ -9,7 +9,6 @@
 extern "C" {
 #endif
 
-void apply_memory_tuning(void);
 void set_memory_sleep_mode(int enable);
 void tune_memory_pressure(void);
 int trigger_purge_ram_cache(void);

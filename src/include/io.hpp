@@ -9,7 +9,6 @@
 extern "C" {
 #endif
 
-void apply_io_tuning(void);
 void set_read_ahead(const char *kb_val);
 void set_io_nr_requests(const char *nr_str);
 void apply_irq_tuning(profile_t prof);
