@@ -7,7 +7,7 @@
         <div class="md3-list-row">
           <div class="row-left">
             <div class="row-meta">
-              <div class="row-title" style="font-size: 17px;">{{ store.activeProfile }}</div>
+              <div class="row-title">{{ store.activeProfile }}</div>
               <div class="row-sub">PID {{ store.daemonPid || '—' }} · Up {{ store.uptime }}</div>
             </div>
           </div>
