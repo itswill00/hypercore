@@ -139,6 +139,66 @@ int sysfs_read_int(const char *path) {
 
 stock_baseline_t g_stock_baseline;
 
+/* Late-probe rediscovery for touch IC sysfs nodes.
+ * init_hardware_nodes() resolves these once at startup via access(); on many
+ * MT6789 ROMs the touch driver probes after boot_completed, so cached paths
+ * stay empty and the Interactive touch enhancement silently never lands.
+ * Only fills slots that are still empty — safe to call on every profile
+ * transition (a handful of access() calls, same lazy pattern as the
+ * backlight re-resolve in is_screen_on()). */
+void rediscover_touch_nodes(void) {
+    const char *thp_paths[] = {
+        "/sys/class/touch/touch_dev/touch_thp_smooth",
+        "/sys/devices/virtual/touch/touch_dev/touch_thp_smooth",
+        "/sys/class/touch/touch_dev/thp_smooth",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_thp_smooth",
+        NULL
+    };
+    const char *noise_paths[] = {
+        "/sys/class/touch/touch_dev/touch_thp_noisefilter",
+        "/sys/devices/virtual/touch/touch_dev/touch_thp_noisefilter",
+        "/sys/class/touch/touch_dev/thp_noisefilter",
+        "/sys/devices/platform/goodix_ts.0/touch_thp_noisefilter",
+        NULL
+    };
+    const char *edge_paths[] = {
+        "/sys/class/touch/touch_dev/touch_edge",
+        "/sys/class/touch/touch_dev/edge_mode",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_edge_mode",
+        NULL
+    };
+    const char *gm_paths[] = {
+        "/sys/class/touch/touch_dev/touch_thp_game",
+        "/sys/class/touch/touch_dev/game_mode",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_game_mode",
+        NULL
+    };
+    const char *sens_paths[] = {
+        "/sys/class/touch/touch_dev/sensitivity",
+        "/sys/class/touch/touch_dev/touch_sensitivity",
+        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_sensitivity",
+        NULL
+    };
+    struct { char *slot; size_t cap; const char **cands; const char *name; } maps[] = {
+        { g_nodes.touch_thp_smooth, sizeof(g_nodes.touch_thp_smooth), thp_paths, "touch_thp_smooth" },
+        { g_nodes.touch_thp_noisefilter, sizeof(g_nodes.touch_thp_noisefilter), noise_paths, "touch_thp_noisefilter" },
+        { g_nodes.touch_edge, sizeof(g_nodes.touch_edge), edge_paths, "touch_edge" },
+        { g_nodes.touch_game_mode, sizeof(g_nodes.touch_game_mode), gm_paths, "touch_game_mode" },
+        { g_nodes.touch_sensitivity, sizeof(g_nodes.touch_sensitivity), sens_paths, "touch_sensitivity" },
+    };
+    for (size_t m = 0; m < sizeof(maps) / sizeof(maps[0]); m++) {
+        if (maps[m].slot[0] != '\0') continue;
+        for (int i = 0; maps[m].cands[i]; i++) {
+            if (access(maps[m].cands[i], F_OK) == 0) {
+                strncpy(maps[m].slot, maps[m].cands[i], maps[m].cap - 1);
+                maps[m].slot[maps[m].cap - 1] = '\0';
+                log_info("Hardware", "Late touch node discovered: %s -> %s", maps[m].name, maps[m].slot);
+                break;
+            }
+        }
+    }
+}
+
 static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
     if (min_f <= 0 || max_f <= 0) return;
     char path[256], buf[32];

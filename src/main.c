@@ -342,6 +342,30 @@ static int is_screen_on(void) {
     return 0;
 }
 
+/* Read back the nodes that prove Interactive really landed after boot settle:
+ * touch smoothing (the sole Interactive enhancement) plus the Little-cluster
+ * governor against the stock baseline. Warn-only — the next profile
+ * transition still re-applies unconditionally. */
+static void verify_boot_apply(void) {
+    char val[64] = "";
+    if (g_nodes.touch_thp_smooth[0] != '\0' &&
+        sysfs_read_str(g_nodes.touch_thp_smooth, val, sizeof(val))) {
+        if (strcmp(val, "1") != 0) {
+            log_warn("Profiler", "Boot settle: touch smoothing is '%s', expected '1' — will retry on next profile transition", val);
+        } else {
+            log_info("Profiler", "Boot settle verified: Interactive fully applied (touch smoothing on)");
+        }
+    } else {
+        log_warn("Profiler", "Boot settle: touch smoothing node still missing (late touch probe?)");
+    }
+    if (g_stock_baseline.gov0[0] != '\0' &&
+        sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", val, sizeof(val))) {
+        if (strcmp(val, g_stock_baseline.gov0) != 0) {
+            log_warn("Profiler", "Boot settle: policy0 governor is '%s', stock is '%s' (vendor init may have overwritten)", val, g_stock_baseline.gov0);
+        }
+    }
+}
+
 static int get_top_app_pid(void) {
     /* Prefer cgroup.procs over tasks to filter out system_server thread workers */
     const char *sources[] = {
@@ -603,6 +627,27 @@ int main(int argc, char *argv[]) {
             }
             apply_profile(next_profile, gpu_load);
             g_state.current_profile = next_profile;
+        }
+
+        /* Boot settle: the one-shot Interactive apply at startup can silently
+         * miss nodes that probe late (touch IC sysfs) or get overwritten by
+         * vendor init / mi_thermald seconds after boot_completed — while the
+         * status already reports Interactive, so the loop above would never
+         * re-apply. Force a re-apply at a few early ticks (~+10s/+30s/+60s in
+         * Interactive), same pattern as the charger enforce loop below.
+         * Skipped while a game is active or the profile is manually locked. */
+        static int s_boot_settle_tick = 0;
+        s_boot_settle_tick++;
+        if ((s_boot_settle_tick == 5 || s_boot_settle_tick == 15 || s_boot_settle_tick == 30) &&
+            next_profile == PROFILE_Interactive && g_state.current_profile == PROFILE_Interactive &&
+            !game_active && g_state.manual_profile < 0) {
+            rediscover_touch_nodes();
+            apply_profile(PROFILE_Interactive, gpu_load);
+            if (s_boot_settle_tick == 30) {
+                verify_boot_apply();
+            } else {
+                log_info("Profiler", "Boot settle re-apply Interactive (%d/3)", s_boot_settle_tick == 5 ? 1 : 2);
+            }
         }
 
         /* Active thermal bypass guard during gaming:

@@ -3,6 +3,7 @@
 #include "memory.hpp"
 #include "io.hpp"
 #include "thermal.hpp"
+#include "sysfs.hpp"
 #include "log.hpp"
 
 /* Forward declaration — defined later in this file as a static function */
@@ -701,6 +702,10 @@ void apply_profile(profile_t prof, int gpu_load) {
     (void)gpu_load;
     profile_matrix_t m;
     build_profile_matrix(prof, &m);
+
+    /* Touch IC often probes after daemon start; re-resolve any paths that
+     * were still missing so the touch enhancement is not silently skipped. */
+    rediscover_touch_nodes();
 
     set_cpu_governor(m.cpu_gov);
     set_cpu_freqs(m.lit_min_freq, m.lit_max_freq, m.big_min_freq, m.big_max_freq,

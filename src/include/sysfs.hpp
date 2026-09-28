@@ -19,6 +19,7 @@ void save_stock_baseline(void);
 void save_baseline_nodes(void);
 void restore_baseline_nodes(void);
 void update_module_prop_status(const char *status);
+void rediscover_touch_nodes(void);
 
 #ifdef __cplusplus
 }
