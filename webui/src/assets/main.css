@@ -97,12 +97,12 @@ body, #app {
   top: 0;
   z-index: 30;
   background: rgba(18, 19, 22, 0.96);
-  padding: calc(10px + var(--window-inset-top, 0px)) 16px 10px 16px;
+  padding: calc(12px + var(--window-inset-top, 0px)) 16px 12px 16px;
   border-bottom: 1px solid var(--surface-container-high);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: calc(52px + var(--window-inset-top, 0px));
+  min-height: calc(58px + var(--window-inset-top, 0px));
 }
 
 .page-header-title {
@@ -120,7 +120,7 @@ body, #app {
 .content-area {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 12px calc(84px + var(--window-inset-bottom, 0px)) 12px;
+  padding: 14px 16px calc(92px + var(--window-inset-bottom, 0px)) 16px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
@@ -176,10 +176,10 @@ body, #app {
 .tab-pane .content-area::-webkit-scrollbar { display: none; }
 
 .section-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--on-surface-variant);
-  margin: 12px 0 6px 4px;
+  margin: 16px 0 6px 4px;
 }
 
 .section-title:first-child {
@@ -188,58 +188,44 @@ body, #app {
 
 .md3-card {
   background: var(--surface-container);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
   border: 1px solid var(--surface-container-high);
   transition: border-color 0.2s ease;
 }
 
-.chips-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.disabled {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
 .md3-banner {
-  background: var(--surface-container);
-  color: var(--on-surface);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 10px;
+  background: linear-gradient(135deg, var(--secondary-container) 0%, var(--surface-container-high) 100%);
+  color: var(--on-secondary-container);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid var(--surface-container-high);
-  position: relative;
-  overflow: hidden;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: banner-enter 0.25s cubic-bezier(0.2, 0, 0, 1) both;
 }
 
-.banner-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(16, 17, 22, 0.94) 0%, rgba(16, 17, 22, 0.82) 65%, rgba(16, 17, 22, 0.65) 100%);
-  z-index: 1;
-}
-
-.md3-banner > *:not(.banner-overlay) {
-  position: relative;
-  z-index: 2;
+@keyframes banner-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 
 .md3-list-group {
   background: var(--surface-container);
-  border-radius: 10px;
+  border-radius: 16px;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
   border: 1px solid var(--surface-container-high);
 }
 
@@ -247,7 +233,7 @@ body, #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--surface-container-high);
   transition: background 0.15s ease;
   user-select: none;
@@ -271,9 +257,9 @@ body, #app {
 }
 
 .icon-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: var(--primary-container);
   color: var(--on-primary-container);
   display: flex;
@@ -295,7 +281,7 @@ body, #app {
 .row-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }
@@ -351,7 +337,7 @@ body, #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 12px 14px;
   width: 100%;
 }
 
@@ -359,7 +345,7 @@ body, #app {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
-  padding: 0 12px;
+  padding: 0 14px;
   /* deslop-ignore-next-line 26 */
   transition: grid-template-rows 0.2s ease,
               opacity 0.15s ease,
@@ -370,7 +356,7 @@ body, #app {
 .expandable-row.is-expanded .expanded-content {
   grid-template-rows: 1fr;
   opacity: 1;
-  padding: 0 12px 8px 12px;
+  padding: 0 14px 10px 14px;
 }
 
 .expanded-inner {
@@ -395,10 +381,10 @@ body, #app {
 }
 
 .stat-box {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 4px 0;
+  background: var(--surface-container-low, #17181c);
+  border: 1px solid var(--outline-variant, #383a42);
+  border-radius: 8px;
+  padding: 5px 8px;
   display: flex;
   flex-direction: column;
   gap: 1px;

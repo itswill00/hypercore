@@ -3,27 +3,49 @@
     <div class="content-area">
 
       <!-- About Hero Showcase Card with banner.jpg Background -->
-      <div class="md3-banner" :style="{ backgroundImage: `url(${bannerImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }">
-        <div class="banner-overlay"></div>
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <span class="badge-pill">MT6789 Family</span>
-          <span class="badge-pill">{{ store.moduleVersion || '—' }} · Stable</span>
-        </div>
-
-        <div>
-          <h1 class="about-hero-title">HyperCore</h1>
-          <p class="about-hero-desc">Universal Dual-Kernel Performance Module</p>
-          <div class="about-author-line">
-            <span>Crafted with precision by</span>
-            <a href="https://github.com/itswill00" target="_blank" class="about-author-link" @click.stop="openExternal('https://github.com/itswill00')">@itswill00</a>
+      <div class="about-hero-banner" :style="{ backgroundImage: `url(${bannerImg})` }">
+        <div class="about-banner-overlay"></div>
+        <div class="about-banner-content">
+          <div class="about-banner-top">
+            <div class="about-platform-tag">
+              <span>MT6789 Family</span>
+            </div>
+            <span class="about-version-badge">
+              {{ store.moduleVersion || '—' }} · Stable
+            </span>
           </div>
-        </div>
 
-        <div class="chips-row">
-          <span class="badge-pill">Kernel · 5.10 – 6.12 GKI</span>
-          <span class="badge-pill">Target · Helio G99/G100/G200</span>
-          <span class="badge-pill">Arch · ARM64-v8a</span>
-          <span class="badge-pill">Daemon · {{ store.isRunning ? `Active (PID ${store.daemonPid})` : 'Standby' }}</span>
+          <div class="about-title-block">
+            <h1 class="about-hero-title">HyperCore</h1>
+            <p class="about-hero-desc">
+              Universal Dual-Kernel Performance Module
+            </p>
+            <div class="about-author-line">
+              <span>Crafted with precision by</span>
+              <a href="https://github.com/itswill00" target="_blank" class="about-author-link" @click.stop="openExternal('https://github.com/itswill00')">@itswill00</a>
+            </div>
+          </div>
+
+          <div class="about-chips-row">
+            <div class="about-glass-chip">
+              <span class="chip-label">Kernel</span>
+              <span class="chip-val">5.10 – 6.12 GKI</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Target</span>
+              <span class="chip-val">Helio G99/G100/G200</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Arch</span>
+              <span class="chip-val">ARM64-v8a</span>
+            </div>
+            <div class="about-glass-chip">
+              <span class="chip-label">Daemon</span>
+              <span class="chip-val" :style="store.isRunning ? 'color: var(--primary);' : ''">
+                {{ store.isRunning ? `Active (PID ${store.daemonPid})` : 'Standby' }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -45,15 +67,18 @@
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
-              <span class="badge-pill">Changelog</span>
+              <span class="changelog-badge">Changelog</span>
               <span class="expand-caret" :class="{ 'open': expandedRows['changelog'] }">▼</span>
             </div>
           </div>
 
           <div class="expanded-content">
             <div class="expanded-inner">
-              <div style="font-size: 12px; font-weight: 700; color: var(--on-surface); margin-bottom: 4px;">{{ store.moduleVersion || 'v6.8.5' }} (Latest)</div>
-              <ul class="changelog-bullets">
+              <div class="changelog-release">
+                <div class="release-header">
+                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.5' }} (Latest)</span>
+                </div>
+                <ul class="changelog-bullets">
                   <li><strong>Swappiness Baseline Integrity</strong>: Fixed memory pressure tuning to respect profile context, preserving stock factory swappiness in Interactive &amp; Sleep.</li>
                   <li><strong>Protect 80% Anti-Oscillation Hysteresis</strong>: Eliminated rapid 79%–80% charging flutter by maintaining bypass cutoff until battery level drops to 77%.</li>
                   <li><strong>Resilient Inotify Directory Watcher</strong>: Directory-level watching prevents watcher death on atomic gamelist file renames.</li>
@@ -61,6 +86,7 @@
                   <li><strong>Display State Authority Hardening</strong>: Hardware backlight check is now strictly authoritative, preventing false screen-on detections.</li>
                   <li><strong>Big Core Hotspot Priority</strong>: Prioritized MT6789 Big Core thermal zones and added multi-policy fallbacks for gaming thermal bypass.</li>
                 </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -403,23 +429,77 @@ function toggleExpand(key) {
 </script>
 
 <style scoped>
+.about-hero-banner {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--surface-container-highest);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background-size: cover;
+  background-position: center;
+}
 
+.about-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(14, 15, 20, 0.94) 0%, rgba(18, 19, 26, 0.84) 60%, rgba(12, 13, 18, 0.68) 100%);
+  z-index: 1;
+}
 
+.about-banner-content {
+  position: relative;
+  z-index: 2;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
+.about-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 
+.about-platform-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  letter-spacing: 0.2px;
+}
 
+.about-version-badge {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
 
-
-
-
-
-
-
-
+.about-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
 .about-hero-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--on-surface);
   letter-spacing: -0.4px;
@@ -450,31 +530,108 @@ function toggleExpand(key) {
   font-weight: 600;
 }
 
+.about-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 
+.about-glass-chip {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
+.about-glass-chip .chip-label {
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+}
 
+.about-glass-chip .chip-val {
+  color: var(--on-surface);
+  font-weight: 600;
+}
 
+.app-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
+.app-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+  letter-spacing: -0.2px;
+}
 
+.app-banner-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-top: 1px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
+.changelog-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  letter-spacing: 0.2px;
+}
 
+.changelog-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 2px;
+}
 
+.changelog-release {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
+.release-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
+.release-ver {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+.release-date {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  opacity: 0.6;
+}
 
 .changelog-bullets {
   margin: 0;
@@ -493,7 +650,7 @@ function toggleExpand(key) {
   font-size: 10px;
   color: var(--on-surface-variant);
   opacity: 0.45;
-  padding: 12px 0 20px 0;
+  padding: 16px 0 24px 0;
   font-family: inherit;
 }
 </style>

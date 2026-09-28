@@ -19,22 +19,22 @@
 
     <div class="content-area">
 
-      <!-- Master Control -->
-      <div class="md3-list-group">
-        <div class="md3-list-row">
-          <div class="row-left">
+      <!-- Master Control Hero Card -->
+      <div class="hud-master-card">
+        <div class="master-card-top">
+          <div class="master-icon-group">
             <div class="icon-badge" :class="hudStore.config.visible ? '' : 'secondary'">
               <Icons name="moon" :size="20" />
             </div>
-            <div class="row-meta">
-              <div class="row-title">Enable Overlay</div>
-              <div class="row-sub">
+            <div>
+              <div class="master-card-title">Enable Overlay</div>
+              <div class="master-card-sub">
                 {{ hudStore.config.visible ? (hudStore.config.auto_gaming ? 'Overlay will automatically show during games' : 'Live stats showing on screen') : 'Overlay is currently off' }}
               </div>
             </div>
           </div>
-          <div class="row-val" @click.stop="onToggleMaster">
-            <label class="md3-switch" style="pointer-events: none; vertical-align: middle;">
+          <div class="master-switch-wrap" @click.stop="onToggleMaster">
+            <label class="md3-switch" style="pointer-events: none;">
               <input
                 type="checkbox"
                 :checked="hudStore.config.visible"
@@ -46,12 +46,18 @@
           </div>
         </div>
 
-        <div class="md3-list-row">
-          <div class="row-left" style="flex-wrap: wrap; gap: 6px;">
-            <span class="badge-pill">Daemon: {{ hudStore.daemonPid ? 'Running' : 'Idle' }}</span>
-            <span class="badge-pill">Display: {{ hudStore.overlayPid ? 'Active' : 'Off' }}</span>
-            <span class="badge-pill" v-if="hudStore.stats.fps && hudStore.stats.fps !== '--'">{{ hudStore.stats.fps }} FPS</span>
-            <span class="badge-pill" v-if="hudStore.stats.screen_hz && hudStore.stats.screen_hz !== '--'">{{ hudStore.stats.screen_hz }}</span>
+        <div class="hud-status-chips">
+          <div class="chip-item">
+            <span>Daemon: {{ hudStore.daemonPid ? 'Running' : 'Idle' }}</span>
+          </div>
+          <div class="chip-item">
+            <span>Display: {{ hudStore.overlayPid ? 'Active' : 'Off' }}</span>
+          </div>
+          <div class="chip-item" v-if="hudStore.stats.fps && hudStore.stats.fps !== '--'">
+            <span>{{ hudStore.stats.fps }} FPS</span>
+          </div>
+          <div class="chip-item" v-if="hudStore.stats.screen_hz && hudStore.stats.screen_hz !== '--'">
+            <span>{{ hudStore.stats.screen_hz }}</span>
           </div>
         </div>
       </div>
@@ -89,7 +95,7 @@
 
       <!-- Layout & Orientation Style -->
       <div class="section-title">Layout</div>
-      <div class="md3-list-group" style="padding: 12px;">
+      <div class="md3-list-group" style="padding: 14px;">
         <div class="layout-toggle-container">
           <button
             class="layout-btn"
@@ -127,7 +133,7 @@
 
       <!-- Theme & Accent Color -->
       <div class="section-title">Theme & Color</div>
-      <div class="md3-list-group" style="padding: 12px;">
+      <div class="md3-list-group" style="padding: 14px;">
         <div class="theme-grid">
           <button
             v-for="th in themeList"
@@ -190,7 +196,7 @@
 
       <!-- Appearance Sliders -->
       <div class="section-title">Appearance</div>
-      <div class="md3-list-group" style="padding: 12px; display: flex; flex-direction: column; gap: 14px;">
+      <div class="md3-list-group" style="padding: 16px; display: flex; flex-direction: column; gap: 18px;">
         
         <!-- Card Width -->
         <div class="slider-row">
@@ -324,7 +330,7 @@
            unavailable on Android 14 QPR3+/15 where the overlay runs on a
            hardware surface without an input channel) -->
       <div class="section-title">Position</div>
-      <div class="md3-list-group" style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
+      <div class="md3-list-group" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
 
         <div style="display: flex; gap: 16px; align-items: center;">
           <div class="dpad-grid">
@@ -444,7 +450,7 @@
         </div>
       </div>
 
-      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 12px 0 20px 0;">
+      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 18px 0 28px 0;">
         HyperMoon HUD · In-Game Performance Overlay
       </div>
 
@@ -619,21 +625,67 @@ async function onRestartEngine() {
   background: var(--surface-container-highest);
 }
 
+.hud-master-card {
+  background: var(--surface-container);
+  border: 1px solid var(--surface-container-high);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
 
+.master-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
+.master-switch-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 
+.master-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
+.master-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 2px;
+}
 
+.master-card-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.3;
+}
 
+.hud-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-container-high);
+}
 
-
-
-
-
-
-
-
-
+.chip-item {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+}
 
 .layout-toggle-container {
   display: grid;
@@ -646,7 +698,7 @@ async function onRestartEngine() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--surface-container-high);
   background: var(--surface-container-high);
@@ -723,8 +775,8 @@ async function onRestartEngine() {
 
 .dpad-grid {
   display: grid;
-  grid-template-columns: repeat(3, 36px);
-  grid-template-rows: repeat(3, 36px);
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
   gap: 4px;
   flex-shrink: 0;
 }
@@ -783,7 +835,7 @@ async function onRestartEngine() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 4px;
+  padding: 10px 6px;
   border-radius: 12px;
   border: 1px solid var(--surface-container-high);
   background: var(--surface-container-high);
@@ -829,7 +881,7 @@ async function onRestartEngine() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--surface-container-high);
   background: var(--surface-container-high);

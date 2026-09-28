@@ -25,7 +25,6 @@ export const useHyperStore = defineStore('hyper', () => {
 
   const ramUsage = ref('—')
   const ramPercent = ref(0)
-  const ramAvail = ref('—')
   const zramUsage = ref('—')
   const zramPercent = ref(0)
   const ioInfo = ref('—')
@@ -274,7 +273,6 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           const used = tot - avail
           ramPercent.value = Math.round((used / tot) * 100)
           ramUsage.value = `${(used / 1024).toFixed(1)} GB / ${(tot / 1024).toFixed(1)} GB (${ramPercent.value}%)`
-          ramAvail.value = `${(avail / 1024).toFixed(1)} GB free`
         }
 
         if (swapMatch) {
@@ -730,7 +728,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
   return {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
-    sysLoad, ramUsage, ramPercent, ramAvail, zramUsage, zramPercent, ioInfo, vmInfo,
+    sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,

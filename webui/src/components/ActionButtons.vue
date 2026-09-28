@@ -9,7 +9,7 @@
           </div>
           <div class="row-meta">
             <div class="row-title">Clear RAM cache</div>
-            <div class="row-sub">{{ store.ramAvail !== '—' ? `${store.ramAvail} · compact + drop caches` : 'Compact memory & drop caches' }}</div>
+            <div class="row-sub">Compact memory &amp; drop caches</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -22,7 +22,7 @@
           </div>
           <div class="row-meta">
             <div class="row-title">Bug Report</div>
-            <div class="row-sub">{{ store.moduleVersion ? `${store.moduleVersion} · logs + sysfs snapshot` : 'Collect logs, sysfs & device snapshot' }}</div>
+            <div class="row-sub">Collect logs, sysfs &amp; device snapshot</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -35,7 +35,7 @@
           </div>
           <div class="row-meta">
             <div class="row-title">Restart daemon</div>
-            <div class="row-sub">{{ store.uptime !== '—' ? `Up ${store.uptime} · relaunch service` : 'Relaunch daemon service' }}</div>
+            <div class="row-sub">Relaunch daemon service</div>
           </div>
         </div>
         <Icons name="chevron-right" :size="20" style="color: var(--on-surface-variant);" />
@@ -94,3 +94,10 @@ function addShortcut() {
   if (toast) toast(msg)
 }
 </script>
+
+<style scoped>
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+</style>

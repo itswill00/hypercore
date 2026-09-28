@@ -105,28 +105,30 @@
       <!-- Section: Charging Speed (Precision Slider) -->
       <div class="section-header-row">
         <div class="section-title" style="margin-bottom: 0;">Charging Speed</div>
-        <span class="badge-pill">{{ currentStep.tag }} · Level {{ currentStep.limit }}</span>
+        <span class="section-badge">{{ currentStep.tag }} · Level {{ currentStep.limit }}</span>
       </div>
 
-      <div class="md3-card mb-3">
+      <div class="md3-card mb-3 slider-card">
         <!-- Card Top Bar: Target Status -->
-        <div class="row-left" style="margin-bottom: 12px;">
-          <div class="row-meta">
-            <div class="row-title" style="font-size: 15px;">{{ currentStep.label }}</div>
-            <div class="row-sub">
-              <span class="badge-pill" :style="{ background: currentStep.bgColor, color: currentStep.color }">{{ currentStep.tag }}</span>
-              <span style="margin-left: 6px;">HW Level: {{ currentStep.limit }}</span>
+        <div class="slider-top-header">
+          <div class="slider-title-meta">
+            <div class="slider-main-title">{{ currentStep.label }}</div>
+            <div class="slider-sub-meta">
+              <span class="step-tag" :style="{ background: currentStep.bgColor, color: currentStep.color }">
+                {{ currentStep.tag }}
+              </span>
+              <span>HW Level: {{ currentStep.limit }}</span>
             </div>
           </div>
-          <div class="row-val">
-            <div style="font-size: 15px; font-weight: 800; color: var(--on-surface);">{{ currentStep.current }}</div>
-            <div style="font-size: 10.5px; color: var(--on-surface-variant);">{{ currentStep.power }}</div>
+          <div class="slider-rate-badge" :style="{ borderColor: currentStep.color }">
+            <div class="slider-badge-val" :style="{ color: currentStep.color }">{{ currentStep.current }}</div>
+            <div class="slider-badge-pow">{{ currentStep.power }}</div>
           </div>
         </div>
 
         <!-- Custom MD3 Range Slider with Precision Stepper -->
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="slider-track-box">
+          <div class="slider-control-row">
             <button
               class="step-arrow-btn"
               :disabled="sliderValue <= 0 || !store.chargerSupported"
@@ -135,17 +137,18 @@
             >
               −
             </button>
-            <input
-              type="range"
-              min="0"
-              :max="sliderSteps.length - 1"
-              step="1"
-              v-model.number="sliderValue"
-              @input="onSliderInput"
-              class="md3-range-slider"
-              :disabled="!store.chargerSupported"
-              style="flex: 1;"
-            />
+            <div class="slider-input-container">
+              <input
+                type="range"
+                min="0"
+                :max="sliderSteps.length - 1"
+                step="1"
+                v-model.number="sliderValue"
+                @input="onSliderInput"
+                class="md3-range-slider"
+                :disabled="!store.chargerSupported"
+              />
+            </div>
             <button
               class="step-arrow-btn"
               :disabled="sliderValue >= sliderSteps.length - 1 || !store.chargerSupported"
@@ -187,7 +190,7 @@
         <!-- Night Charging Protection Row -->
         <div
           class="md3-list-row clickable"
-          :class="{ 'disabled': !store.chargerSupported }"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
           @click="toggleNightCharging"
         >
           <div class="row-left">
@@ -217,7 +220,7 @@
         <!-- Smart Charging Curve Row -->
         <div
           class="md3-list-row clickable"
-          :class="{ 'disabled': !store.chargerSupported }"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
           @click="toggleSmartChg"
         >
           <div class="row-left">
@@ -247,7 +250,7 @@
         <!-- Limit Charging to 80% Row -->
         <div
           class="md3-list-row clickable"
-          :class="{ 'disabled': !store.chargerSupported }"
+          :class="{ 'disabled-mode-row': !store.chargerSupported }"
           @click="toggleProtect80"
         >
           <div class="row-left">
@@ -419,34 +422,112 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 12px 0 8px 0;
+  margin: 18px 0 10px 0;
 }
 
+.section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
 
+.slider-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--surface-container-highest);
+  border-radius: 16px;
+}
 
+.slider-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
+.slider-title-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
+.slider-main-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+  letter-spacing: -0.2px;
+}
 
+.slider-sub-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
 
+.step-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
 
+.slider-rate-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 4px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--primary);
+  background: var(--surface-container);
+}
 
+.slider-badge-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
 
+.slider-badge-pow {
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
 
+.slider-track-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
 
+.slider-input-container {
+  width: 100%;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+.slider-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
 
 .step-arrow-btn {
   width: 32px;
@@ -477,11 +558,33 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+.md3-range-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-container-highest);
+  outline: none;
+  accent-color: var(--primary);
+}
 
+.md3-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  /* deslop-ignore-next-line 19 */
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  transition: box-shadow 0.15s ease;
+}
 
-
-
-
+.md3-range-slider::-webkit-slider-thumb:active {
+  box-shadow: 0 0 0 6px rgba(200, 198, 215, 0.18), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
 
 .slider-axis-labels {
   display: flex;
@@ -529,13 +632,16 @@ onUnmounted(() => {
 }
 
 .quick-pill-btn:active {
-  background: var(--surface-container-high);
+  transform: scale(0.92);
+  transition: transform 0.08s ease;
 }
 
 .quick-pill-btn.is-selected {
   background: var(--primary-container);
   border-color: var(--primary);
   color: var(--on-primary-container);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transform: scale(1.02);
 }
 
 .quick-pill-btn.is-selected .pill-amp {
@@ -543,5 +649,8 @@ onUnmounted(() => {
   opacity: 0.85;
 }
 
-
+.disabled-mode-row {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+}
 </style>
