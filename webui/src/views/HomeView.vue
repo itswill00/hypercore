@@ -2,24 +2,41 @@
   <div style="height: 100%; display: flex; flex-direction: column;">
     <div class="content-area">
       
-      <!-- Home Hero Banner with banner.jpg Background -->
-      <div class="md3-banner" :style="{ backgroundImage: `url(${bannerImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }">
-        <div class="banner-overlay"></div>
-        <div class="row-left">
-          <div class="icon-badge" style="width: 40px; height: 40px;">
-            <Icons name="chip" :size="22" />
+      <!-- Live Status -->
+      <div class="md3-list-group">
+        <div class="md3-list-row">
+          <div class="row-left">
+            <div class="row-meta">
+              <div class="row-title" style="font-size: 17px;">{{ store.activeProfile }}</div>
+              <div class="row-sub">PID {{ store.daemonPid || '—' }} · Up {{ store.uptime }}</div>
+            </div>
           </div>
-          <div class="row-meta">
-            <div class="row-title" style="font-size: 15px;">HyperCore</div>
-            <div class="row-sub">Kernel Optimizer for MediaTek MT6789 Family</div>
+          <div class="row-val">
+            <span class="badge-pill">{{ store.thermalTier }}</span>
           </div>
         </div>
 
-        <div class="chips-row">
-          <span class="badge-pill">Daemon: {{ store.isRunning ? `Active (PID ${store.daemonPid})` : 'Standby' }}</span>
-          <span class="badge-pill">Profile: {{ store.activeProfile }}</span>
-          <span class="badge-pill" v-if="store.cpuTemp > 0">CPU: {{ store.cpuTemp }}°C</span>
-          <span class="badge-pill" v-if="store.batLevel">Batt: {{ store.batLevel }}%{{ store.batStatus === 'Charging' ? ' · Charging' : '' }}</span>
+        <div class="md3-list-row">
+          <div class="row-left" style="width: 100%;">
+            <div class="stat-grid-2">
+              <div class="stat-box">
+                <div class="stat-lbl">CPU</div>
+                <div class="stat-num">{{ store.cpuTemp > 0 ? `${store.cpuTemp}°C · ${store.cpuGov}` : '—' }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">GPU</div>
+                <div class="stat-num">{{ store.gpuInfo }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">RAM</div>
+                <div class="stat-num">{{ store.ramUsage }}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-lbl">Battery</div>
+                <div class="stat-num">{{ store.batLevel ? `${store.batLevel}% · ${store.batStatus}` : store.batStatus }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -32,9 +49,7 @@
             </div>
             <div class="row-meta">
               <div class="row-title">HyperMoon HUD</div>
-              <div class="row-sub">
-                {{ hudStore.config.visible ? (hudStore.config.auto_gaming ? 'Overlay automatically shows during games' : 'Floating performance monitor is active') : 'Tap to customize or toggle in-game overlay' }}
-              </div>
+              <div class="row-sub">{{ hudSub }}</div>
             </div>
           </div>
           <div class="row-val" @click.stop="onToggleHud">
@@ -62,16 +77,24 @@
 </template>
 
 <script setup>
-import { onMounted, inject } from 'vue'
+import { onMounted, inject, computed } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
 import { useHyperMoonStore } from '@/stores/hypermoon'
 import ActionButtons from '@/components/ActionButtons.vue'
 import Icons from '@/components/icons/Icons.vue'
-import bannerImg from '@/assets/banner.jpg'
 
 const store = useHyperStore()
 const hudStore = useHyperMoonStore()
 const toast = inject('toast')
+
+const hudSub = computed(() => {
+  if (!hudStore.config.visible) return 'Tap to customize or toggle in-game overlay'
+  const fps = hudStore.stats.fps
+  const fpsPart = (fps && fps !== '--') ? `${fps} FPS` : 'Live stats on screen'
+  const ddrPart = (store.dvfsrcMhz > 0) ? ` · DDR ${(store.dvfsrcMhz / 1000).toFixed(2)} GHz` : ''
+  const autoPart = hudStore.config.auto_gaming ? ' · auto-gaming' : ''
+  return `${fpsPart}${ddrPart}${autoPart}`
+})
 
 onMounted(() => {
   hudStore.init()
