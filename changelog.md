@@ -17,6 +17,12 @@ the next Sleep cycle.
 - **Boot verify** (`src/main.c`): `verify_boot_apply()` reads back touch
   smoothing and the Little-cluster governor against the stock baseline at the
   end of settle and logs mismatches instead of staying silent.
+- **HyperMoon position controls** (`webui/`): on Android 14 QPR3+/15 the
+  WindowManager rejects the root overlay pid, so the HUD falls back to a raw
+  SurfaceControl surface with no input channel — finger-drag is impossible
+  there by OS design. New universal positioning in WebUI → HUD → Position:
+  D-pad nudge + X/Y sliders writing `position.json`, honored by both render
+  paths within one refresh tick.
 
 ---
 
