@@ -188,42 +188,56 @@ body, #app {
 
 .md3-card {
   background: var(--surface-container);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
   border: 1px solid var(--surface-container-high);
   transition: border-color 0.2s ease;
 }
 
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .md3-banner {
-  background: linear-gradient(135deg, var(--secondary-container) 0%, var(--surface-container-high) 100%);
-  color: var(--on-secondary-container);
-  border-radius: 16px;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border-radius: 12px;
   padding: 16px;
   margin-bottom: 14px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  animation: banner-enter 0.25s cubic-bezier(0.2, 0, 0, 1) both;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--surface-container-high);
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes banner-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(16, 17, 22, 0.94) 0%, rgba(16, 17, 22, 0.82) 65%, rgba(16, 17, 22, 0.65) 100%);
+  z-index: 1;
+}
+
+.md3-banner > *:not(.banner-overlay) {
+  position: relative;
+  z-index: 2;
 }
 
 
 .md3-list-group {
   background: var(--surface-container);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   margin-bottom: 14px;
   border: 1px solid var(--surface-container-high);
@@ -381,10 +395,10 @@ body, #app {
 }
 
 .stat-box {
-  background: var(--surface-container-low, #17181c);
-  border: 1px solid var(--outline-variant, #383a42);
-  border-radius: 8px;
-  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
