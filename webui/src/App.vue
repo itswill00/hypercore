@@ -89,9 +89,9 @@ const headerPath = computed(() => routesOrder[headerIdx.value] || '/')
 
 const headerMap = {
   '/': { title: 'Dashboard', sub: 'Performance & Status Overview' },
-  '/charger': { title: 'Charger Control', sub: 'Hardware charging speed & battery protection' },
-  '/games': { title: 'Detected Games', sub: 'Installed games for auto profile switching' },
-  '/logs': { title: 'Activity Log', sub: 'History of profile switches and system events' },
+  '/charger': { title: 'Charger Control', sub: 'Charging speed & protection' },
+  '/games': { title: 'Detected Games', sub: 'Auto profile switching' },
+  '/logs': { title: 'Activity Log', sub: 'Profile & system events' },
   '/about': { title: 'About Device', sub: 'System & Community' },
 }
 const headerTitle = computed(() => headerMap[headerPath.value]?.title || 'HyperCore')
@@ -118,7 +118,7 @@ const sliderSteps = [
 const chargerHeaderBadge = computed(() => {
   if (!store.chargerSupported) return 'Unsupported'
   const f = sliderSteps.find(s => s.limit === store.customLimit)
-  return f ? `${f.label} (${f.current})` : 'Balanced'
+  return f ? f.current : '—'
 })
 
 function switchTab(path, smooth = true) {

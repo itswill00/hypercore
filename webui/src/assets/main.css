@@ -109,12 +109,32 @@ body, #app {
   font-size: 16px;
   font-weight: 700;
   color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page-header-sub {
   font-size: 11px;
   color: var(--on-surface-variant);
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.page-header .badge-pill,
+.page-header .menu-relative-container {
+  flex-shrink: 0;
+  max-width: 46%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .content-area {
