@@ -94,10 +94,3 @@ function addShortcut() {
   if (toast) toast(msg)
 }
 </script>
-
-<style scoped>
-.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-</style>

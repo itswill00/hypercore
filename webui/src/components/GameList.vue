@@ -101,8 +101,7 @@
               <span>{{ launchingPkg === item.pkg ? 'Launching' : 'Launch' }}</span>
             </button>
             <button
-              class="btn-md3 btn-icon-only btn-md3-sm"
-              :class="confirmRemovePkg === item.pkg ? 'btn-md3-danger active-confirm' : 'btn-md3-danger'"
+              class="btn-md3 btn-icon-only btn-md3-sm btn-md3-danger"
               :title="confirmRemovePkg === item.pkg ? 'Click again to confirm delete' : 'Remove game'"
               @click="remove(item.pkg)"
             >
@@ -282,19 +281,6 @@ async function changeProfile(pkg, profile) {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-.select-md3 {
-  background: var(--surface-container-high);
-  color: var(--on-surface);
-  border: 1px solid var(--surface-container-highest);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 11px;
-  outline: none;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
 .select-md3.prof-gaming {
   border-left: 3px solid #ff7043;
 }
@@ -309,14 +295,5 @@ async function changeProfile(pkg, profile) {
 
 .select-md3.prof-saver {
   border-left: 3px solid #66bb6a;
-}
-
-.select-md3:focus {
-  border-color: var(--primary);
-}
-
-.active-confirm {
-  background: var(--error) !important;
-  color: var(--on-error) !important;
 }
 </style>
