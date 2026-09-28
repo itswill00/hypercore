@@ -1,9 +1,58 @@
 #!/system/bin/sh
+# HyperCore smart build: incremental fingerprints + parallel frontend/native.
+#
+#   ./build.sh                 full smart build (skips unchanged stages)
+#   ./build.sh --deploy, -d    build, then restart live daemons on device
+#   ./build.sh --skip-webui    skip vite even if webui/ changed
+#   ./build.sh --skip-daemon   skip clang even if src/ changed
+#   ./build.sh --clean         wipe generated artifacts + fingerprints
+#   ./build.sh --help          this text
+#
+# How skipping stays safe:
+#   - webui/ skips only when the content hash of webui/src + package files
+#     matches the last build AND webui/dist/index.html still exists.
+#   - daemon skips only when the hash of src/** + every manifest input
+#     matches AND both binaries still exist. A webui rebuild changes
+#     webroot/index.html, which is a manifest input, so the daemon
+#     automatically relinks (the embedded table changed) — no stale binary.
+#   - checksums.txt is ALWAYS regenerated and ALWAYS gated with
+#     `sha256sum -c` before packaging. Skips never bypass the gate.
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="/data/data/com.termux/files/home/HyperCore_Releases"
+FP_DIR="$PROJECT_DIR/build"
+FP_WEBUI="$FP_DIR/.fp_webui"
+FP_DAEMON="$FP_DIR/.fp_daemon"
 
 set -e
+
+SKIP_WEBUI=0
+SKIP_DAEMON=0
+DO_DEPLOY=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --deploy|-d) DO_DEPLOY=1 ;;
+        --skip-webui) SKIP_WEBUI=1 ;;
+        --skip-daemon) SKIP_DAEMON=1 ;;
+        --clean)
+            echo "cleaning generated artifacts..."
+            rm -rf "$PROJECT_DIR/webui/dist" "$PROJECT_DIR/build" \
+                "$PROJECT_DIR/system/bin/libhypercore.so" "$PROJECT_DIR/system/bin/hypermoon_d" \
+                "$PROJECT_DIR/checksums.txt" "$PROJECT_DIR/src/include/embedded_checksums.hpp"
+            echo "clean."
+            exit 0
+            ;;
+        --help|-h)
+            sed -n '2,17p' "$0"
+            exit 0
+            ;;
+        *)
+            echo "error: unknown flag '$arg' (try --help)"
+            exit 1
+            ;;
+    esac
+done
 
 cd "$PROJECT_DIR"
 
@@ -23,7 +72,10 @@ sed -i "s/VERSION_NAME=\"v.*\"/VERSION_NAME=\"${VERSION}\"/" customize.sh 2>/dev
 
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
-for tool in clang zip node npm; do
+# Tool checks follow the flags: no node/npm needed for --skip-webui.
+need="clang zip"
+[ "$SKIP_WEBUI" -eq 0 ] && need="$need node npm"
+for tool in $need; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "error: $tool is not installed"
         exit 1
@@ -48,28 +100,47 @@ for daemon in libhypercore.so hypermoon_d; do
 done
 # ecj/dx optional for hypermoon dex (skipped if missing, ponytail: no hard fail for HUD)
 
-if [ -d "webui" ]; then
+mkdir -p "$FP_DIR"
+
+fingerprint() {
+    # fingerprint <out> <paths...>: sha256 over file list + contents
+    out="$1"; shift
+    ( for p in "$@"; do
+        [ -e "$p" ] && find "$p" -type f | sort
+      done | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1 ) > "$out.tmp"
+    mv "$out.tmp" "$out"
+    cat "$out"
+}
+
+fp_match() {
+    # fp_match <stored> <current>: 0 when equal and non-empty
+    [ -n "$1" ] && [ -f "$2" ] && [ "$1" = "$(cat "$2")" ]
+}
+
+# ---------------------------------------------------------------- webui ---
+# Runs in the background while the native side compiles.
+WEBUI_PID=""
+if [ "$SKIP_WEBUI" -eq 0 ] && [ -d "webui" ]; then
     if [ ! -d "webui/node_modules" ]; then
         echo "installing webui dependencies..."
         (cd webui && npm install --no-audit --no-fund)
+    elif [ "webui/package-lock.json" -nt "webui/node_modules" ]; then
+        echo "lockfile changed, refreshing webui dependencies..."
+        (cd webui && npm install --no-audit --no-fund)
     fi
-    
-    echo "compiling webui..."
-    if ! (cd webui && node ./node_modules/vite/bin/vite.js build); then
-        echo "error: vite build failed"
-        exit 1
+
+    NEW_FP_WEBUI=$(fingerprint "$FP_DIR/.fp_webui.new" webui/src webui/package.json webui/package-lock.json webui/vite.config.js)
+    if fp_match "$NEW_FP_WEBUI" "$FP_WEBUI" && [ -f "webui/dist/index.html" ]; then
+        echo "webui unchanged, skipping vite build."
+        rm -f "$FP_DIR/.fp_webui.new"
+    else
+        echo "compiling webui (background)..."
+        (cd webui && node ./node_modules/vite/bin/vite.js build) > "$FP_DIR/vite.log" 2>&1 &
+        WEBUI_PID=$!
     fi
-    
-    if [ ! -f "webui/dist/index.html" ]; then
-        echo "error: webui output not found"
-        exit 1
-    fi
-    
-    mkdir -p webroot
-    cp webui/dist/index.html webroot/index.html
-    rm -f webroot/banner.jpg
 fi
 
+# ---------------------------------------------------------------- native --
 echo "generating sha256 checksums..."
 # Shipped payload, verified at install time by customize.sh (sha256sum -c) and
 # re-checked from inside the daemon. This MUST cover the executables — a manifest
@@ -104,38 +175,67 @@ EOF
 EOF
 }
 
+# hypermoon_d compiles while vite runs (independent inputs).
+# Fingerprinted separately: it is deterministic, so an unchanged source
+# keeps the binary (and its manifest hash) bit-identical across runs.
+if [ "$SKIP_DAEMON" -eq 0 ]; then
+    NEW_FP_HMOON=$(fingerprint "$FP_DIR/.fp_hmoon.new" src/hud/hypermoon_daemon.c)
+    if fp_match "$NEW_FP_HMOON" "$FP_DIR/.fp_hmoon" && [ -f system/bin/hypermoon_d ]; then
+        echo "hypermoon unchanged, skipping."
+        rm -f "$FP_DIR/.fp_hmoon.new"
+    else
+        echo "compiling hypermoon c daemon..."
+        clang -O3 -Wall -Wextra \
+            src/hud/hypermoon_daemon.c \
+            -o system/bin/hypermoon_d
+        chmod 755 system/bin/hypermoon_d
+        mv "$FP_DIR/.fp_hmoon.new" "$FP_DIR/.fp_hmoon"
+    fi
+
+    echo "compiling hypermoon java overlay dex..."
+    if command -v ecj >/dev/null 2>&1 && [ -f "src/hud/HyperMoonOverlay.java" ]; then
+    ANDROID_JAR="/data/data/com.termux/files/usr/share/java/android.jar"
+    if [ ! -f "$ANDROID_JAR" ]; then
+        ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
+    fi
+    rm -rf build/classes
+    mkdir -p build/classes
+    if ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null || javac -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null; then
+    if command -v dx >/dev/null 2>&1; then
+        dx --dex --output=system/bin/hypermoon.dex build/classes
+    elif command -v d8 >/dev/null 2>&1; then
+        d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class 2>/dev/null
+        mv system/bin/classes.dex system/bin/hypermoon.dex 2>/dev/null || true
+    fi
+    fi
+    rm -rf build/classes
+    [ -f system/bin/hypermoon.dex ] && chmod 644 system/bin/hypermoon.dex || echo "warning: hypermoon.dex not built (ecj/dx missing), continuing"
+    else
+        echo "warning: ecj not found, skipping hypermoon dex build"
+        [ -f system/bin/hypermoon.dex ] || touch system/bin/hypermoon.dex 2>/dev/null || true
+    fi
+fi
+
+# Reap vite before its output is hashed into the manifest.
+if [ -n "$WEBUI_PID" ]; then
+    if ! wait "$WEBUI_PID"; then
+        echo "error: vite build failed (see build/vite.log)"
+        tail -n 20 "$FP_DIR/vite.log" 2>/dev/null || true
+        exit 1
+    fi
+    if [ ! -f "webui/dist/index.html" ]; then
+        echo "error: webui output not found"
+        exit 1
+    fi
+    mkdir -p webroot
+    cp webui/dist/index.html webroot/index.html
+    rm -f webroot/banner.jpg
+    mv "$FP_DIR/.fp_webui.new" "$FP_WEBUI"
+fi
+
 # Pass 1: a stub table so the pre-hash link has something valid to include.
 rm -f checksums.txt
 write_embedded_table /dev/null
-
-echo "compiling hypermoon c daemon..."
-clang -O3 -Wall -Wextra \
-    src/hud/hypermoon_daemon.c \
-    -o system/bin/hypermoon_d
-chmod 755 system/bin/hypermoon_d
-
-echo "compiling hypermoon java overlay dex..."
-if command -v ecj >/dev/null 2>&1 && [ -f "src/hud/HyperMoonOverlay.java" ]; then
-ANDROID_JAR="/data/data/com.termux/files/usr/share/java/android.jar"
-if [ ! -f "$ANDROID_JAR" ]; then
-    ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
-fi
-rm -rf build/classes
-mkdir -p build/classes
-if ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null || javac -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null; then
-if command -v dx >/dev/null 2>&1; then
-    dx --dex --output=system/bin/hypermoon.dex build/classes
-elif command -v d8 >/dev/null 2>&1; then
-    d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class 2>/dev/null
-    mv system/bin/classes.dex system/bin/hypermoon.dex 2>/dev/null || true
-fi
-fi
-rm -rf build/classes
-[ -f system/bin/hypermoon.dex ] && chmod 644 system/bin/hypermoon.dex || echo "warning: hypermoon.dex not built (ecj/dx missing), continuing"
-else
-    echo "warning: ecj not found, skipping hypermoon dex build"
-    [ -f system/bin/hypermoon.dex ] || touch system/bin/hypermoon.dex 2>/dev/null || true
-fi
 
 # All non-daemon payloads now exist, so the manifest can be hashed for real.
 for file in $CHECKSUM_FILES; do
@@ -147,28 +247,40 @@ for file in $CHECKSUM_FILES; do
 done
 write_embedded_table checksums.txt
 
-echo "compiling c daemon..."
-clang -O3 -Wall -Werror \
-    -DVERSION=\"${VERSION}\" \
-    -I./src/include \
-    src/main.c \
-    src/cpu.c \
-    src/gpu.c \
-    src/thermal.c \
-    src/memory.c \
-    src/io.c \
-    src/gamelist.c \
-    src/ipc.c \
-    src/log.c \
-    src/sysfs.c \
-    src/integrity.c \
-    src/sha256.c \
-    src/charger.c \
-    -o system/bin/libhypercore.so
-chmod 755 system/bin/libhypercore.so
+NEW_FP_DAEMON=$(fingerprint "$FP_DIR/.fp_daemon.new" src module.prop $CHECKSUM_FILES)
+if [ "$SKIP_DAEMON" -eq 1 ]; then
+    echo "daemon compile skipped by flag (manifest still regenerated + gated)."
+    rm -f "$FP_DIR/.fp_daemon.new"
+elif fp_match "$NEW_FP_DAEMON" "$FP_DAEMON" && [ -f system/bin/libhypercore.so ]; then
+    echo "daemon sources unchanged, skipping relink."
+    rm -f "$FP_DIR/.fp_daemon.new"
+else
+    echo "compiling c daemon..."
+    clang -O3 -Wall -Werror \
+        -DVERSION=\"${VERSION}\" \
+        -I./src/include \
+        src/main.c \
+        src/cpu.c \
+        src/gpu.c \
+        src/thermal.c \
+        src/memory.c \
+        src/io.c \
+        src/gamelist.c \
+        src/ipc.c \
+        src/log.c \
+        src/sysfs.c \
+        src/integrity.c \
+        src/sha256.c \
+        src/charger.c \
+        -o system/bin/libhypercore.so
+    chmod 755 system/bin/libhypercore.so
+    mv "$FP_DIR/.fp_daemon.new" "$FP_DAEMON"
+fi
 
 # The daemon cannot embed its own hash, so append it to the shipped manifest
 # only after the final link. customize.sh verifies this before starting it.
+# (Rebuilt every run: if the link was skipped the hash is identical anyway.)
+sed -i '/system\/bin\/libhypercore.so$/d' checksums.txt
 sha256sum system/bin/libhypercore.so >> checksums.txt
 
 # Fail loudly rather than shipping a manifest that does not match the payload.
@@ -210,7 +322,7 @@ echo "build finished: ${OUTPUT_DIR}/${ZIP_OUT}"
 su -c "mkdir -p /sdcard/HyperCore_Releases && cp -f '$OUTPUT_DIR/$ZIP_OUT' /sdcard/HyperCore_Releases/ && chmod 666 '/sdcard/HyperCore_Releases/$ZIP_OUT'" 2>/dev/null || true
 am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/HyperCore_Releases/$ZIP_OUT" >/dev/null 2>&1 || true
 
-if [ "$1" = "--deploy" ] || [ "$1" = "-d" ]; then
+if [ "$DO_DEPLOY" = "1" ]; then
     echo "deploying to live device modules..."
     if su -c "
         pkill -9 -x hypercore_daemon 2>/dev/null || true
