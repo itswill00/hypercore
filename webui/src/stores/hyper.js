@@ -153,6 +153,8 @@ echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/nul
 echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";
 echo "CORES:$(cat /sys/devices/system/cpu/online 2>/dev/null)";
 echo "GPU:$(cat /sys/module/ged/parameters/gpu_loading 2>/dev/null):$(cat /sys/module/ged/parameters/gpu_bottom_freq 2>/dev/null)";
+echo "GCUR:$(cat /sys/class/devfreq/13000000.mali/cur_freq 2>/dev/null || cat /sys/class/devfreq/soc:mali/cur_freq 2>/dev/null)";
+echo "GMAX:$(cat /sys/class/devfreq/13000000.mali/max_freq 2>/dev/null || cat /sys/class/devfreq/soc:mali/max_freq 2>/dev/null)";
 echo "LOAD:$(read -r a _ < /proc/loadavg 2>/dev/null && echo "$a")";
 echo "MEM:$(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo 2>/dev/null | tr '\n' ' ')";
 echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)";
@@ -240,7 +242,9 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       cpuGov.value = (kv.GOV || 'schedutil').trim()
       cpuCores.value = (kv.CORES || '0-7').trim()
 
-      if (kv.GPU) {
+      if (kv.GCUR && kv.GMAX) {
+        gpuInfo.value = `${fmtFreq(kv.GCUR)}/${fmtFreq(kv.GMAX)} MHz`
+      } else if (kv.GPU) {
         const p = kv.GPU.split(':')
         gpuInfo.value = `${p[0] || '0'}% / ${fmtFreq(p[1])} MHz floor`
       }
