@@ -20,9 +20,6 @@
 
           <div class="banner-stats-row">
             <div class="banner-chip">
-              <span>Daemon: {{ store.isRunning ? `Active (PID ${store.daemonPid})` : 'Standby' }}</span>
-            </div>
-            <div class="banner-chip">
               <span>Profile: {{ store.activeProfile }}</span>
             </div>
             <div class="banner-chip" v-if="store.cpuTemp > 0">

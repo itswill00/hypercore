@@ -48,9 +48,6 @@
 
         <div class="hud-status-chips">
           <div class="chip-item">
-            <span>Daemon: {{ hudStore.daemonPid ? 'Running' : 'Idle' }}</span>
-          </div>
-          <div class="chip-item">
             <span>Display: {{ hudStore.overlayPid ? 'Active' : 'Off' }}</span>
           </div>
           <div class="chip-item" v-if="hudStore.stats.fps && hudStore.stats.fps !== '--'">
@@ -442,8 +439,8 @@
               <Icons name="rocket" :size="18" />
             </div>
             <div class="row-meta">
-              <div class="row-title">Restart HUD</div>
-              <div class="row-sub">Restart background service and overlay display</div>
+              <div class="row-title">Restart overlay</div>
+              <div class="row-sub">Relaunch overlay display service</div>
             </div>
           </div>
           <Icons name="chevron-right" :size="18" style="color: var(--on-surface-variant);" />

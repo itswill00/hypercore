@@ -22,7 +22,6 @@
           <Transition name="menu-pop">
             <div v-if="logsMenuOpen" class="dropdown-menu-md3" style="position:absolute; top:calc(100%+6px); right:0;">
               <button class="menu-item" @click="onLogsAction('copy')">Copy All Logs</button>
-              <button class="menu-item" @click="onLogsAction('export')">Export Bugreport</button>
               <button class="menu-item" @click="onLogsAction('disclaimer')">Terms Disclaimer</button>
               <div class="menu-divider"></div>
               <button class="menu-item menu-item-danger" @click="onLogsAction('clear')">Clear Log</button>
@@ -40,7 +39,6 @@
     </template>
     <Navigation v-if="!isHudRoute" :active-path="activePath" @navigate="switchTab" />
     <DisclaimerModal />
-    <BugreportModal :show="showLogsBugreport" @close="showLogsBugreport=false" />
     <transition name="toast-slide">
       <div v-if="toastMsg" class="toast-pill">
         <Icons name="check" :size="14" style="color: var(--primary);" />
@@ -62,7 +60,6 @@ import ChargerView from '@/views/ChargerView.vue'
 import GamesView from '@/views/GamesView.vue'
 import LogsView from '@/views/LogsView.vue'
 import AboutView from '@/views/AboutView.vue'
-import BugreportModal from '@/components/BugreportModal.vue'
 
 const store = useHyperStore()
 const route = useRoute()
@@ -83,7 +80,6 @@ const snapIdx = ref(routesOrder.indexOf(route.path) !== -1 ? routesOrder.indexOf
 const headerIdx = ref(snapIdx.value)
 
 const logsMenuOpen = ref(false)
-const showLogsBugreport = ref(false)
 const snapSuspend = ref(false)
 let snapResumeTimer = null
 
@@ -151,8 +147,6 @@ async function onLogsAction(kind) {
       else { const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta) }
       toast('Log copied')
     } catch { toast('Failed to copy') }
-  } else if (kind === 'export') {
-    showLogsBugreport.value = true
   } else if (kind === 'disclaimer') {
     localStorage.removeItem('hypercore_disclaimer_agreed')
     if (window.resetDisclaimer) window.resetDisclaimer()

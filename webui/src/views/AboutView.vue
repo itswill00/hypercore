@@ -176,14 +176,6 @@
                   <div class="stat-num">{{ store.batHealth }} ({{ store.batStatus }})</div>
                 </div>
                 <div class="stat-box">
-                  <div class="stat-lbl">Current flow</div>
-                  <div class="stat-num">{{ store.batRate }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Voltage</div>
-                  <div class="stat-num">{{ store.batVolt }}</div>
-                </div>
-                <div class="stat-box">
                   <div class="stat-lbl">Full capacity</div>
                   <div class="stat-num">{{ store.batCapFull }}</div>
                 </div>

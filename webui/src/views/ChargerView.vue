@@ -85,14 +85,6 @@
                 <div class="stat-lbl">Battery Temp</div>
                 <div class="stat-num" :style="store.batTemp >= 45 ? 'color: var(--error); font-weight: 700;' : ''">{{ store.batTemp }}°C</div>
               </div>
-              <div class="stat-box">
-                <div class="stat-lbl">Battery Health</div>
-                <div class="stat-num">{{ store.batHealth || 'Good' }}</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-lbl">Charge Cycles</div>
-                <div class="stat-num">{{ store.batteryCycles ? `${store.batteryCycles} cycles` : '—' }}</div>
-              </div>
               <div class="stat-box" v-if="store.chgLimitMax > 0">
                 <div class="stat-lbl">HW Limit Scale</div>
                 <div class="stat-num">Level 0–{{ store.chgLimitMax }}</div>
