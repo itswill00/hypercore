@@ -10,6 +10,62 @@ sleep 2
 
 mkdir -p /data/adb/hypercore 2>/dev/null || true
 
+# ZRAM pool sizing, applied once per boot so it wins over the ROM init.rc
+# (which writes comp_algorithm then swapon_all from fstab.enableswap).
+# Reboot-required by design: swapoff forces every compressed page back into
+# RAM in one go, and doing that mid-game is how you get a freeze.
+apply_zram_config() {
+    CONF="/data/adb/hypercore/zram.conf"
+    ZNODE="/sys/block/zram0/disksize"
+    [ -f "$CONF" ] || return 0
+    [ -f "$ZNODE" ] || return 0
+    WANT_MB=$(grep '^size_mb=' "$CONF" 2>/dev/null | cut -d= -f2 | tr -d ' \r\n')
+    case "$WANT_MB" in ''|*[!0-9]*) return 0 ;; esac
+
+    LOG="/data/adb/hypercore/hypercore.log"
+    if [ "$WANT_MB" = "0" ]; then
+        if grep -q '/dev/block/zram0' /proc/swaps 2>/dev/null; then
+            swapoff /dev/block/zram0 2>/dev/null || return 0
+            echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+            echo "HyperCore ZRAM disabled by user config (swapoff)" >> "$LOG" 2>/dev/null || true
+        fi
+        return 0
+    fi
+
+    # Fixed presets only, mapped as strings: /system/bin/sh does 32-bit
+    # arithmetic, so MB*1024*1024 overflows past 2GB.
+    case "$WANT_MB" in
+        0) ;;
+        2048) WANT_BYTES="2147483648" ;;
+        4096) WANT_BYTES="4294967296" ;;
+        *) return 0 ;;
+    esac
+    CUR_BYTES=$(cat "$ZNODE" 2>/dev/null | tr -d ' \r\n')
+    [ "$CUR_BYTES" = "$WANT_BYTES" ] && return 0
+
+    # Refuse the swapoff when RAM is too tight to take the pages back.
+    SWAP_KB=$(awk '/^SwapTotal:/{t=$2} /^SwapFree:/{f=$2} END{print (t-f)}' /proc/meminfo 2>/dev/null)
+    AVAIL_KB=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
+    [ -n "$SWAP_KB" ] && [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt $((SWAP_KB + 524288)) ] && {
+        echo "HyperCore ZRAM resize skipped: low memory, keeping live size" >> "$LOG" 2>/dev/null || true
+        return 0
+    }
+
+    swapoff /dev/block/zram0 2>/dev/null || return 0
+    echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+    echo "$WANT_BYTES" > "$ZNODE" 2>/dev/null || {
+        echo "HyperCore ZRAM resize failed, restoring swap" >> "$LOG" 2>/dev/null || true
+        mkswap /dev/block/zram0 >/dev/null 2>&1 || true
+        swapon /dev/block/zram0 2>/dev/null || true
+        return 0
+    }
+    mkswap /dev/block/zram0 >/dev/null 2>&1 || true
+    swapon /dev/block/zram0 2>/dev/null || true
+    echo "HyperCore ZRAM pool set to ${WANT_MB}MB" >> "$LOG" 2>/dev/null || true
+}
+
+apply_zram_config
+
 # Graceful stop old daemon so it restores baseline nodes before new one takes over.
 # Give restore_baseline_nodes() (it rewrites ~60 sysfs nodes) room to finish
 # before escalating to SIGKILL, otherwise a killed daemon leaves nodes stranded.

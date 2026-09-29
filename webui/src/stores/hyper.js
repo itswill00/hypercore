@@ -27,6 +27,9 @@ export const useHyperStore = defineStore('hyper', () => {
   const ramPercent = ref(0)
   const zramUsage = ref('—')
   const zramPercent = ref(0)
+  const zramConfiguredMb = ref(null) /* null = Stock (no zram.conf), 0 = Off, else pool size in MB */
+  const zramLiveMb = ref(0)          /* live /sys/block/zram0/disksize in MB */
+  const zramComp = ref('')           /* live compressor, e.g. lz4 */
   const ioInfo = ref('—')
   const vmInfo = ref('—')
 
@@ -167,6 +170,9 @@ echo "BFC:$(cat /sys/class/power_supply/battery/charge_full 2>/dev/null || cat /
 echo "BTEC:$(cat /sys/class/power_supply/battery/technology 2>/dev/null || cat /sys/class/power_supply/bms/technology 2>/dev/null)";
 echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler 2>/dev/null | head -1 | sed -e 's/.*\\[\\([^]]*\\)\\].*/\\1/' | awk '{print $1}'):256";
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
+echo "ZC:$(grep ^size_mb= /data/adb/hypercore/zram.conf 2>/dev/null | cut -d= -f2)";
+echo "ZD:$(cat /sys/block/zram0/disksize 2>/dev/null)";
+echo "ZCP:$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
 echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || grep '^version=' ${MOD}/module.prop 2>/dev/null | cut -d= -f2 || true)";
@@ -324,6 +330,22 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.SW) {
         const p = kv.SW.split(':')
         vmInfo.value = `${p[0] || '15'} / ${p[1] || '100'}`
+      }
+      if (typeof kv.ZC !== 'undefined') {
+        const raw = (kv.ZC || '').trim()
+        if (!raw) zramConfiguredMb.value = null
+        else {
+          const n = parseInt(raw)
+          zramConfiguredMb.value = isNaN(n) ? null : n
+        }
+      }
+      if (typeof kv.ZD !== 'undefined') {
+        const bytes = parseInt((kv.ZD || '').trim())
+        zramLiveMb.value = bytes > 0 ? Math.round(bytes / 1048576) : 0
+      }
+      if (typeof kv.ZCP !== 'undefined') {
+        const m = (kv.ZCP || '').match(/\[([^\]]+)\]/)
+        zramComp.value = m ? m[1] : (kv.ZCP || '').trim().split(/\s+/).pop() || ''
       }
 
       const parsedPkgs = []
@@ -545,8 +567,40 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     }
   }
 
-  async function restartDaemon() {
+  async function setZramSize(mode) {
     loading.value = true
+    try {
+      let cmd = ''
+      let next = null
+      if (mode === 'stock') {
+        cmd = 'rm -f /data/adb/hypercore/zram.conf 2>/dev/null || true'
+        next = null
+      } else {
+        const n = parseInt(mode)
+        if (isNaN(n) || (n !== 0 && n !== 2048 && n !== 4096)) return 'invalid'
+        cmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo 'size_mb=${n}' > /data/adb/hypercore/zram.conf 2>/dev/null; chmod 644 /data/adb/hypercore/zram.conf 2>/dev/null || true`
+        next = n
+      }
+      await execCommand(cmd)
+      zramConfiguredMb.value = next
+      await new Promise(r => setTimeout(r, 200))
+      await refresh()
+      return next === null ? 'ZRAM back to Stock — reboot to apply' : `ZRAM set to ${next === 0 ? 'Off' : (next / 1024) + ' GB'} — reboot to apply`
+    } catch (e) {
+      return 'Failed to save ZRAM setting'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function rebootDevice() {
+    try {
+      await execCommand('reboot 2>/dev/null || svc power reboot 2>/dev/null || setprop sys.powerctl reboot 2>/dev/null', 3000)
+    } catch {}
+    return 'Rebooting…'
+  }
+
+  async function restartDaemon() {    loading.value = true
     try {
       const cmd = `MOD="/data/adb/modules/hypercore";
 pkill -15 -x libhypercore.so 2>/dev/null || true;
@@ -730,7 +784,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
 
   return {
     daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
-    sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, ioInfo, vmInfo,
+    sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, zramConfiguredMb, zramLiveMb, zramComp, ioInfo, vmInfo,
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
@@ -740,7 +794,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,
-    refresh, flushRam, restartDaemon, exportLogs, clearLogs, createShortcut,
+    refresh, flushRam, setZramSize, rebootDevice, restartDaemon, exportLogs, clearLogs, createShortcut,
     addGame, removeGame, updateGameProfile, autoDetectGames, launchGame, setLogsActive, stopUptimeTicker,
     startCardPolling, stopCardPolling, pollCharger, setChargeMode, setCustomLimit,
     setNightCharging, setSmartChg, setProtect80

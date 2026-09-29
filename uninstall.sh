@@ -90,6 +90,23 @@ if [ -f "$STOCK_CONF" ]; then
   _dr=$(grep '^vm_dirty_ratio=' "$STOCK_CONF" 2>/dev/null | cut -d= -f2); [ -n "$_dr" ] && [ -f /proc/sys/vm/dirty_ratio ] && echo "$_dr" > /proc/sys/vm/dirty_ratio 2>/dev/null
 fi
 
+# Restore stock ZRAM pool when the user had resized it (best-effort, never aborts).
+# Next reboot would heal it anyway via the ROM init.rc, this just avoids
+# leaving a custom pool behind for the current session.
+if [ -f "/data/adb/hypercore/stock_zram.conf" ] && [ -f /sys/block/zram0/disksize ]; then
+  _zstock=$(grep '^stock_disksize=' /data/adb/hypercore/stock_zram.conf 2>/dev/null | cut -d= -f2 | tr -d ' \r\n')
+  _zcur=$(cat /sys/block/zram0/disksize 2>/dev/null | tr -d ' \r\n')
+  if [ -n "$_zstock" ] && [ -n "$_zcur" ] && [ "$_zstock" != "$_zcur" ]; then
+    swapoff /dev/block/zram0 2>/dev/null || true
+    echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+    [ "$_zstock" != "0" ] && {
+      echo "$_zstock" > /sys/block/zram0/disksize 2>/dev/null || true
+      mkswap /dev/block/zram0 >/dev/null 2>&1 || true
+      swapon /dev/block/zram0 2>/dev/null || true
+    }
+  fi
+fi
+
 # Reset charging control
 [ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null
 [ -f "/sys/class/power_supply/battery/charge_control_limit" ] && echo 0 > /sys/class/power_supply/battery/charge_control_limit 2>/dev/null

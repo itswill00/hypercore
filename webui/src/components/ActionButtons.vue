@@ -2,6 +2,26 @@
   <div>
     <div class="section-title">Quick Actions</div>
     <div class="md3-list-group">
+      <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="openHud">
+        <div class="row-left">
+          <div class="icon-badge" :class="hudStore.config.visible ? '' : 'secondary'">
+            <Icons name="moon" :size="18" />
+          </div>
+          <div class="row-meta">
+            <div class="row-title">HyperMoon HUD</div>
+            <div class="row-sub">{{ hudSub }}</div>
+          </div>
+        </div>
+        <div class="row-val" @click.stop="toggleHud">
+          <label class="md3-switch" style="pointer-events: none;">
+            <input type="checkbox" :checked="hudStore.config.visible" />
+            <span class="md3-switch-track">
+              <span class="md3-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div class="md3-list-row clickable" :class="{ 'disabled': store.loading }" @click="flush">
         <div class="row-left">
           <div class="icon-badge">
@@ -60,15 +80,38 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useHyperStore } from '@/stores/hyper'
+import { useHyperMoonStore } from '@/stores/hypermoon'
 import Icons from '@/components/icons/Icons.vue'
 import BugreportModal from '@/components/BugreportModal.vue'
 
 const store = useHyperStore()
+const hudStore = useHyperMoonStore()
+const router = useRouter()
 const toast = inject('toast')
 
 const showBugreport = ref(false)
+
+const hudSub = computed(() => {
+  if (!hudStore.config.visible) return 'In-game overlay designer'
+  if (hudStore.stats.fps && hudStore.stats.fps !== '--') return `${hudStore.stats.fps} FPS on screen`
+  return hudStore.config.auto_gaming ? 'Auto-shows in games' : 'Overlay active'
+})
+
+onMounted(() => {
+  hudStore.init()
+})
+
+function openHud() {
+  router.push('/hud')
+}
+
+function toggleHud() {
+  if (store.loading) return
+  hudStore.toggleMaster(!hudStore.config.visible)
+}
 
 async function flush() {
   if (store.loading) return

@@ -22,6 +22,23 @@ static void detect_total_ram(void) {
     fclose(f);
 }
 
+static int read_swap_total_kb(void) {
+    FILE *f = fopen("/proc/meminfo", "r");
+    if (!f) return -1;
+    char line[128];
+    int total = -1;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "SwapTotal:", 10) == 0) {
+            char *p = line + 10;
+            while (*p && (*p < '0' || *p > '9')) p++;
+            if (*p) total = atoi(p);
+            break;
+        }
+    }
+    fclose(f);
+    return total;
+}
+
 void set_memory_sleep_mode(int enable) {
     if (enable) {
         /* Relax VM stats calculation to 60s when screen is off to maximize CPU C-state Deep Sleep */
@@ -63,7 +80,14 @@ void tune_memory_pressure(void) {
     const char *target_swap;
     const char *target_compact = under_pressure ? "50" : "20";
 
-    if (is_gaming) {
+    /* With no swap pool at all a high swappiness just makes kswapd scan
+     * anonymous pages it can never reclaim, so stay calm instead. */
+    int no_swap = (read_swap_total_kb() == 0);
+
+    if (no_swap) {
+        target_swap = "20";
+        target_compact = under_pressure ? "50" : "20";
+    } else if (is_gaming) {
         target_swap = under_pressure ? "80" : "60";
     } else {
         const char *stock_swap = g_stock_baseline.vm_swappiness[0] ? g_stock_baseline.vm_swappiness : "100";

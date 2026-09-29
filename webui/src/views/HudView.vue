@@ -61,7 +61,7 @@
 
       <!-- Quick Presets -->
       <div class="section-title">Presets</div>
-      <div class="md3-list-group" style="padding: 12px;">
+      <div class="md3-list-group" style="padding: 10px;">
         <div class="preset-buttons">
           <button
             class="preset-btn"
@@ -92,7 +92,7 @@
 
       <!-- Layout & Orientation Style -->
       <div class="section-title">Layout</div>
-      <div class="md3-list-group" style="padding: 14px;">
+      <div class="md3-list-group" style="padding: 12px;">
         <div class="layout-toggle-container">
           <button
             class="layout-btn"
@@ -112,7 +112,7 @@
           </button>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--surface-container-high);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--surface-container-high);">
           <span style="font-size: 13px; font-weight: 500; color: var(--on-surface-variant);">Text Align</span>
           <div class="align-pills">
             <button
@@ -130,7 +130,7 @@
 
       <!-- Theme & Accent Color -->
       <div class="section-title">Theme & Color</div>
-      <div class="md3-list-group" style="padding: 14px;">
+      <div class="md3-list-group" style="padding: 12px;">
         <div class="theme-grid">
           <button
             v-for="th in themeList"
@@ -193,7 +193,7 @@
 
       <!-- Appearance Sliders -->
       <div class="section-title">Appearance</div>
-      <div class="md3-list-group" style="padding: 16px; display: flex; flex-direction: column; gap: 18px;">
+      <div class="md3-list-group" style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
         
         <!-- Card Width -->
         <div class="slider-row">
@@ -327,9 +327,9 @@
            unavailable on Android 14 QPR3+/15 where the overlay runs on a
            hardware surface without an input channel) -->
       <div class="section-title">Position</div>
-      <div class="md3-list-group" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+      <div class="md3-list-group" style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
 
-        <div style="display: flex; gap: 16px; align-items: center;">
+        <div style="display: flex; gap: 12px; align-items: center;">
           <div class="dpad-grid">
             <span></span>
             <button class="dpad-btn" @click="hudStore.nudgePosition(0, -20)" title="Move up">
@@ -447,7 +447,7 @@
         </div>
       </div>
 
-      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 18px 0 28px 0;">
+      <div style="text-align: center; font-size: 10px; opacity: 0.35; padding: 14px 0 20px 0;">
         HyperMoon HUD · In-Game Performance Overlay
       </div>
 
@@ -626,8 +626,8 @@ async function onRestartEngine() {
   background: var(--surface-container);
   border: 1px solid var(--surface-container-high);
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
@@ -670,8 +670,8 @@ async function onRestartEngine() {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--surface-container-high);
 }
 
@@ -746,7 +746,7 @@ async function onRestartEngine() {
 .slider-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .slider-header {

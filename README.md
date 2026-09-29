@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/itswill00/hypercore/releases"><img src="https://img.shields.io/badge/Release-v6.9.5-purple.svg" alt="Release"></a>
+  <a href="https://github.com/itswill00/hypercore/releases"><img src="https://img.shields.io/badge/Release-v6.10.0-purple.svg" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL_v3-blue.svg" alt="License: GPL v3"></a>
   <img src="https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Chipset-G99%20%7C%20G100%20%7C%20G200-red.svg" alt="Chipset">
@@ -111,6 +111,7 @@ Android devices often suffer frame drops and scrolling stutters from conservativ
 | **Charging thermal ladder** | Selected mode is a *ceiling* — heat steps it down automatically to a Safe floor |
 | **7 charge modes + 16-level slider** | OEM Stock → Violent plus precision hardware slider, night / smart / 80% protection toggles |
 | **BMS cycle healing** | Rejects bogus auth-chip cycle counts, syncs the genuine fuel-gauge counter |
+| **ZRAM pool sizing** | Stock / 4 GB / 2 GB / Off compressed swap presets, applied once per boot with a low-memory guard |
 
 </details>
 
@@ -122,7 +123,7 @@ Android devices often suffer frame drops and scrolling stutters from conservativ
 | Feature | Description |
 | :--- | :--- |
 | **HyperMoon HUD** | Dual-engine overlay (C daemon + Java DEX): FPS, frametime, CPU/GPU, battery watts, network — pill or card, auto-shows in games |
-| **Material Design 3 WebUI** | Status, charger control, games, HUD designer, logs, RAM tools — single-file app, no server needed |
+| **Material Design 3 WebUI** | Status, charger control, games, HUD designer, logs, RAM + ZRAM tools — single-file app, no server needed |
 | **Zero footprint exit** | Uninstall / daemon stop restores ~60 factory nodes from the captured baseline |
 
 </details>
@@ -196,6 +197,29 @@ flowchart LR
     S -->|≤ 41°C for 180s| UP[climb back up]
 ```
 
+### ZRAM Sizing
+
+HyperOS hands the device a 6 GB compressed swap pool. Capacity past what you
+actually swap is not free — it raises the ceiling for compression work and keeps
+`kswapd` busy. **WebUI → Home → Memory** resizes it:
+
+| Preset | Pool | Best for |
+| :--- | :--- | :--- |
+| **Stock** | ROM default (6 GB) | Untouched behaviour |
+| **4 GB** | 4 GB | Daily use, cooler idle |
+| **2 GB** | 2 GB | Gaming, least swap churn |
+| **Off** | none | No swap at all; swappiness drops to 20 |
+
+> [!IMPORTANT]
+> The choice is applied **once per boot**, not instantly. `swapoff` has to pull
+> every compressed page back into RAM in one go, which is how a mid-game freeze
+> happens — so the card saves your pick, then offers a Reboot button. The resize
+> is also skipped when `MemAvailable` can't absorb the swap in use, and a failed
+> write re-enables the device's original pool rather than leaving you swapless.
+>
+> Shrinking does not hand you free RAM instantly. What it buys is a smaller
+> worst-case compression ceiling and calmer swap latency under load.
+
 - One rung down at **≥ 45 °C** (`Violent → Fast → Balanced → Safe`)
 - Hard floor to **Safe at ≥ 50 °C**, climbs back only after **≤ 41 °C for 180 s** continuous
 - Dead-band 41–45 °C freezes position (no flapping)
@@ -227,7 +251,7 @@ Single-file Vue 3 + Pinia app (`webroot/index.html`) served by your root manager
 
 | Tab | What you get |
 | :--- | :--- |
-| **Home** | Live daemon status, profile, temps, one-tap HUD toggle |
+| **Home** | Live daemon status, profile, temps, HUD toggle, ZRAM pool sizing, RAM purge |
 | **Charger** | 16-level slider, mode presets, protection toggles, live mA/V/W |
 | **Games** | Auto-detect scanner, per-title Gaming/MOBA mapping, 2-tap delete guard |
 | **HUD** | Full HyperMoon designer with live preview |
@@ -291,9 +315,9 @@ flowchart TD
     K --> L
 ```
 
-- **Install** (`customize.sh`): strict MT6789 check (GED + Mali + FPSGO) → kill old daemon → preserve `*.conf` + merge gamelist → `unzip` → **verify first** → capture `stock_state.conf` → permissions + PATH symlinks → game auto-detect.
-- **Boot** (`service.sh`): waits `sys.boot_completed` → `SIGTERM` + 10 s grace (lets ~60 nodes restore) → `SIGKILL` fallback → start daemon (+ `nohup` retry) → optional HUD autostart.
-- **Uninstall** (`uninstall.sh`): `SIGTERM` + 5 s grace → restore factory nodes from baseline → remove symlinks, socket, data.
+- **Install** (`customize.sh`): strict MT6789 check (GED + Mali + FPSGO) → kill old daemon → preserve `*.conf` + merge gamelist → `unzip` → **verify first** → capture `stock_state.conf` + `stock_zram.conf` → permissions + PATH symlinks → game auto-detect.
+- **Boot** (`service.sh`): waits `sys.boot_completed` → apply saved ZRAM pool → `SIGTERM` + 10 s grace (lets ~60 nodes restore) → `SIGKILL` fallback → start daemon (+ `nohup` retry) → optional HUD autostart.
+- **Uninstall** (`uninstall.sh`): `SIGTERM` + 5 s grace → restore factory nodes and the stock ZRAM pool from baseline → remove symlinks, socket, data.
 
 ---
 
@@ -312,7 +336,7 @@ src/
 │   ├── io.hpp                   # Read-ahead, nr_requests, IRQ affinity
 │   ├── ipc.hpp                  # UNIX socket protocol
 │   ├── log.hpp                  # Leveled logging + rotation
-│   ├── memory.hpp               # Swappiness, VM, ZRAM, purge
+│   ├── memory.hpp               # Swappiness, VM, swap-pool awareness, purge
 │   ├── sha256.hpp               # SHA-256 implementation
 │   ├── sysfs.hpp                # Dual-kernel sysfs I/O + touch rediscovery
 │   └── thermal.hpp              # Zone scoring, 3-tier guard
@@ -336,7 +360,7 @@ webui/  →  Vue 3 + Pinia SPA  →  webroot/index.html (single file)
 
 ## 📦 Installation
 
-1. Download **`HyperCore-v6.9.5-b6950-Unified.zip`** from the [Releases page](https://github.com/itswill00/hypercore/releases)
+1. Download **`HyperCore-v6.10.0-b6100-Unified.zip`** from the [Releases page](https://github.com/itswill00/hypercore/releases)
 2. Flash it in **KernelSU / APatch / Magisk**
 3. **Reboot** — the daemon starts automatically and settles into Interactive
 4. Open the manager's **WebUI** to monitor, add games, tune charging and design your HUD
@@ -379,7 +403,7 @@ Compiles the C daemon, rebuilds the WebUI, regenerates checksums (two-pass: stub
 Output:
 
 ```text
-~/HyperCore_Releases/HyperCore-v6.9.5-b6950-Unified.zip
+~/HyperCore_Releases/HyperCore-v6.10.0-b6100-Unified.zip
 ```
 
 | Tool | Needed for |

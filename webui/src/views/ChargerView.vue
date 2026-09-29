@@ -68,7 +68,7 @@
 
         <div class="md3-list-row">
           <div class="row-left" style="width: 100%;">
-            <div class="stat-grid-2">
+            <div class="stat-grid-3">
               <div class="stat-box">
                 <div class="stat-lbl">Input Current</div>
                 <div class="stat-num">{{ displayCurrentMa }}</div>
@@ -149,11 +149,6 @@
             >
               +
             </button>
-          </div>
-          <div class="slider-axis-labels">
-            <span>Slow (~0.5A)</span>
-            <span>Balanced (~2.3A)</span>
-            <span>Turbo (~4.5A)</span>
           </div>
         </div>
 
@@ -410,11 +405,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.stat-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 100%;
+}
+
 .section-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 18px 0 10px 0;
+  margin: 14px 0 8px 0;
 }
 
 .section-badge {
@@ -433,7 +435,7 @@ onUnmounted(() => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   background: var(--surface-container-low);
   border: 1px solid var(--surface-container-highest);
   border-radius: 16px;
@@ -576,16 +578,6 @@ onUnmounted(() => {
 
 .md3-range-slider::-webkit-slider-thumb:active {
   box-shadow: 0 0 0 6px rgba(200, 198, 215, 0.18), 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-
-.slider-axis-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--on-surface-variant);
-  opacity: 0.7;
-  font-family: inherit;
-  font-variant-numeric: tabular-nums;
 }
 
 .slider-quick-row {

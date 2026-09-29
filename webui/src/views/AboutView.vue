@@ -63,7 +63,7 @@
               </div>
               <div class="row-meta">
                 <div class="row-title">Release Notes</div>
-                <div class="row-sub">Latest changes in {{ store.moduleVersion || 'v6.8.5' }}</div>
+                <div class="row-sub">Latest changes in {{ store.moduleVersion || '—' }}</div>
               </div>
             </div>
             <div class="row-val" style="margin-left: 8px;">
@@ -76,15 +76,15 @@
             <div class="expanded-inner">
               <div class="changelog-release">
                 <div class="release-header">
-                  <span class="release-ver">{{ store.moduleVersion || 'v6.8.5' }} (Latest)</span>
+                  <span class="release-ver">{{ store.moduleVersion || '—' }} (Latest)</span>
                 </div>
                 <ul class="changelog-bullets">
-                  <li><strong>Swappiness Baseline Integrity</strong>: Fixed memory pressure tuning to respect profile context, preserving stock factory swappiness in Interactive &amp; Sleep.</li>
-                  <li><strong>Protect 80% Anti-Oscillation Hysteresis</strong>: Eliminated rapid 79%–80% charging flutter by maintaining bypass cutoff until battery level drops to 77%.</li>
-                  <li><strong>Resilient Inotify Directory Watcher</strong>: Directory-level watching prevents watcher death on atomic gamelist file renames.</li>
-                  <li><strong>Instant Profile IPC Synchronization</strong>: Synchronized module.prop active status and status.json immediately on IPC profile switches.</li>
-                  <li><strong>Display State Authority Hardening</strong>: Hardware backlight check is now strictly authoritative, preventing false screen-on detections.</li>
-                  <li><strong>Big Core Hotspot Priority</strong>: Prioritized MT6789 Big Core thermal zones and added multi-policy fallbacks for gaming thermal bypass.</li>
+                  <li><strong>ZRAM Pool Sizing</strong>: New Memory card resizes the compressed swap pool (Stock / 4 GB / 2 GB / Off) instead of leaving it at the ROM's 6 GB default. Applied once per boot, so the pool change never interrupts a running game.</li>
+                  <li><strong>Denser Interface</strong>: Tighter list rows, three-column power stats and slimmer hero banners. The Home screen fits roughly three extra rows without scrolling.</li>
+                  <li><strong>HyperMoon Quick Row</strong>: The standalone HUD card became a single Quick Actions row with a live FPS readout in its subtitle.</li>
+                  <li><strong>ZRAM Drawer</strong>: The Memory card collapses to one line, keeping the swap-pool presets out of the way until you actually want them.</li>
+                  <li><strong>Logs Menu Fixed</strong>: The overflow rule on the header clipped the three-dot menu entirely, so Copy, Disclaimer and Clear were unreachable.</li>
+                  <li><strong>Deploy Integrity</strong>: <code>--deploy</code> now syncs the manifest and the two root-executed scripts, so a locally deployed build no longer trips its own tampering check.</li>
                 </ul>
               </div>
             </div>
@@ -425,7 +425,7 @@ function toggleExpand(key) {
   position: relative;
   border-radius: 18px;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border: 1px solid var(--surface-container-highest);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   background-size: cover;
@@ -442,10 +442,10 @@ function toggleExpand(key) {
 .about-banner-content {
   position: relative;
   z-index: 2;
-  padding: 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .about-banner-top {
@@ -491,7 +491,7 @@ function toggleExpand(key) {
 
 .about-hero-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 800;
   color: var(--on-surface);
   letter-spacing: -0.4px;
@@ -526,7 +526,7 @@ function toggleExpand(key) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 

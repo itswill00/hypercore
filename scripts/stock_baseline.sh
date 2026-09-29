@@ -90,5 +90,14 @@ chg_smart=$(read_stock_node /sys/class/power_supply/battery/smart_chg 0)
 chg_night=$(read_stock_node /sys/class/power_supply/battery/night_charging 0)
 EOF
     chmod 644 /data/adb/hypercore/stock_state.conf 2>/dev/null || true
+
+    # Stock ZRAM size lives in its own file so the daemon never rewrites it
+    # when it round-trips stock_state.conf through its C baseline tables.
+    if [ ! -f "/data/adb/hypercore/stock_zram.conf" ]; then
+        _zd=$(cat /sys/block/zram0/disksize 2>/dev/null | tr -d '\r\n ')
+        _zc=$(tr ' ' '\n' < /sys/block/zram0/comp_algorithm 2>/dev/null | grep '^\[' | tr -d '[]')
+        printf '# Stock ZRAM pool captured at install time\nstock_disksize=%s\nstock_comp=%s\n' "${_zd:-}" "${_zc:-}" > /data/adb/hypercore/stock_zram.conf 2>/dev/null || true
+        chmod 644 /data/adb/hypercore/stock_zram.conf 2>/dev/null || true
+    fi
 }
 # ponytail: one function, zero hardcode beyond fallback — upgrade path is to read more nodes via read_stock_node

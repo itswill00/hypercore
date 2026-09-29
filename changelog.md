@@ -1,3 +1,67 @@
+# HyperCore v6.10.0 — ZRAM Pool Sizing & Density Pass
+
+HyperOS ships a 6 GB compressed swap pool on a 8 GB phone. The extra capacity
+never helps — it only widens the ceiling for compression work and keeps `kswapd`
+busier than it needs to be. This release lets you size the pool properly, and
+reclaims the vertical space the WebUI was wasting while it did.
+
+## Features
+
+- **ZRAM pool sizing** (`service.sh`, `webui/`): new Memory card on the Dashboard
+  with Stock / 4 GB / 2 GB / Off presets. The choice is persisted to
+  `zram.conf` and applied once per boot, after the ROM's `init.mt6789.rc` has
+  already run `swapon_all`, so the resize wins instead of being overwritten.
+  Deliberately not applied live: `swapoff` forces every compressed page back
+  into RAM in one go, which is exactly how you get a freeze mid-game. The card
+  therefore shows a Reboot button with a confirmation dialog instead of
+  pretending the change is instant.
+- **Preflight guard** (`service.sh`): the resize is skipped when
+  `MemAvailable` cannot absorb `SwapUsed` plus a 512 MB margin, and a failed
+  `disksize` write re-`mkswap`/`swapon`s the device rather than leaving the
+  phone with no swap at all. Preset sizes are mapped as literal byte strings
+  because `/system/bin/sh` does 32-bit arithmetic and `MB * 1024 * 1024`
+  overflows above 2 GB.
+- **Stock pool capture & restore** (`scripts/stock_baseline.sh`,
+  `uninstall.sh`): the factory `disksize` and active compressor are snapshotted
+  to `stock_zram.conf` at install time, so uninstall puts the pool back. Kept
+  out of `stock_state.conf` on purpose — that file round-trips through the
+  daemon's C baseline tables, and zRAM is not one of them.
+- **Swappiness follows the pool** (`src/memory.c`): with no swap pool at all,
+  `tune_memory_pressure()` now settles on 20 instead of 100. A high swappiness
+  with nothing to swap into just makes `kswapd` scan anonymous pages it can
+  never reclaim.
+- **ZRAM drawer** (`webui/`): the card collapses to a single line and remembers
+  whether you left it open, keeping the presets out of the way until wanted.
+  Choosing a size reopens it so the Reboot button is actually visible.
+- **Spam guard**: 15-second cooldown between size changes, persisted across
+  WebUI reloads, because every change costs a reboot.
+
+## Fixes
+
+- **Logs menu was unreachable** (`webui/src/assets/main.css`): the header rule
+  applying `overflow: hidden` to the three-dot button's wrapper also clipped
+  the absolutely-positioned dropdown. The state toggled correctly on every tap,
+  so it looked like a dead button rather than a CSS bug.
+- **Deploy tripped its own integrity check** (`build.sh`): `--deploy` refreshed
+  the daemon binary but left `customize.sh`, `scripts/stock_baseline.sh` and
+  `checksums.txt` at their installed hashes, so every local deploy logged
+  `[TAMPERING DETECTED]` for those two files. All three are now synced.
+
+## Interface
+
+- **Density pass** (`webui/`): list rows 12→10 px, hero banners and cards
+  trimmed ~20 %, section spacing tightened. The Charger power grid became three
+  columns instead of two, and the duplicated slider axis labels (Slow /
+  Balanced / Turbo) were dropped in favour of the quick-pick pills below them.
+  The Dashboard now fits about three more rows before it scrolls.
+- **HyperMoon quick row** (`webui/`): the standalone HUD card became the first
+  Quick Actions row, with a live FPS readout in its subtitle and the toggle
+  switch intact.
+- **Release Notes** (`webui/`): rewritten for this release and no longer falls
+  back to a hard-coded old version string.
+
+---
+
 # HyperCore v6.9.5 — Universal HyperMoon Positioning
 
 On Android 14 QPR3+/15 the WindowManager rejects the root overlay pid

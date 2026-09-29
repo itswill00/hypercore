@@ -362,10 +362,18 @@ if [ "$DO_DEPLOY" = "1" ]; then
             cp post-fs-data.sh \$MOD_TARGET/post-fs-data.sh
             cp uninstall.sh \$MOD_TARGET/uninstall.sh
             cp changelog.md \$MOD_TARGET/changelog.md
+            # The daemon re-verifies these from its embedded table on every
+            # start, so a deploy that refreshes the binary must refresh them
+            # too — otherwise the new binary flags the stale copies as tampered.
+            cp customize.sh \$MOD_TARGET/customize.sh
+            mkdir -p \$MOD_TARGET/scripts
+            cp scripts/stock_baseline.sh \$MOD_TARGET/scripts/stock_baseline.sh
+            cp checksums.txt \$MOD_TARGET/checksums.txt
             chmod 755 \$MOD_TARGET/system/bin/*
             [ -f \$MOD_TARGET/system/bin/hypermoon.dex ] && chmod 644 \$MOD_TARGET/system/bin/hypermoon.dex
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
             chmod 644 \$MOD_TARGET/module.prop \$MOD_TARGET/system.prop \$MOD_TARGET/banner.jpg \$MOD_TARGET/changelog.md \$MOD_TARGET/webroot/index.html
+            chmod 644 \$MOD_TARGET/customize.sh \$MOD_TARGET/scripts/stock_baseline.sh \$MOD_TARGET/checksums.txt
             rm -f /dev/hypercore.sock \$DATA_TARGET/hypercore.sock \$DATA_TARGET/hypercore.pid 2>/dev/null || true
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi

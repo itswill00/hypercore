@@ -41,36 +41,7 @@
         </div>
       </div>
 
-      <!-- HyperMoon Performance HUD Card -->
-      <div class="hypermoon-card">
-        <div class="hypermoon-card-left" @click="$router.push('/hud')">
-          <div class="icon-badge" :class="hudStore.config.visible ? '' : 'secondary'">
-            <Icons name="moon" :size="20" />
-          </div>
-          <div class="hypermoon-meta">
-            <div class="hypermoon-title-row">
-              <span class="hypermoon-title">HyperMoon HUD</span>
-              <span class="badge-mini" :class="hudStore.config.visible ? 'badge-mini-active' : ''">
-                {{ hudStore.config.visible ? 'Active' : 'Off' }}
-              </span>
-            </div>
-            <div class="hypermoon-sub">
-              {{ hudStore.config.visible ? (hudStore.config.auto_gaming ? 'Overlay automatically shows during games' : 'Floating performance monitor is active') : 'Tap to customize or toggle in-game overlay' }}
-            </div>
-          </div>
-        </div>
-        <div class="hypermoon-card-right" @click.stop="onToggleHud">
-          <label class="md3-switch" style="pointer-events: none;">
-            <input
-              type="checkbox"
-              :checked="hudStore.config.visible"
-            />
-            <span class="md3-switch-track">
-              <span class="md3-switch-thumb"></span>
-            </span>
-          </label>
-        </div>
-      </div>
+      <ZramCard />
 
       <ActionButtons />
 
@@ -82,24 +53,13 @@
 </template>
 
 <script setup>
-import { onMounted, inject } from 'vue'
 import { useHyperStore } from '@/stores/hyper'
-import { useHyperMoonStore } from '@/stores/hypermoon'
 import ActionButtons from '@/components/ActionButtons.vue'
+import ZramCard from '@/components/ZramCard.vue'
 import Icons from '@/components/icons/Icons.vue'
 import bannerImg from '@/assets/banner.jpg'
 
 const store = useHyperStore()
-const hudStore = useHyperMoonStore()
-const toast = inject('toast')
-
-onMounted(() => {
-  hudStore.init()
-})
-
-function onToggleHud() {
-  hudStore.toggleMaster(!hudStore.config.visible)
-}
 </script>
 
 <style scoped>
@@ -108,7 +68,7 @@ function onToggleHud() {
   position: relative;
   border-radius: 18px;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   border: 1px solid var(--surface-container-highest);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   background-size: cover;
@@ -125,10 +85,10 @@ function onToggleHud() {
 .app-banner-content {
   position: relative;
   z-index: 2;
-  padding: 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .banner-top-row {
@@ -138,8 +98,8 @@ function onToggleHud() {
 }
 
 .app-banner-icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   background: var(--primary-container);
   color: var(--on-primary-container);
@@ -162,7 +122,7 @@ function onToggleHud() {
 }
 
 .app-banner-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--on-surface);
   letter-spacing: -0.3px;
@@ -198,77 +158,5 @@ function onToggleHud() {
   gap: 6px;
 }
 
-.hypermoon-card {
-  background: var(--surface-container);
-  border: 1px solid var(--surface-container-high);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s ease;
-}
-
-.hypermoon-card-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  cursor: pointer;
-}
-
-.hypermoon-card-left:active {
-  opacity: 0.85;
-}
-
-.hypermoon-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.hypermoon-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hypermoon-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--on-surface);
-}
-
-.hypermoon-sub {
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  line-height: 1.3;
-}
-
-.badge-mini {
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--surface-container-highest);
-  color: var(--on-surface-variant);
-}
-
-.badge-mini-active {
-  background: var(--primary);
-  color: var(--on-primary);
-}
-
-.hypermoon-card-right {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 4px 8px 12px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
 </style>
 

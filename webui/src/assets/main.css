@@ -128,13 +128,20 @@ body, #app {
   flex: 1;
 }
 
-.page-header .badge-pill,
-.page-header .menu-relative-container {
+.page-header .badge-pill {
   flex-shrink: 0;
   max-width: 46%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The logs menu wrapper must not clip: its dropdown renders absolutely
+ * positioned below the button, and overflow:hidden would swallow it whole
+ * (state toggles fine, menu just never shows — looks dead). */
+.page-header .menu-relative-container {
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .content-area {
@@ -199,7 +206,7 @@ body, #app {
   font-size: 13px;
   font-weight: 600;
   color: var(--on-surface-variant);
-  margin: 16px 0 6px 4px;
+  margin: 12px 0 4px 4px;
 }
 
 .section-title:first-child {
@@ -209,7 +216,7 @@ body, #app {
 .md3-card {
   background: var(--surface-container);
   border-radius: 16px;
-  padding: 16px;
+  padding: 14px;
   margin-bottom: 12px;
   border: 1px solid var(--surface-container-high);
   transition: border-color 0.2s ease;
@@ -219,8 +226,8 @@ body, #app {
   background: linear-gradient(135deg, var(--secondary-container) 0%, var(--surface-container-high) 100%);
   color: var(--on-secondary-container);
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -245,7 +252,7 @@ body, #app {
   background: var(--surface-container);
   border-radius: 16px;
   overflow: hidden;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   border: 1px solid var(--surface-container-high);
 }
 
@@ -253,7 +260,7 @@ body, #app {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--surface-container-high);
   transition: background 0.15s ease;
   user-select: none;
