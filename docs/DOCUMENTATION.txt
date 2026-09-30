@@ -3,12 +3,12 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v6.10.0 (Build 6100)
+ Version        : v6.11.0 (Build 6110)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
  Inspiration    : encore @Rem01Gaming
- Release ZIP    : HyperCore-v6.10.0-b6100-Unified.zip
+ Release ZIP    : HyperCore-v6.11.0-b6110-Unified.zip
 ================================================================================
 
 TABLE OF CONTENTS
@@ -190,13 +190,19 @@ readings with built-in hysteresis guards:
 |        | CPU >= 70°C       | (2.0 GHz for MOBA). Vendor suppression OFF.        |
 |        |                   | Clears at Bat <= 42°C and CPU <= 64°C.            |
 +--------+-------------------+--------------------------------------------------+
-| Tier 2 | Bat >= 48°C or    | Ceiling: Little 1.4 GHz, Big 1.5 GHz               |
+| Tier 2 | Bat >= 48°C or    | Ceiling: Little 1.8 GHz, Big 1.8 GHz               |
 |        | CPU >= 75°C       | Vendor suppression OFF.                           |
 |        |                   | Clears to Tier 0/1 at Bat <= 44°C, CPU <= 68°C.  |
 +--------+-------------------+--------------------------------------------------+
 
-Note: there is no Tier 3. Earlier revisions had four tiers; the top tier was
-removed in cb6a602 and this table was corrected to match the implementation.
+Ceilings are clamped down to the hardware's own reported maximum, so a part
+that reports a lower ceiling is never pushed above it. There is no Tier 3.
+Earlier revisions had four tiers; the top tier was removed in cb6a602.
+
+Until v6.11.0 the Tier 1 ceiling applied only to the MOBA profile — a plain
+Gaming title fell through to the hardware maximum with no mitigation at all,
+and a second, unreachable copy of this table in thermal.c advertised numbers
+that were computed and then discarded. Both are corrected here.
 
 Charging has its own, independent ladder (src/charger.c). The user's selected
 charge mode is a ceiling that temperature may only lower:
@@ -206,8 +212,16 @@ charge mode is a ceiling that temperature may only lower:
 OEM Stock and Bypass modes are exempt (OEM is hands-off; Bypass is already the
 coolest user-selectable state).
 
-Sensor inputs monitored: CPU (`thermal_zone16`/`thermal_zone0`), Battery (`battery/temp`),
-GPU (`thermal_zone30`), and Charger IC (`mtk-master-charger`).
+Sensor inputs monitored: CPU, Battery (`battery/temp`), GPU, and Charger IC
+(`mtk-master-charger`). Zones are selected by scoring each zone's `type`
+string, not by index, since zone numbering is not stable across ROMs. If
+scoring finds nothing, the hardcoded fallback index is accepted only after its
+`type` confirms it is the wanted sensor — otherwise the node is left unset
+rather than bound to an unrelated one. Selection also ignores zones that have
+not published a reading yet, which is common for the first seconds after boot.
+
+A sensor that stops reporting does not read as cold: the tier is held at its
+current value instead of dropping to Tier 0 with the vendor stack suppressed.
 
 3.6. Auto Game Detector & Foreground Process Scanner (src/gamelist.c)
 - Reads configured package rules from `/data/adb/hypercore/gamelist.txt`.
