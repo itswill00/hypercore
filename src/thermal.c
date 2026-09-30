@@ -330,13 +330,17 @@ void sync_battery_cycle_count(void) {
  * Tier 1 (Warm / Active Mitigation):
  *   - Trigger: Bat >= 45°C OR CPU >= 70°C.
  *   - Clear:   Bat <= 42°C AND CPU <= 64°C (3°C hysteresis).
- *   - Action:  Gracefully cap Big cores at 1.8 GHz, Little at 1.8 GHz.
- *              No core hotplug, zero micro-stutter.
+ *   - Action:  Cap Little at 1.8 GHz and Big at 1.8 GHz. MOBA titles keep Big
+ *              at 2.0 GHz, because their frametime budget is tighter.
  *
  * Tier 2 (Hot / Safety Protection):
  *   - Trigger: Bat >= 48°C OR CPU >= 75°C.
  *   - Clear:   Bat <= 44°C AND CPU <= 68°C.
- *   - Action:  Cap Big cores at 1.5 GHz, Little at 1.4 GHz to arrest heat.
+ *   - Action:  Cap both clusters at 1.8 GHz to arrest heat.
+ *
+ * Ceilings are implemented in build_profile_matrix() and are always clamped
+ * down to the hardware's own maximum, so a part that reports a lower ceiling
+ * is never pushed above it.
  * -------------------------------------------------------------------------- */
 static int s_thermal_tier = 0;
 
@@ -347,20 +351,47 @@ int get_thermal_tier(void) {
 int update_thermal_guard(int cpu_temp, int bat_temp) {
     int prev_tier = s_thermal_tier;
 
+    /* A sensor reporting 0 has not produced a sample — that is not the same as
+     * "cold". The raw reads used to go straight into the comparisons below, so a
+     * failed or not-yet-sampled node read as a comfortable 0°C and pinned the
+     * device at tier 0 with the vendor thermal stack suppressed, which is the
+     * exact state that gets a hot SoC cooked. Judge on whichever sample
+     * actually arrived, and hold the current tier when neither did. */
+    int have_cpu = cpu_temp > 0;
+    int have_bat = bat_temp > 0;
+    if (!have_cpu && !have_bat) {
+        return 0; /* no usable data this tick: keep the tier we already had */
+    }
+
+    int hot, warm, mid, cool, calm;
+    if (have_cpu && have_bat) {
+        hot  = cpu_temp >= 75 || bat_temp >= 48;
+        warm = cpu_temp >= 70 || bat_temp >= 45;
+        mid  = cpu_temp >= 65 || bat_temp >= 42;
+        calm = cpu_temp <= 68 && bat_temp <= 44;
+        cool = cpu_temp <= 64 && bat_temp <= 42;
+    } else if (have_cpu) {
+        hot = cpu_temp >= 75; warm = cpu_temp >= 70; mid = cpu_temp >= 65;
+        calm = cpu_temp <= 68; cool = cpu_temp <= 64;
+    } else {
+        hot = bat_temp >= 48; warm = bat_temp >= 45; mid = bat_temp >= 42;
+        calm = bat_temp <= 44; cool = bat_temp <= 42;
+    }
+
     if (s_thermal_tier == 2) {
-        if (bat_temp <= 44 && cpu_temp <= 68) {
-            s_thermal_tier = (bat_temp >= 42 || cpu_temp >= 65) ? 1 : 0;
+        if (calm) {
+            s_thermal_tier = mid ? 1 : 0;
         }
     } else if (s_thermal_tier == 1) {
-        if (bat_temp >= 48 || cpu_temp >= 75) {
+        if (hot) {
             s_thermal_tier = 2;
-        } else if (bat_temp <= 42 && cpu_temp <= 64) {
+        } else if (cool) {
             s_thermal_tier = 0;
         }
     } else {
-        if (bat_temp >= 48 || cpu_temp >= 75) {
+        if (hot) {
             s_thermal_tier = 2;
-        } else if (bat_temp >= 45 || cpu_temp >= 70) {
+        } else if (warm) {
             s_thermal_tier = 1;
         }
     }
@@ -386,37 +417,29 @@ int update_thermal_guard(int cpu_temp, int bat_temp) {
  * 5. Restores scaling_max_freq if vendor thermald artificially caps CPU clocks
  *
  * At tier >= 1 items 1-4 are skipped: we stop fighting the vendor thermal stack
- * and fall back to our own frequency ceilings. See update_thermal_guard() for
- * the tier definitions.
+ * and rely on the frequency ceilings in build_profile_matrix(). See
+ * update_thermal_guard() for the tier definitions.
  * -------------------------------------------------------------------------- */
 void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
     if (prof != PROFILE_Gaming && prof != PROFILE_Gaming_MOBA) return;
 
-    /* Frequency ceilings are the module's own thermal guard and apply at every
-     * tier. Tier 2 pins both clusters well below the hardware ceiling so heat
-     * has somewhere to go. */
-    int target_lit_max, target_big_max;
-    switch (tier) {
-        case 2:
-            target_lit_max = 1400000;
-            target_big_max = 1500000;
-            break;
-        case 1:
-            target_lit_max = 1800000;
-            target_big_max = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
-            break;
-        default:
-            target_lit_max = (g_nodes.lit_hw_max_freq > 0) ? g_nodes.lit_hw_max_freq : 2000000;
-            target_big_max = (g_nodes.big_hw_max_freq > 0) ? g_nodes.big_hw_max_freq : 2200000;
-            break;
-    }
-
-    /* At tier >= 1 we stop suppressing the vendor thermal stack entirely and
-     * rely on the ceilings above. The bypass below exists to stop over-eager
+    /* Frequency ceilings live in build_profile_matrix() (src/cpu.c), which is
+     * the single source of truth and already clamps both clusters at every
+     * tier. An earlier copy of that table lived here and was unreachable: the
+     * tier >= 1 bail-out below ran before the values were ever used, so the
+     * tier-1/tier-2 numbers were computed and thrown away while the header
+     * comment claimed they were enforced. Two divergent tables for one guard
+     * is how a 70°C device ends up uncapped, so only one remains.
+     *
+     * At tier >= 1 we stop suppressing the vendor thermal stack entirely and
+     * rely on those ceilings. The bypass below exists to stop over-eager
      * throttling during gameplay while the SoC is genuinely cool — it is not a
      * substitute for thermal protection, and winning the race against
      * mi_thermald at 75°C is how you cook the device. */
     if (tier >= 1) return;
+
+    int target_lit_max = (g_nodes.lit_hw_max_freq > 0) ? g_nodes.lit_hw_max_freq : 2000000;
+    int target_big_max = (g_nodes.big_hw_max_freq > 0) ? g_nodes.big_hw_max_freq : 2200000;
 
     /* 1. Enforce Xiaomi sconfig 10 (thermal-nolimits.conf) */
     char sconfig_val[32] = "";

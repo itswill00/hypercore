@@ -579,15 +579,28 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
 
-            if (tier == 2) {
-                m->lit_max_freq = 1800000;
-                m->big_max_freq = 1800000;
-            } else if (tier == 1 && prof == PROFILE_Gaming_MOBA) {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;
-                m->big_max_freq = 2000000;
+            /* Thermal ceilings. Every tier below 0 caps both clusters — the
+             * previous shape gated the tier-1 arm on PROFILE_Gaming_MOBA, so a
+             * plain Gaming title at 70°C fell through to the hardware ceiling
+             * and got zero mitigation. Only MOBA keeps the higher big-cluster
+             * allowance at tier 1, because its frametime budget is tighter.
+             *
+             * Ceilings are clamped down to whatever the hardware actually
+             * reports, never up: on a part whose hw_max is already below the
+             * nominal number, "capping" must not become "raising". */
+            int hw_lit_max = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000;
+            int hw_big_max = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000;
+
+            if (tier >= 2) {
+                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
+                m->big_max_freq = hw_big_max < 1800000 ? hw_big_max : 1800000;
+            } else if (tier == 1) {
+                int big_ceiling = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
+                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
+                m->big_max_freq = hw_big_max < big_ceiling ? hw_big_max : big_ceiling;
             } else {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;
-                m->big_max_freq = g_nodes.big_hw_max_freq;
+                m->lit_max_freq = hw_lit_max;
+                m->big_max_freq = hw_big_max;
             }
 
             m->up_rate_limit = "0";
@@ -632,9 +645,22 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->fpsgo_boost_ta = "1";
             m->fpsgo_ultra_rescue = "1";
             m->fpsgo_light_loading = "0";
-            m->fpsgo_thrm_enable = "0";
 
-            m->sconfig = "10";
+            /* Suppressing the vendor thermal stack is only defensible while the
+             * SoC is genuinely cool. At tier >= 1 the module hands thermal
+             * control back to mi_thermald and FPSGO instead of pushing
+             * sconfig 10 (thermal-nolimits) against a hot device — enforce_gaming_
+             * thermal_bypass() already skips its bypass at those tiers, and this
+             * matrix used to undo that skip right after. */
+            if (tier >= 1) {
+                m->fpsgo_thrm_enable = g_stock_baseline.fpsgo_thrm_enable[0]
+                                           ? g_stock_baseline.fpsgo_thrm_enable : "1";
+                m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
+            } else {
+                m->fpsgo_thrm_enable = "0";
+                m->sconfig = "10";
+            }
+
             m->touch_thp_smooth = "1";
             m->touch_game_mode = "1";
             m->touch_sensitivity = "1";
