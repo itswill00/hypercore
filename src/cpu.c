@@ -742,8 +742,14 @@ void apply_profile(profile_t prof, int gpu_load) {
     if (m.devfreq_poll_ms && m.devfreq_poll_ms[0] != '\0') {
         sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
     }
+    /* Devfreq rejects a min above max with -EINVAL, so raise the ceiling before
+     * lifting the floor. Every profile currently pins min to the same constant
+     * and the two writes cannot conflict — but that is a coincidence of the
+     * current table, and the failure would be silent, since sysfs_write_fallback
+     * logs nothing. Same ordering rule write_policy_freqs() already follows. */
+    if (m.devfreq_max_freq && m.devfreq_max_freq[0] != '\0')
+        sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
-    sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
     set_mali_upthreshold(m.devfreq_upthresh);
     set_mali_downdifferential(m.devfreq_downdiff);
