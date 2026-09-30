@@ -522,7 +522,19 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
          * a short or empty tmp file, and renaming that into place publishes a
          * truncated status.json for the WebUI to parse. Only swap it in once the
          * bytes are known to have landed, and tidy up the tmp on failure so a
-         * later run does not inherit a stale one. */
+         * later run does not inherit a stale one.
+         *
+         * The mode is pinned before the swap because fopen honours the inherited
+         * umask. Left alone, the copy in /dev landed as 0644 and every app on
+         * the device could read battery health, cycle count, temperatures and
+         * charge mode — the opposite of the root-only telemetry path
+         * common.hpp documents, since /dev is not behind /data/adb's 0700. */
+        if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0) {
+            fclose(f);
+            unlink(tmp);
+            continue;
+        }
+
         int ok = (fputs(json, f) >= 0);
         if (fclose(f) != 0) ok = 0;
         if (!ok) {
