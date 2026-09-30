@@ -72,6 +72,15 @@ static void ipc_sync_status(void) {
  *
  * Adding a UID here is a privilege grant. Do not add 1000/1001 (system) or any
  * app UID: any app in those UIDs would gain charger and profile control.
+ *
+ * Note on uid 2000: it is not read-only. Anyone holding an adb pairing token —
+ * which on a device with wireless debugging enabled is anyone near it who has
+ * paired once — can drive SET_CHARGE_MODE (including CHARGE_MODE_VIOLENT, which
+ * drops the charge limit to 0 and runs the cell at its floor), PURGE_RAM, and
+ * profile switching. This is deliberate, because the documented `adb shell`
+ * workflow depends on it, but it is hardware control rather than telemetry
+ * readback, so it is called out here rather than left implicit. Tighten it to
+ * GET_* only if that tradeoff is ever revisited.
  * ------------------------------------------------------------------------- */
 static int client_is_trusted(int client_fd) {
     struct ucred cred;
