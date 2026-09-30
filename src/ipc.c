@@ -72,6 +72,15 @@ static void ipc_sync_status(void) {
  *
  * Adding a UID here is a privilege grant. Do not add 1000/1001 (system) or any
  * app UID: any app in those UIDs would gain charger and profile control.
+ *
+ * Note on uid 2000: it is not read-only. Anyone holding an adb pairing token —
+ * which on a device with wireless debugging enabled is anyone near it who has
+ * paired once — can drive SET_CHARGE_MODE (including CHARGE_MODE_VIOLENT, which
+ * drops the charge limit to 0 and runs the cell at its floor), PURGE_RAM, and
+ * profile switching. This is deliberate, because the documented `adb shell`
+ * workflow depends on it, but it is hardware control rather than telemetry
+ * readback, so it is called out here rather than left implicit. Tighten it to
+ * GET_* only if that tradeoff is ever revisited.
  * ------------------------------------------------------------------------- */
 static int client_is_trusted(int client_fd) {
     struct ucred cred;
@@ -516,10 +525,31 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
         char tmp[300];
         snprintf(tmp, sizeof(tmp), "%s.tmp", paths[i]);
         FILE *f = fopen(tmp, "w");
-        if (f) {
-            fputs(json, f);
+        if (!f) continue;
+
+        /* Both fputs and fclose can fail — a full /data or an I/O error leaves
+         * a short or empty tmp file, and renaming that into place publishes a
+         * truncated status.json for the WebUI to parse. Only swap it in once the
+         * bytes are known to have landed, and tidy up the tmp on failure so a
+         * later run does not inherit a stale one.
+         *
+         * The mode is pinned before the swap because fopen honours the inherited
+         * umask. Left alone, the copy in /dev landed as 0644 and every app on
+         * the device could read battery health, cycle count, temperatures and
+         * charge mode — the opposite of the root-only telemetry path
+         * common.hpp documents, since /dev is not behind /data/adb's 0700. */
+        if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0) {
             fclose(f);
-            rename(tmp, paths[i]);
+            unlink(tmp);
+            continue;
         }
+
+        int ok = (fputs(json, f) >= 0);
+        if (fclose(f) != 0) ok = 0;
+        if (!ok) {
+            unlink(tmp);
+            continue;
+        }
+        rename(tmp, paths[i]);
     }
 }

@@ -114,15 +114,20 @@ static void write_chmod_guarded(const char *paths[], const char *val, mode_t ope
 static void write_rate_limit_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0644); }
 static void write_locked_node_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0666); }
 
-void set_rate_limits(const char *up, const char *down) {
-    write_rate_limit_fallback(s_policy0_up_rate_nodes, up);
-    write_rate_limit_fallback(s_policy0_down_rate_nodes, down);
-    write_rate_limit_fallback(s_policy4_up_rate_nodes, up);
-    write_rate_limit_fallback(s_policy4_down_rate_nodes, down);
-    write_rate_limit_fallback(s_policy6_up_rate_nodes, up);
-    write_rate_limit_fallback(s_policy6_down_rate_nodes, down);
-    write_rate_limit_fallback(s_policy7_up_rate_nodes, up);
-    write_rate_limit_fallback(s_policy7_down_rate_nodes, down);
+/* Rate limits are captured per cluster in the stock baseline, so they have to be
+ * applied per cluster too. A single pair written to policy0/4/6/7 meant the
+ * profiles meant to restore stock handed the Big cluster the Little cluster's
+ * governor response, which is not what the device booted with. */
+void set_rate_limits(const char *lit_up, const char *lit_down,
+                     const char *big_up, const char *big_down) {
+    write_rate_limit_fallback(s_policy0_up_rate_nodes, lit_up);
+    write_rate_limit_fallback(s_policy0_down_rate_nodes, lit_down);
+    write_rate_limit_fallback(s_policy4_up_rate_nodes, lit_up);
+    write_rate_limit_fallback(s_policy4_down_rate_nodes, lit_down);
+    write_rate_limit_fallback(s_policy6_up_rate_nodes, big_up);
+    write_rate_limit_fallback(s_policy6_down_rate_nodes, big_down);
+    write_rate_limit_fallback(s_policy7_up_rate_nodes, big_up);
+    write_rate_limit_fallback(s_policy7_down_rate_nodes, big_down);
 }
 
 static const char *s_cpuset_bg_cpus_nodes[] = {
@@ -248,7 +253,9 @@ static void write_cpu_freqs(int cpu, int min_f, int max_f) {
     }
 }
 
-void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const char *up_rate, const char *down_rate) {
+void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big,
+                    const char *lit_up, const char *lit_down,
+                    const char *big_up, const char *big_down) {
     write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy0", min_lit, max_lit);
     for (int i = 0; i <= 5; i++) {
         write_cpu_freqs(i, min_lit, max_lit);
@@ -261,19 +268,27 @@ void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big, const cha
         write_cpu_freqs(i, min_big, max_big);
     }
 
-    set_rate_limits(up_rate, down_rate);
+    set_rate_limits(lit_up, lit_down, big_up, big_down);
 }
 
-void set_cpu_governor(const char *gov) {
+/* Stock captures the Big cluster's governor separately (gov6), because MTK parts
+ * routinely boot the two clusters on different governors. Applying one governor
+ * to every policy silently overwrote the Big cluster's stock choice whenever the
+ * profile was supposed to be restoring it. */
+void set_cpu_governor(const char *lit_gov, const char *big_gov) {
     char path[256];
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_governor", gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_governor", gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", lit_gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_governor", lit_gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", big_gov);
+    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_governor", big_gov);
 
-    for (int i = 0; i <= 7; i++) {
+    for (int i = 0; i <= 5; i++) {
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
-        sysfs_write(path, gov);
+        sysfs_write(path, lit_gov);
+    }
+    for (int i = 6; i <= 7; i++) {
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
+        sysfs_write(path, big_gov);
     }
 }
 
@@ -384,12 +399,15 @@ typedef struct {
     profile_t target_profile;
 
     const char *cpu_gov;
+    const char *cpu_gov_big;
     int lit_min_freq;
     int lit_max_freq;
     int big_min_freq;
     int big_max_freq;
     const char *up_rate_limit;
     const char *down_rate_limit;
+    const char *up_rate_limit_big;
+    const char *down_rate_limit_big;
 
     const char *nr_requests;
     const char *read_ahead;
@@ -519,6 +537,14 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->up_rate_limit   = g_stock_baseline.pol0_up_rate[0] ? g_stock_baseline.pol0_up_rate : "1000";
             m->down_rate_limit = g_stock_baseline.pol0_down_rate[0] ? g_stock_baseline.pol0_down_rate : "1000";
 
+            /* Interactive and Sleep are stock-restoring profiles, so the Big
+             * cluster gets its own captured values instead of inheriting the
+             * Little cluster's. Without this the baseline's gov6/pol6_* entries
+             * were only ever used on uninstall, never while the module ran. */
+            m->cpu_gov_big       = g_stock_baseline.gov6[0] ? g_stock_baseline.gov6 : m->cpu_gov;
+            m->up_rate_limit_big = g_stock_baseline.pol6_up_rate[0] ? g_stock_baseline.pol6_up_rate : m->up_rate_limit;
+            m->down_rate_limit_big = g_stock_baseline.pol6_down_rate[0] ? g_stock_baseline.pol6_down_rate : m->down_rate_limit;
+
             m->nr_requests = g_stock_baseline.io_nr_requests[0] ? g_stock_baseline.io_nr_requests : "128";
             m->read_ahead  = g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024";
 
@@ -535,7 +561,7 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->top_app_uclamp_max= g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max";
 
             m->devfreq_gov      = g_stock_baseline.mali_gpu_gov[0] ? g_stock_baseline.mali_gpu_gov : "simple_ondemand";
-            m->power_policy     = g_stock_baseline.mali_policy;
+            m->power_policy     = g_stock_baseline.mali_policy[0] ? g_stock_baseline.mali_policy : "coarse_demand";
             m->devfreq_min_freq = g_stock_baseline.mali_min_freq[0] ? g_stock_baseline.mali_min_freq : "390000000";
             m->devfreq_max_freq = g_stock_baseline.mali_max_freq[0] ? g_stock_baseline.mali_max_freq : max_gpu_hz;
             m->devfreq_upthresh = g_stock_baseline.mali_upthresh[0] ? g_stock_baseline.mali_upthresh : "80";
@@ -579,15 +605,28 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
 
-            if (tier == 2) {
-                m->lit_max_freq = 1800000;
-                m->big_max_freq = 1800000;
-            } else if (tier == 1 && prof == PROFILE_Gaming_MOBA) {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;
-                m->big_max_freq = 2000000;
+            /* Thermal ceilings. Every tier below 0 caps both clusters — the
+             * previous shape gated the tier-1 arm on PROFILE_Gaming_MOBA, so a
+             * plain Gaming title at 70°C fell through to the hardware ceiling
+             * and got zero mitigation. Only MOBA keeps the higher big-cluster
+             * allowance at tier 1, because its frametime budget is tighter.
+             *
+             * Ceilings are clamped down to whatever the hardware actually
+             * reports, never up: on a part whose hw_max is already below the
+             * nominal number, "capping" must not become "raising". */
+            int hw_lit_max = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000;
+            int hw_big_max = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000;
+
+            if (tier >= 2) {
+                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
+                m->big_max_freq = hw_big_max < 1800000 ? hw_big_max : 1800000;
+            } else if (tier == 1) {
+                int big_ceiling = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
+                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
+                m->big_max_freq = hw_big_max < big_ceiling ? hw_big_max : big_ceiling;
             } else {
-                m->lit_max_freq = g_nodes.lit_hw_max_freq;
-                m->big_max_freq = g_nodes.big_hw_max_freq;
+                m->lit_max_freq = hw_lit_max;
+                m->big_max_freq = hw_big_max;
             }
 
             m->up_rate_limit = "0";
@@ -632,9 +671,22 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->fpsgo_boost_ta = "1";
             m->fpsgo_ultra_rescue = "1";
             m->fpsgo_light_loading = "0";
-            m->fpsgo_thrm_enable = "0";
 
-            m->sconfig = "10";
+            /* Suppressing the vendor thermal stack is only defensible while the
+             * SoC is genuinely cool. At tier >= 1 the module hands thermal
+             * control back to mi_thermald and FPSGO instead of pushing
+             * sconfig 10 (thermal-nolimits) against a hot device — enforce_gaming_
+             * thermal_bypass() already skips its bypass at those tiers, and this
+             * matrix used to undo that skip right after. */
+            if (tier >= 1) {
+                m->fpsgo_thrm_enable = g_stock_baseline.fpsgo_thrm_enable[0]
+                                           ? g_stock_baseline.fpsgo_thrm_enable : "1";
+                m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
+            } else {
+                m->fpsgo_thrm_enable = "0";
+                m->sconfig = "10";
+            }
+
             m->touch_thp_smooth = "1";
             m->touch_game_mode = "1";
             m->touch_sensitivity = "1";
@@ -643,6 +695,14 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             break;
         }
     }
+
+    /* The tuning profiles deliberately drive both clusters as one, so they leave
+     * the Big-cluster fields unset. Mirror the Little values in that case, which
+     * is exactly the pre-existing behaviour, and guarantees nothing downstream
+     * ever hands a NULL pointer to sysfs_write. */
+    if (!m->cpu_gov_big)       m->cpu_gov_big = m->cpu_gov;
+    if (!m->up_rate_limit_big) m->up_rate_limit_big = m->up_rate_limit;
+    if (!m->down_rate_limit_big) m->down_rate_limit_big = m->down_rate_limit;
 
     /* Boundary sanitization: guarantee min_freq <= max_freq to prevent kernel EINVAL */
     if (m->lit_max_freq < m->lit_min_freq) m->lit_max_freq = m->lit_min_freq;
@@ -658,9 +718,10 @@ void apply_profile(profile_t prof, int gpu_load) {
      * were still missing so the touch enhancement is not silently skipped. */
     rediscover_touch_nodes();
 
-    set_cpu_governor(m.cpu_gov);
+    set_cpu_governor(m.cpu_gov, m.cpu_gov_big);
     set_cpu_freqs(m.lit_min_freq, m.lit_max_freq, m.big_min_freq, m.big_max_freq,
-                  m.up_rate_limit, m.down_rate_limit);
+                  m.up_rate_limit, m.down_rate_limit,
+                  m.up_rate_limit_big, m.down_rate_limit_big);
 
     set_io_nr_requests(m.nr_requests);
     set_read_ahead(m.read_ahead);
@@ -681,8 +742,14 @@ void apply_profile(profile_t prof, int gpu_load) {
     if (m.devfreq_poll_ms && m.devfreq_poll_ms[0] != '\0') {
         sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
     }
+    /* Devfreq rejects a min above max with -EINVAL, so raise the ceiling before
+     * lifting the floor. Every profile currently pins min to the same constant
+     * and the two writes cannot conflict — but that is a coincidence of the
+     * current table, and the failure would be silent, since sysfs_write_fallback
+     * logs nothing. Same ordering rule write_policy_freqs() already follows. */
+    if (m.devfreq_max_freq && m.devfreq_max_freq[0] != '\0')
+        sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
-    sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
     sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
     set_mali_upthreshold(m.devfreq_upthresh);
     set_mali_downdifferential(m.devfreq_downdiff);

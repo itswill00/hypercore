@@ -1,3 +1,123 @@
+# HyperCore v6.11.0 — Thermal Guard Corrections
+
+A full audit of the daemon, the WebUI and the packaging turned up that the
+3-tier thermal guard was not enforcing two of its three tiers. Gaming at 70°C
+ran uncapped, and the vendor thermal stack was being suppressed on a hot device
+by the same code path that claims to stand down when it gets warm. Both are
+fixed, along with the packaging gaps that let the module run code it had just
+rejected.
+
+Nothing here is cosmetic. If you play games in a warm room, the behaviour
+change is real and it is in the direction of not cooking the phone.
+
+## Fixes
+
+### Thermal guard
+
+- **Tier 1 now actually caps `Gaming`** (`src/cpu.c`): the tier-1 branch was
+  gated on the MOBA profile, so a plain Gaming title at 70°C fell through to
+  the hardware ceiling — full 2.2 GHz on the Big cluster, no mitigation. Both
+  profiles are capped now; MOBA keeps the higher 2.0 GHz Big allowance.
+- **Ceilings are clamped to the hardware maximum.** The tier values are
+  constants, so a part reporting a lower ceiling must not be pushed above it.
+  A "cap" that could raise a frequency is not a cap.
+- **The vendor thermal stack is no longer suppressed when hot**
+  (`src/cpu.c`): `apply_profile` wrote `sconfig 10` (thermal-nolimits) and
+  `thrm_enable 0` at every tier, immediately undoing the skip that
+  `enforce_gaming_thermal_bypass` performs at tier >= 1. Both now follow the
+  tier, so at tier >= 1 thermal control goes back to `mi_thermald` and FPSGO.
+- **The dead ceiling table is gone** (`src/thermal.c`): a second copy of the
+  tier values was computed and then discarded by the `tier >= 1` bail-out below
+  it, while the header comment claimed those numbers were enforced. Two
+  divergent tables for one guard is how the cap goes missing. `build_profile_matrix`
+  in `src/cpu.c` is now the single source of truth.
+- **A dead sensor no longer reads as a cold SoC** (`src/thermal.c`): a sensor
+  reporting 0 has not produced a sample, but the raw read went straight into the
+  threshold comparisons, pinning the device at Tier 0 with the bypass armed. The
+  guard now judges on whichever sensor actually reported and holds its tier when
+  neither did.
+- **Thermal zones are selected by type, not by index** (`src/thermal.c`): the
+  scan skipped any zone that had not published its first reading, which on MTK
+  parts is most of them for the first seconds after boot — so the real CPU and
+  battery zones lost to whichever zone happened to be warm at scan time. The
+  hardcoded fallback index is now accepted only after its `type` confirms it is
+  the wanted sensor, instead of quietly binding the guard to a skin or PA zone.
+- **GPU cooling device is matched properly** (`src/thermal.c`): `thermal-devfreq`
+  is the generic cpufreq type and matches the CPU policies too, so gaming could
+  force `cur_state 0` onto a CPU cooling device. GPU-specific types win first;
+  the generic one is a fallback only.
+
+### CPU
+
+- **Governor and rate limits are applied per cluster** (`src/cpu.c`): the stock
+  baseline captures the Big cluster separately (`gov6`, `pol6_*`) because MTK
+  parts routinely boot the two clusters on different governors, but one governor
+  and one rate-limit pair were written to policy0/4/6/7. Interactive — which is
+  supposed to restore stock — was handing the Big cluster the Little cluster's
+  values. Those baseline entries were previously only used on uninstall. The
+  tuning profiles still drive both clusters as one, which is the point of them.
+- **Devfreq ceiling is raised before the floor is lifted** (`src/cpu.c`):
+  devfreq returns `-EINVAL` for min above max. No profile can trigger it today
+  because they all pin the minimum to the same constant, but the write would
+  fail silently.
+
+### Packaging & security
+
+- **`update.json` is generated at build time** (`build.sh`): `module.prop`
+  points `updateJson` at it, so the root manager is what reads it — nothing in
+  this repository did. That is exactly why no build step touched it and the
+  release URL went stale as soon as the version moved.
+- **Install no longer executes a payload that failed verification**
+  (`customize.sh`): the integrity layer asked `libhypercore.so` to verify itself
+  even after the manifest check had already failed, so a tampered daemon ran as
+  root during install and the abort printed afterwards.
+- **`status.json` is created 0600** (`src/ipc.c`): it took whatever the inherited
+  umask allowed, which left the copy in `/dev` world-readable. Any app could read
+  battery health, cycle count, temperatures and charge mode, contradicting the
+  root-only telemetry path the design documents.
+- **Uninstall preserves user configuration** (`uninstall.sh`): it removed all of
+  `/data/adb/hypercore`, taking the charge limits, the hand-built gamelist and
+  the HyperMoon HUD config with it, so uninstalling to reset the module cost the
+  user everything with no way back. Settings are now copied to a timestamped
+  sidecar under `/data/adb/hypercore_removed/` before only runtime state is
+  removed.
+- **Grants are revoked on uninstall** (`uninstall.sh`): the `SYSTEM_ALERT_WINDOW`
+  appops and the `pm grant` for `com.android.shell` outlived the module.
+- **`status.json` is no longer published when the write fails** (`src/ipc.c`):
+  `fputs` and `fclose` results were ignored and the temp file was renamed into
+  place regardless, so a full `/data` published a truncated file for the WebUI.
+- **Gamelist autodetect no longer appends to shared storage** (`src/gamelist.c`):
+  it appended to whichever path was read, which can be
+  `/sdcard/Android/gamelist.txt` — a file any app with storage access can
+  replace with a symlink, while the write runs as root. Discoveries now persist
+  to the managed data dir, opened with `O_NOFOLLOW` and required to be a regular
+  root-owned file.
+
+## Notes
+
+- Tier 2 keeps its existing 1.8 GHz ceiling. A never-applied 1.4/1.5 GHz value
+  had been sitting in a comment; adopting it would have been a large behaviour
+  change stacked on top of a correctness fix, so the live values were kept and
+  the documentation corrected instead.
+- `is_screen_on()` now defaults to "on" when no backlight node is readable.
+  Assuming "off" pinned the device into the Sleep profile (850 MHz Big) with no
+  recovery path. On a ROM where the node resolves normally this changes nothing.
+- A peer at uid 2000 (`adb shell`) is not a read-only client. It is deliberate,
+  since the documented `adb shell` workflow depends on it, but anyone holding an
+  adb pairing token can drive charge mode, `PURGE_RAM` and profile switching.
+  That is hardware control, not telemetry readback — worth knowing before
+  wireless debugging is left enabled.
+
+## Verification
+
+- 81,648 tier transitions across every starting tier and a dense CPU/battery
+  grid were replayed against the previous implementation: zero divergence
+  whenever both sensors reported, which is what makes the Tier 1 change safe to
+  land.
+- Clean under `-Wall -Wextra -Werror` and the clang static analyzer.
+
+---
+
 # HyperCore v6.10.0 — ZRAM Pool Sizing & Density Pass
 
 HyperOS ships a 6 GB compressed swap pool on a 8 GB phone. The extra capacity

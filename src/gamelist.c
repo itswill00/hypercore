@@ -1,10 +1,40 @@
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
 #include "gamelist.hpp"
 #include "sysfs.hpp"
 #include "log.hpp"
 
 #define MAX_GAMES 256
 #define PKG_NAME_LEN 128
+
+/* Open the managed gamelist for appending, refusing anything that is not a
+ * regular root-owned file. data_dir lives under /data/adb, which is root-only,
+ * so a symlink or a file owned by an app there means something is already wrong
+ * and there is no legitimate reason to follow it. */
+static FILE *open_gamelist_for_append(const char *path) {
+    int fd = open(path, O_WRONLY | O_APPEND | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0) {
+        log_warn("Gamelist", "Refusing to append to %s: %s", path, strerror(errno));
+        return NULL;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_uid != 0) {
+        log_warn("Gamelist", "Refusing to append to %s: not a regular root-owned file", path);
+        close(fd);
+        return NULL;
+    }
+
+    FILE *f = fdopen(fd, "a");
+    if (!f) {
+        close(fd);
+        return NULL;
+    }
+    return f;
+}
 
 static char      s_games[MAX_GAMES][PKG_NAME_LEN];
 static profile_t s_profiles[MAX_GAMES];
@@ -116,7 +146,14 @@ void load_gamelist(void) {
         FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite'", "r");
         if (pp) {
             char pkg_buf[128];
-            FILE *fw = fopen(path, "a");
+            /* Always persist discoveries to the data dir, never to whichever
+             * path happened to be read. `path` can be a /sdcard location, which
+             * any app holding storage access can replace with a symlink — and
+             * this runs as root, so the append would land wherever the link
+             * pointed. Autodetected results are the one thing here the daemon
+             * regenerates on its own, so writing them to the managed path loses
+             * nothing. */
+            FILE *fw = open_gamelist_for_append(data_gl);
             while (fgets(pkg_buf, sizeof(pkg_buf), pp) && s_game_count < MAX_GAMES) {
                 size_t len = strlen(pkg_buf);
                 while (len > 0 && (pkg_buf[len - 1] == '\r' || pkg_buf[len - 1] == '\n' || pkg_buf[len - 1] == ' ')) {

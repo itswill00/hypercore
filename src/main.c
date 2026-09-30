@@ -339,7 +339,14 @@ static int is_screen_on(void) {
         }
     }
 
-    return 0;
+    /* Nothing readable on this ROM. Assuming "off" pins the device to the Sleep
+     * profile (850 MHz Big) with no recovery path, because every profile
+     * decision downstream reads this as a screen that never comes back. A live
+     * device whose backlight node is simply unrecognised is far likelier to be
+     * awake than asleep, and the safe default is the one that still lets the
+     * tuning loop run. */
+    log_warn("Profiler", "Screen state undetectable — assuming screen ON; sleep profile will not latch");
+    return 1;
 }
 
 /* Read back the nodes that prove Interactive really landed after boot settle:

@@ -1,7 +1,43 @@
 
+#include <stdarg.h>
+
 #include "thermal.hpp"
 #include "sysfs.hpp"
 #include "log.hpp"
+
+/* Last-resort thermal zone picker, used only when score-based discovery found
+ * nothing. Zone numbering is not stable across ROMs or kernel versions, so a
+ * hardcoded index is a guess that can quietly bind the whole thermal guard to
+ * an unrelated sensor — skin, PA, DRAM — and that sensor then drives both the
+ * frequency ceilings and the charger ladder. Confirm the zone's own `type`
+ * string looks like the sensor we actually want before accepting it. */
+static void pick_fallback_zone(char *out, size_t out_len, const char *sensor,
+                               const int *indices, int count, ...) {
+    out[0] = '\0';
+    va_list ap;
+
+    for (int i = 0; i < count; i++) {
+        char type_path[256], temp_path[256], type[64] = "";
+        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/thermal_zone%d/type", indices[i]);
+        snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/thermal_zone%d/temp", indices[i]);
+        if (access(temp_path, F_OK) != 0) continue;
+        if (!sysfs_read_str(type_path, type, sizeof(type))) continue;
+
+        va_start(ap, count);
+        int wanted = 0;
+        for (const char *w = va_arg(ap, const char *); w; w = va_arg(ap, const char *)) {
+            if (strstr(type, w)) { wanted = 1; break; }
+        }
+        va_end(ap);
+        if (!wanted) continue;
+
+        strncpy(out, temp_path, out_len - 1);
+        out[out_len - 1] = '\0';
+        log_warn("Thermal", "Zone scan matched no %s sensor; falling back to thermal_zone%d (%s)",
+                 sensor, indices[i], type);
+        return;
+    }
+}
 
 void scan_thermal_zones(void) {
     /* Score-based thermal zone selection to pick core sensor over broad SoC envelope */
@@ -33,8 +69,14 @@ void scan_thermal_zones(void) {
 
             char temp_path[256];
             snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", ent->d_name);
-            int val = sysfs_read_int(temp_path);
-            if (val <= 0) continue;
+
+            /* Selection is driven by the zone's type, so a temp node that has not
+             * published its first sample yet must not disqualify it. Many MTK
+             * zones legitimately read 0 for the first few seconds after boot,
+             * and skipping those meant the real CPU/battery zones lost to
+             * whichever zone happened to be warm at scan time. A dead node that
+             * does get selected now degrades safely: update_thermal_guard()
+             * holds the current tier instead of reading 0 as a cold SoC. */
 
             int cpu_score = 0;
             if (strstr(type, "cpu_big") || strstr(type, "cpu-big")) cpu_score = 14;
@@ -107,43 +149,56 @@ void scan_thermal_zones(void) {
         log_info("Thermal", "Charger thermal zone selected (score=%d): %s", best_chg_score, g_nodes.chg_temp);
     }
 
-    if (g_nodes.cpu_temp[0] == '\0') {
-        strcpy(g_nodes.cpu_temp, access("/sys/class/thermal/thermal_zone16/temp", F_OK) == 0 ?
-               "/sys/class/thermal/thermal_zone16/temp" : "/sys/class/thermal/thermal_zone0/temp");
-    }
-    if (g_nodes.bat_temp[0] == '\0') {
-        strcpy(g_nodes.bat_temp, access("/sys/class/thermal/thermal_zone25/temp", F_OK) == 0 ?
-               "/sys/class/thermal/thermal_zone25/temp" : "/sys/class/thermal/thermal_zone1/temp");
-    }
-    if (g_nodes.gpu_temp[0] == '\0') {
-        if (access("/sys/class/thermal/thermal_zone10/temp", F_OK) == 0)
-            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone10/temp");
-        else if (access("/sys/class/thermal/thermal_zone9/temp", F_OK) == 0)
-            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone9/temp");
-    }
+    if (g_nodes.cpu_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "cpu",
+                           (const int[]){16, 0}, 2, "cpu", "soc", NULL);
+    if (g_nodes.bat_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "battery",
+                           (const int[]){25, 1}, 2, "bat", NULL);
+    if (g_nodes.gpu_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.gpu_temp, sizeof(g_nodes.gpu_temp), "gpu",
+                           (const int[]){10, 9}, 2, "gpu", "mali", NULL);
     if (g_nodes.chg_temp[0] == '\0') {
-        if (access("/sys/class/thermal/thermal_zone17/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/thermal/thermal_zone17/temp");
-        else if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
-        else if (access("/sys/class/power_supply/charger/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/charger/temp");
+        pick_fallback_zone(g_nodes.chg_temp, sizeof(g_nodes.chg_temp), "charger",
+                           (const int[]){17}, 1, "chg", "charg", "charge", NULL);
+        if (g_nodes.chg_temp[0] == '\0') {
+            if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
+                strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
+            else if (access("/sys/class/power_supply/charger/temp", F_OK) == 0)
+                strcpy(g_nodes.chg_temp, "/sys/class/power_supply/charger/temp");
+        }
     }
 
-    /* Discover GPU devfreq cooling device to prevent thermal downclocking during gaming */
-    for (int i = 0; i < 16; i++) {
-        char type_path[256], cur_path[256];
-        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/cooling_device%d/type", i);
-        snprintf(cur_path, sizeof(cur_path), "/sys/class/thermal/cooling_device%d/cur_state", i);
-        if (access(type_path, F_OK) != 0) continue;
+    /* Discover the GPU devfreq cooling device so thermal downclocking during
+     * gaming can be undone.
+     *
+     * "thermal-devfreq" is the generic cpufreq/dvfsrc cooler type and matches
+     * the CPU policies too, so it cannot be treated as a GPU hint. Matching it
+     * first meant whichever cooling_deviceN happened to be numbered lowest won,
+     * and gaming would then force cur_state 0 onto a CPU cooler every tick.
+     * GPU-specific types win outright; the generic one is a fallback only. */
+    int found = 0;
+    for (int pass = 0; pass < 2 && !found; pass++) {
+        for (int i = 0; i < 16; i++) {
+            char type_path[256], cur_path[256];
+            snprintf(type_path, sizeof(type_path), "/sys/class/thermal/cooling_device%d/type", i);
+            snprintf(cur_path, sizeof(cur_path), "/sys/class/thermal/cooling_device%d/cur_state", i);
+            if (access(type_path, F_OK) != 0) continue;
 
-        char ctype[64] = "";
-        sysfs_read_str(type_path, ctype, sizeof(ctype));
-        if (strstr(ctype, "thermal-devfreq") || strstr(ctype, "mali") || strstr(ctype, "gpu")) {
+            char ctype[64] = "";
+            sysfs_read_str(type_path, ctype, sizeof(ctype));
+
+            int is_gpu = strstr(ctype, "mali") || strstr(ctype, "gpu");
+            int is_generic = !is_gpu && strstr(ctype, "thermal-devfreq") != NULL;
+            if (!(pass == 0 ? is_gpu : is_generic)) continue;
+
             strncpy(g_nodes.devfreq_cooler, cur_path, sizeof(g_nodes.devfreq_cooler) - 1);
+            g_nodes.devfreq_cooler[sizeof(g_nodes.devfreq_cooler) - 1] = '\0';
             log_info("Thermal", "GPU Devfreq cooling device detected: %s (%s)", cur_path, ctype);
+            found = 1;
             break;
         }
+        if (found) break;
     }
 
     if (access("/sys/class/power_supply/battery/status", F_OK) == 0) {
@@ -330,13 +385,17 @@ void sync_battery_cycle_count(void) {
  * Tier 1 (Warm / Active Mitigation):
  *   - Trigger: Bat >= 45°C OR CPU >= 70°C.
  *   - Clear:   Bat <= 42°C AND CPU <= 64°C (3°C hysteresis).
- *   - Action:  Gracefully cap Big cores at 1.8 GHz, Little at 1.8 GHz.
- *              No core hotplug, zero micro-stutter.
+ *   - Action:  Cap Little at 1.8 GHz and Big at 1.8 GHz. MOBA titles keep Big
+ *              at 2.0 GHz, because their frametime budget is tighter.
  *
  * Tier 2 (Hot / Safety Protection):
  *   - Trigger: Bat >= 48°C OR CPU >= 75°C.
  *   - Clear:   Bat <= 44°C AND CPU <= 68°C.
- *   - Action:  Cap Big cores at 1.5 GHz, Little at 1.4 GHz to arrest heat.
+ *   - Action:  Cap both clusters at 1.8 GHz to arrest heat.
+ *
+ * Ceilings are implemented in build_profile_matrix() and are always clamped
+ * down to the hardware's own maximum, so a part that reports a lower ceiling
+ * is never pushed above it.
  * -------------------------------------------------------------------------- */
 static int s_thermal_tier = 0;
 
@@ -347,20 +406,47 @@ int get_thermal_tier(void) {
 int update_thermal_guard(int cpu_temp, int bat_temp) {
     int prev_tier = s_thermal_tier;
 
+    /* A sensor reporting 0 has not produced a sample — that is not the same as
+     * "cold". The raw reads used to go straight into the comparisons below, so a
+     * failed or not-yet-sampled node read as a comfortable 0°C and pinned the
+     * device at tier 0 with the vendor thermal stack suppressed, which is the
+     * exact state that gets a hot SoC cooked. Judge on whichever sample
+     * actually arrived, and hold the current tier when neither did. */
+    int have_cpu = cpu_temp > 0;
+    int have_bat = bat_temp > 0;
+    if (!have_cpu && !have_bat) {
+        return 0; /* no usable data this tick: keep the tier we already had */
+    }
+
+    int hot, warm, mid, cool, calm;
+    if (have_cpu && have_bat) {
+        hot  = cpu_temp >= 75 || bat_temp >= 48;
+        warm = cpu_temp >= 70 || bat_temp >= 45;
+        mid  = cpu_temp >= 65 || bat_temp >= 42;
+        calm = cpu_temp <= 68 && bat_temp <= 44;
+        cool = cpu_temp <= 64 && bat_temp <= 42;
+    } else if (have_cpu) {
+        hot = cpu_temp >= 75; warm = cpu_temp >= 70; mid = cpu_temp >= 65;
+        calm = cpu_temp <= 68; cool = cpu_temp <= 64;
+    } else {
+        hot = bat_temp >= 48; warm = bat_temp >= 45; mid = bat_temp >= 42;
+        calm = bat_temp <= 44; cool = bat_temp <= 42;
+    }
+
     if (s_thermal_tier == 2) {
-        if (bat_temp <= 44 && cpu_temp <= 68) {
-            s_thermal_tier = (bat_temp >= 42 || cpu_temp >= 65) ? 1 : 0;
+        if (calm) {
+            s_thermal_tier = mid ? 1 : 0;
         }
     } else if (s_thermal_tier == 1) {
-        if (bat_temp >= 48 || cpu_temp >= 75) {
+        if (hot) {
             s_thermal_tier = 2;
-        } else if (bat_temp <= 42 && cpu_temp <= 64) {
+        } else if (cool) {
             s_thermal_tier = 0;
         }
     } else {
-        if (bat_temp >= 48 || cpu_temp >= 75) {
+        if (hot) {
             s_thermal_tier = 2;
-        } else if (bat_temp >= 45 || cpu_temp >= 70) {
+        } else if (warm) {
             s_thermal_tier = 1;
         }
     }
@@ -386,37 +472,29 @@ int update_thermal_guard(int cpu_temp, int bat_temp) {
  * 5. Restores scaling_max_freq if vendor thermald artificially caps CPU clocks
  *
  * At tier >= 1 items 1-4 are skipped: we stop fighting the vendor thermal stack
- * and fall back to our own frequency ceilings. See update_thermal_guard() for
- * the tier definitions.
+ * and rely on the frequency ceilings in build_profile_matrix(). See
+ * update_thermal_guard() for the tier definitions.
  * -------------------------------------------------------------------------- */
 void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
     if (prof != PROFILE_Gaming && prof != PROFILE_Gaming_MOBA) return;
 
-    /* Frequency ceilings are the module's own thermal guard and apply at every
-     * tier. Tier 2 pins both clusters well below the hardware ceiling so heat
-     * has somewhere to go. */
-    int target_lit_max, target_big_max;
-    switch (tier) {
-        case 2:
-            target_lit_max = 1400000;
-            target_big_max = 1500000;
-            break;
-        case 1:
-            target_lit_max = 1800000;
-            target_big_max = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
-            break;
-        default:
-            target_lit_max = (g_nodes.lit_hw_max_freq > 0) ? g_nodes.lit_hw_max_freq : 2000000;
-            target_big_max = (g_nodes.big_hw_max_freq > 0) ? g_nodes.big_hw_max_freq : 2200000;
-            break;
-    }
-
-    /* At tier >= 1 we stop suppressing the vendor thermal stack entirely and
-     * rely on the ceilings above. The bypass below exists to stop over-eager
+    /* Frequency ceilings live in build_profile_matrix() (src/cpu.c), which is
+     * the single source of truth and already clamps both clusters at every
+     * tier. An earlier copy of that table lived here and was unreachable: the
+     * tier >= 1 bail-out below ran before the values were ever used, so the
+     * tier-1/tier-2 numbers were computed and thrown away while the header
+     * comment claimed they were enforced. Two divergent tables for one guard
+     * is how a 70°C device ends up uncapped, so only one remains.
+     *
+     * At tier >= 1 we stop suppressing the vendor thermal stack entirely and
+     * rely on those ceilings. The bypass below exists to stop over-eager
      * throttling during gameplay while the SoC is genuinely cool — it is not a
      * substitute for thermal protection, and winning the race against
      * mi_thermald at 75°C is how you cook the device. */
     if (tier >= 1) return;
+
+    int target_lit_max = (g_nodes.lit_hw_max_freq > 0) ? g_nodes.lit_hw_max_freq : 2000000;
+    int target_big_max = (g_nodes.big_hw_max_freq > 0) ? g_nodes.big_hw_max_freq : 2200000;
 
     /* 1. Enforce Xiaomi sconfig 10 (thermal-nolimits.conf) */
     char sconfig_val[32] = "";

@@ -70,6 +70,21 @@ sed -i "s/Version.*: v.*/Version        : ${VERSION} (Build ${VERSION_CODE})/" d
 sed -i "s/Release ZIP.*: HyperCore.*/Release ZIP    : HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip/" docs/DOCUMENTATION.txt 2>/dev/null || true
 sed -i "s/VERSION_NAME=\"v.*\"/VERSION_NAME=\"${VERSION}\"/" customize.sh 2>/dev/null || true
 
+# update.json is consumed by the root manager (module.prop points updateJson at
+# it), not by anything in this repo, so it was never covered by the seds above
+# and drifted the moment the version moved — advertising a release URL for a tag
+# that no longer existed. Regenerate it whole rather than sed-patching JSON: the
+# three fields are all derivable, and a partial patch is how the URL goes stale
+# while the version field looks fine.
+cat > update.json << EOF
+{
+  "version": "${VERSION}",
+  "versionCode": ${VERSION_CODE},
+  "zipUrl": "https://github.com/itswill00/hypercore/releases/download/${VERSION}/${ZIP_OUT}",
+  "changelog": "https://raw.githubusercontent.com/itswill00/hypercore/main/changelog.md"
+}
+EOF
+
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
 # Tool checks follow the flags: no node/npm needed for --skip-webui.

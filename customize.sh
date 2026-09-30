@@ -138,7 +138,13 @@ fi
 
 # Layer 2: the table compiled into the daemon, which re-checks every script
 # independently of the shell tooling.
-if [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
+#
+# Only reached once layer 1 passed. Layer 2 is the one place the installer
+# actually executes payload code, so it must never run against a binary that
+# already failed the manifest: aborting afterwards does not undo the execution,
+# and a repacked ZIP would get its tampered daemon run as root during install
+# before the "Installation aborted for security" message ever printed.
+if [ $INTEGRITY_OK -eq 1 ] && [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
     EMBEDDED_OUT=$("$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" 2>&1)
     if [ $? -ne 0 ]; then
         INTEGRITY_OK=0
@@ -259,7 +265,7 @@ for c in /data/adb/hypercore/*.conf; do
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.10.0"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.11.0"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

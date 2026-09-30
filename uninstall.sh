@@ -119,6 +119,49 @@ rm -f /data/adb/modules/hypercore/.hypercore_lock /data/adb/modules/hypercore/hy
 rm -f /data/adb/modules/hypercore/status.json /data/adb/modules/hypercore/*.conf /data/adb/modules/hypercore/gamelist.txt 2>/dev/null
 # Legacy log location from before the daemon moved it under /data/adb
 rm -f /sdcard/Android/hypercore.log 2>/dev/null
+# Revoke what service.sh granted at install time. These appops and pm grants
+# outlive the module — without this, com.android.shell and the whole android
+# package keep SYSTEM_ALERT_WINDOW permanently after the overlay is gone.
+cmd appops set --uid 0     SYSTEM_ALERT_WINDOW default 2>/dev/null || true
+cmd appops set --uid 1000  SYSTEM_ALERT_WINDOW default 2>/dev/null || true
+cmd appops set --uid 2000  SYSTEM_ALERT_WINDOW default 2>/dev/null || true
+cmd appops set android     SYSTEM_ALERT_WINDOW default 2>/dev/null || true
+pm revoke com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null || true
+
+# Preserve user configuration instead of deleting it with the runtime state.
+# The previous `rm -rf /data/adb/hypercore` took the charge-mode and limit
+# settings, the hand-built gamelist, the HyperMoon HUD config and every log with
+# it, so uninstalling to "reset" the module silently cost the user all of it and
+# a reinstall started from nothing. Runtime and scratch state still go; only the
+# settings the user actually configured survive, in a timestamped sidecar.
+PRESERVE_DIR="/data/adb/hypercore_removed"
+PRESERVE_LIST="charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf stock_state.conf zram.conf stock_zram.conf gamelist.txt"
+if [ -d /data/adb/hypercore ]; then
+    kept=""
+    for f in $PRESERVE_LIST; do
+        [ -f "/data/adb/hypercore/$f" ] && kept="$kept $f"
+    done
+    if [ -n "$kept" ]; then
+        stamp=$(date +%Y%m%d-%H%M%S 2>/dev/null || echo manual)
+        if mkdir -p "$PRESERVE_DIR/$stamp" 2>/dev/null; then
+            # One cp per file on purpose. Building the sources as
+            # "/data/adb/hypercore/$kept" word-splits into the bare directory
+            # plus one argument per name, which cp rejects, and the whole
+            # preserve step then silently copies nothing.
+            copied=""
+            for f in $kept; do
+                if cp -f "/data/adb/hypercore/$f" "$PRESERVE_DIR/$stamp/$f" 2>/dev/null; then
+                    copied="$copied $f"
+                fi
+            done
+            if [ -n "$copied" ]; then
+                echo "HyperCore: user configuration saved to $PRESERVE_DIR/$stamp ($copied )" > /sdcard/hypercore_uninstall_note.txt 2>/dev/null
+            else
+                echo "HyperCore: could not preserve user configuration" > /sdcard/hypercore_uninstall_note.txt 2>/dev/null
+            fi
+        fi
+    fi
+fi
 rm -rf /data/adb/hypercore 2>/dev/null || true
 rm -f /data/local/tmp/.hypercore_lock /data/local/tmp/hypercore.sock /data/local/tmp/hypercore.pid 2>/dev/null
 rm -rf /data/local/tmp/hypercore 2>/dev/null || true
