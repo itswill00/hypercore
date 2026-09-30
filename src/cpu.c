@@ -535,7 +535,7 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->top_app_uclamp_max= g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max";
 
             m->devfreq_gov      = g_stock_baseline.mali_gpu_gov[0] ? g_stock_baseline.mali_gpu_gov : "simple_ondemand";
-            m->power_policy     = g_stock_baseline.mali_policy;
+            m->power_policy     = g_stock_baseline.mali_policy[0] ? g_stock_baseline.mali_policy : "coarse_demand";
             m->devfreq_min_freq = g_stock_baseline.mali_min_freq[0] ? g_stock_baseline.mali_min_freq : "390000000";
             m->devfreq_max_freq = g_stock_baseline.mali_max_freq[0] ? g_stock_baseline.mali_max_freq : max_gpu_hz;
             m->devfreq_upthresh = g_stock_baseline.mali_upthresh[0] ? g_stock_baseline.mali_upthresh : "80";

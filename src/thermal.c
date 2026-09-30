@@ -1,7 +1,43 @@
 
+#include <stdarg.h>
+
 #include "thermal.hpp"
 #include "sysfs.hpp"
 #include "log.hpp"
+
+/* Last-resort thermal zone picker, used only when score-based discovery found
+ * nothing. Zone numbering is not stable across ROMs or kernel versions, so a
+ * hardcoded index is a guess that can quietly bind the whole thermal guard to
+ * an unrelated sensor — skin, PA, DRAM — and that sensor then drives both the
+ * frequency ceilings and the charger ladder. Confirm the zone's own `type`
+ * string looks like the sensor we actually want before accepting it. */
+static void pick_fallback_zone(char *out, size_t out_len, const char *sensor,
+                               const int *indices, int count, ...) {
+    out[0] = '\0';
+    va_list ap;
+
+    for (int i = 0; i < count; i++) {
+        char type_path[256], temp_path[256], type[64] = "";
+        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/thermal_zone%d/type", indices[i]);
+        snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/thermal_zone%d/temp", indices[i]);
+        if (access(temp_path, F_OK) != 0) continue;
+        if (!sysfs_read_str(type_path, type, sizeof(type))) continue;
+
+        va_start(ap, count);
+        int wanted = 0;
+        for (const char *w = va_arg(ap, const char *); w; w = va_arg(ap, const char *)) {
+            if (strstr(type, w)) { wanted = 1; break; }
+        }
+        va_end(ap);
+        if (!wanted) continue;
+
+        strncpy(out, temp_path, out_len - 1);
+        out[out_len - 1] = '\0';
+        log_warn("Thermal", "Zone scan matched no %s sensor; falling back to thermal_zone%d (%s)",
+                 sensor, indices[i], type);
+        return;
+    }
+}
 
 void scan_thermal_zones(void) {
     /* Score-based thermal zone selection to pick core sensor over broad SoC envelope */
@@ -33,8 +69,14 @@ void scan_thermal_zones(void) {
 
             char temp_path[256];
             snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/%s/temp", ent->d_name);
-            int val = sysfs_read_int(temp_path);
-            if (val <= 0) continue;
+
+            /* Selection is driven by the zone's type, so a temp node that has not
+             * published its first sample yet must not disqualify it. Many MTK
+             * zones legitimately read 0 for the first few seconds after boot,
+             * and skipping those meant the real CPU/battery zones lost to
+             * whichever zone happened to be warm at scan time. A dead node that
+             * does get selected now degrades safely: update_thermal_guard()
+             * holds the current tier instead of reading 0 as a cold SoC. */
 
             int cpu_score = 0;
             if (strstr(type, "cpu_big") || strstr(type, "cpu-big")) cpu_score = 14;
@@ -107,43 +149,56 @@ void scan_thermal_zones(void) {
         log_info("Thermal", "Charger thermal zone selected (score=%d): %s", best_chg_score, g_nodes.chg_temp);
     }
 
-    if (g_nodes.cpu_temp[0] == '\0') {
-        strcpy(g_nodes.cpu_temp, access("/sys/class/thermal/thermal_zone16/temp", F_OK) == 0 ?
-               "/sys/class/thermal/thermal_zone16/temp" : "/sys/class/thermal/thermal_zone0/temp");
-    }
-    if (g_nodes.bat_temp[0] == '\0') {
-        strcpy(g_nodes.bat_temp, access("/sys/class/thermal/thermal_zone25/temp", F_OK) == 0 ?
-               "/sys/class/thermal/thermal_zone25/temp" : "/sys/class/thermal/thermal_zone1/temp");
-    }
-    if (g_nodes.gpu_temp[0] == '\0') {
-        if (access("/sys/class/thermal/thermal_zone10/temp", F_OK) == 0)
-            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone10/temp");
-        else if (access("/sys/class/thermal/thermal_zone9/temp", F_OK) == 0)
-            strcpy(g_nodes.gpu_temp, "/sys/class/thermal/thermal_zone9/temp");
-    }
+    if (g_nodes.cpu_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "cpu",
+                           (const int[]){16, 0}, 2, "cpu", "soc", NULL);
+    if (g_nodes.bat_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "battery",
+                           (const int[]){25, 1}, 2, "bat", NULL);
+    if (g_nodes.gpu_temp[0] == '\0')
+        pick_fallback_zone(g_nodes.gpu_temp, sizeof(g_nodes.gpu_temp), "gpu",
+                           (const int[]){10, 9}, 2, "gpu", "mali", NULL);
     if (g_nodes.chg_temp[0] == '\0') {
-        if (access("/sys/class/thermal/thermal_zone17/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/thermal/thermal_zone17/temp");
-        else if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
-        else if (access("/sys/class/power_supply/charger/temp", F_OK) == 0)
-            strcpy(g_nodes.chg_temp, "/sys/class/power_supply/charger/temp");
+        pick_fallback_zone(g_nodes.chg_temp, sizeof(g_nodes.chg_temp), "charger",
+                           (const int[]){17}, 1, "chg", "charg", "charge", NULL);
+        if (g_nodes.chg_temp[0] == '\0') {
+            if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
+                strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
+            else if (access("/sys/class/power_supply/charger/temp", F_OK) == 0)
+                strcpy(g_nodes.chg_temp, "/sys/class/power_supply/charger/temp");
+        }
     }
 
-    /* Discover GPU devfreq cooling device to prevent thermal downclocking during gaming */
-    for (int i = 0; i < 16; i++) {
-        char type_path[256], cur_path[256];
-        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/cooling_device%d/type", i);
-        snprintf(cur_path, sizeof(cur_path), "/sys/class/thermal/cooling_device%d/cur_state", i);
-        if (access(type_path, F_OK) != 0) continue;
+    /* Discover the GPU devfreq cooling device so thermal downclocking during
+     * gaming can be undone.
+     *
+     * "thermal-devfreq" is the generic cpufreq/dvfsrc cooler type and matches
+     * the CPU policies too, so it cannot be treated as a GPU hint. Matching it
+     * first meant whichever cooling_deviceN happened to be numbered lowest won,
+     * and gaming would then force cur_state 0 onto a CPU cooler every tick.
+     * GPU-specific types win outright; the generic one is a fallback only. */
+    int found = 0;
+    for (int pass = 0; pass < 2 && !found; pass++) {
+        for (int i = 0; i < 16; i++) {
+            char type_path[256], cur_path[256];
+            snprintf(type_path, sizeof(type_path), "/sys/class/thermal/cooling_device%d/type", i);
+            snprintf(cur_path, sizeof(cur_path), "/sys/class/thermal/cooling_device%d/cur_state", i);
+            if (access(type_path, F_OK) != 0) continue;
 
-        char ctype[64] = "";
-        sysfs_read_str(type_path, ctype, sizeof(ctype));
-        if (strstr(ctype, "thermal-devfreq") || strstr(ctype, "mali") || strstr(ctype, "gpu")) {
+            char ctype[64] = "";
+            sysfs_read_str(type_path, ctype, sizeof(ctype));
+
+            int is_gpu = strstr(ctype, "mali") || strstr(ctype, "gpu");
+            int is_generic = !is_gpu && strstr(ctype, "thermal-devfreq") != NULL;
+            if (!(pass == 0 ? is_gpu : is_generic)) continue;
+
             strncpy(g_nodes.devfreq_cooler, cur_path, sizeof(g_nodes.devfreq_cooler) - 1);
+            g_nodes.devfreq_cooler[sizeof(g_nodes.devfreq_cooler) - 1] = '\0';
             log_info("Thermal", "GPU Devfreq cooling device detected: %s (%s)", cur_path, ctype);
+            found = 1;
             break;
         }
+        if (found) break;
     }
 
     if (access("/sys/class/power_supply/battery/status", F_OK) == 0) {

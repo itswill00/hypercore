@@ -516,10 +516,19 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
         char tmp[300];
         snprintf(tmp, sizeof(tmp), "%s.tmp", paths[i]);
         FILE *f = fopen(tmp, "w");
-        if (f) {
-            fputs(json, f);
-            fclose(f);
-            rename(tmp, paths[i]);
+        if (!f) continue;
+
+        /* Both fputs and fclose can fail — a full /data or an I/O error leaves
+         * a short or empty tmp file, and renaming that into place publishes a
+         * truncated status.json for the WebUI to parse. Only swap it in once the
+         * bytes are known to have landed, and tidy up the tmp on failure so a
+         * later run does not inherit a stale one. */
+        int ok = (fputs(json, f) >= 0);
+        if (fclose(f) != 0) ok = 0;
+        if (!ok) {
+            unlink(tmp);
+            continue;
         }
+        rename(tmp, paths[i]);
     }
 }
