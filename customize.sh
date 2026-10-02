@@ -102,43 +102,16 @@ fi
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 
-if [ -f "$PRESERVE_GL" ]; then
-    ui_print "- Merging preserved user gamelist entries..."
-    # Atomic tmp+rename: a kill mid-write used to truncate the live gamelist.
-    # The awk key strips surrounding whitespace so " com.foo:GAMING" dedups
-    # against "com.foo:GAMING" instead of becoming a ghost duplicate the
-    # daemon keeps but never matches. OFS=":" keeps pkg:PROFILE lines intact.
-    _GLTMP="/data/adb/hypercore/.gamelist.merge.tmp"
-    if cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: 'BEGIN { OFS=":" } /^[ \t\r]*#/ { if (!seen[$0]++) print; next } { key=$1; gsub(/^[ \t\r]+|[ \t\r]+$/, "", key); if (key == "") next; if (!seen[key]++) { $1=key; print } }' > "$_GLTMP" 2>/dev/null; then
-        mv -f "$_GLTMP" /data/adb/hypercore/gamelist.txt
-    else
-        rm -f "$_GLTMP"
-    fi
-    rm -f "$PRESERVE_GL"
-elif [ -f "$MODPATH/gamelist.txt" ]; then
-    cp -f "$MODPATH/gamelist.txt" /data/adb/hypercore/gamelist.txt 2>/dev/null || touch /data/adb/hypercore/gamelist.txt
-fi
-
-# Clean up non-module files, temporary configs, and duplicates from installed module root
-rm -f "$MODPATH/gamelist.txt"
-rm -f "$MODPATH/NOTICE.md"
-rm -f "$MODPATH/update.json"
-rm -f "$MODPATH/webroot/banner.jpg"
-rm -f "$MODPATH"/*.conf
-rm -f "$MODPATH/hypercore" "$MODPATH/libhypercore.so"
-rm -f "$MODPATH/hypercore.sock" "$MODPATH/hypercore.pid" "$MODPATH/status.json"
-
 ui_print "- Verifying SHA-256 integrity of the extracted payload..."
-# This runs BEFORE any payload file is sourced or executed. It used to run after
-# scripts/stock_baseline.sh had already been sourced as root, so a tampered
-# payload got to execute before anything was verified.
+# This runs immediately after extraction BEFORE any file is modified or executed.
+# It ensures everything in $MODPATH is verified against the signed manifest first.
 chmod 755 "$MODPATH/system/bin/libhypercore.so" 2>/dev/null || true
 
 INTEGRITY_OK=1
 INTEGRITY_OUT=""
 
-# Layer 1: the shipped manifest, which also covers libhypercore.so (a binary
-# cannot embed its own hash, so it is verified from here instead).
+# Layer 1: the shipped manifest, which covers every payload file including
+# libhypercore.so and gamelist.txt as extracted.
 if [ -f "$MODPATH/checksums.txt" ] && command -v sha256sum >/dev/null 2>&1; then
     INTEGRITY_OUT=$(cd "$MODPATH" && sha256sum -c checksums.txt 2>&1)
     if [ $? -ne 0 ]; then
@@ -157,9 +130,7 @@ fi
 #
 # Only reached once layer 1 passed. Layer 2 is the one place the installer
 # actually executes payload code, so it must never run against a binary that
-# already failed the manifest: aborting afterwards does not undo the execution,
-# and a repacked ZIP would get its tampered daemon run as root during install
-# before the "Installation aborted for security" message ever printed.
+# already failed the manifest.
 if [ $INTEGRITY_OK -eq 1 ] && [ -f "$MODPATH/system/bin/libhypercore.so" ]; then
     EMBEDDED_OUT=$("$MODPATH/system/bin/libhypercore.so" --verify-integrity "$MODPATH" 2>&1)
     if [ $? -ne 0 ]; then
@@ -187,6 +158,31 @@ if [ -f "$MODPATH/scripts/stock_baseline.sh" ]; then
     . "$MODPATH/scripts/stock_baseline.sh"
     capture_stock_baseline
 fi
+
+# Merge / preserve user gamelist
+if [ -f "$PRESERVE_GL" ]; then
+    ui_print "- Merging preserved user gamelist entries..."
+    _GLTMP="/data/adb/hypercore/.gamelist.merge.tmp"
+    if cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: 'BEGIN { OFS=":" } /^[ \t\r]*#/ { if (!seen[$0]++) print; next } { key=$1; gsub(/^[ \t\r]+|[ \t\r]+$/, "", key); if (key == "") next; if (!seen[key]++) { $1=key; print } }' > "$_GLTMP" 2>/dev/null; then
+        mv -f "$_GLTMP" /data/adb/hypercore/gamelist.txt
+    else
+        rm -f "$_GLTMP"
+    fi
+    rm -f "$PRESERVE_GL"
+elif [ -f "/data/adb/hypercore/gamelist.txt" ]; then
+    ui_print "- Keeping existing user gamelist in /data/adb/hypercore..."
+elif [ -f "$MODPATH/gamelist.txt" ]; then
+    cp -f "$MODPATH/gamelist.txt" /data/adb/hypercore/gamelist.txt 2>/dev/null || touch /data/adb/hypercore/gamelist.txt
+fi
+
+# Clean up non-module files, temporary configs, and duplicates from installed module root
+rm -f "$MODPATH/gamelist.txt"
+rm -f "$MODPATH/NOTICE.md"
+rm -f "$MODPATH/update.json"
+rm -f "$MODPATH/webroot/banner.jpg"
+rm -f "$MODPATH"/*.conf
+rm -f "$MODPATH/hypercore" "$MODPATH/libhypercore.so"
+rm -f "$MODPATH/hypercore.sock" "$MODPATH/hypercore.pid" "$MODPATH/status.json"
 
 ui_print "- Setting permissions & PATH symlinks..."
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
@@ -261,21 +257,26 @@ EOF
 fi
 chmod 755 /data/adb/hypercore/hud 2>/dev/null || true
 
-ui_print "- Auto-detecting installed games on your device..."
-AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite' 2>/dev/null)
+if [ ! -f "/data/adb/hypercore/.gamelist_autodetected" ]; then
+    ui_print "- Auto-detecting installed games on your device (first install)..."
+    AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite' 2>/dev/null)
 
-if [ -n "$AUTO_GAMES" ]; then
-    for pkg in $AUTO_GAMES; do
-        # Escape regex dots: an unescaped "com.foo" pattern also matches
-        # "comXfoo" and could skip a legitimate auto-add.
-        _pkg_esc=$(printf '%s' "$pkg" | sed 's/\./\\./g')
-        if ! grep -q -E "^${_pkg_esc}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
-            echo "${pkg}:GAMING" >> /data/adb/hypercore/gamelist.txt
-            ui_print "  + Auto-added game: $pkg"
-        fi
-    done
+    if [ -n "$AUTO_GAMES" ]; then
+        for pkg in $AUTO_GAMES; do
+            # Escape regex dots: an unescaped "com.foo" pattern also matches
+            # "comXfoo" and could skip a legitimate auto-add.
+            _pkg_esc=$(printf '%s' "$pkg" | sed 's/\./\\./g')
+            if ! grep -q -E "^${_pkg_esc}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
+                echo "${pkg}:GAMING" >> /data/adb/hypercore/gamelist.txt
+                ui_print "  + Auto-added game: $pkg"
+            fi
+        done
+    else
+        ui_print "  (No installed games auto-detected, gamelist ready for manual entries)"
+    fi
+    touch /data/adb/hypercore/.gamelist_autodetected 2>/dev/null || true
 else
-    ui_print "  (No installed games auto-detected, gamelist ready for manual entries)"
+    ui_print "- Preserved user-managed gamelist preferences."
 fi
 rm -f "$MODPATH/gamelist.txt"
 set_perm /data/adb/hypercore/gamelist.txt 0 0 0644
@@ -284,7 +285,7 @@ for c in /data/adb/hypercore/*.conf; do
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.11.1"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.11.2"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

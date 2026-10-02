@@ -1,3 +1,17 @@
+# HyperCore v6.11.2 — Installer Checksum & Upgrade Fixes
+
+Fixes an installer failure during module flash/update in KernelSU / Magisk:
+`customize.sh` cleaned up non-module files before verifying SHA-256 integrity,
+causing `sha256sum -c` to fail on `gamelist.txt` and abort installation.
+
+## Fixes
+- **Installer integrity verification ordering** (`customize.sh`): SHA-256
+  manifest check runs immediately after extraction before any file is moved
+  or deleted.
+- **Update preservation** (`customize.sh`): Auto-detect runs only on initial
+  installation; subsequent updates preserve existing user-managed gamelist
+  preferences.
+
 # HyperCore v6.11.1 — Gamelist Resurrection & Audit Fixes
 
 Clearing the gamelist never stuck: the daemon re-ran auto-detect on every
