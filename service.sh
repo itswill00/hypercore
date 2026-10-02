@@ -1,9 +1,13 @@
 #!/system/bin/sh
 MODDIR="${0%/*}"
 
-# Wait for boot completion
+# Wait for boot completion, but never forever: if the property stalls the
+# daemon would never start and the device would sit untuned with no log.
+_boot_wait=0
 while [ "$(getprop sys.boot_completed)" != "1" ]; do
     sleep 3
+    _boot_wait=$((_boot_wait + 1))
+    [ "$_boot_wait" -ge 60 ] && break
 done
 
 sleep 2
@@ -94,8 +98,18 @@ BIN="$MODDIR/system/bin/libhypercore.so"
 if [ -f "$BIN" ]; then
     chmod 755 "$BIN"
     "$BIN" >/dev/null 2>&1 &
-    sleep 1
-    if ! pidof libhypercore.so >/dev/null 2>&1; then
+    # Wait for the daemon to register before assuming it died. The old
+    # `sleep 1 || nohup` fallback double-launched whenever startup took
+    # longer than a second (saved only by the in-daemon flock).
+    _started=0
+    for _i in 1 2 3 4 5 6 7 8 9 10; do
+        if pidof libhypercore.so >/dev/null 2>&1; then
+            _started=1
+            break
+        fi
+        sleep 1
+    done
+    if [ "$_started" -eq 0 ]; then
         nohup "$BIN" >/dev/null 2>&1 &
     fi
 fi
@@ -110,7 +124,7 @@ pm grant com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null ||
 
 HUD_STATE="/data/adb/hypercore/hud"
 mkdir -p "$HUD_STATE" 2>/dev/null
-chmod 777 "$HUD_STATE" 2>/dev/null || true
+chmod 755 "$HUD_STATE" 2>/dev/null || true
 
 if [ -f "$HUD_STATE/config.json" ] && grep -q '"visible"[[:space:]]*:[[:space:]]*true' "$HUD_STATE/config.json" 2>/dev/null; then
     if [ -f "$MODDIR/system/bin/hypermoon_d" ]; then

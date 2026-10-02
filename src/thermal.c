@@ -500,14 +500,12 @@ void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
     char sconfig_val[32] = "";
     if (sysfs_read_str("/sys/class/thermal/thermal_message/sconfig", sconfig_val, sizeof(sconfig_val))) {
         if (strcmp(sconfig_val, "10") != 0) {
-            chmod("/sys/class/thermal/thermal_message/sconfig", 0666);
-            sysfs_write("/sys/class/thermal/thermal_message/sconfig", "10");
+            sysfs_write_temp_mode("/sys/class/thermal/thermal_message/sconfig", "10", 0666);
         }
     }
     if (sysfs_read_str("/sys/devices/virtual/thermal/thermal_message/sconfig", sconfig_val, sizeof(sconfig_val))) {
         if (strcmp(sconfig_val, "10") != 0) {
-            chmod("/sys/devices/virtual/thermal/thermal_message/sconfig", 0666);
-            sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", "10");
+            sysfs_write_temp_mode("/sys/devices/virtual/thermal/thermal_message/sconfig", "10", 0666);
         }
     }
 
@@ -515,8 +513,7 @@ void enforce_gaming_thermal_bypass(profile_t prof, int tier) {
     char cpu_limits[64] = "";
     if (sysfs_read_str("/sys/class/thermal/thermal_message/cpu_limits", cpu_limits, sizeof(cpu_limits))) {
         if (cpu_limits[0] != '\0') {
-            chmod("/sys/class/thermal/thermal_message/cpu_limits", 0666);
-            sysfs_write("/sys/class/thermal/thermal_message/cpu_limits", "");
+            sysfs_write_temp_mode("/sys/class/thermal/thermal_message/cpu_limits", "", 0666);
         }
     }
 

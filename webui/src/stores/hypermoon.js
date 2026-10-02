@@ -121,7 +121,7 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
     try {
       const jsonStr = JSON.stringify(config.value, null, 2)
       const b64 = btoa(unescape(encodeURIComponent(jsonStr)))
-      await execCommand(`mkdir -p ${HUD_DIR} && echo "${b64}" | base64 -d > ${CFG_FILE} && chmod 666 ${CFG_FILE} 2>/dev/null`)
+      await execCommand(`mkdir -p ${HUD_DIR} && echo "${b64}" | base64 -d > ${CFG_FILE} && chmod 644 ${CFG_FILE} 2>/dev/null`)
     } catch {}
   }
 
@@ -149,7 +149,7 @@ export const useHyperMoonStore = defineStore('hypermoon', () => {
   async function toggleMaster(enable) {
     // 1. Instant local state update (0ms UI latency)
     config.value.visible = enable
-    isRunning.value = true
+    isRunning.value = enable
 
     // 2. Immediate config write (bypasses debounce for instant kernel inotify)
     saveConfig().catch(() => {})

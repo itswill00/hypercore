@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/itswill00/hypercore/releases"><img src="https://img.shields.io/badge/Release-v6.11.0-purple.svg" alt="Release"></a>
+  <a href="https://github.com/itswill00/hypercore/releases"><img src="https://img.shields.io/badge/Release-v6.11.1-purple.svg" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL_v3-blue.svg" alt="License: GPL v3"></a>
   <img src="https://img.shields.io/badge/SoC-MediaTek_MT6789_Family-orange.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Chipset-G99%20%7C%20G100%20%7C%20G200-red.svg" alt="Chipset">
@@ -360,7 +360,7 @@ webui/  →  Vue 3 + Pinia SPA  →  webroot/index.html (single file)
 
 ## 📦 Installation
 
-1. Download **`HyperCore-v6.11.0-b6110-Unified.zip`** from the [Releases page](https://github.com/itswill00/hypercore/releases)
+1. Download **`HyperCore-v6.11.1-b6111-Unified.zip`** from the [Releases page](https://github.com/itswill00/hypercore/releases)
 2. Flash it in **KernelSU / APatch / Magisk**
 3. **Reboot** — the daemon starts automatically and settles into Interactive
 4. Open the manager's **WebUI** to monitor, add games, tune charging and design your HUD
@@ -403,7 +403,7 @@ Compiles the C daemon, rebuilds the WebUI, regenerates checksums (two-pass: stub
 Output:
 
 ```text
-~/HyperCore_Releases/HyperCore-v6.11.0-b6110-Unified.zip
+~/HyperCore_Releases/HyperCore-v6.11.1-b6111-Unified.zip
 ```
 
 | Tool | Needed for |

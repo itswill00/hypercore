@@ -9,6 +9,28 @@ const DATA = '/data/adb/hypercore'
 const LOG = '/data/adb/hypercore/hypercore.log'
 const LOG_LEGACY = '/sdcard/Android/hypercore.log'
 const GL_PERM = '/data/adb/hypercore/gamelist.txt'
+const GL_STAMP = '/data/adb/hypercore/.gamelist_autodetected'
+
+/* Whitespace-tolerant {"status":"ok"} check. The daemon emits compact JSON
+ * but status.json round-trips and future pretty-printing must not flip the
+ * UI into its dead fallback path. */
+function okJson(s) {
+  return /"status"\s*:\s*"ok"/.test(s || '')
+}
+
+const GAME_PROFILES = ['GAMING', 'GAMING_MOBA', 'INTERACTIVE', 'SLEEP']
+
+/* Canonicalize a profile the way the daemon parser does, so what the UI
+ * reads, shows and writes is always one of the four <select> values. Raw
+ * file content like "gaming", "SAVER" or "Gaming MOBA" used to render a
+ * blank select and round-trip back to disk verbatim. */
+function normProfile(raw) {
+  const norm = String(raw || 'GAMING').toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z_]/g, '')
+  if (norm === 'GAMING' || norm === 'GAMING_MOBA' || norm === 'MOBA') return norm === 'MOBA' ? 'GAMING_MOBA' : norm
+  if (norm === 'INTERACTIVE' || norm === 'BALANCED') return 'INTERACTIVE'
+  if (norm === 'SLEEP' || norm === 'SAVER') return 'SLEEP'
+  return 'GAMING'
+}
 
 export const useHyperStore = defineStore('hyper', () => {
   
@@ -176,6 +198,7 @@ echo "ZCP:$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)";
 echo "UP:$(read -r u _ < /proc/uptime 2>/dev/null && echo "$u")";
 echo "KV:$(uname -r 2>/dev/null)";
 echo "VER:$(grep '^version=' /data/adb/modules/hypercore/module.prop 2>/dev/null | cut -d= -f2 || grep '^version=' ${MOD}/module.prop 2>/dev/null | cut -d= -f2 || true)";
+echo "DESC:$(grep '^description=' /data/adb/modules/hypercore/module.prop 2>/dev/null | sed 's/^description=//' || true)";
 echo "===GL===";
 cat ${GL_PERM} 2>/dev/null || true;
 if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/null || tail -n 35 ${LOG_LEGACY} 2>/dev/null || true; fi`
@@ -200,7 +223,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
       let ipcSuccess = false
-      if (kv.IPC && kv.IPC.includes('"status":"ok"')) {
+      if (kv.IPC && okJson(kv.IPC)) {
         try {
           const ipcData = JSON.parse(kv.IPC.substring(kv.IPC.indexOf('{')))
           if (ipcData.pid) daemonPid.value = String(ipcData.pid).split(' ')[0]
@@ -354,7 +377,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         if (trimmed.length > 0 && trimmed[0] !== '#') {
           const parts = trimmed.split(':')
           const pkg = parts[0].trim()
-          const profile = parts[1] ? parts[1].trim() : 'GAMING'
+          const profile = normProfile(parts[1] ? parts[1].trim() : 'GAMING')
           if (pkg && !parsedPkgs.some(p => p.pkg === pkg)) {
             parsedPkgs.push({ pkg, profile })
           }
@@ -413,7 +436,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         usbType.value = kv.UT.trim() || 'DCP'
       }
       /* Parse charge_mode from status.json or GET_CHARGE_MODE IPC response */
-      if (kv.CM && kv.CM.includes('"status":"ok"')) {
+      if (kv.CM && okJson(kv.CM)) {
         try {
           const cm = JSON.parse(kv.CM.substring(kv.CM.indexOf('{')))
           if (typeof cm.charge_mode !== 'undefined') chargeMode.value = cm.charge_mode
@@ -432,6 +455,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     loading.value = true
     try {
       const m = parseInt(mode)
+      if (isNaN(m) || m < 0 || m > 6) return 'invalid'
 
       /* 1. Persist directly to charge_mode.conf as instant disk fallback */
       const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
@@ -446,7 +470,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       chargeModeOverride.value = false
 
       /* 3. If IPC returned JSON response, parse authoritative data directly */
-      if (res && res.includes('"status":"ok"')) {
+      if (res && okJson(res)) {
         try {
           const data = JSON.parse(res.substring(res.indexOf('{')))
           if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
@@ -484,7 +508,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       customLimit.value = l
       chargeModeOverride.value = false
 
-      if (res && res.includes('"status":"ok"')) {
+      if (res && okJson(res)) {
         try {
           const data = JSON.parse(res.substring(res.indexOf('{')))
           if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
@@ -614,7 +638,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 250))
         const check = await execCommand('echo GET_STATUS | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true')
-        if (check && check.includes('"status":"ok"')) {
+        if (check && okJson(check)) {
           started = true
           break
         }
@@ -666,12 +690,16 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     return 'Shortcut feature unavailable'
   }
 
-  function addGame(rawPkg, profile = 'GAMING') {
+  async function addGame(rawPkg, profile = 'GAMING') {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
-    if (!pkg) return
+    const prof = normProfile(profile)
+    if (!pkg) return 'invalid package'
 
     if (!games.value.some(g => g.pkg === pkg)) {
-      games.value.push({ pkg, profile })
+      games.value.push({ pkg, profile: prof })
+    } else {
+      const existing = games.value.find(g => g.pkg === pkg)
+      if (existing) existing.profile = prof
     }
 
     import('@/helpers/shell').then(m => m.listInstalledApps(true)).catch(() => {})
@@ -682,17 +710,22 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       `  touch "$f" 2>/dev/null`,
       `  if [ -f "$f" ]; then`,
       `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
-      `    echo '${pkg}:${profile}' >> "$f.tmp"`,
+      `    echo '${pkg}:${prof}' >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
       `  fi`,
       `done`
     ].join('\n')
-    execCommand(cmd)
-    setTimeout(refresh, 400)
-    return `Added ${pkg} (${profile})`
+    try {
+      await execCommand(cmd)
+    } catch (e) {
+      await refresh()
+      return `Failed to save ${pkg} (${e.message || e})`
+    }
+    await refresh()
+    return `Added ${pkg} (${prof})`
   }
 
-  function removeGame(rawPkg) {
+  async function removeGame(rawPkg) {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
     if (!pkg) return
 
@@ -708,17 +741,20 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       `  fi`,
       `done`
     ].join('\n')
-    execCommand(cmd)
-    setTimeout(refresh, 400)
+    try {
+      await execCommand(cmd)
+    } catch (e) {
+      await refresh()
+      return `Failed to remove ${pkg} (${e.message || e})`
+    }
+    await refresh()
     return `Removed ${pkg}`
   }
 
-  function updateGameProfile(rawPkg, rawProfile) {
+  async function updateGameProfile(rawPkg, rawProfile) {
     const pkg = sanitize(rawPkg).split(':')[0].trim()
-    // Spaces/hyphens become underscores so "Gaming MOBA" stays GAMING_MOBA,
-    // which is what the daemon parser accepts (not "GAMINGMOBA").
-    const profile = sanitize(rawProfile).toUpperCase().replace(/[\s-]+/g, '_').replace(/[^A-Z_]/g, '')
-    if (!pkg || !profile) return
+    const profile = normProfile(rawProfile)
+    if (!pkg) return
 
     const existing = games.value.find(g => g.pkg === pkg)
     if (existing) {
@@ -734,8 +770,13 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       `  fi`,
       `done`
     ].join('\n')
-    execCommand(cmd)
-    setTimeout(refresh, 400)
+    try {
+      await execCommand(cmd)
+    } catch (e) {
+      await refresh()
+      return `Failed to update ${pkg} (${e.message || e})`
+    }
+    await refresh()
     return `Updated ${pkg} to ${profile}`
   }
 
@@ -748,7 +789,9 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
         return 'No installed games detected'
       }
 
-      const found = out.trim().split('\n').map(l => l.trim()).filter(Boolean)
+      const found = out.trim().split('\n')
+        .map(l => l.trim().replace(/[^A-Za-z0-9._]/g, ''))
+        .filter(Boolean)
       const existing = new Set(games.value.map(g => g.pkg))
       const toAdd = found.filter(p => !existing.has(p))
 
@@ -756,13 +799,23 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
         return 'All detected games are already in the list'
       }
 
-      const appendLines = toAdd.map(pkg => `${pkg}:GAMING`).join('\n')
+      // Replace-then-append per package instead of a blind append: the disk
+      // file can hold duplicates the list view hides but the daemon still
+      // reads (first match wins), so appending again would pile more on.
+      const upsert = toAdd.map(pkg =>
+        `awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null && echo '${pkg}:GAMING' >> "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null`
+      ).join('\n')
       const cmd = [
         `mkdir -p /data/adb/hypercore 2>/dev/null`,
         `for f in ${GL_PERM}; do`,
         `  touch "$f" 2>/dev/null`,
-        `  printf '%s\\n' "${appendLines}" >> "$f" 2>/dev/null`,
-        `done`
+        `  if [ -f "$f" ]; then`,
+        ...upsert.split('\n').map(l => `  ${l}`),
+        `  fi`,
+        `done`,
+        // An explicit user scan counts as a detection pass, so the daemon
+        // does not "rediscover" (and resurrect) entries on next restart.
+        `touch ${GL_STAMP} 2>/dev/null || true`
       ].join('\n')
       await execCommand(cmd)
       await new Promise(r => setTimeout(r, 300))
@@ -778,7 +831,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   function launchGame(rawPkg) {
     const clean = sanitize(rawPkg).split(':')[0].trim()
     if (!clean) return
-    execCommand(`monkey -p ${clean} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
+    execCommand(`monkey -p '${clean}' -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
     return `Launched ${clean}`
   }
 

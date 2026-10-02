@@ -1,3 +1,7 @@
 # HyperCore - Dynamic Game List
 # Games installed on your device are automatically detected during installation.
 # You can also add package names manually (format: package.name:PROFILE)
+# Valid profiles: GAMING, GAMING_MOBA, INTERACTIVE, SLEEP (case-insensitive).
+# Clearing this list is permanent: first-boot auto-detect runs only once (see
+# .gamelist_autodetected) and never resurrects deleted entries. Use the WebUI
+# Auto-detect button to scan again.

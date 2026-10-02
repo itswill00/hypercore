@@ -465,7 +465,13 @@ int main(int argc, char *argv[]) {
     if (acquire_single_instance_lock() != 0) {
         return 1;
     }
-    verify_module_integrity(g_nodes.mod_dir);
+    /* Fail closed: a tampered payload must never run the tuning loop. The
+     * installer enforces the same gate, so reaching here with a mismatch
+     * means the module tree changed after install. */
+    if (verify_module_integrity(g_nodes.mod_dir) != 0) {
+        log_error("Security", "Payload integrity check failed — refusing to start.");
+        return 1;
+    }
     detect_cpu_hardware_limits();
     detect_max_gpu_freq();
     init_stock_baseline();
@@ -722,9 +728,12 @@ int main(int argc, char *argv[]) {
         g_nodes.netlink_fd = -1;
     }
     if (s_lock_fd >= 0) {
-        close(s_lock_fd);   /* releases the flock */
+        /* The lock file itself is never unlinked here. Unlink-after-close can
+         * delete a successor's fresh lock file and break the single-instance
+         * guard; the path is reused on the next start and the kernel drops
+         * the flock when this process exits. */
+        close(s_lock_fd);
         s_lock_fd = -1;
-        unlink(g_nodes.lock_file);
     }
     remove_pid_file();
     return 0;

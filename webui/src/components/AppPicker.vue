@@ -94,7 +94,7 @@
                 <div class="empty-sub">
                   {{ query ? 'Search another app or enter package ID manually' : 'You can add package IDs manually via Custom Package tab' }}
                 </div>
-                <button v-if="query.trim()" class="btn-md3 btn-md3-primary" style="margin-top: 12px;" @click="addCustom">
+                <button v-if="query.trim() && isPkgId(query.trim())" class="btn-md3 btn-md3-primary" style="margin-top: 12px;" @click="addCustom">
                   <Icons name="plus" :size="14" />
                   <span>Add "{{ query.trim() }}"</span>
                 </button>
@@ -158,7 +158,7 @@
                   >
                   <button
                     class="btn-md3 btn-md3-primary"
-                    :disabled="!customPkg.trim()"
+                    :disabled="!customPkgValid"
                     @click="submitCustom"
                   >
                     <Icons name="plus" :size="14" />
@@ -166,7 +166,11 @@
                   </button>
                 </div>
 
-                <div v-if="customPkg.trim()" class="custom-preview">
+                <div v-if="customPkg.trim() && !customPkgValid" class="custom-invalid">
+                  That does not look like a package ID — use the dotted form (e.g. com.example.game).
+                </div>
+
+                <div v-if="customPkgValid" class="custom-preview">
                   Target: <strong>{{ formattedCustomName }}</strong> ({{ selectedProfile }})
                 </div>
               </div>
@@ -256,14 +260,23 @@ function pickApp(pkg) {
   emit('pick', pkg, selectedProfile.value)
 }
 
+/* Free text used to pass straight through as a package ID, so typing an app
+ * name like "Mobile Legends" persisted a mangled "MobileLegends" rule the
+ * daemon could never match. Only dotted identifiers get through now. */
+function isPkgId(v) {
+  return /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(String(v || '').trim())
+}
+
+const customPkgValid = computed(() => isPkgId(customPkg.value))
+
 function addCustom() {
-  if (query.value.trim()) {
+  if (isPkgId(query.value)) {
     pickApp(query.value.trim())
   }
 }
 
 function submitCustom() {
-  if (customPkg.value.trim()) {
+  if (isPkgId(customPkg.value)) {
     pickApp(customPkg.value.trim())
   }
 }
@@ -526,6 +539,15 @@ onMounted(async () => {
   color: var(--on-primary-container);
   padding: 6px 10px;
   background: var(--primary-container);
+  border-radius: 8px;
+}
+
+.custom-invalid {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--on-error-container);
+  padding: 6px 10px;
+  background: var(--error-container);
   border-radius: 8px;
 }
 </style>

@@ -12,15 +12,25 @@ HASH=$(head -c 16 /dev/urandom 2>/dev/null | sha256sum 2>/dev/null | head -c 6)
 [ -z "$HASH" ] && HASH="a1b2c3"
 
 BASE_NAME="hypercore_bugreport-${DATE_STR}-${HASH}"
-TMP_DIR="/sdcard/HyperCore_Bugreports/.tmp_bugreport"
-
-rm -rf "$TMP_DIR"
-mkdir -p "$TMP_DIR"
+# Unique tmp dir per run: the old fixed path let two concurrent reports race
+# each other's rm -rf, and a planted symlink at the sdcard path would make
+# that rm -rf follow an attacker target.
+mkdir -p "/sdcard/HyperCore_Bugreports" 2>/dev/null
+TMP_DIR=$(mktemp -d "/sdcard/HyperCore_Bugreports/.tmp_bugreport.XXXXXX" 2>/dev/null)
+if [ -z "$TMP_DIR" ] || [ ! -d "$TMP_DIR" ]; then
+    echo "ERROR"
+    exit 1
+fi
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 # 1. User Note (Handles plain text or Base64 encoded payload)
+# The WebUI always sends base64, but plain text via adb that merely happens
+# to decode (e.g. "test") used to get mangled. Only decode on a clean
+# re-encode round-trip, otherwise keep the raw note.
 if [ -n "$USER_NOTE_RAW" ]; then
     DECODED_NOTE=$(printf '%s' "$USER_NOTE_RAW" | base64 -d 2>/dev/null)
-    if [ -n "$DECODED_NOTE" ]; then
+    REENCODED_NOTE=$(printf '%s' "$DECODED_NOTE" | base64 2>/dev/null | tr -d '\n')
+    if [ -n "$DECODED_NOTE" ] && [ "$REENCODED_NOTE" = "$USER_NOTE_RAW" ]; then
         printf '%s\n' "$DECODED_NOTE" > "$TMP_DIR/user_note.txt"
     else
         printf '%s\n' "$USER_NOTE_RAW" > "$TMP_DIR/user_note.txt"
@@ -29,11 +39,12 @@ else
     echo "(no description provided)" > "$TMP_DIR/user_note.txt"
 fi
 
-# 2. Daemon Log
-if [ -f "/sdcard/Android/hypercore.log" ]; then
-    cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
-elif [ -f "/data/adb/hypercore/hypercore.log" ]; then
+# 2. Daemon Log (current location first — the sdcard path is legacy and must
+# not shadow the live log when both exist)
+if [ -f "/data/adb/hypercore/hypercore.log" ]; then
     cp "/data/adb/hypercore/hypercore.log" "$TMP_DIR/hypercore.log"
+elif [ -f "/sdcard/Android/hypercore.log" ]; then
+    cp "/sdcard/Android/hypercore.log" "$TMP_DIR/hypercore.log"
 elif [ -f "$MOD_DIR/hypercore.log" ]; then
     cp "$MOD_DIR/hypercore.log" "$TMP_DIR/hypercore.log"
 else
@@ -173,6 +184,12 @@ fi
 } > "$TMP_DIR/sysfs_nodes.txt"
 
 # 6. Real-time Process Snapshot (Fast & Sorted)
+# dumpsys is capped with timeout so a wedged WindowManager cannot stall the
+# whole report for minutes.
+_DUMP="dumpsys"
+if command -v timeout >/dev/null 2>&1; then
+    _DUMP="timeout 20 dumpsys"
+fi
 {
     echo "=== HyperCore Processes ==="
     ps -A 2>/dev/null | grep -E 'libhypercore' | grep -v grep || \
@@ -184,8 +201,8 @@ fi
 
     echo ""
     echo "=== Foreground Window & Activity ==="
-    dumpsys window 2>/dev/null | grep -m1 'mCurrentFocus' || true
-    dumpsys activity activities 2>/dev/null | grep -m1 'topResumedActivity' || true
+    $_DUMP window 2>/dev/null | grep -m1 'mCurrentFocus' || true
+    $_DUMP activity activities 2>/dev/null | grep -m1 'topResumedActivity' || true
 } > "$TMP_DIR/processes.txt"
 
 # 7. Logcat Tail
@@ -233,11 +250,12 @@ fi
 if [ -n "$OUT_FILE" ]; then
     chmod 666 "$OUT_FILE" 2>/dev/null || true
     chmod 777 "/sdcard/HyperCore_Bugreports" 2>/dev/null || true
-    cp "$OUT_FILE" "/storage/emulated/0/HyperCore_Bugreports/" 2>/dev/null || true
     am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1 || true
     rm -rf "$TMP_DIR"
+    trap - EXIT
     echo "$OUT_FILE"
 else
     rm -rf "$TMP_DIR"
+    trap - EXIT
     echo "ERROR"
 fi

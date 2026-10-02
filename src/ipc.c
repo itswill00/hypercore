@@ -274,10 +274,21 @@ static void process_client(int client_fd) {
             write(client_fd, res, strlen(res));
         } else {
             profile_t new_prof = PROFILE_Interactive;
+            int known = 1;
             if (strncasecmp(pname, "SLEEP", 5) == 0) new_prof = PROFILE_Sleep;
             else if (strncasecmp(pname, "GAMING_MOBA", 11) == 0 || strncasecmp(pname, "MOBA", 4) == 0) new_prof = PROFILE_Gaming_MOBA;
             else if (strncasecmp(pname, "GAMING", 6) == 0) new_prof = PROFILE_Gaming;
             else if (strncasecmp(pname, "INTERACTIVE", 11) == 0) new_prof = PROFILE_Interactive;
+            else known = 0;
+
+            /* Unknown names used to silently lock the device to Interactive.
+             * Refuse instead so a typo cannot pin the profile. */
+            if (!known) {
+                const char *err = "{\"status\":\"error\",\"message\":\"Unknown profile name\"}\n";
+                write(client_fd, err, strlen(err));
+                close(client_fd);
+                return;
+            }
 
             g_state.manual_profile = (int)new_prof;
             apply_profile(new_prof, 0);
@@ -524,8 +535,20 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
     for (int i = 0; paths[i]; i++) {
         char tmp[300];
         snprintf(tmp, sizeof(tmp), "%s.tmp", paths[i]);
-        FILE *f = fopen(tmp, "w");
-        if (!f) continue;
+        /* Unlink-then-exclusive-create so a planted symlink at the tmp path
+         * can never turn this into a root file-overwrite primitive. The
+         * parent dirs are root-only, so the race window is not reachable
+         * by apps, but exclusive create costs nothing. */
+        unlink(tmp);
+        int tfd = open(tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+                       S_IRUSR | S_IWUSR);
+        if (tfd < 0) continue;
+        FILE *f = fdopen(tfd, "w");
+        if (!f) {
+            close(tfd);
+            unlink(tmp);
+            continue;
+        }
 
         /* Both fputs and fclose can fail — a full /data or an I/O error leaves
          * a short or empty tmp file, and renaming that into place publishes a

@@ -13,9 +13,12 @@
 /* Open the managed gamelist for appending, refusing anything that is not a
  * regular root-owned file. data_dir lives under /data/adb, which is root-only,
  * so a symlink or a file owned by an app there means something is already wrong
- * and there is no legitimate reason to follow it. */
+ * and there is no legitimate reason to follow it.
+ * O_CREAT is required: without it the first-boot auto-detect silently wrote
+ * nothing whenever the file did not exist yet, so discoveries lived only in
+ * memory and the WebUI showed an empty list. */
 static FILE *open_gamelist_for_append(const char *path) {
-    int fd = open(path, O_WRONLY | O_APPEND | O_CLOEXEC | O_NOFOLLOW);
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW, 0644);
     if (fd < 0) {
         log_warn("Gamelist", "Refusing to append to %s: %s", path, strerror(errno));
         return NULL;
@@ -43,6 +46,29 @@ static int       s_inotify_fd = -1;
 /* Pre-computed package name lengths — cached across calls, invalidated on reload */
 static size_t    s_pkg_lens[MAX_GAMES];
 static int       s_lens_cached = 0;
+
+/* Strip leading and trailing whitespace (space, tab, CR, LF) in place.
+ * The parser used to trim trailing spaces only, so a hand-edited line like
+ * " com.foo:GAMING" kept its leading space and never matched any process. */
+static void trim_ws(char *s) {
+    if (!s) return;
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = '\0';
+    size_t off = 0;
+    while (s[off] == ' ' || s[off] == '\t' || s[off] == '\r' || s[off] == '\n') off++;
+    if (off > 0) memmove(s, s + off, n - off + 1);
+}
+
+/* First-boot auto-detect must not resurrect a list the user deleted on
+ * purpose. It used to re-run on every daemon restart whenever the list was
+ * empty, so clearing the gamelist never stuck. This stamp records that a
+ * detection pass already ran; deleting gamelist.txt afterwards is honoured,
+ * and a fresh scan stays available from the WebUI button or by removing
+ * the stamp file. */
+static void autodetect_stamp_path(char *out, size_t cap) {
+    snprintf(out, cap, "%s/.gamelist_autodetected", g_nodes.data_dir);
+}
 
 
 /* Auto-detection shells out to `pm list packages`, which spawns app_process and
@@ -74,11 +100,16 @@ void load_gamelist(void) {
         f = fopen(old_path, "r");
         if (f) {
             snprintf(path, sizeof(path), "%s", data_gl);
-            FILE *fw = fopen(path, "w");
+            /* Copy via tmp+rename so a crash mid-migration cannot leave a
+             * truncated live gamelist behind. */
+            char tmp[300];
+            snprintf(tmp, sizeof(tmp), "%s.tmp", data_gl);
+            FILE *fw = fopen(tmp, "w");
             if (fw) {
                 char buf[512];
                 while (fgets(buf, sizeof(buf), f)) fputs(buf, fw);
-                fclose(fw);
+                if (fclose(fw) == 0) rename(tmp, data_gl);
+                else unlink(tmp);
             }
             fclose(f);
             unlink(old_path);
@@ -95,10 +126,7 @@ void load_gamelist(void) {
         char line[256];
         while (fgets(line, sizeof(line), f) && s_game_count < MAX_GAMES) {
 
-            size_t len = strlen(line);
-            while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n' || line[len - 1] == ' ')) {
-                line[--len] = '\0';
-            }
+            trim_ws(line);
 
             if (line[0] == '#' || line[0] == '\0') continue;
 
@@ -107,7 +135,9 @@ void load_gamelist(void) {
 
             if (colon) {
                 *colon = '\0';
+                trim_ws(line);
                 char *prof_str = colon + 1;
+                trim_ws(prof_str);
                 /* Normalize: uppercase + strip every non-letter so
                  * "Gaming MOBA", "gaming-moba" and "GAMING_MOBA" all match. */
                 char norm[32];
@@ -127,6 +157,10 @@ void load_gamelist(void) {
                 }
             }
 
+            /* An empty package (" :GAMING", ":GAMING") matches nothing and only
+             * burns a MAX_GAMES slot, so skip it instead of storing it. */
+            if (line[0] == '\0') continue;
+
             strncpy(s_games[s_game_count], line, PKG_NAME_LEN - 1);
             s_games[s_game_count][PKG_NAME_LEN - 1] = '\0';
             s_profiles[s_game_count] = prof;
@@ -136,6 +170,14 @@ void load_gamelist(void) {
     }
 
     if (s_game_count == 0 && !s_autodetect_done) {
+        char stamp[300];
+        autodetect_stamp_path(stamp, sizeof(stamp));
+        if (access(stamp, F_OK) == 0) {
+            /* A previous boot already ran detection. An empty list now means
+             * the user cleared it, so leave it empty. */
+            s_autodetect_done = 1;
+            return;
+        }
         time_t now = time(NULL);
         if (now - s_last_autodetect < AUTODETECT_INTERVAL) {
             return;   /* f is already closed by the parse block above */
@@ -145,6 +187,11 @@ void load_gamelist(void) {
 
         FILE *pp = popen("pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea[.]gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite'", "r");
         if (pp) {
+            /* Detection ran, whether or not it found anything — stamp it so a
+             * later restart does not resurrect a user-cleared list. A failed
+             * popen leaves no stamp so the next restart retries. */
+            int stamp_fd = open(stamp, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+            if (stamp_fd >= 0) close(stamp_fd);
             char pkg_buf[128];
             /* Always persist discoveries to the data dir, never to whichever
              * path happened to be read. `path` can be a /sdcard location, which
@@ -155,10 +202,7 @@ void load_gamelist(void) {
              * nothing. */
             FILE *fw = open_gamelist_for_append(data_gl);
             while (fgets(pkg_buf, sizeof(pkg_buf), pp) && s_game_count < MAX_GAMES) {
-                size_t len = strlen(pkg_buf);
-                while (len > 0 && (pkg_buf[len - 1] == '\r' || pkg_buf[len - 1] == '\n' || pkg_buf[len - 1] == ' ')) {
-                    pkg_buf[--len] = '\0';
-                }
+                trim_ws(pkg_buf);
                 if (pkg_buf[0] == '\0') continue;
 
                 /* Skip duplicate packages */
@@ -254,6 +298,29 @@ static int find_pid_by_pkg(const char *pkg) {
     }
     closedir(d);
     return found_pid;
+}
+
+/* Substring match with package-name boundaries for the dumpsys fallback.
+ * dumpsys prints "com.foo/com.foo.Activity", so a plain strstr() lets
+ * "com.foo" match the unrelated package "com.foo.bar". Only accept a hit
+ * when neither neighbour is a package character. */
+static int dump_contains_pkg(const char *dump, const char *pkg) {
+    size_t pl = strlen(pkg);
+    if (pl == 0 || !dump) return 0;
+    for (const char *m = dump; (m = strstr(m, pkg)) != NULL; m++) {
+        char before = (m == dump) ? '\0' : m[-1];
+        char after = m[pl];
+        int before_ok = !(before == '.' || before == '_' ||
+                          (before >= 'A' && before <= 'Z') ||
+                          (before >= 'a' && before <= 'z') ||
+                          (before >= '0' && before <= '9'));
+        int after_ok = !(after == '.' || after == '_' ||
+                         (after >= 'A' && after <= 'Z') ||
+                         (after >= 'a' && after <= 'z') ||
+                         (after >= '0' && after <= '9'));
+        if (before_ok && after_ok) return 1;
+    }
+    return 0;
 }
 
 int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile, int *out_game_pid) {
@@ -353,7 +420,7 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
             char dump_buf[512];
             while (fgets(dump_buf, sizeof(dump_buf), pp)) {
                 for (int i = 0; i < s_game_count; i++) {
-                    if (s_games[i][0] != '\0' && strstr(dump_buf, s_games[i]) != NULL) {
+                    if (s_games[i][0] != '\0' && dump_contains_pkg(dump_buf, s_games[i])) {
                         pclose(pp);
                         if (out_game_name && max_len > 0) {
                             strncpy(out_game_name, s_games[i], max_len - 1);

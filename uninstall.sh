@@ -3,9 +3,11 @@
 # Restore factory stock baseline from stock_state.conf if available
 
 # SIGTERM first so the daemon can run restore_baseline_nodes() and put the
-# sysfs nodes back the way it found them. Only then escalate.
+# sysfs nodes back the way it found them. Only then escalate. The wait matches
+# service.sh (10 s): the restore rewrites ~60 nodes and a short grace used to
+# SIGKILL it mid-restore, leaving nodes stranded after uninstall.
 pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
-for _i in 1 2 3 4 5; do
+for _i in 1 2 3 4 5 6 7 8 9 10; do
     pidof libhypercore.so >/dev/null 2>&1 || break
     sleep 1
 done
@@ -79,6 +81,9 @@ for _node in "/sys/module/ged/parameters/boost_gpu_enable:0" "/sys/module/ged/pa
 done
 [ -z "$STOCK_SCONFIG" ] && STOCK_SCONFIG="0"
 chmod 664 /sys/class/thermal/thermal_message/sconfig /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null || true
+# cpu_limits got the same 0666 treatment at runtime (service.sh + thermal
+# bypass), so its mode is restored too instead of staying world-writable.
+chmod 664 /sys/class/thermal/thermal_message/cpu_limits /sys/devices/virtual/thermal/thermal_message/cpu_limits 2>/dev/null || true
 [ -f "/sys/class/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/class/thermal/thermal_message/sconfig 2>/dev/null
 [ -f "/sys/devices/virtual/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null
 # Clear runtime props that would survive uninstall without daemon restore
@@ -97,13 +102,21 @@ if [ -f "/data/adb/hypercore/stock_zram.conf" ] && [ -f /sys/block/zram0/disksiz
   _zstock=$(grep '^stock_disksize=' /data/adb/hypercore/stock_zram.conf 2>/dev/null | cut -d= -f2 | tr -d ' \r\n')
   _zcur=$(cat /sys/block/zram0/disksize 2>/dev/null | tr -d ' \r\n')
   if [ -n "$_zstock" ] && [ -n "$_zcur" ] && [ "$_zstock" != "$_zcur" ]; then
-    swapoff /dev/block/zram0 2>/dev/null || true
-    echo 1 > /sys/block/zram0/reset 2>/dev/null || true
-    [ "$_zstock" != "0" ] && {
-      echo "$_zstock" > /sys/block/zram0/disksize 2>/dev/null || true
-      mkswap /dev/block/zram0 >/dev/null 2>&1 || true
-      swapon /dev/block/zram0 2>/dev/null || true
-    }
+    # Same low-memory guard as service.sh: swapoff forces every compressed
+    # page back into RAM at once, which freezes or OOMs under pressure.
+    _zswap_kb=$(awk '/^SwapTotal:/{t=$2} /^SwapFree:/{f=$2} END{print (t-f)}' /proc/meminfo 2>/dev/null)
+    _zavail_kb=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
+    if [ -n "$_zswap_kb" ] && [ -n "$_zavail_kb" ] && [ "$_zavail_kb" -lt $((_zswap_kb + 524288)) ]; then
+      echo "HyperCore uninstall: low memory, keeping live ZRAM size (ROM init.rc heals it next boot)" >> /data/adb/hypercore/hypercore.log 2>/dev/null || true
+    else
+      swapoff /dev/block/zram0 2>/dev/null || true
+      echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+      [ "$_zstock" != "0" ] && {
+        echo "$_zstock" > /sys/block/zram0/disksize 2>/dev/null || true
+        mkswap /dev/block/zram0 >/dev/null 2>&1 || true
+        swapon /dev/block/zram0 2>/dev/null || true
+      }
+    fi
   fi
 fi
 
@@ -141,6 +154,13 @@ if [ -d /data/adb/hypercore ]; then
     for f in $PRESERVE_LIST; do
         [ -f "/data/adb/hypercore/$f" ] && kept="$kept $f"
     done
+    # HUD layout is user configuration too — losing it while charger and
+    # gamelist settings survive made no sense.
+    _hud_kept=""
+    for hf in config.json position.json; do
+        [ -f "/data/adb/hypercore/hud/$hf" ] && _hud_kept="$_hud_kept $hf"
+    done
+    [ -n "$_hud_kept" ] && kept="$kept hud/"
     if [ -n "$kept" ]; then
         stamp=$(date +%Y%m%d-%H%M%S 2>/dev/null || echo manual)
         if mkdir -p "$PRESERVE_DIR/$stamp" 2>/dev/null; then
@@ -150,7 +170,15 @@ if [ -d /data/adb/hypercore ]; then
             # preserve step then silently copies nothing.
             copied=""
             for f in $kept; do
-                if cp -f "/data/adb/hypercore/$f" "$PRESERVE_DIR/$stamp/$f" 2>/dev/null; then
+                if [ "$f" = "hud/" ]; then
+                    if mkdir -p "$PRESERVE_DIR/$stamp/hud" 2>/dev/null; then
+                        for hf in $_hud_kept; do
+                            if cp -f "/data/adb/hypercore/hud/$hf" "$PRESERVE_DIR/$stamp/hud/$hf" 2>/dev/null; then
+                                copied="$copied hud/$hf"
+                            fi
+                        done
+                    fi
+                elif cp -f "/data/adb/hypercore/$f" "$PRESERVE_DIR/$stamp/$f" 2>/dev/null; then
                     copied="$copied $f"
                 fi
             done

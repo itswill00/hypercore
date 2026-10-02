@@ -106,9 +106,7 @@ static void write_chmod_guarded(const char *paths[], const char *val, mode_t ope
     for (int i = 0; paths[i]; i++) {
         if (!paths[i] || paths[i][0] == '\0') continue;
         if (access(paths[i], F_OK) != 0) continue;
-        chmod(paths[i], open_mode);
-        sysfs_write(paths[i], val);
-        chmod(paths[i], 0444);
+        sysfs_write_temp_mode(paths[i], val, open_mode);
     }
 }
 static void write_rate_limit_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0644); }

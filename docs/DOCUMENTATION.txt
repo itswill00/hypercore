@@ -3,12 +3,12 @@
                                    HYPERCORE MODULE
 ================================================================================
  Module Name    : HyperCore
- Version        : v6.11.0 (Build 6110)
+ Version        : v6.11.1 (Build 6111)
  Architecture   : Universal Dual-Kernel GKI (Linux Kernel 5.10 - 6.12+)
  Target Hardware: MediaTek MT6789 Family (Helio G99 / G100 / G200 with Mali GPU)
  Author         : @itswill00 (aerichandesu@noticesa)
  Inspiration    : encore @Rem01Gaming
- Release ZIP    : HyperCore-v6.11.0-b6110-Unified.zip
+ Release ZIP    : HyperCore-v6.11.1-b6111-Unified.zip
 ================================================================================
 
 TABLE OF CONTENTS
@@ -225,10 +225,18 @@ current value instead of dropping to Tier 0 with the vendor stack suppressed.
 
 3.6. Auto Game Detector & Foreground Process Scanner (src/gamelist.c)
 - Reads configured package rules from `/data/adb/hypercore/gamelist.txt`.
+- Lines are `package.name:PROFILE` (`GAMING`, `GAMING_MOBA`, `INTERACTIVE`,
+  `SLEEP`); surrounding whitespace is ignored and profiles match
+  case-insensitively, so hand edits with stray spaces still work.
 - Evaluates foreground window focus using non-blocking window manager checks.
 - If a foreground package matches a gamelist entry, the daemon transitions
   the system profile to `Gaming` or `Gaming MOBA`.
 - When the application is dismissed or minimized, the daemon restores `Interactive`.
+- First-boot auto-detect runs once and records
+  `/data/adb/hypercore/.gamelist_autodetected`. An empty list after that
+  means the user cleared it, so it is honoured — deleting `gamelist.txt`
+  no longer resurrects it on restart. Scan again from the WebUI button,
+  or remove the stamp file to force one more automatic pass.
 
 3.7. UNIX Domain Socket IPC & Atomic Telemetry Storage (src/ipc.c)
 - Listens on UNIX domain socket `/dev/hypercore.sock` (a compatibility symlink is
@@ -240,7 +248,8 @@ current value instead of dropping to Tier 0 with the vendor stack suppressed.
 - Commands:
   * `GET_STATUS` / `STATUS`  : Returns complete system telemetry in JSON.
   * `SET_PROFILE:<name>`    : Manual override to AUTO, Sleep, Interactive,
-                              Gaming, or MOBA.
+                              Gaming, or MOBA. Unknown names are rejected
+                              with an error instead of locking a profile.
   * `PURGE_RAM` / `CLEAR_CACHE` : Drop page cache and reclaim.
   * `PING`                  : Liveness check, replies `PONG`.
   * `GET_CHARGE_MODE`       : Current + effective charge mode.
@@ -414,10 +423,13 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
   If you run a competing thermal module, disable one of them yourself.
 
 7.3. Post-FS-Data Initialization (post-fs-data.sh) & Uninstaller (uninstall.sh)
-- `post-fs-data.sh`: Directly writes early boot virtual memory settings.
+- `post-fs-data.sh`: Creates the `/data/adb/hypercore` runtime state directory
+  early so the daemon has a place for its pid, socket and configs.
 - `uninstall.sh`: Completely terminates background processes, restores CPU
   governors and frequencies, resets Mali power policies, cleans up PATH symlinks,
-  and purges module runtime directories.
+  revokes the overlay permission grants, and moves user settings (including the
+  gamelist and HUD layout) into a timestamped sidecar under
+  `/data/adb/hypercore_removed/` before removing runtime state.
 
 ================================================================================
 8. BUILD & DEPLOYMENT AUTOMATION (build.sh)
@@ -425,7 +437,7 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
 The repository build system (`build.sh`) manages the full build lifecycle:
 1. Compiles WebUI into single-file `webroot/index.html` via Vite.
 2. Updates `checksums.txt` and generates `src/include/embedded_checksums.hpp`.
-3. Compiles C sources with Termux/NDK Clang using `-O3 -flto -s` flags.
+3. Compiles C sources with Termux/NDK Clang using `-O3 -Wall -Werror` flags.
 4. Packages clean release zip into `/data/data/com.termux/files/home/HyperCore_Releases/HyperCore-vX.Y.Z-Unified.zip` (`~/HyperCore_Releases/`).
 5. When `--deploy` is specified, updates `/data/adb/modules/hypercore/` in-place
    and restarts active daemon instances.

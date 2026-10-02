@@ -17,6 +17,20 @@ static long long prev_total = 0;
 static long long prev_net_rx = 0;
 static long long prev_net_tx = 0;
 
+/* HYPERMOON_STATE_DIR is interpolated into a shell respawn command, so it
+ * must never carry shell metacharacters. Accept absolute paths made of safe
+ * characters only and ignore anything else, falling back to the default. */
+static int valid_state_dir(const char *p) {
+    if (!p || p[0] != '/' || strlen(p) >= sizeof(state_dir)) return 0;
+    for (const char *c = p; *c; c++) {
+        if ((*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
+            (*c >= '0' && *c <= '9') || *c == '_' || *c == '-' || *c == '.' || *c == '/')
+            continue;
+        return 0;
+    }
+    return 1;
+}
+
 static long long prev_gpu_busy = 0;
 static long long prev_gpu_total = 0;
 
@@ -568,12 +582,13 @@ int main() {
     if (!env_state || strlen(env_state) == 0) {
         env_state = getenv("FPSMOON_STATE_DIR");
     }
-    if (env_state && strlen(env_state) > 0) {
+    if (valid_state_dir(env_state)) {
         snprintf(state_dir, sizeof(state_dir), "%s", env_state);
     }
     snprintf(stats_file, sizeof(stats_file), "%s/stats.json", state_dir);
 
-    mkdir(state_dir, 0777);
+    mkdir(state_dir, 0755);
+    chmod(state_dir, 0755);
     printf("[HyperMoon C-Daemon] Performance monitor active on %s...\n", state_dir);
 
     struct timespec ts_last;

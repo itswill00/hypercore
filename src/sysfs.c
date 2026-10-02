@@ -78,8 +78,13 @@ void sysfs_write(const char *path, const char *val) {
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0 && errno == EACCES) {
+        /* Widen briefly, then put the original mode straight back while the
+         * fd is already held — the world-writable window is one open call. */
+        struct stat st;
+        int have_saved = (stat(path, &st) == 0);
         chmod(path, 0666);
         fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+        if (have_saved) chmod(path, st.st_mode & 0777);
     }
     if (fd < 0) {
         if (errno != ENOENT && sysfs_should_log_err(path)) {
@@ -89,6 +94,22 @@ void sysfs_write(const char *path, const char *val) {
     }
     write(fd, clean_val, strlen(clean_val));
     close(fd);
+}
+
+/* chmod-guarded write that restores the node's previous mode afterwards.
+ * The old code left sysfs nodes world-writable (or forced 0444 regardless of
+ * what the ROM shipped), so any app could rewrite thermal policy until the
+ * next reboot. The widened mode now lasts only for the write itself. */
+void sysfs_write_temp_mode(const char *path, const char *val, mode_t temp_mode) {
+    if (!path || path[0] == '\0' || !val) return;
+    struct stat st;
+    int have_saved = (stat(path, &st) == 0);
+    mode_t saved = have_saved ? (st.st_mode & 0777) : 0;
+    if (chmod(path, temp_mode) != 0 && errno != ENOENT) {
+        /* Still attempt the write with whatever mode the node already has. */
+    }
+    sysfs_write(path, val);
+    if (have_saved) chmod(path, saved);
 }
 
 void sysfs_write_fallback(const char *paths[], const char *val) {

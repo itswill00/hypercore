@@ -122,7 +122,7 @@ fingerprint() {
     out="$1"; shift
     ( for p in "$@"; do
         [ -e "$p" ] && find "$p" -type f | sort
-      done | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1 ) > "$out.tmp"
+      done | xargs -r sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1 ) > "$out.tmp"
     mv "$out.tmp" "$out"
     cat "$out"
 }
@@ -227,7 +227,12 @@ if [ "$SKIP_DAEMON" -eq 0 ]; then
     [ -f system/bin/hypermoon.dex ] && chmod 644 system/bin/hypermoon.dex || echo "warning: hypermoon.dex not built (ecj/dx missing), continuing"
     else
         echo "warning: ecj not found, skipping hypermoon dex build"
-        [ -f system/bin/hypermoon.dex ] || touch system/bin/hypermoon.dex 2>/dev/null || true
+        # Never ship a touched-empty dex: it hashes cleanly into the manifest
+        # and passes integrity, then the overlay fails at runtime with no clue.
+        if [ ! -s system/bin/hypermoon.dex ]; then
+            echo "error: hypermoon.dex missing or empty and no ecj/javac to build it — refusing to ship a hollow overlay"
+            exit 1
+        fi
     fi
 fi
 
@@ -298,6 +303,20 @@ fi
 sed -i '/system\/bin\/libhypercore.so$/d' checksums.txt
 sha256sum system/bin/libhypercore.so >> checksums.txt
 
+# module.prop and gamelist.txt ship in the zip but must stay OUT of the
+# embedded table: the daemon rewrites module.prop's description on every
+# profile switch and gamelist.txt is user data deleted at install time, so
+# embedding them would fail the boot-time self-check on a healthy device.
+# Appending here covers them under the install-time manifest only.
+for _extra in module.prop gamelist.txt; do
+    if [ ! -f "$_extra" ]; then
+        echo "error: expected payload missing, cannot build a trustworthy manifest: $_extra"
+        exit 1
+    fi
+    sed -i "/[[:space:]]${_extra}\$/d" checksums.txt
+    sha256sum "$_extra" >> checksums.txt
+done
+
 # Fail loudly rather than shipping a manifest that does not match the payload.
 if ! sha256sum -c checksums.txt >/dev/null 2>&1; then
     echo "error: checksums.txt does not match the built payload"
@@ -358,6 +377,12 @@ if [ "$DO_DEPLOY" = "1" ]; then
             done
             if [ -f \"\$MOD_TARGET/gamelist.txt\" ] && [ ! -f \"\$DATA_TARGET/gamelist.txt\" ]; then
                 cp -f \"\$MOD_TARGET/gamelist.txt\" \"\$DATA_TARGET/gamelist.txt\" 2>/dev/null || true
+            fi
+            # Fresh deploy with no gamelist anywhere: seed the template so the
+            # daemon starts from an existing (comment-only) file instead of a
+            # missing one. Without this the boot auto-detect could not persist.
+            if [ ! -f \"\$DATA_TARGET/gamelist.txt\" ] && [ -f gamelist.txt ]; then
+                cp -f gamelist.txt \"\$DATA_TARGET/gamelist.txt\" 2>/dev/null || true
             fi
             rm -f \"\$MOD_TARGET/gamelist.txt\" \"\$MOD_TARGET/NOTICE.md\" \"\$MOD_TARGET/update.json\" \"\$MOD_TARGET/webroot/banner.jpg\"
             rm -f \"\$MOD_TARGET/hypercore.sock\" \"\$MOD_TARGET/hypercore.pid\" \"\$MOD_TARGET/status.json\"

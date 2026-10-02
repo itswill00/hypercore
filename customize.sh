@@ -66,8 +66,15 @@ else
     exit 1
 fi
 
-# Clean up running daemon instances before module upgrade to prevent binary lock
+# Graceful stop before upgrade: SIGTERM lets the old daemon run
+# restore_baseline_nodes() (~60 sysfs nodes) before it exits. SIGKILL here
+# used to leave the device stranded on tuned nodes until the next reboot.
 ui_print "- Stopping any active daemon instances before upgrade..."
+pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
+for _i in 1 2 3 4 5 6 7 8 9 10; do
+    pidof libhypercore.so >/dev/null 2>&1 || break
+    sleep 1
+done
 pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
 rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.sock /data/adb/modules/hypercore/hypercore.pid /data/adb/hypercore/hypercore.pid /dev/hypercore.sock 2>/dev/null || true
 
@@ -97,7 +104,16 @@ unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH"
 
 if [ -f "$PRESERVE_GL" ]; then
     ui_print "- Merging preserved user gamelist entries..."
-    cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: '!seen[$1]++' > /data/adb/hypercore/gamelist.txt
+    # Atomic tmp+rename: a kill mid-write used to truncate the live gamelist.
+    # The awk key strips surrounding whitespace so " com.foo:GAMING" dedups
+    # against "com.foo:GAMING" instead of becoming a ghost duplicate the
+    # daemon keeps but never matches. OFS=":" keeps pkg:PROFILE lines intact.
+    _GLTMP="/data/adb/hypercore/.gamelist.merge.tmp"
+    if cat "$PRESERVE_GL" "$MODPATH/gamelist.txt" 2>/dev/null | awk -F: 'BEGIN { OFS=":" } /^[ \t\r]*#/ { if (!seen[$0]++) print; next } { key=$1; gsub(/^[ \t\r]+|[ \t\r]+$/, "", key); if (key == "") next; if (!seen[key]++) { $1=key; print } }' > "$_GLTMP" 2>/dev/null; then
+        mv -f "$_GLTMP" /data/adb/hypercore/gamelist.txt
+    else
+        rm -f "$_GLTMP"
+    fi
     rm -f "$PRESERVE_GL"
 elif [ -f "$MODPATH/gamelist.txt" ]; then
     cp -f "$MODPATH/gamelist.txt" /data/adb/hypercore/gamelist.txt 2>/dev/null || touch /data/adb/hypercore/gamelist.txt
@@ -231,7 +247,7 @@ if [ ! -f "/data/adb/hypercore/hud/config.json" ]; then
   "target_fps": 60
 }
 EOF
-    chmod 666 /data/adb/hypercore/hud/config.json 2>/dev/null || true
+    chmod 644 /data/adb/hypercore/hud/config.json 2>/dev/null || true
 fi
 
 if [ ! -f "/data/adb/hypercore/hud/position.json" ]; then
@@ -241,16 +257,19 @@ if [ ! -f "/data/adb/hypercore/hud/position.json" ]; then
   "y": 411
 }
 EOF
-    chmod 666 /data/adb/hypercore/hud/position.json 2>/dev/null || true
+    chmod 644 /data/adb/hypercore/hud/position.json 2>/dev/null || true
 fi
-chmod 777 /data/adb/hypercore/hud 2>/dev/null || true
+chmod 755 /data/adb/hypercore/hud 2>/dev/null || true
 
 ui_print "- Auto-detecting installed games on your device..."
 AUTO_GAMES=$(pm list packages -3 2>/dev/null | cut -d: -f2 | grep -iE 'game|legend|pubg|mihoyo|genshin|honkai|freefire|roblox|activision|shooter|mojang|minecraft|supercell|brawl|clash|garena|stumble|pokemon|wanda|maleo|konami|krafton|netmarble|nexon|ea\.gp|riotgames|square_enix|bandainamco|gameloft|zynga|rovio|miniclip|yostar|ubisoft|subwaysurf|bussimulator|carxtech|slither|angrybirds|asphalt|shadowfight|realracing|needforspeed|efootball|nintendo|sega|squareenix|capcom|kiloo|innersloth|levelinfinite' 2>/dev/null)
 
 if [ -n "$AUTO_GAMES" ]; then
     for pkg in $AUTO_GAMES; do
-        if ! grep -q -E "^${pkg}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
+        # Escape regex dots: an unescaped "com.foo" pattern also matches
+        # "comXfoo" and could skip a legitimate auto-add.
+        _pkg_esc=$(printf '%s' "$pkg" | sed 's/\./\\./g')
+        if ! grep -q -E "^${_pkg_esc}(:|$)" /data/adb/hypercore/gamelist.txt 2>/dev/null; then
             echo "${pkg}:GAMING" >> /data/adb/hypercore/gamelist.txt
             ui_print "  + Auto-added game: $pkg"
         fi
@@ -265,7 +284,7 @@ for c in /data/adb/hypercore/*.conf; do
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
-[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.11.0"
+[ -z "$VERSION_NAME" ] && VERSION_NAME="v6.11.1"
 ui_print "- Daemon $VERSION_NAME installed successfully."
 ui_print "- WebUI Dashboard enabled for KernelSU / APatch / Magisk."
 ui_print "- Installation complete! REBOOT YOUR DEVICE to apply update."

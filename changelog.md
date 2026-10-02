@@ -1,3 +1,61 @@
+# HyperCore v6.11.1 — Gamelist Resurrection & Audit Fixes
+
+Clearing the gamelist never stuck: the daemon re-ran auto-detect on every
+restart while the list was empty, so deleted entries came back on their own.
+Detection now runs once and records a stamp file — an empty list after that
+is the user's choice and it is honoured. A full audit of the daemon, the
+WebUI and the packaging around it turned up the rest below.
+
+## Fixes
+
+### Gamelist
+- **A cleared gamelist stays cleared** (`src/gamelist.c`): first-boot
+  auto-detect records `.gamelist_autodetected` and never resurrects deleted
+  entries. Scan again from the WebUI button, or remove the stamp for one
+  more automatic pass.
+- **Auto-detect actually persists** (`src/gamelist.c`): the append path
+  opened without `O_CREAT`, so discoveries lived in memory only whenever
+  the file did not exist yet and the WebUI showed an empty list.
+- **Hand edits with stray spaces work** (`src/gamelist.c`): the parser only
+  trimmed trailing spaces, so `" com.foo:GAMING"` never matched any process.
+  Both ends are trimmed now and empty entries are skipped.
+- **No more phantom profile triggers** (`src/gamelist.c`): the dumpsys
+  fallback used a raw substring match, so `com.foo` fired on `com.foo.bar`.
+  Matches are boundary-checked now.
+- **The WebUI and the daemon agree on the list** (`webui/src/stores/hyper.js`):
+  profiles are canonicalized on read and write (no more blank dropdowns),
+  auto-detect upserts instead of blind-appending duplicates the view hides
+  but the daemon reads, and game add/remove/update await their shell call
+  instead of hoping a 400 ms timer was enough.
+- **Custom entries must look like package IDs**
+  (`webui/src/components/AppPicker.vue`): typing an app name used to persist
+  a mangled rule the daemon could never match.
+
+### Daemon hardening
+- **Tampering fails closed** (`src/main.c`): a payload mismatch refuses to
+  start instead of running the tuning loop anyway.
+- **Unknown `SET_PROFILE` names are rejected** (`src/ipc.c`) instead of
+  silently pinning the device to Interactive.
+- **Sysfs modes are restored after every guarded write** (`src/sysfs.c`,
+  `src/cpu.c`, `src/thermal.c`): no more permanently world-writable thermal
+  nodes, and the ROM's original modes survive.
+- **Single-instance guard holds** (`src/main.c`, `service.sh`): the lock file
+  is no longer unlinked from under a successor, and the boot launcher polls
+  instead of double-starting slow daemons.
+- **HUD state dir is validated** (`src/hud/hypermoon_daemon.c`): the env path
+  is whitelisted before it can reach a shell command.
+
+### Packaging & scripts
+- **Upgrades stop gracefully** (`customize.sh`): SIGTERM with a full grace
+  period replaces the SIGKILL that stranded tuned nodes; the gamelist merge
+  is atomic and whitespace-aware; `module.prop` and `gamelist.txt` join the
+  install-time manifest.
+- **Uninstall restores more and keeps the HUD layout** (`uninstall.sh`):
+  longer daemon grace, `cpu_limits` mode restored, low-memory guard on the
+  ZRAM revert, HUD config joins the preserved sidecar.
+- **The build refuses to ship a hollow overlay** (`build.sh`): a missing dex
+  toolchain is a hard error, not a touched-empty file with a valid hash.
+
 # HyperCore v6.11.0 — Thermal Guard Corrections
 
 A full audit of the daemon, the WebUI and the packaging turned up that the
