@@ -126,7 +126,13 @@ static void init_hardware_nodes(void) {
         "/sys/class/leds/lcd-backlight/brightness",
         "/sys/class/backlight/panel0-backlight/brightness",
         "/sys/class/backlight/lcd-backlight/brightness",
+        "/sys/class/backlight/panel/brightness",
         "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
+        "/sys/devices/platform/leds-mt65xx/leds/lcd-backlight/brightness",
+        "/sys/class/leds/mtk_leds/brightness",
+        "/sys/class/backlight/sprd_backlight/brightness",
+        "/sys/class/backlight/panel0-backlight/actual_brightness",
+        "/sys/class/leds/lcd-backlight/actual_brightness",
         NULL
     };
     for (int i = 0; bl_paths[i]; i++) {

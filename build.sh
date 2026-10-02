@@ -165,7 +165,7 @@ echo "generating sha256 checksums..."
 # libhypercore.so is the one unavoidable exclusion: a binary cannot contain its
 # own hash. It is covered by checksums.txt (generated after the final link) and
 # verified by customize.sh before the daemon is ever started.
-CHECKSUM_FILES="system.prop service.sh post-fs-data.sh customize.sh uninstall.sh changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
+CHECKSUM_FILES="system.prop service.sh post-fs-data.sh uninstall.sh changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
 
 write_embedded_table() {
     cat << 'EOF' > src/include/embedded_checksums.hpp
@@ -303,12 +303,12 @@ fi
 sed -i '/system\/bin\/libhypercore.so$/d' checksums.txt
 sha256sum system/bin/libhypercore.so >> checksums.txt
 
-# module.prop and gamelist.txt ship in the zip but must stay OUT of the
+# module.prop, gamelist.txt, and customize.sh ship in the zip but must stay OUT of the
 # embedded table: the daemon rewrites module.prop's description on every
-# profile switch and gamelist.txt is user data deleted at install time, so
-# embedding them would fail the boot-time self-check on a healthy device.
+# profile switch, gamelist.txt is user data deleted at install time, and customize.sh
+# is deleted by Magisk/KernelSU root managers upon flash completion.
 # Appending here covers them under the install-time manifest only.
-for _extra in module.prop gamelist.txt; do
+for _extra in module.prop gamelist.txt customize.sh; do
     if [ ! -f "$_extra" ]; then
         echo "error: expected payload missing, cannot build a trustworthy manifest: $_extra"
         exit 1

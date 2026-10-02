@@ -1,3 +1,16 @@
+# HyperCore v6.11.3 — Daemon Runtime Integrity & Liveness Fixes
+
+Fixes a critical runtime startup crash and phantom "Sleep" profile freeze on KernelSU / Magisk:
+
+## Fixes
+
+### Security & Lifecycle
+- **Runtime embedded manifest segregation** (`build.sh`, `src/integrity.c`): `customize.sh` is an installation-only script removed by root managers post-flash. It is now excluded from the in-daemon embedded verification table (`embedded_checksums.hpp`) while remaining strictly verified in `checksums.txt` during ZIP flashing, eliminating the startup integrity check failure that crashed the daemon on boot.
+- **Immediate PID & status validation** (`webui/src/stores/hyper.js`): WebUI now strictly validates daemon process liveness before parsing telemetry, eliminating frozen phantom states (e.g. stuck on "Sleep") from stale `status.json` cache when the daemon is stopped.
+- **Instant AUTO profile sync** (`src/ipc.c`): Reverting to autonomous profiler mode (`SET_PROFILE:AUTO`) now immediately flushes IPC status and `module.prop` description without waiting for the next polling cycle.
+- **Enhanced display backlight discovery** (`src/main.c`): Added additional Mediatek and AOSP backlight node candidates for flawless screen on/off and sleep transition detection.
+- **State purge on relaunch** (`service.sh`, `webui/src/stores/hyper.js`): Cleans up stale runtime status and socket files before daemon restarts.
+
 # HyperCore v6.11.2 — Installer Checksum & Upgrade Fixes
 
 Fixes an installer failure during module flash/update in KernelSU / Magisk:

@@ -170,8 +170,8 @@ export const useHyperStore = defineStore('hyper', () => {
 
     const fetchLogs = isLogsActive.value ? '1' : '0'
     const cmd = `MOD="/data/adb/modules/hypercore";
-IPC=$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || echo GET_STATUS | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || cat $MOD/status.json 2>/dev/null || true); echo "IPC:$IPC";
-echo "PID:$(cat /data/adb/hypercore/hypercore.pid 2>/dev/null || cat $MOD/hypercore.pid 2>/dev/null || pidof libhypercore.so || pidof hypercore 2>/dev/null)";
+IPC=$( (echo GET_STATUS | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || echo GET_STATUS | nc -w 1 -U /data/adb/hypercore/hypercore.sock 2>/dev/null) || (pidof libhypercore.so >/dev/null 2>&1 && (cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null)) || true); echo "IPC:$IPC";
+echo "PID:$(pidof libhypercore.so 2>/dev/null || pidof hypercore 2>/dev/null || (P=$(cat /data/adb/hypercore/hypercore.pid 2>/dev/null) && [ -n "$P" ] && [ -d "/proc/$P" ] && grep -q libhypercore "/proc/$P/cmdline" 2>/dev/null && echo "$P") || true)";
 echo "CL0:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "CL1:$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 2>/dev/null):$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq 2>/dev/null)";
 echo "GOV:$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)";
@@ -222,11 +222,19 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (kv.VER) moduleVersion.value = kv.VER.trim()
       if (kv.KV && kv.KV.trim().length > 0) kernelVersion.value = kv.KV.trim()
 
+      const rawPid = (kv.PID || '').trim().split(' ')[0]
+      const isDaemonAlive = rawPid.length > 0 && /^\d+$/.test(rawPid)
+      if (isDaemonAlive) {
+        daemonPid.value = rawPid
+      } else {
+        daemonPid.value = ''
+        activeProfile.value = 'Stopped'
+      }
+
       let ipcSuccess = false
-      if (kv.IPC && okJson(kv.IPC)) {
+      if (isDaemonAlive && kv.IPC && okJson(kv.IPC)) {
         try {
           const ipcData = JSON.parse(kv.IPC.substring(kv.IPC.indexOf('{')))
-          if (ipcData.pid) daemonPid.value = String(ipcData.pid).split(' ')[0]
           if (ipcData.profile) activeProfile.value = ipcData.profile
           if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
@@ -250,10 +258,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         } catch {}
       }
       
-      if (!ipcSuccess) {
-        const rawPid = (kv.PID || '').trim().split(' ')[0]
-        if (rawPid && rawPid.length > 0) daemonPid.value = rawPid
-
+      if (isDaemonAlive && !ipcSuccess) {
         const desc = kv.DESC || ''
         const m = desc.match(/\[Active:\s*([^\]]+)\]/)
         if (m) activeProfile.value = m[1].trim()

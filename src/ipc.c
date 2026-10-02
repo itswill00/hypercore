@@ -269,6 +269,7 @@ static void process_client(int client_fd) {
         const char *pname = req + 12;
         if (strncasecmp(pname, "AUTO", 4) == 0 || strncasecmp(pname, "DYNAMIC", 7) == 0 || strncasecmp(pname, "DEFAULT", 7) == 0) {
             g_state.manual_profile = -1;
+            ipc_sync_status();
             log_state("Ipc", "Profile reverted to Autonomous (Auto) via IPC");
             const char *res = "{\"status\":\"ok\",\"message\":\"Profile reverted to Autonomous (Auto)\"}\n";
             write(client_fd, res, strlen(res));

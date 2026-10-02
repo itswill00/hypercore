@@ -79,7 +79,7 @@ for _i in 1 2 3 4 5 6 7 8 9 10; do
     sleep 1
 done
 pkill -9 -x libhypercore.so >/dev/null 2>&1 || true
-rm -f "$MODDIR/hypercore.sock" "$MODDIR/hypercore.pid" /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid /data/adb/hypercore/.hypercore_lock /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null || true
+rm -f "$MODDIR/hypercore.sock" "$MODDIR/hypercore.pid" "$MODDIR/status.json" /data/adb/hypercore/hypercore.sock /data/adb/hypercore/hypercore.pid /data/adb/hypercore/.hypercore_lock /data/adb/hypercore/status.json /dev/hypercore.sock /dev/hypercore_status.json 2>/dev/null || true
 
 # NOTE: HyperCore deliberately does NOT touch other modules' scripts.
 # An earlier version chmod'd any /data/adb/service.d/* or post-fs-data.d/*
