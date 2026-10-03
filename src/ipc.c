@@ -255,6 +255,7 @@ static void process_client(int client_fd) {
             "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
             "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
             "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
+            "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
             "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
             getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
             g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
@@ -263,6 +264,7 @@ static void process_client(int client_fd) {
             g_state.charge_mode, g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
             g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
+            g_state.sleep_boost_active, g_state.effective_custom_limit,
             dvfsrc_mhz, chg_limit_max);
         if (jn > 0 && (size_t)jn < sizeof(json)) write(client_fd, json, (size_t)jn);
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
@@ -380,15 +382,16 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "GET_CHARGE_MODE", 15) == 0) {
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
         normalize_thermal_temps(NULL, &bat_temp);
-        char res[320];
+        char res[380];
         snprintf(res, sizeof(res),
             "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
             "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charger_supported\":%d,\"bat_temp\":%d}\n",
+            "\"charger_supported\":%d,\"bat_temp\":%d,\"sleep_boost_active\":%d,\"effective_custom_limit\":%d}\n",
             g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
             g_state.custom_charge_limit,
             g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charger_supported, bat_temp);
+            g_state.charger_supported, bat_temp,
+            g_state.sleep_boost_active, g_state.effective_custom_limit);
         write(client_fd, res, strlen(res));
     } else {
         const char *err = "{\"status\":\"error\",\"message\":\"Unknown command\"}\n";
@@ -515,6 +518,7 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
         "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
         "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
         "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
+        "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
         "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
         getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
         g_state.is_charging, gpu_load, bat_cycles,
@@ -522,6 +526,7 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
         g_state.charge_mode, g_state.custom_charge_limit,
         g_state.night_charging, g_state.smart_chg, g_state.protect_80,
         g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
+        g_state.sleep_boost_active, g_state.effective_custom_limit,
         dvfsrc_mhz, chg_limit_max);
 
     char data_status[300];
