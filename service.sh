@@ -95,11 +95,11 @@ rm -f "$MODDIR/hypercore.sock" "$MODDIR/hypercore.pid" "$MODDIR/status.json" /da
 # was never undone on uninstall. Documented conflicts in docs/DOCUMENTATION.txt
 # instead.
 
-# Ensure Xiaomi thermal control nodes are writable
-chmod 666 /sys/class/thermal/thermal_message/sconfig \
-          /sys/devices/virtual/thermal/thermal_message/sconfig \
-          /sys/class/thermal/thermal_message/cpu_limits \
-          /sys/devices/virtual/thermal/thermal_message/cpu_limits 2>/dev/null || true
+# Xiaomi thermal control nodes need no blanket chmod here. The daemon widens
+# each node briefly per-write (sysfs_write / sysfs_write_temp_mode) and
+# restores the original mode right after the fd is held, so a persistent
+# 0666 would only leave thermal policy world-writable for any app until
+# the next reboot with zero tuning benefit.
 
 BIN="$MODDIR/system/bin/libhypercore.so"
 if [ -f "$BIN" ]; then
