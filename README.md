@@ -224,7 +224,8 @@ actually swap is not free — it raises the ceiling for compression work and kee
 - Hard floor to **Safe at ≥ 50 °C**, climbs back only after **≤ 41 °C for 180 s** continuous
 - Dead-band 41–45 °C freezes position (no flapping)
 - `OEM Stock` and `Bypass` are **exempt**
-- Extras: 80% cutoff with 77% release hysteresis • Bypass low-battery 10/12% hysteresis • TCPC pulse for USB-PD renegotiation
+- Sleep boost: screen off raises the ceiling one rung (`Balanced → Fast`, `Safe → Balanced`, Custom slider drops 5 levels toward 0). Thermal ladder still applies after the boost, so heat can step it back down. `OEM` and `Bypass` stay exempt.
+- Extras: 80% cutoff with 77% release hysteresis • Bypass low-battery 10/12% hysteresis • TCPC pulse for USB-PD renegotiation (also on Custom limit change)
 
 ---
 

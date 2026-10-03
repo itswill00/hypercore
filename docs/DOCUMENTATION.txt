@@ -280,6 +280,12 @@ current value instead of dropping to Tier 0 with the vendor stack suppressed.
 - Thermal ladder (see 3.5): the selected mode is a ceiling that temperature may
   only lower — one rung down at 45°C, forced to Safe Mode at 50°C, restored only
   after 180 s at or below 41°C. This is a real, enforced limit, not advisory.
+- Sleep boost: when the Sleep profile is active (screen off), the ceiling is
+  raised one rung before the ladder runs (Balanced becomes Fast, Safe becomes
+  Balanced, Custom drops 5 levels toward 0). The ladder may still step the
+  boosted base back down, and protection never weakens across the transition.
+  OEM Stock and Bypass stay exempt. Reported via sleep_boost_active and
+  effective_custom_limit telemetry.
 - Night charging protection (`night_charging`) and 80% state-of-charge limits
   (`protect_80`, with 80%/77% hysteresis).
 - OEM Stock mode writes nothing on periodic ticks and hands all charging
@@ -350,6 +356,7 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
    - CPU scaling governor switched to powersave or conservative schedutil limits.
    - uclamp min reduced to 0; uclamp max clamped to suppress idle wakeups.
    - Mali GPU throttled to minimum hardware frequency (130 MHz / 260 MHz).
+   - Charging ceiling raised one rung (sleep boost, see 3.9).
 
 2. INTERACTIVE (DEFAULT / DAILY USE):
    - Active profile for daily navigation, browsing, and messaging.
