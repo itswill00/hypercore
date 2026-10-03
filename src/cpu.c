@@ -707,6 +707,46 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
     if (m->big_max_freq < m->big_min_freq) m->big_max_freq = m->big_min_freq;
 }
 
+/* Async resetprop without blocking the tuning loop.
+ * system() forks + execs sh and waits — in apply_profile() that stalls every
+ * Gaming<->Interactive transition if resetprop or sh ever blocks. Double-fork
+ * here instead: the middle child is reaped immediately, the grandchild is
+ * adopted by init and runs detached. No shell, no format string, argv only. */
+static void async_resetprop(const char *key, const char *val, int is_delete) {
+    if (!key || !key[0]) return;
+    pid_t pid = fork();
+    if (pid < 0) return;
+    if (pid != 0) {
+        int st = 0;
+        waitpid(pid, &st, 0);
+        return;
+    }
+    /* Middle child: silence FDs, detach, second fork. */
+    long max_fd = sysconf(_SC_OPEN_MAX);
+    if (max_fd < 0 || max_fd > 1024) max_fd = 256;
+    for (long fd = STDERR_FILENO + 1; fd < max_fd; fd++) close((int)fd);
+    pid_t g = fork();
+    if (g == 0) {
+        setsid();
+        int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+        if (null_fd >= 0) {
+            dup2(null_fd, STDIN_FILENO);
+            dup2(null_fd, STDOUT_FILENO);
+            dup2(null_fd, STDERR_FILENO);
+            if (null_fd > STDERR_FILENO) close(null_fd);
+        }
+        /* Prefer resetprop from root-manager PATH, fall back to plain PATH. */
+        setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
+        if (is_delete) {
+            execlp("resetprop", "resetprop", "--delete", key, (char *)NULL);
+        } else {
+            execlp("resetprop", "resetprop", key, val ? val : "", (char *)NULL);
+        }
+        _exit(127);
+    }
+    _exit((g < 0) ? 1 : 0);
+}
+
 void apply_profile(profile_t prof, int gpu_load) {
     (void)gpu_load;
     profile_matrix_t m;
@@ -809,17 +849,18 @@ void apply_profile(profile_t prof, int gpu_load) {
 
     /* Apply SurfaceFlinger latch_unsignaled at runtime via resetprop so it is NOT
      * persistent in system.prop (which triggers mBanking integrity scanners).
-     * Enabled only during Gaming/MOBA for smoother frame delivery; disabled on exit. */
+     * Enabled only during Gaming/MOBA for smoother frame delivery; disabled on exit.
+     * Async double-fork: never blocks the tuning loop waiting on sh/resetprop. */
     static int s_prev_gaming_state = -1;
     int is_gaming = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
     if (is_gaming != s_prev_gaming_state) {
         s_prev_gaming_state = is_gaming;
         if (is_gaming) {
-            system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
-                   "sh -c 'resetprop debug.sf.latch_unsignaled 1; resetprop persist.sys.wifi.low_latency 1' 2>/dev/null || true");
+            async_resetprop("debug.sf.latch_unsignaled", "1", 0);
+            async_resetprop("persist.sys.wifi.low_latency", "1", 0);
         } else {
-            system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
-                   "sh -c 'resetprop debug.sf.latch_unsignaled 0; resetprop --delete persist.sys.wifi.low_latency' 2>/dev/null || true");
+            async_resetprop("debug.sf.latch_unsignaled", "0", 0);
+            async_resetprop("persist.sys.wifi.low_latency", NULL, 1);
         }
     }
 }
