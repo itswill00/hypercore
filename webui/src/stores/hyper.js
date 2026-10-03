@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { execCommand, sanitize, isKSU, base64EncodeUtf8 } from '@/helpers/shell'
+import { execCommand, sanitize, isKSU, base64EncodeUtf8, shellQuote } from '@/helpers/shell'
 
 const MOD = '/data/adb/modules/hypercore'
 const DATA = '/data/adb/hypercore'
@@ -463,7 +463,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (isNaN(m) || m < 0 || m > 6) return 'invalid'
 
       /* 1. Persist directly to charge_mode.conf as instant disk fallback */
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; chmod 700 /data/adb/hypercore 2>/dev/null || true; echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null; chmod 600 /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
 
       /* 2. Send SET_CHARGE_MODE IPC to UNIX domain socket */
@@ -502,7 +502,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       if (isNaN(l) || l < 0 || l > 15) return 'invalid'
 
       /* 1. Persist to charge_mode.conf (mode 6) and custom_charge_limit.conf */
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null; echo ${l} > /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; chmod 700 /data/adb/hypercore 2>/dev/null || true; echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null; echo ${l} > /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null; chmod 600 /data/adb/hypercore/charge_mode.conf /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
 
       /* 2. Send SET_CHARGE_LIMIT IPC */
@@ -537,7 +537,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       nightCharging.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/night_charging.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/night_charging.conf 2>/dev/null; chmod 600 /data/adb/hypercore/night_charging.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
       const ipcCmd = `echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
@@ -553,7 +553,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       smartChg.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/smart_chg.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/smart_chg.conf 2>/dev/null; chmod 600 /data/adb/hypercore/smart_chg.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
       const ipcCmd = `echo SET_SMART_CHG:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_SMART_CHG:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
@@ -569,7 +569,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
     try {
       const val = enabled ? 1 : 0
       protect80.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/protect_80.conf 2>/dev/null || true`
+      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/protect_80.conf 2>/dev/null; chmod 600 /data/adb/hypercore/protect_80.conf 2>/dev/null || true`
       execCommand(diskCmd).catch(() => {})
       const ipcCmd = `echo SET_PROTECT_80:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_PROTECT_80:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
       await execCommand(ipcCmd)
@@ -607,7 +607,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       } else {
         const n = parseInt(mode)
         if (isNaN(n) || (n !== 0 && n !== 2048 && n !== 4096)) return 'invalid'
-        cmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo 'size_mb=${n}' > /data/adb/hypercore/zram.conf 2>/dev/null; chmod 644 /data/adb/hypercore/zram.conf 2>/dev/null || true`
+        cmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo 'size_mb=${n}' > /data/adb/hypercore/zram.conf 2>/dev/null; chmod 600 /data/adb/hypercore/zram.conf 2>/dev/null || true`
         next = n
       }
       await execCommand(cmd)
@@ -713,10 +713,12 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       `mkdir -p /data/adb/hypercore 2>/dev/null`,
       `for f in ${GL_PERM}; do`,
       `  touch "$f" 2>/dev/null`,
+      `  chmod 600 "$f" 2>/dev/null || true`,
       `  if [ -f "$f" ]; then`,
-      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
-      `    echo '${pkg}:${prof}' >> "$f.tmp"`,
+      `    awk -F: -v p=${shellQuote(pkg)} '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
+      `    echo ${shellQuote(pkg + ':' + prof)} >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
+      `    chmod 600 "$f" 2>/dev/null || true`,
       `  fi`,
       `done`
     ].join('\n')
@@ -741,8 +743,9 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     const cmd = [
       `for f in ${GL_PERM}; do`,
       `  if [ -f "$f" ]; then`,
-      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
+      `    awk -F: -v p=${shellQuote(pkg)} '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
+      `    chmod 600 "$f" 2>/dev/null || true`,
       `  fi`,
       `done`
     ].join('\n')
@@ -769,9 +772,10 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     const cmd = [
       `for f in ${GL_PERM}; do`,
       `  if [ -f "$f" ]; then`,
-      `    awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
-      `    echo '${pkg}:${profile}' >> "$f.tmp"`,
+      `    awk -F: -v p=${shellQuote(pkg)} '$1 != p' "$f" > "$f.tmp" 2>/dev/null`,
+      `    echo ${shellQuote(pkg + ':' + profile)} >> "$f.tmp"`,
       `    mv "$f.tmp" "$f" 2>/dev/null`,
+      `    chmod 600 "$f" 2>/dev/null || true`,
       `  fi`,
       `done`
     ].join('\n')
@@ -808,12 +812,13 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
       // file can hold duplicates the list view hides but the daemon still
       // reads (first match wins), so appending again would pile more on.
       const upsert = toAdd.map(pkg =>
-        `awk -F: -v p="${pkg}" '$1 != p' "$f" > "$f.tmp" 2>/dev/null && echo '${pkg}:GAMING' >> "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null`
+        `awk -F: -v p=${shellQuote(pkg)} '$1 != p' "$f" > "$f.tmp" 2>/dev/null && echo ${shellQuote(pkg + ':GAMING')} >> "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null && chmod 600 "$f" 2>/dev/null || true`
       ).join('\n')
       const cmd = [
         `mkdir -p /data/adb/hypercore 2>/dev/null`,
         `for f in ${GL_PERM}; do`,
         `  touch "$f" 2>/dev/null`,
+        `  chmod 600 "$f" 2>/dev/null || true`,
         `  if [ -f "$f" ]; then`,
         ...upsert.split('\n').map(l => `  ${l}`),
         `  fi`,
@@ -836,7 +841,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   function launchGame(rawPkg) {
     const clean = sanitize(rawPkg).split(':')[0].trim()
     if (!clean) return
-    execCommand(`monkey -p '${clean}' -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
+    execCommand(`monkey -p ${shellQuote(clean)} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1`)
     return `Launched ${clean}`
   }
 
