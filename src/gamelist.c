@@ -18,7 +18,7 @@
  * nothing whenever the file did not exist yet, so discoveries lived only in
  * memory and the WebUI showed an empty list. */
 static FILE *open_gamelist_for_append(const char *path) {
-    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW, 0644);
+    int fd = open(path, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (fd < 0) {
         log_warn("Gamelist", "Refusing to append to %s: %s", path, strerror(errno));
         return NULL;
@@ -108,7 +108,7 @@ void load_gamelist(void) {
             if (fw) {
                 char buf[512];
                 while (fgets(buf, sizeof(buf), f)) fputs(buf, fw);
-                if (fclose(fw) == 0) rename(tmp, data_gl);
+                if (fclose(fw) == 0) { chmod(tmp, 0600); rename(tmp, data_gl); chmod(data_gl, 0600); }
                 else unlink(tmp);
             }
             fclose(f);
@@ -241,9 +241,6 @@ void init_gamelist_watcher(void) {
      * and in-place file edits both reliably trigger reloads without inode invalidation. */
     if (g_nodes.data_dir[0] != '\0') {
         inotify_add_watch(s_inotify_fd, g_nodes.data_dir, IN_CLOSE_WRITE | IN_MOVED_TO);
-    }
-    if (access("/sdcard/Android", F_OK) == 0) {
-        inotify_add_watch(s_inotify_fd, "/sdcard/Android", IN_CLOSE_WRITE | IN_MOVED_TO);
     }
 }
 
