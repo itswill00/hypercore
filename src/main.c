@@ -100,10 +100,12 @@ static void init_hardware_nodes(void) {
     }
 
     if (access("/data/adb", F_OK) == 0) {
-        mkdir("/data/adb/hypercore", 0755);
+        mkdir("/data/adb/hypercore", 0700);
+        chmod("/data/adb/hypercore", 0700);
         strcpy(g_nodes.data_dir, "/data/adb/hypercore");
     } else {
-        mkdir("/data/local/tmp/hypercore", 0755);
+        mkdir("/data/local/tmp/hypercore", 0700);
+        chmod("/data/local/tmp/hypercore", 0700);
         strcpy(g_nodes.data_dir, "/data/local/tmp/hypercore");
     }
 
@@ -263,7 +265,8 @@ static int acquire_single_instance_lock(void) {
     snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file),
              "%s/.hypercore_lock", g_nodes.data_dir);
 
-    s_lock_fd = open(g_nodes.lock_file, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+    s_lock_fd = open(g_nodes.lock_file, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+    if (s_lock_fd >= 0) fchmod(s_lock_fd, 0600);
     if (s_lock_fd < 0) {
         /* Refusing to start over an unwritable data dir would be worse than
          * running unprotected, so degrade with a loud warning instead. */
