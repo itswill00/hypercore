@@ -104,9 +104,10 @@ if [ -f "/data/adb/hypercore/stock_zram.conf" ] && [ -f /sys/block/zram0/disksiz
   if [ -n "$_zstock" ] && [ -n "$_zcur" ] && [ "$_zstock" != "$_zcur" ]; then
     # Same low-memory guard as service.sh: swapoff forces every compressed
     # page back into RAM at once, which freezes or OOMs under pressure.
+    # 1 GB headroom — SwapUsed is the compressed size, decompressed costs more.
     _zswap_kb=$(awk '/^SwapTotal:/{t=$2} /^SwapFree:/{f=$2} END{print (t-f)}' /proc/meminfo 2>/dev/null)
     _zavail_kb=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
-    if [ -n "$_zswap_kb" ] && [ -n "$_zavail_kb" ] && [ "$_zavail_kb" -lt $((_zswap_kb + 524288)) ]; then
+    if [ -n "$_zswap_kb" ] && [ -n "$_zavail_kb" ] && [ "$_zavail_kb" -lt $((_zswap_kb + 1048576)) ]; then
       echo "HyperCore uninstall: low memory, keeping live ZRAM size (ROM init.rc heals it next boot)" >> /data/adb/hypercore/hypercore.log 2>/dev/null || true
     else
       swapoff /dev/block/zram0 2>/dev/null || true
