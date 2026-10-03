@@ -1,40 +1,39 @@
 
-#include <stdarg.h>
-
 #include "thermal.hpp"
 #include "sysfs.hpp"
 #include "log.hpp"
 
 /* Last-resort thermal zone picker, used only when score-based discovery found
- * nothing. Zone numbering is not stable across ROMs or kernel versions, so a
- * hardcoded index is a guess that can quietly bind the whole thermal guard to
- * an unrelated sensor — skin, PA, DRAM — and that sensor then drives both the
- * frequency ceilings and the charger ladder. Confirm the zone's own `type`
- * string looks like the sensor we actually want before accepting it. */
+ * nothing. Scans every thermal_zoneN (0..31) and accepts the first whose
+ * `type` string matches — never a hardcoded index. Zone numbering is not
+ * stable across ROMs or kernel versions, so a hardcoded index is a guess that
+ * can quietly bind the whole thermal guard to an unrelated sensor — skin, PA,
+ * DRAM — and that sensor then drives both the frequency ceilings and the
+ * charger ladder. Confirm the zone's own `type` string looks like the sensor
+ * we actually want before accepting it. */
 static void pick_fallback_zone(char *out, size_t out_len, const char *sensor,
-                               const int *indices, int count, ...) {
+                               const char *want1, const char *want2,
+                               const char *want3) {
     out[0] = '\0';
-    va_list ap;
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < 32; i++) {
         char type_path[256], temp_path[256], type[64] = "";
-        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/thermal_zone%d/type", indices[i]);
-        snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/thermal_zone%d/temp", indices[i]);
+        snprintf(type_path, sizeof(type_path), "/sys/class/thermal/thermal_zone%d/type", i);
+        snprintf(temp_path, sizeof(temp_path), "/sys/class/thermal/thermal_zone%d/temp", i);
         if (access(temp_path, F_OK) != 0) continue;
         if (!sysfs_read_str(type_path, type, sizeof(type))) continue;
 
-        va_start(ap, count);
         int wanted = 0;
-        for (const char *w = va_arg(ap, const char *); w; w = va_arg(ap, const char *)) {
-            if (strstr(type, w)) { wanted = 1; break; }
+        const char *wants[3] = { want1, want2, want3 };
+        for (int w = 0; w < 3; w++) {
+            if (wants[w] && strstr(type, wants[w])) { wanted = 1; break; }
         }
-        va_end(ap);
         if (!wanted) continue;
 
         strncpy(out, temp_path, out_len - 1);
         out[out_len - 1] = '\0';
         log_warn("Thermal", "Zone scan matched no %s sensor; falling back to thermal_zone%d (%s)",
-                 sensor, indices[i], type);
+                 sensor, i, type);
         return;
     }
 }
@@ -151,16 +150,16 @@ void scan_thermal_zones(void) {
 
     if (g_nodes.cpu_temp[0] == '\0')
         pick_fallback_zone(g_nodes.cpu_temp, sizeof(g_nodes.cpu_temp), "cpu",
-                           (const int[]){16, 0}, 2, "cpu", "soc", NULL);
+                           "cpu", "soc", NULL);
     if (g_nodes.bat_temp[0] == '\0')
         pick_fallback_zone(g_nodes.bat_temp, sizeof(g_nodes.bat_temp), "battery",
-                           (const int[]){25, 1}, 2, "bat", NULL);
+                           "bat", NULL, NULL);
     if (g_nodes.gpu_temp[0] == '\0')
         pick_fallback_zone(g_nodes.gpu_temp, sizeof(g_nodes.gpu_temp), "gpu",
-                           (const int[]){10, 9}, 2, "gpu", "mali", NULL);
+                           "gpu", "mali", NULL);
     if (g_nodes.chg_temp[0] == '\0') {
         pick_fallback_zone(g_nodes.chg_temp, sizeof(g_nodes.chg_temp), "charger",
-                           (const int[]){17}, 1, "chg", "charg", "charge", NULL);
+                           "chg", "charg", "charge");
         if (g_nodes.chg_temp[0] == '\0') {
             if (access("/sys/class/power_supply/mtk-master-charger/temp", F_OK) == 0)
                 strcpy(g_nodes.chg_temp, "/sys/class/power_supply/mtk-master-charger/temp");
@@ -239,10 +238,15 @@ static void save_verified_cycles(int cycles) {
     if (cycles <= 0 || cycles > 4000) return;
     char path[256];
     snprintf(path, sizeof(path), "%s/battery_cycle.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "w");
+    char tmp[300];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    FILE *f = fopen(tmp, "w");
     if (f) {
         fprintf(f, "%d\n", cycles);
         fclose(f);
+        chmod(tmp, 0600);
+        rename(tmp, path);
+        chmod(path, 0600);
     }
 }
 
@@ -359,16 +363,35 @@ void sync_battery_cycle_count(void) {
         NULL
     };
 
+    /* Cache writability once: if a node is read-only on this ROM, retrying the
+     * open+write every 5 ticks (~10s) forever is pure syscall churn. A node that
+     * appears later (late driver probe) is picked up because -1 means "untested"
+     * and access() is re-checked until the first successful write. */
+    static int s_writable[2] = { -1, -1 };
+
     for (int i = 0; dest_nodes[i]; i++) {
-        if (access(dest_nodes[i], F_OK) == 0) {
-            int cur = sysfs_read_int(dest_nodes[i]);
-            /* If node has abnormal signature (e.g. 5662) or is out of sync with genuine cycles */
-            if (cur != cycles) {
-                sysfs_write(dest_nodes[i], str_cycles);
-                log_info("Battery", "Synced genuine battery cycles (%d) to %s (was %d)",
-                         cycles, dest_nodes[i], cur);
-            }
+        if (s_writable[i] == 0) continue;
+        if (access(dest_nodes[i], F_OK) != 0) continue;
+        if (s_writable[i] < 0 && access(dest_nodes[i], W_OK) != 0) {
+            /* Distinguish "node missing" (retry later) from "node read-only"
+             * (never writable on this ROM — stop trying). */
+            s_writable[i] = 0;
+            continue;
         }
+        int cur = sysfs_read_int(dest_nodes[i]);
+        /* If node has abnormal signature (e.g. 5662) or is out of sync with genuine cycles */
+        if (cur != cycles) {
+            sysfs_write(dest_nodes[i], str_cycles);
+            /* If the value still didn't land, the node rejected the write
+             * (read-only sysfs, SELinux denial) — stop hammering it. */
+            if (sysfs_read_int(dest_nodes[i]) != cycles) {
+                s_writable[i] = 0;
+                continue;
+            }
+            log_info("Battery", "Synced genuine battery cycles (%d) to %s (was %d)",
+                     cycles, dest_nodes[i], cur);
+        }
+        if (s_writable[i] < 0) s_writable[i] = 1;
     }
 }
 
