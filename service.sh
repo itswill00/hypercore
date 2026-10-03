@@ -13,6 +13,7 @@ done
 sleep 2
 
 mkdir -p /data/adb/hypercore 2>/dev/null || true
+chmod 700 /data/adb/hypercore 2>/dev/null || true
 
 # ZRAM pool sizing, applied once per boot so it wins over the ROM init.rc
 # (which writes comp_algorithm then swapon_all from fstab.enableswap).
@@ -48,12 +49,18 @@ apply_zram_config() {
     [ "$CUR_BYTES" = "$WANT_BYTES" ] && return 0
 
     # Refuse the swapoff when RAM is too tight to take the pages back.
+    # Margin is 1 GB (not 512 MB): swapoff pulls every compressed page back
+    # into RAM in one go, and SwapUsed from /proc/meminfo is the compressed
+    # size — decompressed pages cost more. A 512 MB headroom OOMed on 8 GB
+    # devices with a full 6 GB pool under gaming pressure.
     SWAP_KB=$(awk '/^SwapTotal:/{t=$2} /^SwapFree:/{f=$2} END{print (t-f)}' /proc/meminfo 2>/dev/null)
     AVAIL_KB=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
-    [ -n "$SWAP_KB" ] && [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt $((SWAP_KB + 524288)) ] && {
+    [ -n "$SWAP_KB" ] && [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt $((SWAP_KB + 1048576)) ] && {
         echo "HyperCore ZRAM resize skipped: low memory, keeping live size" >> "$LOG" 2>/dev/null || true
         return 0
     }
+
+    sync 2>/dev/null || true
 
     swapoff /dev/block/zram0 2>/dev/null || return 0
     echo 1 > /sys/block/zram0/reset 2>/dev/null || true
@@ -124,7 +131,7 @@ pm grant com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null ||
 
 HUD_STATE="/data/adb/hypercore/hud"
 mkdir -p "$HUD_STATE" 2>/dev/null
-chmod 755 "$HUD_STATE" 2>/dev/null || true
+chmod 700 "$HUD_STATE" 2>/dev/null || true
 
 if [ -f "$HUD_STATE/config.json" ] && grep -q '"visible"[[:space:]]*:[[:space:]]*true' "$HUD_STATE/config.json" 2>/dev/null; then
     if [ -f "$MODDIR/system/bin/hypermoon_d" ]; then
