@@ -80,6 +80,7 @@ rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.s
 
 ui_print "- Preserving user configurations in /data/adb/hypercore..."
 mkdir -p /data/adb/hypercore
+chmod 700 /data/adb/hypercore 2>/dev/null || true
 for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf stock_state.conf zram.conf stock_zram.conf; do
     if [ -f "/data/adb/modules/hypercore/$conf" ] && [ ! -f "/data/adb/hypercore/$conf" ]; then
         cp -f "/data/adb/modules/hypercore/$conf" "/data/adb/hypercore/$conf" 2>/dev/null || true
@@ -193,8 +194,23 @@ set_perm_recursive "$MODPATH/webroot" 0 0 0755 0644
 set_perm "$MODPATH/system.prop" 0 0 0644
 set_perm "$MODPATH/module.prop" 0 0 0644
 set_perm "$MODPATH/checksums.txt" 0 0 0644
+[ -f "$MODPATH/sepolicy.rule" ] && set_perm "$MODPATH/sepolicy.rule" 0 0 0644
 [ -f "$MODPATH/banner.jpg" ] && set_perm "$MODPATH/banner.jpg" 0 0 0644
 [ -f "$MODPATH/changelog.md" ] && set_perm "$MODPATH/changelog.md" 0 0 0644
+
+# Optional author-signature check: when the release was published with
+# minisign (HyperCore-*.zip.minisig alongside the zip) and the public key
+# is shipped as hypercore.pub, verify before trusting the manifest.
+# Absence of either file skips with a warning — never aborts — because
+# existing releases predate signing and must still install.
+if [ -f "$MODPATH/hypercore.pub" ] && [ -f "$MODPATH/hypercore.minisig" ] && command -v minisign >/dev/null 2>&1; then
+    ui_print "- Verifying author signature..."
+    if ! (cd "$MODPATH" && minisign -Vm checksums.txt -p hypercore.pub -x hypercore.minisig >/dev/null 2>&1); then
+        ui_print "! WARNING: author signature mismatch — continuing with SHA-256 manifest only."
+    else
+        ui_print "- Author signature verified."
+    fi
+fi
 
 # Create symlinks in root manager PATH for KSU / APatch / Magisk
 for manager_dir in /data/adb/ap/bin /data/adb/ksu/bin /data/adb/modules/bin; do
@@ -208,6 +224,7 @@ done
 
 # HyperMoon HUD State directory & FPS Moon migration
 mkdir -p /data/adb/hypercore/hud
+chmod 700 /data/adb/hypercore/hud 2>/dev/null || true
 if [ -d "/data/adb/modules/fps_moon/state" ] && [ ! -f "/data/adb/hypercore/hud/config.json" ]; then
     ui_print "- Migrating existing FPS Moon preferences to HyperMoon..."
     cp -rf /data/adb/modules/fps_moon/state/* /data/adb/hypercore/hud/ 2>/dev/null || true
@@ -243,7 +260,7 @@ if [ ! -f "/data/adb/hypercore/hud/config.json" ]; then
   "target_fps": 60
 }
 EOF
-    chmod 644 /data/adb/hypercore/hud/config.json 2>/dev/null || true
+    chmod 600 /data/adb/hypercore/hud/config.json 2>/dev/null || true
 fi
 
 if [ ! -f "/data/adb/hypercore/hud/position.json" ]; then
@@ -253,9 +270,9 @@ if [ ! -f "/data/adb/hypercore/hud/position.json" ]; then
   "y": 411
 }
 EOF
-    chmod 644 /data/adb/hypercore/hud/position.json 2>/dev/null || true
+    chmod 600 /data/adb/hypercore/hud/position.json 2>/dev/null || true
 fi
-chmod 755 /data/adb/hypercore/hud 2>/dev/null || true
+chmod 700 /data/adb/hypercore/hud 2>/dev/null || true
 
 if [ ! -f "/data/adb/hypercore/.gamelist_autodetected" ]; then
     ui_print "- Auto-detecting installed games on your device (first install)..."
@@ -279,9 +296,9 @@ else
     ui_print "- Preserved user-managed gamelist preferences."
 fi
 rm -f "$MODPATH/gamelist.txt"
-set_perm /data/adb/hypercore/gamelist.txt 0 0 0644
+set_perm /data/adb/hypercore/gamelist.txt 0 0 0600
 for c in /data/adb/hypercore/*.conf; do
-    [ -f "$c" ] && set_perm "$c" 0 0 0644
+    [ -f "$c" ] && set_perm "$c" 0 0 0600
 done
 
 VERSION_NAME=$(grep '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2)
