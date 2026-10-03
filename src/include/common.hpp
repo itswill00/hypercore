@@ -95,6 +95,8 @@ struct core_state {
     int protect_80;                   /* 1 = stop charging at 80% capacity limit                                           */
     int thermal_tier;                 /* 0 = Optimal, 1 = Warm mitigation, 2 = Hot safety protection                       */
     int charge_override;              /* 1 = safety / low battery / thermal override currently active                     */
+    int sleep_boost_active;           /* 1 = screen-off sleep boost currently raising charge rate                          */
+    int effective_custom_limit;       /* active Custom slider level actually on hardware (sleep-boosted when active)       */
 };
 
 typedef struct {

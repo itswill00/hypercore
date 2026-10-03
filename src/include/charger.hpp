@@ -63,6 +63,8 @@ void set_smart_chg(int enabled);
 int get_smart_chg(void);
 void set_protect_80(int enabled);
 int get_protect_80(void);
+int is_sleep_boost_active(void);
+int get_effective_custom_limit(void);
 
 #ifdef __cplusplus
 }

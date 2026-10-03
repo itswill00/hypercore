@@ -82,6 +82,32 @@ static int rung_mode(int rung) {
     return s_ladder_modes[rung];
 }
 
+/* Sleep boost: screen off means cooler SoC and zero interaction, so raise the
+ * ceiling by one rung. Balanced -> Fast, Safe -> Balanced. Custom keeps its
+ * mode but drops 5 hardware levels toward 0. OEM and Bypass are exempt by
+ * design, Fast and Violent are already at the ceiling. Thermal ladder still
+ * runs after this and may step the boosted base back down. */
+#define SLEEP_BOOST_DELTA 5
+static int s_sleep_boost_active = 0;
+static int s_active_custom_limit = LIMIT_BALANCED;
+static int s_prev_sleep_base_mode = -99;
+
+static int sleep_boost_base_mode(int user_mode) {
+    if (g_state.current_profile != PROFILE_Sleep) return user_mode;
+    switch (user_mode) {
+        case CHARGE_MODE_BALANCED: return CHARGE_MODE_FAST;
+        case CHARGE_MODE_SAFE:     return CHARGE_MODE_BALANCED;
+        default:                   return user_mode;
+    }
+}
+
+static int sleep_boosted_limit(int user_limit) {
+    if (g_state.current_profile != PROFILE_Sleep) return user_limit;
+    int b = user_limit - SLEEP_BOOST_DELTA;
+    if (b < 0) b = 0;
+    return b;
+}
+
 /* --------------------------------------------------------------------------
  * Internal helpers
  * -------------------------------------------------------------------------- */
@@ -160,10 +186,12 @@ static void trigger_tcpc_pd_renegotiation(void) {
 }
 
 static int s_prev_effective_mode = -1;
+static int s_prev_effective_limit = -1;
 
 /* Apply the target effective mode to hardware nodes. */
 static void apply_effective_mode(int effective_mode) {
     int mode_changed = (s_prev_effective_mode != effective_mode);
+    int limit_changed = (s_active_custom_limit != s_prev_effective_limit);
     const char *smart_str = s_smart_chg ? "1" : "0";
     const char *night_str = s_night_charging ? "1" : "0";
 
@@ -201,10 +229,10 @@ static void apply_effective_mode(int effective_mode) {
         break;
     case CHARGE_MODE_CUSTOM:
         apply_suspend_if_needed(0);
-        apply_limit_if_needed(s_custom_charge_limit);
+        apply_limit_if_needed(s_active_custom_limit);
         sysfs_write("/sys/class/power_supply/battery/smart_chg", smart_str);
         sysfs_write("/sys/class/power_supply/battery/night_charging", night_str);
-        if (mode_changed) trigger_tcpc_pd_renegotiation();
+        if (mode_changed || limit_changed) trigger_tcpc_pd_renegotiation();
         break;
     case CHARGE_MODE_OEM:
     default:
@@ -218,6 +246,7 @@ static void apply_effective_mode(int effective_mode) {
     }
 
     s_prev_effective_mode = effective_mode;
+    s_prev_effective_limit = s_active_custom_limit;
 }
 
 /* --------------------------------------------------------------------------
@@ -241,8 +270,14 @@ void init_charge_control(void) {
     s_night_charging = load_night_charging_conf();
     s_smart_chg = load_smart_chg_conf();
     s_protect_80 = load_protect_80_conf();
+    s_active_custom_limit = s_custom_charge_limit;
+    s_sleep_boost_active = 0;
+    s_prev_sleep_base_mode = -99;
+    s_prev_effective_limit = -1;
     g_state.user_charge_mode = s_user_charge_mode;
     g_state.custom_charge_limit = s_custom_charge_limit;
+    g_state.effective_custom_limit = s_custom_charge_limit;
+    g_state.sleep_boost_active = 0;
     g_state.night_charging = s_night_charging;
     g_state.smart_chg = s_smart_chg;
     g_state.protect_80 = s_protect_80;
@@ -282,6 +317,9 @@ void enforce_charge_mode(void) {
      * Zero sysfs writes on periodic ticks! */
     if (s_user_charge_mode == CHARGE_MODE_OEM) {
         g_state.charge_mode = CHARGE_MODE_OEM;
+        g_state.sleep_boost_active = 0;
+        s_sleep_boost_active = 0;
+        g_state.effective_custom_limit = s_custom_charge_limit;
         return;
     }
 
@@ -292,7 +330,40 @@ void enforce_charge_mode(void) {
     int bat_cap = sysfs_read_int(CHG_CAPACITY_NODE);
     if (bat_cap <= 0) bat_cap = 50; /* safe default if node unavailable */
 
-    int effective_mode = s_user_charge_mode;
+    /* Sleep boost sits between user choice and thermal ladder: the boosted
+     * base is still only a ceiling that heat may lower. */
+    int sleep_base_mode = sleep_boost_base_mode(s_user_charge_mode);
+    int sleep_base_limit = sleep_boosted_limit(s_custom_charge_limit);
+    int new_sleep_active = (sleep_base_mode != s_user_charge_mode) ||
+        (s_user_charge_mode == CHARGE_MODE_CUSTOM && sleep_base_limit != s_custom_charge_limit);
+    if (new_sleep_active != s_sleep_boost_active) {
+        s_sleep_boost_active = new_sleep_active;
+        if (new_sleep_active) {
+            log_info("Charger", "Sleep boost active: %s -> %s (screen off)",
+                     charge_mode_name(s_user_charge_mode), charge_mode_name(sleep_base_mode));
+        } else {
+            log_info("Charger", "Sleep boost cleared: back to %s (screen on)",
+                     charge_mode_name(s_user_charge_mode));
+        }
+    }
+    s_active_custom_limit = sleep_base_limit;
+    g_state.sleep_boost_active = s_sleep_boost_active;
+    g_state.custom_charge_limit = s_custom_charge_limit;
+    g_state.effective_custom_limit = s_active_custom_limit;
+
+    /* Never weaken thermal protection on base change while hot.
+     * Sleep engage and wake both shift the base; take the cooler of the old
+     * rung and one-down-from-new-base so waking cannot erase step-down. */
+    if (sleep_base_mode != s_prev_sleep_base_mode) {
+        s_prev_sleep_base_mode = sleep_base_mode;
+        int nb_rung = ladder_rung(sleep_base_mode);
+        if (s_thermal_rung >= 0 && nb_rung >= 0) {
+            int want = nb_rung + 1;
+            if (want > s_thermal_rung) s_thermal_rung = want;
+        }
+    }
+
+    int effective_mode = sleep_base_mode;
     static int s_override_active = 0;
 
     /* Battery Protect 80% Cap Toggle: If user enabled 80% stop limit,
@@ -338,7 +409,7 @@ void enforce_charge_mode(void) {
         }
     } else {
         /* --- Thermal ladder ------------------------------------------------
-         * The user's mode is a ceiling; temperature may only lower it.
+         * The boosted base is a ceiling; temperature may only lower it.
          *   >= TEMP_EMERGENCY  hard floor to Safe Mode
          *   >= TEMP_OVERRIDE_ENTER  step down one rung
          *   <= TEMP_OVERRIDE_CLEAR   start a TEMP_STEP_UP_HOLD timer; only
@@ -346,7 +417,7 @@ void enforce_charge_mode(void) {
          * Anything in the band between CLEAR and ENTER freezes the current
          * rung, which keeps a cell hovering near the threshold from flapping
          * between charge rates. */
-        int base_rung = ladder_rung(s_user_charge_mode);
+        int base_rung = ladder_rung(sleep_base_mode);
         time_t now = time(NULL);
 
         /* Not BYPASS, so the low-battery BYPASS override no longer applies. */
@@ -378,7 +449,7 @@ void enforce_charge_mode(void) {
             } else if (now - s_cool_since >= TEMP_STEP_UP_HOLD) {
                 if (s_thermal_rung >= 0) {
                     log_info("Charger", "Battery %d°C cool for %ds — thermal override cleared, restoring %s",
-                             bat_temp, TEMP_STEP_UP_HOLD, charge_mode_name(s_user_charge_mode));
+                             bat_temp, TEMP_STEP_UP_HOLD, charge_mode_name(sleep_base_mode));
                 }
                 s_thermal_rung = -1;
                 s_cool_since = 0;
@@ -391,13 +462,14 @@ void enforce_charge_mode(void) {
         if (s_thermal_rung >= 0) {
             effective_mode = rung_mode(s_thermal_rung);
         } else {
-            effective_mode = s_user_charge_mode;
+            effective_mode = sleep_base_mode;
         }
     }
 
     /* Update global state & apply to hardware nodes */
     g_state.charge_mode = effective_mode;
-    g_state.charge_override = s_override_active || (effective_mode != s_user_charge_mode);
+    g_state.effective_custom_limit = s_active_custom_limit;
+    g_state.charge_override = s_override_active || (effective_mode != sleep_base_mode);
     apply_effective_mode(effective_mode);
 }
 
@@ -424,6 +496,10 @@ void set_charge_mode(int mode) {
          * then completely release control to OEM kernel/thermal engine. */
         s_thermal_rung = -1;
         s_cool_since = 0;
+        s_sleep_boost_active = 0;
+        s_prev_sleep_base_mode = -99;
+        g_state.sleep_boost_active = 0;
+        g_state.effective_custom_limit = s_custom_charge_limit;
         apply_suspend_if_needed(0);
         apply_limit_if_needed(0);
         sysfs_write("/sys/class/power_supply/battery/smart_chg", "0");
@@ -521,4 +597,12 @@ void set_protect_80(int enabled) {
 
 int get_protect_80(void) {
     return s_protect_80;
+}
+
+int is_sleep_boost_active(void) {
+    return s_sleep_boost_active;
+}
+
+int get_effective_custom_limit(void) {
+    return s_active_custom_limit;
 }
