@@ -1,3 +1,24 @@
+# HyperCore v6.11.4 — Security Hardening & Thermal Correctness
+
+Full-audit hardening pass over the daemon, installer, service scripts and WebUI:
+
+## Fixes
+
+### Security & Permissions
+- **SELinux policy** (`sepolicy.rule`, new): `magiskpolicy --live` allow-rules for thermal, battery, cgroup, proc, device and property nodes on enforcing builds — previously writes failed silently with avc denials.
+- **Root-only state** (`src/main.c`, `src/log.c`, `src/charger.c`, `src/thermal.c`, `src/sysfs.c`, `src/gamelist.c`, `service.sh`, `post-fs-data.sh`, `customize.sh`, `scripts/stock_baseline.sh`, WebUI): data dir + hud to `0700`, all confs/gamelist/log/lock to `0600`.
+- **No persistent 0666 on thermal policy** (`service.sh`): dropped the blanket chmod on sconfig/cpu_limits — the daemon already widens per-write and restores.
+- **Optional author signature** (`build.sh`, `customize.sh`): minisign sign at build, verify at install when key files ship; absence only warns.
+- **WebUI injection hardening** (`webui/src/stores/hyper.js`): `shellQuote()` for every package interpolation on top of `sanitize()`.
+
+### Correctness & Performance
+- **Type-only thermal fallback** (`src/thermal.c`): zone fallback scans 0..31 by `type` string — no more hardcoded indices binding the guard to the wrong sensor.
+- **Non-blocking resetprop** (`src/cpu.c`, `src/sysfs.c`): `system()` replaced with double-fork async helpers, in the tuning loop and in SIGTERM restore.
+- **Battery cycle write cache** (`src/thermal.c`): stop hammering read-only cycle_count nodes every 5 ticks.
+- **1GB ZRAM guard** (`service.sh`, `uninstall.sh`): pre-swapoff headroom raised from 512MB + `sync`.
+- **Touch rediscover fast-path** (`src/sysfs.c`): skip ~25 `access()` calls per profile switch once resolved.
+- **Gamelist sdcard watch removed** (`src/gamelist.c`): any app could force reload loops; one-shot read fallback kept.
+
 # HyperCore v6.11.3 — Daemon Runtime Integrity & Liveness Fixes
 
 Fixes a critical runtime startup crash and phantom "Sleep" profile freeze on KernelSU / Magisk:
