@@ -80,6 +80,8 @@ export const useHyperStore = defineStore('hyper', () => {
   const chargeVoltMv = ref(0)            /* real-time mV from voltage_now */
   const dvfsrcMhz = ref(0)               /* live DDR clock MHz (read-only telemetry) */
   const chgLimitMax = ref(0)             /* PMIC limit scale ceiling (read-only telemetry) */
+  const sleepBoostActive = ref(false)    /* true = screen-off sleep boost raising charge rate */
+  const effectiveCustomLimit = ref(10)   /* active Custom level on hardware (sleep-boosted when active) */
 
   const thermalGuardState = computed(() => {
     if (batStatus.value !== 'Charging') return batStatus.value || 'Standby'
@@ -253,6 +255,12 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           }
           if (typeof ipcData.charge_thermal_override !== 'undefined') {
             chargeModeOverride.value = !!ipcData.charge_thermal_override
+          }
+          if (typeof ipcData.sleep_boost_active !== 'undefined') {
+            sleepBoostActive.value = !!ipcData.sleep_boost_active
+          }
+          if (typeof ipcData.effective_custom_limit !== 'undefined') {
+            effectiveCustomLimit.value = ipcData.effective_custom_limit
           }
           ipcSuccess = true
         } catch {}
@@ -451,6 +459,8 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
           if (typeof cm.protect_80 !== 'undefined') protect80.value = !!cm.protect_80
           if (typeof cm.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!cm.charge_thermal_override
           if (typeof cm.charger_supported !== 'undefined') chargerSupported.value = !!cm.charger_supported
+          if (typeof cm.sleep_boost_active !== 'undefined') sleepBoostActive.value = !!cm.sleep_boost_active
+          if (typeof cm.effective_custom_limit !== 'undefined') effectiveCustomLimit.value = cm.effective_custom_limit
         } catch {}
       }
     } catch {}
@@ -851,7 +861,7 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
     cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
     batHealth, batCapFull, batTech, thermalGuardState,
     chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
-    dvfsrcMhz, chgLimitMax,
+    dvfsrcMhz, chgLimitMax, sleepBoostActive, effectiveCustomLimit,
     usbVoltMv, usbType, isNonOemCable,
     nightCharging, smartChg, protect80,
     games, logs, loading,

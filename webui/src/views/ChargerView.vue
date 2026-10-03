@@ -32,6 +32,21 @@
         </div>
       </div>
 
+      <!-- Sleep Boost Active Banner -->
+      <div v-else-if="store.sleepBoostActive" class="md3-banner" style="background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary); margin-bottom: 14px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <div class="icon-badge" style="background: rgba(0,0,0,0.15); color: inherit;">
+            <Icons name="moon" :size="20" />
+          </div>
+          <div>
+            <div style="font-size: 13px; font-weight: 700; margin-bottom: 2px;">Sleep Boost Active</div>
+            <div style="font-size: 11px; opacity: 0.9; line-height: 1.4;">
+              Screen is off, charging ceiling raised (Level {{ store.effectiveCustomLimit }}). Returns to your setting on wake.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Non-Original Cable / Power Cap Alert Banner -->
       <div v-if="store.isNonOemCable" class="md3-banner" style="background: var(--surface-container-high); border-color: var(--outline-variant); margin-bottom: 14px;">
         <div style="display: flex; align-items: flex-start; gap: 12px;">
