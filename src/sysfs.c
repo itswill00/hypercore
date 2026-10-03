@@ -169,6 +169,16 @@ stock_baseline_t g_stock_baseline;
  * transition (a handful of access() calls, same lazy pattern as the
  * backlight re-resolve in is_screen_on()). */
 void rediscover_touch_nodes(void) {
+    /* Fast path: all slots already resolved — skip ~25 access() calls.
+     * apply_profile() invokes this on every transition, so without the guard
+     * a steady Gaming<->Interactive flap becomes a needless syscall storm. */
+    if (g_nodes.touch_thp_smooth[0] != '\0' &&
+        g_nodes.touch_thp_noisefilter[0] != '\0' &&
+        g_nodes.touch_edge[0] != '\0' &&
+        g_nodes.touch_game_mode[0] != '\0' &&
+        g_nodes.touch_sensitivity[0] != '\0') {
+        return;
+    }
     const char *thp_paths[] = {
         "/sys/class/touch/touch_dev/touch_thp_smooth",
         "/sys/devices/virtual/touch/touch_dev/touch_thp_smooth",
@@ -291,7 +301,7 @@ void save_stock_baseline(void) {
     };
     for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) fprintf(f, "%s=%d\n", ints[i].k, *ints[i].v);
     for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) fprintf(f, "%s=%s\n", strs[i].k, strs[i].v);
-    fclose(f); rename(tmp, path); chmod(path, 0644);
+    fclose(f); rename(tmp, path); chmod(path, 0600);
 }
 
 int load_stock_baseline(void) {
@@ -710,9 +720,60 @@ void restore_baseline_nodes(void) {
     if (g_stock_baseline.chg_smart[0] != '\0') sysfs_write("/sys/class/power_supply/battery/smart_chg", g_stock_baseline.chg_smart);
     if (g_stock_baseline.chg_night[0] != '\0') sysfs_write("/sys/class/power_supply/battery/night_charging", g_stock_baseline.chg_night);
 
-    /* Clear runtime gaming properties */
-    system("PATH=\"/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:$PATH\" "
-           "sh -c 'resetprop debug.sf.latch_unsignaled 0; resetprop --delete persist.sys.wifi.low_latency' 2>/dev/null || true");
+    /* Clear runtime gaming properties without blocking daemon exit.
+     * system() waits on sh+resetprop; during SIGTERM restore every millisecond
+     * counts toward the 10 s grace in service.sh/uninstall.sh. Double-fork
+     * detached so restore_baseline_nodes() returns immediately. */
+    {
+        pid_t _pid = fork();
+        if (_pid == 0) {
+            long _max = sysconf(_SC_OPEN_MAX);
+            if (_max < 0 || _max > 1024) _max = 256;
+            for (long _fd = STDERR_FILENO + 1; _fd < _max; _fd++) close((int)_fd);
+            pid_t _g = fork();
+            if (_g == 0) {
+                setsid();
+                int _null = open("/dev/null", O_RDWR | O_CLOEXEC);
+                if (_null >= 0) {
+                    dup2(_null, STDIN_FILENO);
+                    dup2(_null, STDOUT_FILENO);
+                    dup2(_null, STDERR_FILENO);
+                    if (_null > STDERR_FILENO) close(_null);
+                }
+                setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
+                execlp("resetprop", "resetprop", "debug.sf.latch_unsignaled", "0", (char *)NULL);
+                _exit(127);
+            }
+            _exit((_g < 0) ? 1 : 0);
+        } else if (_pid > 0) {
+            int _st = 0;
+            waitpid(_pid, &_st, 0);
+            _pid = fork();
+            if (_pid == 0) {
+                long _max2 = sysconf(_SC_OPEN_MAX);
+                if (_max2 < 0 || _max2 > 1024) _max2 = 256;
+                for (long _fd = STDERR_FILENO + 1; _fd < _max2; _fd++) close((int)_fd);
+                pid_t _g2 = fork();
+                if (_g2 == 0) {
+                    setsid();
+                    int _null2 = open("/dev/null", O_RDWR | O_CLOEXEC);
+                    if (_null2 >= 0) {
+                        dup2(_null2, STDIN_FILENO);
+                        dup2(_null2, STDOUT_FILENO);
+                        dup2(_null2, STDERR_FILENO);
+                        if (_null2 > STDERR_FILENO) close(_null2);
+                    }
+                    setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
+                    execlp("resetprop", "resetprop", "--delete", "persist.sys.wifi.low_latency", (char *)NULL);
+                    _exit(127);
+                }
+                _exit((_g2 < 0) ? 1 : 0);
+            } else if (_pid > 0) {
+                int _st2 = 0;
+                waitpid(_pid, &_st2, 0);
+            }
+        }
+    }
 
     /* Restore rate limit node permissions */
     const char *rate_limit_restore_paths[] = {
