@@ -93,7 +93,7 @@ static void save_int_conf(const char *fname, int val) {
     char tmp[310];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
     FILE *f = fopen(tmp, "w");
-    if (f) { fprintf(f, "%d\n", val); fclose(f); rename(tmp, path); }
+    if (f) { fprintf(f, "%d\n", val); fclose(f); chmod(tmp, 0600); rename(tmp, path); chmod(path, 0600); }
 }
 
 static int load_int_conf(const char *fname, int dflt) {
