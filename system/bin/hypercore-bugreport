@@ -248,8 +248,8 @@ if [ -z "$OUT_FILE" ]; then
 fi
 
 if [ -n "$OUT_FILE" ]; then
-    chmod 666 "$OUT_FILE" 2>/dev/null || true
-    chmod 777 "/sdcard/HyperCore_Bugreports" 2>/dev/null || true
+    chmod 644 "$OUT_FILE" 2>/dev/null || true
+    chmod 755 "/sdcard/HyperCore_Bugreports" 2>/dev/null || true
     am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$OUT_FILE" >/dev/null 2>&1 || true
     rm -rf "$TMP_DIR"
     trap - EXIT
