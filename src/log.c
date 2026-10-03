@@ -16,12 +16,16 @@ static int s_log_fd = -1;
 
 static void ensure_log_open(void) {
     if (s_log_fd >= 0) return;
-    s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0640);
+    /* 0600: telemetry lives under /data/adb (root-only) — group-read would
+     * leak thermal/charging history to any gid with adb-group access. */
+    s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
     /* Fallback for the degraded path where /data/adb/hypercore does not exist
      * (init_hardware_nodes() fell back to /data/local/tmp). */
     if (s_log_fd < 0) {
-        s_log_fd = open("/data/local/tmp/hypercore/hypercore.log", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0640);
+        s_log_fd = open("/data/local/tmp/hypercore/hypercore.log", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
     }
+    /* Pin mode even when the file already existed with looser perms. */
+    if (s_log_fd >= 0) fchmod(s_log_fd, 0600);
 }
 
 /* ponytail: ensure daemon never dies from SIGPIPE if log fd is broken pipe, ceiling is lost log line */
