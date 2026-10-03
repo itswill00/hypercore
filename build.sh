@@ -165,7 +165,7 @@ echo "generating sha256 checksums..."
 # libhypercore.so is the one unavoidable exclusion: a binary cannot contain its
 # own hash. It is covered by checksums.txt (generated after the final link) and
 # verified by customize.sh before the daemon is ever started.
-CHECKSUM_FILES="system.prop service.sh post-fs-data.sh uninstall.sh changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
+CHECKSUM_FILES="system.prop service.sh post-fs-data.sh uninstall.sh sepolicy.rule changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
 
 write_embedded_table() {
     cat << 'EOF' > src/include/embedded_checksums.hpp
@@ -332,6 +332,7 @@ echo "packaging zip package..."
 if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
     module.prop \
     system.prop \
+    sepolicy.rule \
     service.sh \
     post-fs-data.sh \
     customize.sh \
@@ -352,6 +353,19 @@ fi
 
 echo "build finished: ${OUTPUT_DIR}/${ZIP_OUT}"
 
+# Optional release signing: if a minisign private key exists next to build.sh,
+# sign the zip so users can verify author authenticity out-of-band.
+# customize.sh verifies the signature at install time when the public key
+# (sepolicy-adjacent shipped file `hypercore.pub`) and minisign are present;
+# absence of either skips verification with a warning, never aborts.
+if [ -f "$PROJECT_DIR/hypercore.key" ] && command -v minisign >/dev/null 2>&1; then
+    echo "signing release with minisign..."
+    rm -f "$OUTPUT_DIR/$ZIP_OUT.minisig"
+    (cd "$OUTPUT_DIR" && minisign -Sm "$ZIP_OUT" -s "$PROJECT_DIR/hypercore.key") && \
+        echo "signed: ${OUTPUT_DIR}/${ZIP_OUT}.minisig" || \
+        echo "warning: minisign failed, shipping unsigned"
+fi
+
 # Also sync copy to /sdcard/HyperCore_Releases for external root file managers
 su -c "mkdir -p /sdcard/HyperCore_Releases && cp -f '$OUTPUT_DIR/$ZIP_OUT' /sdcard/HyperCore_Releases/ && chmod 666 '/sdcard/HyperCore_Releases/$ZIP_OUT'" 2>/dev/null || true
 am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard/HyperCore_Releases/$ZIP_OUT" >/dev/null 2>&1 || true
@@ -359,7 +373,6 @@ am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file:///sdcard
 if [ "$DO_DEPLOY" = "1" ]; then
     echo "deploying to live device modules..."
     if su -c "
-        pkill -9 -x hypercore_daemon 2>/dev/null || true
         pkill -9 -x libhypercore.so 2>/dev/null || true
         pkill -9 -x hypermoon_d 2>/dev/null || true
         for p in \$(pgrep -f '[H]yperMoonOverlay' 2>/dev/null); do [ \"\$p\" != \"\$\$\" ] && kill -9 \"\$p\" 2>/dev/null || true; done
@@ -408,12 +421,14 @@ if [ "$DO_DEPLOY" = "1" ]; then
             cp customize.sh \$MOD_TARGET/customize.sh
             mkdir -p \$MOD_TARGET/scripts
             cp scripts/stock_baseline.sh \$MOD_TARGET/scripts/stock_baseline.sh
+            [ -f sepolicy.rule ] && cp sepolicy.rule \$MOD_TARGET/sepolicy.rule
             cp checksums.txt \$MOD_TARGET/checksums.txt
             chmod 755 \$MOD_TARGET/system/bin/*
             [ -f \$MOD_TARGET/system/bin/hypermoon.dex ] && chmod 644 \$MOD_TARGET/system/bin/hypermoon.dex
             chmod 755 \$MOD_TARGET/service.sh \$MOD_TARGET/post-fs-data.sh \$MOD_TARGET/uninstall.sh
             chmod 644 \$MOD_TARGET/module.prop \$MOD_TARGET/system.prop \$MOD_TARGET/banner.jpg \$MOD_TARGET/changelog.md \$MOD_TARGET/webroot/index.html
             chmod 644 \$MOD_TARGET/customize.sh \$MOD_TARGET/scripts/stock_baseline.sh \$MOD_TARGET/checksums.txt
+            [ -f \$MOD_TARGET/sepolicy.rule ] && chmod 644 \$MOD_TARGET/sepolicy.rule
             rm -f /dev/hypercore.sock \$DATA_TARGET/hypercore.sock \$DATA_TARGET/hypercore.pid 2>/dev/null || true
             exec \$MOD_TARGET/system/bin/libhypercore.so
         fi
