@@ -1,0 +1,33 @@
+# HyperCore SELinux policy — allow the root daemon to tune sysfs/proc/cgroup nodes
+# on enforcing builds. Without this, writes to thermal / battery / cpuset /
+# devfreq nodes fail silently with avc denials and the daemon looks "running
+# but not applied".
+#
+# Applied by Magisk / KernelSU / APatch via sepolicy.rule (magiskpolicy --live).
+# Each line is best-effort (|| true semantics): unknown types on a given ROM
+# are skipped, never abort install.
+
+# sysfs thermal + battery + devfreq + GED/FPSGO
+allow kernel sysfs_thermal_t file { read write open getattr }
+allow kernel sysfs_battery_t file { read write open getattr }
+allow init sysfs file { read write open getattr }
+allow init sysfs_thermal_t file { read write open getattr }
+allow init sysfs_battery_t file { read write open getattr }
+
+# cgroup / cpuset / cpuctl (v1 /dev/cpuset + v2 /sys/fs/cgroup)
+allow kernel cgroup_t dir { search read open }
+allow kernel cgroup_t file { read write open getattr }
+allow init cgroup_t dir { search read open }
+allow init cgroup_t file { read write open getattr }
+
+# proc vm / kernel scheduler + /proc/irq affinity
+allow kernel proc_t file { read write open getattr }
+allow init proc_t file { read write open getattr }
+
+# /dev socket + status telemetry
+allow kernel device file { create read write open getattr unlink rename setattr }
+allow init device file { create read write open getattr unlink rename setattr }
+
+# resetprop (system properties used for latch_unsignaled / low_latency)
+allow kernel property_service property_service { set }
+allow init default_prop property_service { set }
