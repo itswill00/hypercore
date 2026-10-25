@@ -1,5 +1,5 @@
-#!/system/bin/sh
-# HyperCore smart build: incremental fingerprints + parallel frontend/native.
+#!/bin/sh
+# HyperCore build: incremental fingerprints + parallel frontend/native.
 #
 #   ./build.sh                 full smart build (skips unchanged stages)
 #   ./build.sh --deploy, -d    build, then restart live daemons on device
@@ -8,21 +8,23 @@
 #   ./build.sh --clean         wipe generated artifacts + fingerprints
 #   ./build.sh --help          this text
 #
-# How skipping stays safe:
-#   - webui/ skips only when the content hash of webui/src + package files
-#     matches the last build AND webui/dist/index.html still exists.
-#   - daemon skips only when the hash of src/** + every manifest input
-#     matches AND both binaries still exist. A webui rebuild changes
-#     webroot/index.html, which is a manifest input, so the daemon
-#     automatically relinks (the embedded table changed) — no stale binary.
-#   - checksums.txt is ALWAYS regenerated and ALWAYS gated with
-#     `sha256sum -c` before packaging. Skips never bypass the gate.
+# Design rules this script follows:
+#   1. A build NEVER mutates source files. README/DOCUMENTATION versions are
+#      part of the release commit, not something sed rewrites behind git's back.
+#   2. Every generated file (checksums.txt, embedded_checksums.h, webroot/,
+#      system/bin/*) is a build artifact. A clean checkout builds fine.
+#   3. Components that cannot be built in the current environment (the HUD dex
+#      needs a Java toolchain) are skipped cleanly: the manifest and zip adapt,
+#      and the daemon already treats missing HUD pieces as optional at runtime.
+#   4. checksums.txt is regenerated every run and gated with `sha256sum -c`
+#      before packaging. Skips never bypass the gate.
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-OUTPUT_DIR="/data/data/com.termux/files/home/HyperCore_Releases"
+OUTPUT_DIR="${HYPERCORE_OUT:-$PROJECT_DIR/out}"
 FP_DIR="$PROJECT_DIR/build"
 FP_WEBUI="$FP_DIR/.fp_webui"
 FP_DAEMON="$FP_DIR/.fp_daemon"
+FP_HMOON="$FP_DIR/.fp_hmoon"
 
 set -e
 
@@ -37,14 +39,15 @@ for arg in "$@"; do
         --skip-daemon) SKIP_DAEMON=1 ;;
         --clean)
             echo "cleaning generated artifacts..."
-            rm -rf "$PROJECT_DIR/webui/dist" "$PROJECT_DIR/build" \
+            rm -rf "$PROJECT_DIR/webui/dist" "$PROJECT_DIR/build" "$PROJECT_DIR/out" "$PROJECT_DIR/webroot" \
                 "$PROJECT_DIR/system/bin/libhypercore.so" "$PROJECT_DIR/system/bin/hypermoon_d" \
-                "$PROJECT_DIR/checksums.txt" "$PROJECT_DIR/src/include/embedded_checksums.hpp"
+                "$PROJECT_DIR/system/bin/hypermoon.dex" \
+                "$PROJECT_DIR/checksums.txt" "$PROJECT_DIR/src/include/embedded_checksums.h"
             echo "clean."
             exit 0
             ;;
         --help|-h)
-            sed -n '2,17p' "$0"
+            sed -n '2,19p' "$0"
             exit 0
             ;;
         *)
@@ -63,28 +66,6 @@ fi
 VERSION=$(grep '^version=' module.prop | cut -d= -f2)
 VERSION_CODE=$(grep '^versionCode=' module.prop | cut -d= -f2)
 ZIP_OUT="HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip"
-# ponytail: single source of truth = module.prop, ceiling sed is best-effort, no VERSION file dup
-sed -i "s/badge\/Release-v[^-\"]*/badge\/Release-${VERSION}/" README.md 2>/dev/null || true
-sed -i "s/HyperCore-v[^-\"]*-b[0-9][0-9]*/HyperCore-${VERSION}-b${VERSION_CODE}/" README.md 2>/dev/null || true
-sed -i "s/Version.*: v.*/Version        : ${VERSION} (Build ${VERSION_CODE})/" docs/DOCUMENTATION.txt 2>/dev/null || true
-sed -i "s/Release ZIP.*: HyperCore.*/Release ZIP    : HyperCore-${VERSION}-b${VERSION_CODE}-Unified.zip/" docs/DOCUMENTATION.txt 2>/dev/null || true
-sed -i "s/VERSION_NAME=\"v.*\"/VERSION_NAME=\"${VERSION}\"/" customize.sh 2>/dev/null || true
-
-# update.json is consumed by the root manager (module.prop points updateJson at
-# it), not by anything in this repo, so it was never covered by the seds above
-# and drifted the moment the version moved — advertising a release URL for a tag
-# that no longer existed. Regenerate it whole rather than sed-patching JSON: the
-# three fields are all derivable, and a partial patch is how the URL goes stale
-# while the version field looks fine.
-cat > update.json << EOF
-{
-  "version": "${VERSION}",
-  "versionCode": ${VERSION_CODE},
-  "zipUrl": "https://github.com/itswill00/hypercore/releases/download/${VERSION}/${ZIP_OUT}",
-  "changelog": "https://raw.githubusercontent.com/itswill00/hypercore/main/changelog.md"
-}
-EOF
-
 echo "building hypercore ${VERSION} (${VERSION_CODE})"
 
 # Tool checks follow the flags: no node/npm needed for --skip-webui.
@@ -113,7 +94,6 @@ for daemon in libhypercore.so hypermoon_d; do
         exit 1
     fi
 done
-# ecj/dx optional for hypermoon dex (skipped if missing, ponytail: no hard fail for HUD)
 
 mkdir -p "$FP_DIR"
 
@@ -165,12 +145,12 @@ echo "generating sha256 checksums..."
 # libhypercore.so is the one unavoidable exclusion: a binary cannot contain its
 # own hash. It is covered by checksums.txt (generated after the final link) and
 # verified by customize.sh before the daemon is ever started.
-CHECKSUM_FILES="system.prop service.sh post-fs-data.sh uninstall.sh sepolicy.rule changelog.md banner.jpg webroot/index.html scripts/stock_baseline.sh system/bin/hypermoon_d system/bin/hypermoon.dex system/bin/hypercore-bugreport"
+MANIFEST_FILES="system.prop service.sh post-fs-data.sh uninstall.sh sepolicy.rule changelog.md banner.jpg scripts/stock_baseline.sh system/bin/hypercore-bugreport"
 
 write_embedded_table() {
-    cat << 'EOF' > src/include/embedded_checksums.hpp
-#ifndef EMBEDDED_CHECKSUMS_HPP
-#define EMBEDDED_CHECKSUMS_HPP
+    cat << 'EOF' > src/include/embedded_checksums.h
+#ifndef EMBEDDED_CHECKSUMS_H
+#define EMBEDDED_CHECKSUMS_H
 
 typedef struct {
     const char *rel_path;
@@ -181,59 +161,73 @@ static const file_checksum_t g_embedded_checksums[] = {
 EOF
     while read -r hash path; do
         rel_path=$(echo "$path" | sed 's|^\./||')
-        echo "    { \"$rel_path\", \"$hash\" }," >> src/include/embedded_checksums.hpp
+        echo "    { \"$rel_path\", \"$hash\" }," >> src/include/embedded_checksums.h
     done < "$1"
-    cat << 'EOF' >> src/include/embedded_checksums.hpp
+    cat << 'EOF' >> src/include/embedded_checksums.h
 };
 
-#endif /* EMBEDDED_CHECKSUMS_HPP */
+#endif /* EMBEDDED_CHECKSUMS_H */
 EOF
 }
 
 # hypermoon_d compiles while vite runs (independent inputs).
 # Fingerprinted separately: it is deterministic, so an unchanged source
 # keeps the binary (and its manifest hash) bit-identical across runs.
-if [ "$SKIP_DAEMON" -eq 0 ]; then
+HAVE_HMOON_D=0
+if [ -f src/hud/hypermoon_daemon.c ]; then
     NEW_FP_HMOON=$(fingerprint "$FP_DIR/.fp_hmoon.new" src/hud/hypermoon_daemon.c)
-    if fp_match "$NEW_FP_HMOON" "$FP_DIR/.fp_hmoon" && [ -f system/bin/hypermoon_d ]; then
+    if fp_match "$NEW_FP_HMOON" "$FP_HMOON" && [ -f system/bin/hypermoon_d ]; then
         echo "hypermoon unchanged, skipping."
         rm -f "$FP_DIR/.fp_hmoon.new"
+        HAVE_HMOON_D=1
     else
         echo "compiling hypermoon c daemon..."
-        clang -O3 -Wall -Wextra \
+        clang -O3 -Wall -Wextra -I./src/include \
             src/hud/hypermoon_daemon.c \
             -o system/bin/hypermoon_d
         chmod 755 system/bin/hypermoon_d
-        mv "$FP_DIR/.fp_hmoon.new" "$FP_DIR/.fp_hmoon"
+        mv "$FP_DIR/.fp_hmoon.new" "$FP_HMOON"
+        HAVE_HMOON_D=1
     fi
+elif [ -f system/bin/hypermoon_d ]; then
+    HAVE_HMOON_D=1
+fi
 
-    echo "compiling hypermoon java overlay dex..."
-    if command -v ecj >/dev/null 2>&1 && [ -f "src/hud/HyperMoonOverlay.java" ]; then
-    ANDROID_JAR="/data/data/com.termux/files/usr/share/java/android.jar"
-    if [ ! -f "$ANDROID_JAR" ]; then
-        ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
-    fi
+# --- hypermoon dex overlay --------------------------------------------------
+# Needs a Java toolchain (ecj/javac + dx/d8) that Termux does not provide.
+# A hollow dex would hash cleanly into the manifest and pass integrity, then
+# fail at runtime with no clue — so it is either built real or left out, and
+# the manifest/zip adapt to whichever happened. service.sh already guards the
+# overlay launch with [ -f hypermoon.dex ], so a build without it is coherent.
+HAVE_DEX=0
+if [ -f src/hud/HyperMoonOverlay.java ] && { command -v ecj >/dev/null 2>&1 || command -v javac >/dev/null 2>&1; }; then
+    ANDROID_JAR="${ANDROID_JAR:-/data/data/com.termux/files/usr/share/java/android.jar}"
+    [ -f "$ANDROID_JAR" ] || ANDROID_JAR=$(find /data/data/com.termux/files/ -name "android.jar" 2>/dev/null | head -n 1)
     rm -rf build/classes
     mkdir -p build/classes
-    if ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null || javac -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null; then
-    if command -v dx >/dev/null 2>&1; then
-        dx --dex --output=system/bin/hypermoon.dex build/classes
-    elif command -v d8 >/dev/null 2>&1; then
-        d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class 2>/dev/null
-        mv system/bin/classes.dex system/bin/hypermoon.dex 2>/dev/null || true
+    COMPILED=0
+    if command -v ecj >/dev/null 2>&1; then
+        ecj -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null && COMPILED=1
     fi
+    if [ "$COMPILED" -eq 0 ] && command -v javac >/dev/null 2>&1; then
+        javac -cp "$ANDROID_JAR" -d build/classes src/hud/HyperMoonOverlay.java 2>/dev/null && COMPILED=1
     fi
-    rm -rf build/classes
-    [ -f system/bin/hypermoon.dex ] && chmod 644 system/bin/hypermoon.dex || echo "warning: hypermoon.dex not built (ecj/dx missing), continuing"
-    else
-        echo "warning: ecj not found, skipping hypermoon dex build"
-        # Never ship a touched-empty dex: it hashes cleanly into the manifest
-        # and passes integrity, then the overlay fails at runtime with no clue.
-        if [ ! -s system/bin/hypermoon.dex ]; then
-            echo "error: hypermoon.dex missing or empty and no ecj/javac to build it — refusing to ship a hollow overlay"
-            exit 1
+    if [ "$COMPILED" -eq 1 ]; then
+        if command -v d8 >/dev/null 2>&1; then
+            d8 --output system/bin/ build/classes/com/hypermoon/HyperMoonOverlay*.class 2>/dev/null \
+                && mv system/bin/classes.dex system/bin/hypermoon.dex 2>/dev/null && HAVE_DEX=1
+        elif command -v dx >/dev/null 2>&1; then
+            dx --dex --output=system/bin/hypermoon.dex build/classes && HAVE_DEX=1
         fi
     fi
+    rm -rf build/classes
+fi
+if [ "$HAVE_DEX" -eq 1 ]; then
+    chmod 644 system/bin/hypermoon.dex
+    echo "hypermoon dex: built"
+else
+    rm -f system/bin/hypermoon.dex
+    echo "hypermoon dex: skipped (no Java toolchain) — overlay will not ship"
 fi
 
 # Reap vite before its output is hashed into the manifest.
@@ -249,8 +243,11 @@ if [ -n "$WEBUI_PID" ]; then
     fi
     mkdir -p webroot
     cp webui/dist/index.html webroot/index.html
-    rm -f webroot/banner.jpg
     mv "$FP_DIR/.fp_webui.new" "$FP_WEBUI"
+fi
+if [ ! -f webroot/index.html ]; then
+    echo "error: webroot/index.html missing — run without --skip-webui at least once"
+    exit 1
 fi
 
 # Pass 1: a stub table so the pre-hash link has something valid to include.
@@ -258,16 +255,18 @@ rm -f checksums.txt
 write_embedded_table /dev/null
 
 # All non-daemon payloads now exist, so the manifest can be hashed for real.
-for file in $CHECKSUM_FILES; do
+for file in $MANIFEST_FILES webroot/index.html; do
     if [ ! -f "$file" ]; then
         echo "error: expected payload missing, cannot build a trustworthy manifest: $file"
         exit 1
     fi
     sha256sum "$file" >> checksums.txt
 done
+[ "$HAVE_HMOON_D" -eq 1 ] && sha256sum system/bin/hypermoon_d >> checksums.txt
+[ "$HAVE_DEX" -eq 1 ] && sha256sum system/bin/hypermoon.dex >> checksums.txt
 write_embedded_table checksums.txt
 
-NEW_FP_DAEMON=$(fingerprint "$FP_DIR/.fp_daemon.new" src module.prop $CHECKSUM_FILES)
+NEW_FP_DAEMON=$(fingerprint "$FP_DIR/.fp_daemon.new" src module.prop $MANIFEST_FILES webroot/index.html)
 if [ "$SKIP_DAEMON" -eq 1 ]; then
     echo "daemon compile skipped by flag (manifest still regenerated + gated)."
     rm -f "$FP_DIR/.fp_daemon.new"
@@ -329,24 +328,15 @@ mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR/HyperCore-${VERSION}-b${VERSION_CODE}"*.zip
 
 echo "packaging zip package..."
-if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" \
-    module.prop \
-    system.prop \
-    sepolicy.rule \
-    service.sh \
-    post-fs-data.sh \
-    customize.sh \
-    checksums.txt \
-    scripts/stock_baseline.sh \
-    system/bin/libhypercore.so \
-    system/bin/hypercore-bugreport \
-    system/bin/hypermoon_d \
-    system/bin/hypermoon.dex \
-    webroot/index.html \
-    gamelist.txt \
-    changelog.md \
-    uninstall.sh \
-    banner.jpg >/dev/null; then
+ZIP_ENTRIES="module.prop system.prop sepolicy.rule service.sh post-fs-data.sh \
+customize.sh checksums.txt scripts/stock_baseline.sh system/bin/libhypercore.so \
+system/bin/hypercore-bugreport webroot/index.html gamelist.txt changelog.md \
+uninstall.sh banner.jpg"
+[ "$HAVE_HMOON_D" -eq 1 ] && ZIP_ENTRIES="$ZIP_ENTRIES system/bin/hypermoon_d"
+[ "$HAVE_DEX" -eq 1 ] && ZIP_ENTRIES="$ZIP_ENTRIES system/bin/hypermoon.dex"
+
+echo "packaging zip package..."
+if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" $ZIP_ENTRIES >/dev/null; then
     echo "error: packaging failed"
     exit 1
 fi
