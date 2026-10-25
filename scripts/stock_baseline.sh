@@ -85,7 +85,6 @@ io_iostats=$(cat /sys/block/mmcblk0/queue/iostats 2>/dev/null || cat /sys/block/
 sched_migration_cost=$(read_stock_node /proc/sys/kernel/sched_migration_cost_ns 200000)
 sched_latency=$(read_stock_node /proc/sys/kernel/sched_latency_ns 10000000)
 sched_nr_migrate=$(read_stock_node /proc/sys/kernel/sched_nr_migrate 32)
-charge_limit=$(read_stock_node /sys/class/power_supply/battery/constant_charge_current_max 0)
 chg_smart=$(read_stock_node /sys/class/power_supply/battery/smart_chg 0)
 chg_night=$(read_stock_node /sys/class/power_supply/battery/night_charging 0)
 EOF

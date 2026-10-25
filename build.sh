@@ -281,7 +281,6 @@ else
         src/main.c \
         src/cpu.c \
         src/gpu.c \
-        src/thermal.c \
         src/memory.c \
         src/io.c \
         src/gamelist.c \
@@ -290,7 +289,6 @@ else
         src/sysfs.c \
         src/integrity.c \
         src/sha256.c \
-        src/charger.c \
         -o system/bin/libhypercore.so
     chmod 755 system/bin/libhypercore.so
     mv "$FP_DIR/.fp_daemon.new" "$FP_DAEMON"
@@ -371,13 +369,6 @@ if [ "$DO_DEPLOY" = "1" ]; then
         mkdir -p \"\$DATA_TARGET\"
         mkdir -p \"\$DATA_TARGET/hud\"
         if [ -d \"\$MOD_TARGET\" ]; then
-            # Migrate existing user configs from module root to persistent data dir
-            for f in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf; do
-                if [ -f \"\$MOD_TARGET/\$f\" ] && [ ! -f \"\$DATA_TARGET/\$f\" ]; then
-                    cp -f \"\$MOD_TARGET/\$f\" \"\$DATA_TARGET/\$f\" 2>/dev/null || true
-                fi
-                rm -f \"\$MOD_TARGET/\$f\"
-            done
             if [ -f \"\$MOD_TARGET/gamelist.txt\" ] && [ ! -f \"\$DATA_TARGET/gamelist.txt\" ]; then
                 cp -f \"\$MOD_TARGET/gamelist.txt\" \"\$DATA_TARGET/gamelist.txt\" 2>/dev/null || true
             fi

@@ -5,7 +5,7 @@ import { execCommand, sanitize, isKSU, base64EncodeUtf8, shellQuote } from '@/he
 const MOD = '/data/adb/modules/hypercore'
 const DATA = '/data/adb/hypercore'
 // Telemetry lives under /data/adb (root-only), not /sdcard where any app with
-// storage access could read the thermal and charging history.
+// storage access could read usage history.
 const LOG = '/data/adb/hypercore/hypercore.log'
 const LOG_LEGACY = '/sdcard/Android/hypercore.log'
 const GL_PERM = '/data/adb/hypercore/gamelist.txt'
@@ -36,7 +36,6 @@ export const useHyperStore = defineStore('hyper', () => {
   
   const daemonPid = ref('')
   const activeProfile = ref('—')
-  const thermalTier = ref('—')
 
   const cpuLittle = ref('—')
   const cpuBig = ref('—')
@@ -58,36 +57,9 @@ export const useHyperStore = defineStore('hyper', () => {
   const cpuTemp = ref(0)
   const batTemp = ref(0)
   const gpuTemp = ref(0)
-  const chgTemp = ref(0)
   const batStatus = ref('—')
   const batLevel = ref('')
-  const batRate = ref('—')
-  const batVolt = ref('—')
-  const batteryCycles = ref(0)
-  const batHealth = ref('Good')
-  const batCapFull = ref('5350 mAh')
-  const batTech = ref('Li-poly')
 
-  /* Charger Control */
-  const chargeMode = ref(0)              /* CHARGE_MODE_* (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent 6=Custom) */
-  const customLimit = ref(10)            /* Custom slider level (0-15), default 10 */
-  const chargeModeOverride = ref(false)  /* true = daemon overrode user choice due to heat */
-  const chargerSupported = ref(true)     /* true = device has required charger sysfs nodes */
-  const nightCharging = ref(false)       /* true = night charging protection enabled */
-  const smartChg = ref(false)            /* true = smart charging curve enabled */
-  const protect80 = ref(false)           /* true = hard cap at 80% battery capacity */
-  const chargeCurrentMa = ref(0)         /* real-time mA from current_now */
-  const chargeVoltMv = ref(0)            /* real-time mV from voltage_now */
-  const dvfsrcMhz = ref(0)               /* live DDR clock MHz (read-only telemetry) */
-  const chgLimitMax = ref(0)             /* PMIC limit scale ceiling (read-only telemetry) */
-  const sleepBoostActive = ref(false)    /* true = screen-off sleep boost raising charge rate */
-  const effectiveCustomLimit = ref(10)   /* active Custom level on hardware (sleep-boosted when active) */
-
-  const thermalGuardState = computed(() => {
-    if (batStatus.value !== 'Charging') return batStatus.value || 'Standby'
-    if (batRate.value && batRate.value !== '—') return `Charging (${batRate.value})`
-    return 'Charging'
-  })
 
   const moduleVersion = ref('')
   const kernelVersion = ref('—')
@@ -149,22 +121,9 @@ export const useHyperStore = defineStore('hyper', () => {
     }
   }
 
-  let chargerInterval = null
-
-  // pollCpuGpu/pollRamBat removed: dead code, refresh() already covers all keys in one syscall
-
-  function startCardPolling() {
-    if (!chargerInterval) {
-      chargerInterval = setInterval(() => { if (!isRefreshing) pollCharger() }, 2000)
-    }
-  }
-
-  function stopCardPolling() {
-    if (chargerInterval) {
-      clearInterval(chargerInterval)
-      chargerInterval = null
-    }
-  }
+  // Card polling: the single refresh() syscall covers every key; no separate intervals.
+  function startCardPolling() {}
+  function stopCardPolling() {}
 
   async function refresh() {
     if (isRefreshing) return
@@ -187,11 +146,6 @@ echo "CT:$(cat /sys/class/thermal/thermal_zone16/temp 2>/dev/null || cat /sys/cl
 echo "BT:$(cat /sys/class/power_supply/battery/temp 2>/dev/null)";
 echo "BS:$(cat /sys/class/power_supply/battery/status 2>/dev/null)";
 echo "BL:$(cat /sys/class/power_supply/battery/capacity 2>/dev/null)";
-echo "BC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";
-echo "BV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";
-echo "BH:$(cat /sys/class/power_supply/battery/health 2>/dev/null || cat /sys/class/power_supply/bms/health 2>/dev/null)";
-echo "BFC:$(cat /sys/class/power_supply/battery/charge_full 2>/dev/null || cat /sys/class/power_supply/bms/charge_full 2>/dev/null)";
-echo "BTEC:$(cat /sys/class/power_supply/battery/technology 2>/dev/null || cat /sys/class/power_supply/bms/technology 2>/dev/null)";
 echo "IO:$(cat /sys/block/mmcblk0/queue/scheduler /sys/block/sda/queue/scheduler 2>/dev/null | head -1 | sed -e 's/.*\\[\\([^]]*\\)\\].*/\\1/' | awk '{print $1}'):256";
 echo "SW:$(cat /proc/sys/vm/swappiness 2>/dev/null):100";
 echo "ZC:$(grep ^size_mb= /data/adb/hypercore/zram.conf 2>/dev/null | cut -d= -f2)";
@@ -238,30 +192,7 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
         try {
           const ipcData = JSON.parse(kv.IPC.substring(kv.IPC.indexOf('{')))
           if (ipcData.profile) activeProfile.value = ipcData.profile
-          if (ipcData.battery_cycles > 0) batteryCycles.value = ipcData.battery_cycles
           if (ipcData.gpu_temp > 0) gpuTemp.value = ipcData.gpu_temp
-          if (ipcData.chg_temp > 0) chgTemp.value = ipcData.chg_temp
-          if (ipcData.dvfsrc_mhz > 0) dvfsrcMhz.value = ipcData.dvfsrc_mhz
-          if (ipcData.chg_limit_max > 0) chgLimitMax.value = ipcData.chg_limit_max
-          if (typeof ipcData.charge_mode !== 'undefined') chargeMode.value = ipcData.charge_mode
-          if (typeof ipcData.custom_limit !== 'undefined') customLimit.value = ipcData.custom_limit
-          if (typeof ipcData.night_charging !== 'undefined') nightCharging.value = !!ipcData.night_charging
-          if (typeof ipcData.smart_chg !== 'undefined') smartChg.value = !!ipcData.smart_chg
-          if (typeof ipcData.protect_80 !== 'undefined') protect80.value = !!ipcData.protect_80
-          if (typeof ipcData.charger_supported !== 'undefined') chargerSupported.value = !!ipcData.charger_supported
-          if (typeof ipcData.thermal_tier !== 'undefined') {
-            const tierNames = ['Optimal', 'Warm Mitigation', 'Hot Protection']
-            thermalTier.value = tierNames[ipcData.thermal_tier] || `Tier ${ipcData.thermal_tier}`
-          }
-          if (typeof ipcData.charge_thermal_override !== 'undefined') {
-            chargeModeOverride.value = !!ipcData.charge_thermal_override
-          }
-          if (typeof ipcData.sleep_boost_active !== 'undefined') {
-            sleepBoostActive.value = !!ipcData.sleep_boost_active
-          }
-          if (typeof ipcData.effective_custom_limit !== 'undefined') {
-            effectiveCustomLimit.value = ipcData.effective_custom_limit
-          }
           ipcSuccess = true
         } catch {}
       }
@@ -332,33 +263,6 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       batStatus.value = (kv.BS || 'Unknown').trim()
       batLevel.value = (kv.BL || '').trim()
 
-      const rawCurr = Math.abs(parseInt(kv.BC || 0))
-      const rawVolt = parseInt(kv.BV || 0)
-      if (rawCurr > 0) {
-        const ma = Math.round(rawCurr > 10000 ? rawCurr / 1000 : rawCurr)
-        const sign = batStatus.value === 'Charging' ? '+' : '-'
-        batRate.value = `${sign}${ma} mA`
-      } else {
-        batRate.value = '—'
-      }
-
-      if (rawVolt > 0) {
-        const v = (rawVolt > 10000 ? rawVolt / 1000000 : rawVolt / 1000).toFixed(2)
-        batVolt.value = `${v} V`
-      } else {
-        batVolt.value = '—'
-      }
-
-      if (kv.BH) batHealth.value = kv.BH.trim() || 'Good'
-      if (kv.BTEC) batTech.value = kv.BTEC.trim() || 'Li-poly'
-      if (kv.BFC) {
-        const rawFc = parseInt(kv.BFC || 0)
-        if (rawFc > 0) {
-          const mah = Math.round(rawFc > 10000 ? rawFc / 1000 : rawFc)
-          batCapFull.value = `${mah} mAh`
-        }
-      }
-
       if (kv.IO) {
         const p = kv.IO.split(':')
         ioInfo.value = `${p[0] || 'none'} / ${p[1] || '256'} KB`
@@ -405,188 +309,6 @@ if [ "${fetchLogs}" = "1" ]; then echo "===LOG==="; tail -n 35 ${LOG} 2>/dev/nul
       console.error('refresh:', err)
     } finally {
       isRefreshing = false
-    }
-  }
-
-  const usbVoltMv = ref(0)
-  const usbType = ref('—')
-
-  const isNonOemCable = computed(() => {
-    if (batStatus.value !== 'Charging') return false
-    const watt = (chargeCurrentMa.value * chargeVoltMv.value) / 1_000_000
-    /* If charging power is <= 7.5W while in Fast (1) or Violent (5) mode */
-    return watt > 0 && watt <= 7.5 && (chargeMode.value === 1 || chargeMode.value === 5)
-  })
-
-  async function pollCharger() {
-    try {
-      const res = await execCommand(
-        `echo "CC:$(cat /sys/class/power_supply/battery/current_now 2>/dev/null)";` +
-        `echo "CV:$(cat /sys/class/power_supply/battery/voltage_now 2>/dev/null)";` +
-        `echo "UV:$(cat /sys/class/power_supply/usb/voltage_now 2>/dev/null)";` +
-        `echo "UT:$(cat /sys/class/power_supply/usb/real_type 2>/dev/null || cat /sys/class/power_supply/usb/type 2>/dev/null)";` +
-        `echo "CM:$(cat /data/adb/hypercore/status.json 2>/dev/null || cat /dev/hypercore_status.json 2>/dev/null || cat /data/adb/modules/hypercore/status.json 2>/dev/null || echo GET_CHARGE_MODE | nc -w 1 -U /dev/hypercore.sock 2>/dev/null || true)"`
-      )
-      if (!res) return
-      const kv = {}
-      res.trim().split('\n').forEach(line => {
-        const i = line.indexOf(':')
-        if (i > 0) kv[line.substring(0, i)] = line.substring(i + 1)
-      })
-      if (kv.CC) {
-        const rawMa = Math.abs(parseInt(kv.CC || 0))
-        chargeCurrentMa.value = rawMa > 10000 ? Math.round(rawMa / 1000) : rawMa
-      }
-      if (kv.CV) {
-        const rawUv = parseInt(kv.CV || 0)
-        chargeVoltMv.value = rawUv > 10000 ? Math.round(rawUv / 1000) : rawUv
-      }
-      if (kv.UV) {
-        const rawUv = parseInt(kv.UV || 0)
-        usbVoltMv.value = rawUv > 10000 ? Math.round(rawUv / 1000) : rawUv
-      }
-      if (kv.UT) {
-        usbType.value = kv.UT.trim() || 'DCP'
-      }
-      /* Parse charge_mode from status.json or GET_CHARGE_MODE IPC response */
-      if (kv.CM && okJson(kv.CM)) {
-        try {
-          const cm = JSON.parse(kv.CM.substring(kv.CM.indexOf('{')))
-          if (typeof cm.charge_mode !== 'undefined') chargeMode.value = cm.charge_mode
-          if (typeof cm.custom_limit !== 'undefined') customLimit.value = cm.custom_limit
-          if (typeof cm.night_charging !== 'undefined') nightCharging.value = !!cm.night_charging
-          if (typeof cm.smart_chg !== 'undefined') smartChg.value = !!cm.smart_chg
-          if (typeof cm.protect_80 !== 'undefined') protect80.value = !!cm.protect_80
-          if (typeof cm.charge_thermal_override !== 'undefined') chargeModeOverride.value = !!cm.charge_thermal_override
-          if (typeof cm.charger_supported !== 'undefined') chargerSupported.value = !!cm.charger_supported
-          if (typeof cm.sleep_boost_active !== 'undefined') sleepBoostActive.value = !!cm.sleep_boost_active
-          if (typeof cm.effective_custom_limit !== 'undefined') effectiveCustomLimit.value = cm.effective_custom_limit
-        } catch {}
-      }
-    } catch {}
-  }
-
-  async function setChargeMode(mode) {
-    loading.value = true
-    try {
-      const m = parseInt(mode)
-      if (isNaN(m) || m < 0 || m > 6) return 'invalid'
-
-      /* 1. Persist directly to charge_mode.conf as instant disk fallback */
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; chmod 700 /data/adb/hypercore 2>/dev/null || true; echo ${m} > /data/adb/hypercore/charge_mode.conf 2>/dev/null; chmod 600 /data/adb/hypercore/charge_mode.conf 2>/dev/null || true`
-      execCommand(diskCmd).catch(() => {})
-
-      /* 2. Send SET_CHARGE_MODE IPC to UNIX domain socket */
-      const ipcCmd = `echo SET_CHARGE_MODE:${m} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_MODE:${m} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
-      const res = await execCommand(ipcCmd)
-
-      /* Optimistically update state */
-      chargeMode.value = m
-      chargeModeOverride.value = false
-
-      /* 3. If IPC returned JSON response, parse authoritative data directly */
-      if (res && okJson(res)) {
-        try {
-          const data = JSON.parse(res.substring(res.indexOf('{')))
-          if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
-          if (typeof data.custom_limit !== 'undefined') customLimit.value = data.custom_limit
-          if (typeof data.charger_supported !== 'undefined') chargerSupported.value = !!data.charger_supported
-        } catch {}
-      }
-
-      /* 4. Wait 200ms for daemon to flush status.json before running pollCharger to avoid stale race condition */
-      await new Promise(r => setTimeout(r, 200))
-      await pollCharger()
-      return res
-    } catch (e) {
-      return 'error'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function setCustomLimit(limit) {
-    loading.value = true
-    try {
-      const l = parseInt(limit)
-      if (isNaN(l) || l < 0 || l > 15) return 'invalid'
-
-      /* 1. Persist to charge_mode.conf (mode 6) and custom_charge_limit.conf */
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; chmod 700 /data/adb/hypercore 2>/dev/null || true; echo 6 > /data/adb/hypercore/charge_mode.conf 2>/dev/null; echo ${l} > /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null; chmod 600 /data/adb/hypercore/charge_mode.conf /data/adb/hypercore/custom_charge_limit.conf 2>/dev/null || true`
-      execCommand(diskCmd).catch(() => {})
-
-      /* 2. Send SET_CHARGE_LIMIT IPC */
-      const ipcCmd = `echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_CHARGE_LIMIT:${l} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
-      const res = await execCommand(ipcCmd)
-
-      chargeMode.value = 6
-      customLimit.value = l
-      chargeModeOverride.value = false
-
-      if (res && okJson(res)) {
-        try {
-          const data = JSON.parse(res.substring(res.indexOf('{')))
-          if (typeof data.charge_mode !== 'undefined') chargeMode.value = data.charge_mode
-          if (typeof data.custom_limit !== 'undefined') customLimit.value = data.custom_limit
-          if (typeof data.charger_supported !== 'undefined') chargerSupported.value = !!data.charger_supported
-        } catch {}
-      }
-
-      await new Promise(r => setTimeout(r, 200))
-      await pollCharger()
-      return res
-    } catch (e) {
-      return 'error'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function setNightCharging(enabled) {
-    loading.value = true
-    try {
-      const val = enabled ? 1 : 0
-      nightCharging.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/night_charging.conf 2>/dev/null; chmod 600 /data/adb/hypercore/night_charging.conf 2>/dev/null || true`
-      execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_NIGHT_CHARGING:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
-      await execCommand(ipcCmd)
-      await new Promise(r => setTimeout(r, 150))
-      await pollCharger()
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function setSmartChg(enabled) {
-    loading.value = true
-    try {
-      const val = enabled ? 1 : 0
-      smartChg.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/smart_chg.conf 2>/dev/null; chmod 600 /data/adb/hypercore/smart_chg.conf 2>/dev/null || true`
-      execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_SMART_CHG:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_SMART_CHG:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
-      await execCommand(ipcCmd)
-      await new Promise(r => setTimeout(r, 150))
-      await pollCharger()
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function setProtect80(enabled) {
-    loading.value = true
-    try {
-      const val = enabled ? 1 : 0
-      protect80.value = !!val
-      const diskCmd = `mkdir -p /data/adb/hypercore 2>/dev/null; echo ${val} > /data/adb/hypercore/protect_80.conf 2>/dev/null; chmod 600 /data/adb/hypercore/protect_80.conf 2>/dev/null || true`
-      execCommand(diskCmd).catch(() => {})
-      const ipcCmd = `echo SET_PROTECT_80:${val} | nc -w 2 -U /dev/hypercore.sock 2>/dev/null || echo SET_PROTECT_80:${val} | nc -w 2 -U /data/adb/hypercore/hypercore.sock 2>/dev/null || true`
-      await execCommand(ipcCmd)
-      await new Promise(r => setTimeout(r, 150))
-      await pollCharger()
-    } finally {
-      loading.value = false
     }
   }
 
@@ -856,20 +578,14 @@ nohup $MOD/system/bin/libhypercore.so >/dev/null 2>&1 &`
   }
 
   return {
-    daemonPid, activeProfile, thermalTier, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
+    daemonPid, activeProfile, cpuLittle, cpuBig, cpuGov, cpuCores, gpuInfo,
     sysLoad, ramUsage, ramPercent, zramUsage, zramPercent, zramConfiguredMb, zramLiveMb, zramComp, ioInfo, vmInfo,
-    cpuTemp, batTemp, gpuTemp, chgTemp, batStatus, batLevel, batRate, batVolt, batteryCycles,
-    batHealth, batCapFull, batTech, thermalGuardState,
-    chargeMode, customLimit, chargeModeOverride, chargerSupported, chargeCurrentMa, chargeVoltMv,
-    dvfsrcMhz, chgLimitMax, sleepBoostActive, effectiveCustomLimit,
-    usbVoltMv, usbType, isNonOemCable,
-    nightCharging, smartChg, protect80,
+    cpuTemp, batTemp, gpuTemp, batStatus, batLevel,
     games, logs, loading,
     moduleVersion, kernelVersion, chipset, uptime,
     isRunning,
     refresh, flushRam, setZramSize, rebootDevice, restartDaemon, exportLogs, clearLogs, createShortcut,
     addGame, removeGame, updateGameProfile, autoDetectGames, launchGame, setLogsActive, stopUptimeTicker,
-    startCardPolling, stopCardPolling, pollCharger, setChargeMode, setCustomLimit,
-    setNightCharging, setSmartChg, setProtect80
+    startCardPolling, stopCardPolling
   }
 })

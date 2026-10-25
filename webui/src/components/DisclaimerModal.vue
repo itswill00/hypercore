@@ -9,7 +9,7 @@
           <div class="sec-block">
             <div class="sec-title">1. Scope of System Modifications</div>
             <p>
-              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, MediaTek GED DVFS parameters, CPU frequency governor limits, and dynamic thermal charging policies on your MediaTek MT6789 Family device.
+              By using <strong>HyperCore</strong>, you acknowledge that this software applies low-level kernel optimizations, MediaTek GED DVFS parameters and CPU frequency governor limits on your MediaTek MT6789 Family device.
             </p>
           </div>
 
@@ -28,9 +28,9 @@
           </div>
 
           <div class="sec-block">
-            <div class="sec-title">4. Thermal Boundaries &amp; Battery Safety</div>
+            <div class="sec-title">4. Thermal Boundaries</div>
             <p>
-              The daemon monitors battery temperature continuously for system thermal profiling. Charging current limits and fast-charging thermal safety are left 100% to stock OEM hardware drivers.
+              HyperCore does not manage thermal policy or charging. Temperature monitoring, throttling and battery safety are handled exclusively by the vendor thermal stack (mi_thermald) and stock OEM hardware drivers.
             </p>
           </div>
 

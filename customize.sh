@@ -81,7 +81,7 @@ rm -f /data/adb/modules/hypercore/hypercore.sock /data/adb/hypercore/hypercore.s
 ui_print "- Preserving user configurations in /data/adb/hypercore..."
 mkdir -p /data/adb/hypercore
 chmod 700 /data/adb/hypercore 2>/dev/null || true
-for conf in charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf stock_state.conf zram.conf stock_zram.conf; do
+for conf in stock_state.conf zram.conf stock_zram.conf; do
     if [ -f "/data/adb/modules/hypercore/$conf" ] && [ ! -f "/data/adb/hypercore/$conf" ]; then
         cp -f "/data/adb/modules/hypercore/$conf" "/data/adb/hypercore/$conf" 2>/dev/null || true
     fi

@@ -96,97 +96,6 @@
       <div class="section-title">Device Status</div>
       <div class="md3-list-group">
         
-        <!-- Thermal Row -->
-        <div
-          class="md3-list-row expandable-row clickable"
-          :class="{ 'is-expanded': expandedRows['thermal'] }"
-          @click="toggleExpand('thermal')"
-        >
-          <div class="row-header">
-            <div class="row-left">
-              <div class="icon-badge">
-                <Icons name="thermo" :size="18" />
-              </div>
-              <div class="row-meta">
-                <div class="row-title">Temperature &amp; Thermal</div>
-                <div class="row-sub">CPU &amp; battery thermal monitoring</div>
-              </div>
-            </div>
-            <div class="row-val">
-              <span class="expand-caret" :class="{ 'open': expandedRows['thermal'] }">▼</span>
-            </div>
-          </div>
-          <div class="expanded-content">
-            <div class="expanded-inner">
-              <div class="stat-grid-2">
-                <div class="stat-box">
-                  <div class="stat-lbl">CPU temp</div>
-                  <div class="stat-num">{{ store.cpuTemp }}°C</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Battery temp</div>
-                  <div class="stat-num">{{ store.batTemp }}°C</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">GPU temp</div>
-                  <div class="stat-num">{{ store.gpuTemp > 0 ? store.gpuTemp + '°C' : store.cpuTemp + '°C' }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Charger temp</div>
-                  <div class="stat-num">{{ store.chgTemp > 0 ? store.chgTemp + '°C' : store.batTemp + '°C' }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Charging status</div>
-                  <div class="stat-num">{{ store.thermalGuardState }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Battery Row -->
-        <div
-          class="md3-list-row expandable-row clickable"
-          :class="{ 'is-expanded': expandedRows['battery'] }"
-          @click="toggleExpand('battery')"
-        >
-          <div class="row-header">
-            <div class="row-left">
-              <div class="icon-badge">
-                <Icons name="battery" :size="18" />
-              </div>
-              <div class="row-meta">
-                <div class="row-title">Battery &amp; Power</div>
-                <div class="row-sub">Health, cycles &amp; power usage</div>
-              </div>
-            </div>
-            <div class="row-val">
-              <span class="expand-caret" :class="{ 'open': expandedRows['battery'] }">▼</span>
-            </div>
-          </div>
-          <div class="expanded-content">
-            <div class="expanded-inner">
-              <div class="stat-grid-2">
-                <div class="stat-box">
-                  <div class="stat-lbl">Battery cycles</div>
-                  <div class="stat-num">{{ store.batteryCycles > 0 ? store.batteryCycles + ' cycles' : '—' }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Health &amp; status</div>
-                  <div class="stat-num">{{ store.batHealth }} ({{ store.batStatus }})</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Full capacity</div>
-                  <div class="stat-num">{{ store.batCapFull }}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-lbl">Technology</div>
-                  <div class="stat-num">{{ store.batTech }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Hardware & System Group -->
@@ -218,7 +127,6 @@
               Platform: MediaTek MT6789 (6nm)<br/>
               CPU: 2x Cortex-A76 @ 2.2 GHz &amp; 6x Cortex-A55 @ 2.0 GHz<br/>
               GPU: ARM Mali-G57 MC2 @ 950 MHz<br/>
-              <span v-if="store.dvfsrcMhz > 0">DDR: {{ (store.dvfsrcMhz / 1000).toFixed(2) }} GHz live interconnect clock</span>
             </div>
           </div>
         </div>

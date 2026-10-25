@@ -123,7 +123,6 @@ fi
 
 # Reset charging control
 [ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null
-[ -f "/sys/class/power_supply/battery/charge_control_limit" ] && echo 0 > /sys/class/power_supply/battery/charge_control_limit 2>/dev/null
 
 # Clean up symlinks, lock files & runtime state
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null
@@ -143,20 +142,20 @@ cmd appops set android     SYSTEM_ALERT_WINDOW default 2>/dev/null || true
 pm revoke com.android.shell android.permission.SYSTEM_ALERT_WINDOW 2>/dev/null || true
 
 # Preserve user configuration instead of deleting it with the runtime state.
-# The previous `rm -rf /data/adb/hypercore` took the charge-mode and limit
-# settings, the hand-built gamelist, the HyperMoon HUD config and every log with
+# The previous `rm -rf /data/adb/hypercore` took the hand-built gamelist, the
+# HyperMoon HUD config and every log with
 # it, so uninstalling to "reset" the module silently cost the user all of it and
 # a reinstall started from nothing. Runtime and scratch state still go; only the
 # settings the user actually configured survive, in a timestamped sidecar.
 PRESERVE_DIR="/data/adb/hypercore_removed"
-PRESERVE_LIST="charge_mode.conf custom_charge_limit.conf night_charging.conf smart_chg.conf protect_80.conf battery_cycle.conf stock_state.conf zram.conf stock_zram.conf gamelist.txt"
+PRESERVE_LIST="stock_state.conf zram.conf stock_zram.conf gamelist.txt"
 if [ -d /data/adb/hypercore ]; then
     kept=""
     for f in $PRESERVE_LIST; do
         [ -f "/data/adb/hypercore/$f" ] && kept="$kept $f"
     done
-    # HUD layout is user configuration too — losing it while charger and
-    # gamelist settings survive made no sense.
+    # HUD layout is user configuration too — losing it while the gamelist
+    # survives made no sense.
     _hud_kept=""
     for hf in config.json position.json; do
         [ -f "/data/adb/hypercore/hud/$hf" ] && _hud_kept="$_hud_kept $hf"

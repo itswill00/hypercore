@@ -31,9 +31,6 @@
             <div class="banner-chip" v-if="store.ramUsage && store.ramUsage !== '—'">
               <span>RAM: {{ store.ramUsage }}</span>
             </div>
-            <div class="banner-chip" v-if="store.batStatus === 'Charging'">
-              <span>Chg: {{ store.batRate !== '—' ? store.batRate : 'Active' }}</span>
-            </div>
             <div class="banner-chip" v-if="store.uptime && store.uptime !== '—'">
               <span>Up: {{ store.uptime }}</span>
             </div>
