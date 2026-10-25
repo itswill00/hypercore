@@ -12,7 +12,7 @@ system/bin/hypermoon.dex
 *.log
 .hypercore_lock
 checksums.sha256
-src/include/embedded_checksums.hpp
+src/include/embedded_checksums.h
 
 # Generated frontend build artifacts
 webroot/index.html
@@ -37,3 +37,4 @@ GEMINI.md
 AGENTS.md
 .cursorrules
 
+checksums.txt
