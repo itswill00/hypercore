@@ -12,7 +12,6 @@
           <div class="page-header-sub">{{ headerSub }}</div>
         </div>
         <span v-if="headerPath === '/'" class="badge-pill" style="font-size:11px; padding:4px 10px;">{{ store.moduleVersion || '—' }}</span>
-        <span v-else-if="headerPath === '/charger'" class="badge-pill" style="font-size:11px; padding:4px 10px;" :style="!store.chargerSupported ? 'background:var(--surface-container-highest);color:var(--on-surface-variant);' : ''">{{ chargerHeaderBadge }}</span>
         <span v-else-if="headerPath === '/games'" class="badge-pill" style="font-size:11px; padding:4px 10px;">{{ store.games.length }} games</span>
         <span v-else-if="headerPath === '/about'" class="badge-pill" style="font-size:11px; padding:4px 10px;">{{ store.moduleVersion || '—' }}</span>
         <span v-else-if="headerPath === '/logs'" class="menu-relative-container" style="margin-left:auto;" @click.stop>
@@ -31,7 +30,6 @@
       </div>
       <div ref="snapContainer" class="snap-container" :class="{ 'no-snap': snapSuspend }" style="transition: opacity 120ms ease;" @touchstart="onLogsTouchStart" @touchend="onLogsTouchEnd" @scroll.passive="onSnapScroll" @click="logsMenuOpen=false">
         <div class="tab-pane"><HomeView /></div>
-        <div class="tab-pane"><ChargerView /></div>
         <div class="tab-pane"><GamesView /></div>
         <div class="tab-pane"><AboutView /></div>
         <div class="tab-pane"><LogsView /></div>
@@ -56,7 +54,6 @@ import Navigation from '@/components/Navigation.vue'
 import DisclaimerModal from '@/components/DisclaimerModal.vue'
 import Icons from '@/components/icons/Icons.vue'
 import HomeView from '@/views/HomeView.vue'
-import ChargerView from '@/views/ChargerView.vue'
 import GamesView from '@/views/GamesView.vue'
 import LogsView from '@/views/LogsView.vue'
 import AboutView from '@/views/AboutView.vue'
@@ -69,7 +66,7 @@ const toastMsg = ref('')
 let toastTimer = null
 let refreshInterval = null
 
-const routesOrder = ['/', '/charger', '/games', '/about', '/logs']
+const routesOrder = ['/', '/games', '/about', '/logs']
 const snapContainer = ref(null)
 let isProgrammaticScroll = false
 let scrollDebounceTimer = null
@@ -89,37 +86,12 @@ const headerPath = computed(() => routesOrder[headerIdx.value] || '/')
 
 const headerMap = {
   '/': { title: 'Dashboard', sub: 'Performance & Status Overview' },
-  '/charger': { title: 'Charger Control', sub: 'Charging speed & protection' },
   '/games': { title: 'Detected Games', sub: 'Auto profile switching' },
   '/logs': { title: 'Activity Log', sub: 'Profile & system events' },
   '/about': { title: 'About Device', sub: 'System & Community' },
 }
 const headerTitle = computed(() => headerMap[headerPath.value]?.title || 'HyperCore')
 const headerSub = computed(() => headerMap[headerPath.value]?.sub || '')
-
-const sliderSteps = [
-  { limit: 15, label: 'Trickle Minimum', current: '~500 mA' },
-  { limit: 14, label: 'Gentle Overnight', current: '~750 mA' },
-  { limit: 13, label: 'Cool Steady', current: '~1,200 mA' },
-  { limit: 12, label: 'Mild Steady', current: '~1,600 mA' },
-  { limit: 11, label: 'Daily Efficient', current: '~2,000 mA' },
-  { limit: 10, label: 'Balanced Sweetspot', current: '~2,300 mA' },
-  { limit: 9, label: 'Balanced Boost', current: '~2,550 mA' },
-  { limit: 8, label: 'Express Flow', current: '~2,800 mA' },
-  { limit: 7, label: 'Express Boost', current: '~3,000 mA' },
-  { limit: 6, label: 'High Speed', current: '~3,200 mA' },
-  { limit: 5, label: 'Turbo Flow', current: '~3,450 mA' },
-  { limit: 4, label: 'Turbo Rate', current: '~3,700 mA' },
-  { limit: 3, label: 'Peak Flow', current: '~3,900 mA' },
-  { limit: 2, label: 'Extreme Rate', current: '~4,100 mA' },
-  { limit: 1, label: 'Ultra Peak', current: '~4,300 mA' },
-  { limit: 0, label: 'Max Unrestricted', current: '~4,500 mA' },
-]
-const chargerHeaderBadge = computed(() => {
-  if (!store.chargerSupported) return 'Unsupported'
-  const f = sliderSteps.find(s => s.limit === store.customLimit)
-  return f ? f.current : '—'
-})
 
 function switchTab(path, smooth = true) {
   const idx = routesOrder.indexOf(path)
