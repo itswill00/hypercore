@@ -108,11 +108,11 @@ hypercore/
 │   ├── sha256.c                 # Self-contained native SHA-256 implementation
 │   ├── log.c                    # Rotating filesystem logger
 │   ├── hud/                     # HyperMoon HUD native subsystem
-│   │   ├── hypermoon_d.c   # Lightweight C telemetry collector
+│   │   ├── hypermoon_daemon.c # Lightweight C telemetry collector
 │   │   └── HyperMoonOverlay.java# Dalvik/Surface overlay renderer
 │   └── include/                 # C headers and data structures
-│       ├── common.hpp           # Global structs (hw_nodes, core_state, profiles)
-│       └── *.hpp                # Subsystem header declarations
+│       ├── common.h            # Global structs (hw_nodes, core_state, profiles)
+│       └── *.h                 # Subsystem header declarations
 ├── system/bin/                  # Deployed root utilities
 │   └── hypercore-bugreport      # Automated diagnostics and telemetry bundler
 └── webui/                       # Material Design 3 WebUI Dashboard (Vue 3 + Vite)
@@ -190,7 +190,7 @@ readings with built-in hysteresis guards:
 |        | CPU >= 70°C       | (2.0 GHz for MOBA). Vendor suppression OFF.        |
 |        |                   | Clears at Bat <= 42°C and CPU <= 64°C.            |
 +--------+-------------------+--------------------------------------------------+
-| Tier 2 | Bat >= 48°C or    | Ceiling: Little 1.8 GHz, Big 1.8 GHz               |
+| Tier 2 | Bat >= 48°C or    | Ceiling: Little 1.4 GHz, Big 1.5 GHz               |
 |        | CPU >= 75°C       | Vendor suppression OFF.                           |
 |        |                   | Clears to Tier 0/1 at Bat <= 44°C, CPU <= 68°C.  |
 +--------+-------------------+--------------------------------------------------+
@@ -198,6 +198,10 @@ readings with built-in hysteresis guards:
 Ceilings are clamped down to the hardware's own reported maximum, so a part
 that reports a lower ceiling is never pushed above it. There is no Tier 3.
 Earlier revisions had four tiers; the top tier was removed in cb6a602.
+Before the ceiling-table refactor the Tier 2 arm carried the same 1.8/1.8
+numbers as Tier 1, so the documented 1.4/1.5 values never took effect;
+thermal_ceiling_mhz() in src/thermal.c is now the single table both the
+daemon and this section derive from.
 
 Until v6.11.0 the Tier 1 ceiling applied only to the MOBA profile — a plain
 Gaming title fell through to the hardware maximum with no mitigation at all,
@@ -443,11 +447,21 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
 ================================================================================
 The repository build system (`build.sh`) manages the full build lifecycle:
 1. Compiles WebUI into single-file `webroot/index.html` via Vite.
-2. Updates `checksums.txt` and generates `src/include/embedded_checksums.hpp`.
-3. Compiles C sources with Termux/NDK Clang using `-O3 -Wall -Werror` flags.
-4. Packages clean release zip into `/data/data/com.termux/files/home/HyperCore_Releases/HyperCore-vX.Y.Z-Unified.zip` (`~/HyperCore_Releases/`).
+2. Regenerates `checksums.txt` and `src/include/embedded_checksums.h` every
+   run, gated with `sha256sum -c` before packaging.
+3. Compiles C sources with Clang using `-O3 -Wall -Werror` flags.
+4. Packages clean release zip into `./out/`
+   (`HyperCore-vX.Y.Z-bNNNN-Unified.zip`; override the destination with
+   `HYPERCORE_OUT=...`).
 5. When `--deploy` is specified, updates `/data/adb/modules/hypercore/` in-place
    and restarts active daemon instances.
+
+Notes:
+- A build never mutates source files; version strings in README and this
+  document are updated in the release commit, not by the build script.
+- The HUD dex overlay is optional: it is built when a Java toolchain
+  (ecj/javac + dx/d8) is available and cleanly omitted otherwise — the
+  manifest and zip adapt, and `service.sh` already guards the overlay launch.
 
 ================================================================================
 9. DEVELOPMENT INVARIANTS & SYSTEM RULES
@@ -455,7 +469,8 @@ The repository build system (`build.sh`) manages the full build lifecycle:
 1. Zero Frequency Locking: Frequencies must remain dynamic under governor logic.
 2. Target Hardware Scope: Strictly MediaTek MT6789 Family (Helio G99/G100/G200).
 3. GKI Sysfs Fallback: Always use fallback arrays for Cgroup and kernel nodes.
-4. Zero Storage Pollution: Build release ZIPs exclusively in `~/HyperCore_Releases/` (`/data/data/com.termux/files/home/HyperCore_Releases/`).
+4. Zero Storage Pollution: Build release ZIPs exclusively in `./out/` inside the
+   repository (gitignored; override the destination with `HYPERCORE_OUT`).
 5. Git Branch Workflow: Active development on `experimental`, fast-forward merged to `main`.
 6. Language Standard: 100% natural, clean English across all code, UI, and documentation.
 ================================================================================

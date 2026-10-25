@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/Kernel-Linux_5.10_--_6.12_GKI-green.svg" alt="Kernel">
   <img src="https://img.shields.io/badge/Arch-ARM64-lightgrey.svg" alt="Architecture">
   <img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20APatch%20%7C%20Magisk-brightgreen.svg" alt="Root">
-  <img src="https://img.shields.io/badge/Language-C99%20%7C%20Vue%203-blueviolet.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Language-C17%20%7C%20Vue%203-blueviolet.svg" alt="Language">
 </p>
 
 <p align="center">
@@ -327,20 +327,20 @@ flowchart TD
 ```text
 src/
 ├── include/
-│   ├── charger.hpp              # 7 charge modes, ladder + hysteresis API
-│   ├── common.hpp               # hw_nodes / core_state / stock_baseline structs
-│   ├── cpu.hpp                  # Profile matrix + governor/freq API
-│   ├── embedded_checksums.hpp   # GENERATED — SHA-256 table (do not hand-edit)
-│   ├── gamelist.hpp             # Foreground game detector + PID cache
-│   ├── gpu.hpp                  # GED / FPSGO / Mali devfreq API
-│   ├── integrity.hpp            # Embedded integrity-check API
-│   ├── io.hpp                   # Read-ahead, nr_requests, IRQ affinity
-│   ├── ipc.hpp                  # UNIX socket protocol
-│   ├── log.hpp                  # Leveled logging + rotation
-│   ├── memory.hpp               # Swappiness, VM, swap-pool awareness, purge
-│   ├── sha256.hpp               # SHA-256 implementation
-│   ├── sysfs.hpp                # Dual-kernel sysfs I/O + touch rediscovery
-│   └── thermal.hpp              # Zone scoring, 3-tier guard
+│   ├── charger.h  # 7 charge modes, ladder + hysteresis API
+│   ├── common.h  # hw_nodes / core_state / stock_baseline structs
+│   ├── cpu.h  # Profile matrix + governor/freq API
+│   ├── embedded_checksums.h  # GENERATED — SHA-256 table (do not hand-edit)
+│   ├── gamelist.h  # Foreground game detector + PID cache
+│   ├── gpu.h  # GED / FPSGO / Mali devfreq API
+│   ├── integrity.h  # Embedded integrity-check API
+│   ├── io.h  # Read-ahead, nr_requests, IRQ affinity
+│   ├── ipc.h  # UNIX socket protocol
+│   ├── log.h  # Leveled logging + rotation
+│   ├── memory.h  # Swappiness, VM, swap-pool awareness, purge
+│   ├── sha256.h  # SHA-256 implementation
+│   ├── sysfs.h  # Dual-kernel sysfs I/O + touch rediscovery
+│   └── thermal.h  # Zone scoring, 3-tier guard
 ├── hud/
 │   ├── hypermoon_daemon.c       # C telemetry collector (hypermoon_d)
 │   └── HyperMoonOverlay.java    # DEX overlay renderer
@@ -404,7 +404,7 @@ Compiles the C daemon, rebuilds the WebUI, regenerates checksums (two-pass: stub
 Output:
 
 ```text
-~/HyperCore_Releases/HyperCore-v6.11.4-b6114-Unified.zip
+out/HyperCore-v6.11.4-b6114-Unified.zip
 ```
 
 | Tool | Needed for |
@@ -412,7 +412,7 @@ Output:
 | `clang` | `libhypercore.so` + `hypermoon_d` (`-O3 -Werror`) |
 | `node` / `npm` | WebUI (`vite build` → single file) |
 | `zip` | Release packaging |
-| `ecj` + `dx`/`d8` | *Optional* — HyperMoon DEX (skipped gracefully if absent) |
+| `ecj`/`javac` + `dx`/`d8` | *Optional* — HyperMoon DEX (built when present, cleanly skipped when absent) |
 
 Deploy straight to the live device (root) after building:
 
