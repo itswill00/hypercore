@@ -1,8 +1,8 @@
 id=hypercore
 name=HyperCore
-version=v6.11.5
-versionCode=6115
+version=v6.12.0
+versionCode=6120
 author=@itswill00
-description=Universal Dual-Kernel (Kernel 5.10-6.12 GKI) Performance & Thermal Optimizer for MediaTek MT6789 (Helio G99/G100/G200) with Material Design 3 WebUI.
+description=Universal Dual-Kernel (Kernel 5.10-6.12 GKI) Performance Optimizer for MediaTek MT6789 (Helio G99/G100/G200) with Material Design 3 WebUI.
 updateJson=https://raw.githubusercontent.com/itswill00/hypercore/main/update.json
 banner=banner.jpg

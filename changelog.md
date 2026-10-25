@@ -1,3 +1,36 @@
+# HyperCore v6.12.0 — Pure Performance Edition
+
+Feature removal release: the charger-control and thermal-guard subsystems
+are gone. HyperCore is now a pure performance tuner — CPU, GPU, storage,
+memory, game detection and the HyperMoon HUD. Nothing else.
+
+## Removed
+
+- **Charger control** (`src/charger.c`): the 7 charge modes, 16-level
+  hardware slider, night/smart/80% protections, sleep boost, charging
+  thermal ladder and BMS cycle healing. The kernel and vendor charger
+  driver own charging again, fully untouched.
+- **Thermal guard** (`src/thermal.c`): the 3-tier ceiling engine, gaming
+  thermal bypass and sensor scoring. `mi_thermald`, FPSGO thermal and the
+  GPU devfreq cooler are the sole thermal authority; the daemon keeps
+  `sconfig` and `fpsgo_thrm_enable` at their stock values in every profile
+  and never writes a thermal policy node.
+- **WebUI**: the Charger tab, all charge/thermal telemetry fields and the
+  battery-extra rows in About.
+- **IPC**: `SET_CHARGE_MODE`, `SET_CHARGE_LIMIT`, `GET_CHARGE_MODE`,
+  `SET_NIGHT_CHARGING`, `SET_SMART_CHG`, `SET_PROTECT_80` removed —
+  external scripts using them now receive an "Unknown command" error.
+  `GET_STATUS` is reduced to profile, gpu load, temps (informational),
+  uptime and the DDR clock.
+
+## Behavior notes
+
+- Gaming/MOBA hold the full hardware frequency ceilings; only vendor
+  throttling can step them down under heat.
+- The stock-state baseline no longer captures or restores charger nodes.
+- Bugreport still dumps thermal/battery nodes (diagnostics), and the
+  HyperMoon HUD still shows battery metrics (display-only).
+
 # HyperCore v6.11.5 — Build Reproducibility & Thermal Correctness
 
 Refactor pass focused on making the tree build from a clean checkout and on
