@@ -1,13 +1,13 @@
 /* Required for struct ucred / SO_PEERCRED before any header is pulled in. */
 #define _GNU_SOURCE
 
-#include "ipc.hpp"
-#include "cpu.hpp"
-#include "sysfs.hpp"
-#include "memory.hpp"
-#include "log.hpp"
-#include "thermal.hpp"
-#include "charger.hpp"
+#include "ipc.h"
+#include "cpu.h"
+#include "sysfs.h"
+#include "memory.h"
+#include "log.h"
+#include "thermal.h"
+#include "charger.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
@@ -199,6 +199,72 @@ void close_ipc_socket(void) {
     }
 }
 
+/* One serializer for the whole status document.
+ *
+ * GET_STATUS and the periodic status.json writer used to carry two separate
+ * snprintf format strings that had already drifted: the socket reply reported
+ * uptime_sec, bat_health, bat_status and bat_tech, while status.json — the
+ * source the WebUI polls first — silently omitted all four. Two copies of a
+ * 25-field format string is a contract nobody can keep in sync, so both paths
+ * now render through here. */
+static int build_status_json(char *out, size_t cap, int cpu_temp, int bat_temp) {
+    int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
+    const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4)
+                           ? g_profile_names[g_state.current_profile] : "Interactive";
+
+    long uptime_sec = (long)difftime(time(NULL), s_start_time);
+    int bat_cycles = get_true_battery_cycles();
+
+    char bat_health[32] = "Good";
+    if (!sysfs_read_str("/sys/class/power_supply/battery/health", bat_health, sizeof(bat_health))) {
+        sysfs_read_str("/sys/class/power_supply/bms/health", bat_health, sizeof(bat_health));
+    }
+
+    char bat_status[32] = "Discharging";
+    if (!sysfs_read_str("/sys/class/power_supply/battery/status", bat_status, sizeof(bat_status))) {
+        sysfs_read_str("/sys/class/power_supply/bms/status", bat_status, sizeof(bat_status));
+    }
+
+    char bat_tech[32] = "Li-poly";
+    if (!sysfs_read_str("/sys/class/power_supply/battery/technology", bat_tech, sizeof(bat_tech))) {
+        sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
+    }
+
+    /* Read dedicated GPU and charger thermal zones with CPU/battery fallback */
+    int gpu_temp = read_gpu_temp(cpu_temp);
+    int chg_temp = read_chg_temp(bat_temp);
+
+    /* Read-only hardware telemetry (zero tuning, informational only) */
+    int dvfsrc_mhz = 0, chg_limit_max = 0;
+    read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
+
+    int jn = snprintf(out, cap,
+        "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,"
+        "\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
+        "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
+        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,"
+        "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
+        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
+        "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
+        "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
+        getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
+        g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
+        bat_health, bat_status, bat_tech,
+        g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
+        g_state.charge_mode, g_state.custom_charge_limit,
+        g_state.night_charging, g_state.smart_chg, g_state.protect_80,
+        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
+        g_state.sleep_boost_active, g_state.effective_custom_limit,
+        dvfsrc_mhz, chg_limit_max);
+
+    /* Truncation is a bug, not a condition to paper over: a partial document
+     * parses as corrupt JSON in the WebUI. Report it as an empty reply instead
+     * so the caller never writes half an object. */
+    if (jn < 0 || (size_t)jn >= cap) return 0;
+    return jn;
+}
+
 static void process_client(int client_fd) {
     char req[256];
     int n = read_request(client_fd, req, sizeof(req));
@@ -216,57 +282,9 @@ static void process_client(int client_fd) {
         int bat_temp = sysfs_read_int(g_nodes.bat_temp);
         normalize_thermal_temps(&cpu_temp, &bat_temp);
 
-        int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-        const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4) ?
-                                g_profile_names[g_state.current_profile] : "Unknown";
-
-        time_t now = time(NULL);
-        long uptime_sec = (long)difftime(now, s_start_time);
-        int bat_cycles = get_true_battery_cycles();
-
-        char bat_health[32] = "Good";
-        if (!sysfs_read_str("/sys/class/power_supply/battery/health", bat_health, sizeof(bat_health))) {
-            sysfs_read_str("/sys/class/power_supply/bms/health", bat_health, sizeof(bat_health));
-        }
-
-        char bat_status[32] = "Discharging";
-        if (!sysfs_read_str("/sys/class/power_supply/battery/status", bat_status, sizeof(bat_status))) {
-            sysfs_read_str("/sys/class/power_supply/bms/status", bat_status, sizeof(bat_status));
-        }
-
-        char bat_tech[32] = "Li-poly";
-        if (!sysfs_read_str("/sys/class/power_supply/battery/technology", bat_tech, sizeof(bat_tech))) {
-            sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
-        }
-
-        /* Read dedicated GPU and charger thermal zones with CPU/battery fallback */
-        int gpu_temp = read_gpu_temp(cpu_temp);
-        int chg_temp = read_chg_temp(bat_temp);
-
-        /* Read-only hardware telemetry (zero tuning, informational only) */
-        int dvfsrc_mhz = 0, chg_limit_max = 0;
-        read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
-
-        char json[1152];
-        int jn = snprintf(json, sizeof(json),
-            "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
-            "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
-            "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
-            "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
-            "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
-            "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
-            "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
-            getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
-            g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
-            bat_health, bat_status, bat_tech,
-            g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-            g_state.charge_mode, g_state.custom_charge_limit,
-            g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
-            g_state.sleep_boost_active, g_state.effective_custom_limit,
-            dvfsrc_mhz, chg_limit_max);
-        if (jn > 0 && (size_t)jn < sizeof(json)) write(client_fd, json, (size_t)jn);
+        char json[STATUS_JSON_MAX];
+        int jn = build_status_json(json, sizeof(json), cpu_temp, bat_temp);
+        if (jn > 0) write(client_fd, json, (size_t)jn);
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
         const char *pname = req + 12;
         if (strncasecmp(pname, "AUTO", 4) == 0 || strncasecmp(pname, "DYNAMIC", 7) == 0 || strncasecmp(pname, "DEFAULT", 7) == 0) {
@@ -496,38 +514,11 @@ void handle_ipc_events(int timeout_ms) {
 }
 
 void update_status_json_file(int cpu_temp, int bat_temp) {
-    const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4)
-                           ? g_profile_names[g_state.current_profile] : "Interactive";
-
     /* cpu_temp and bat_temp are pre-read by the main loop — no redundant sysfs open here */
-    int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
-    int bat_cycles = get_true_battery_cycles();
-
-    /* Read gpu_temp and chg_temp for status.json consistency with GET_STATUS IPC response */
-    int gpu_temp = read_gpu_temp(cpu_temp);
-    int chg_temp = read_chg_temp(bat_temp);
-
-    /* Read-only hardware telemetry (zero tuning, informational only) */
-    int dvfsrc_mhz = 0, chg_limit_max = 0;
-    read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
-
-    char json[1152];
-    snprintf(json, sizeof(json),
-        "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
-        "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,"
-        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,\"custom_limit\":%d,"
-        "\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
-        "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
-        "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
-        getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
-        g_state.is_charging, gpu_load, bat_cycles,
-        g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-        g_state.charge_mode, g_state.custom_charge_limit,
-        g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
-        g_state.sleep_boost_active, g_state.effective_custom_limit,
-        dvfsrc_mhz, chg_limit_max);
+    char json[STATUS_JSON_MAX];
+    if (build_status_json(json, sizeof(json), cpu_temp, bat_temp) <= 0) {
+        return;
+    }
 
     char data_status[300];
     snprintf(data_status, sizeof(data_status), "%s/status.json", g_nodes.data_dir);
@@ -566,7 +557,7 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
          * umask. Left alone, the copy in /dev landed as 0644 and every app on
          * the device could read battery health, cycle count, temperatures and
          * charge mode — the opposite of the root-only telemetry path
-         * common.hpp documents, since /dev is not behind /data/adb's 0700. */
+         * common.h documents, since /dev is not behind /data/adb's 0700. */
         if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0) {
             fclose(f);
             unlink(tmp);
