@@ -1,6 +1,6 @@
 
-#include "sysfs.hpp"
-#include "io.hpp"
+#include "sysfs.h"
+#include "io.h"
 
 int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
     if (!path || path[0] == '\0' || !out_buf || max_len == 0) return 0;
@@ -30,7 +30,7 @@ int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) 
     return 0;
 }
 
-#include "log.hpp"
+#include "log.h"
 
 /* Per-path error log throttling table with static storage to prevent dangling pointers */
 #define SYSFS_ERR_SLOTS 16
@@ -156,8 +156,8 @@ int sysfs_read_int(const char *path) {
     return atoi(buf);
 }
 
-#include "log.hpp"
-#include "gpu.hpp"
+#include "log.h"
+#include "gpu.h"
 
 stock_baseline_t g_stock_baseline;
 
@@ -459,7 +459,7 @@ void init_stock_baseline(void) {
     if (!sysfs_read_str_fallback(downdiff_nodes, g_stock_baseline.mali_downdiff, sizeof(g_stock_baseline.mali_downdiff))) strcpy(g_stock_baseline.mali_downdiff, "20");
     const char *mali_min_nodes[] = {"/sys/class/devfreq/13000000.mali/min_freq","/sys/class/devfreq/soc:mali/min_freq",NULL};
     if (!sysfs_read_str_fallback(mali_min_nodes, g_stock_baseline.mali_min_freq, sizeof(g_stock_baseline.mali_min_freq))) strcpy(g_stock_baseline.mali_min_freq, "390000000");
-    strcpy(g_stock_baseline.mali_max_freq, get_max_gpu_freq_hz());
+    snprintf(g_stock_baseline.mali_max_freq, sizeof(g_stock_baseline.mali_max_freq), "%s", get_max_gpu_freq_hz());
 
     /* MediaTek GED & FPSGO */
     sysfs_read_str("/sys/module/ged/parameters/boost_gpu_enable", g_stock_baseline.boost_gpu_enable, sizeof(g_stock_baseline.boost_gpu_enable));

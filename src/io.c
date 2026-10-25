@@ -1,5 +1,5 @@
 
-#include "io.hpp"
+#include "io.h"
 
 void set_read_ahead(const char *kb_val) {
     DIR *d = opendir("/sys/block");

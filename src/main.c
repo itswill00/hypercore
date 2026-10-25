@@ -1,15 +1,15 @@
 
-#include "common.hpp"
-#include "sysfs.hpp"
-#include "log.hpp"
-#include "cpu.hpp"
-#include "gpu.hpp"
-#include "memory.hpp"
-#include "io.hpp"
-#include "thermal.hpp"
-#include "gamelist.hpp"
-#include "ipc.hpp"
-#include "charger.hpp"
+#include "common.h"
+#include "sysfs.h"
+#include "log.h"
+#include "cpu.h"
+#include "gpu.h"
+#include "memory.h"
+#include "io.h"
+#include "thermal.h"
+#include "gamelist.h"
+#include "ipc.h"
+#include "charger.h"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Gaming", "Gaming MOBA"
@@ -139,7 +139,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; bl_paths[i]; i++) {
         if (access(bl_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.backlight, bl_paths[i]);
+            snprintf(g_nodes.backlight, sizeof(g_nodes.backlight), "%s", bl_paths[i]);
             break;
         }
     }
@@ -153,7 +153,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; thp_paths[i]; i++) {
         if (access(thp_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.touch_thp_smooth, thp_paths[i]);
+            snprintf(g_nodes.touch_thp_smooth, sizeof(g_nodes.touch_thp_smooth), "%s", thp_paths[i]);
             break;
         }
     }
@@ -167,7 +167,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; noise_paths[i]; i++) {
         if (access(noise_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.touch_thp_noisefilter, noise_paths[i]);
+            snprintf(g_nodes.touch_thp_noisefilter, sizeof(g_nodes.touch_thp_noisefilter), "%s", noise_paths[i]);
             break;
         }
     }
@@ -180,7 +180,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; edge_paths[i]; i++) {
         if (access(edge_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.touch_edge, edge_paths[i]);
+            snprintf(g_nodes.touch_edge, sizeof(g_nodes.touch_edge), "%s", edge_paths[i]);
             break;
         }
     }
@@ -193,7 +193,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; gm_paths[i]; i++) {
         if (access(gm_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.touch_game_mode, gm_paths[i]);
+            snprintf(g_nodes.touch_game_mode, sizeof(g_nodes.touch_game_mode), "%s", gm_paths[i]);
             break;
         }
     }
@@ -206,7 +206,7 @@ static void init_hardware_nodes(void) {
     };
     for (int i = 0; sens_paths[i]; i++) {
         if (access(sens_paths[i], F_OK) == 0) {
-            strcpy(g_nodes.touch_sensitivity, sens_paths[i]);
+            snprintf(g_nodes.touch_sensitivity, sizeof(g_nodes.touch_sensitivity), "%s", sens_paths[i]);
             break;
         }
     }
@@ -226,7 +226,7 @@ static void init_hardware_nodes(void) {
         struct sockaddr_nl nladdr;
         memset(&nladdr, 0, sizeof(nladdr));
         nladdr.nl_family = AF_NETLINK;
-        nladdr.nl_pid = getpid();
+        nladdr.nl_pid = (unsigned int)getpid();
         nladdr.nl_groups = 1;
         bind(g_nodes.netlink_fd, (struct sockaddr *)&nladdr, sizeof(nladdr));
         int flags = fcntl(g_nodes.netlink_fd, F_GETFL, 0);
@@ -311,7 +311,7 @@ static int is_screen_on(void) {
         };
         for (int i = 0; bl_paths[i]; i++) {
             if (access(bl_paths[i], F_OK) == 0) {
-                strcpy(g_nodes.backlight, bl_paths[i]);
+                snprintf(g_nodes.backlight, sizeof(g_nodes.backlight), "%s", bl_paths[i]);
                 bl_val = sysfs_read_int(bl_paths[i]);
                 break;
             }
@@ -436,7 +436,7 @@ static int is_process_alive(int pid) {
 
 
 
-#include "integrity.hpp"
+#include "integrity.h"
 
 static int validate_hardware_target(void) {
     /* Verify MT6789 bi-cluster topology (policy0 + policy6) and GED/FPSGO stack */

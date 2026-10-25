@@ -449,11 +449,11 @@ void handle_ipc_events(int timeout_ms) {
     }
 
     if (nfds == 0) {
-        usleep(timeout_ms * 1000);
+        usleep((useconds_t)timeout_ms * 1000);
         return;
     }
 
-    int ret = poll(pfds, nfds, timeout_ms);
+    int ret = poll(pfds, (nfds_t)nfds, timeout_ms);
     if (ret > 0) {
         for (int i = 0; i < nfds; i++) {
             if (pfds[i].revents & POLLIN) {

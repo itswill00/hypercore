@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "gamelist.hpp"
-#include "sysfs.hpp"
-#include "log.hpp"
+#include "gamelist.h"
+#include "sysfs.h"
+#include "log.h"
 
 #define MAX_GAMES 256
 #define PKG_NAME_LEN 128

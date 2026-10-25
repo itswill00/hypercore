@@ -1,6 +1,6 @@
 
-#include "memory.hpp"
-#include "log.hpp"
+#include "memory.h"
+#include "log.h"
 
 static int s_total_ram_kb = 0;
 

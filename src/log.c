@@ -1,5 +1,5 @@
 
-#include "log.hpp"
+#include "log.h"
 #include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -62,7 +62,7 @@ void log_write(log_level_t level, const char *tag, const char *fmt, ...) {
 
     va_list args;
     va_start(args, fmt);
-    int blen = vsnprintf(line + hlen, sizeof(line) - hlen - 1, fmt, args);
+    int blen = vsnprintf(line + hlen, sizeof(line) - (size_t)hlen - 1, fmt, args);
     va_end(args);
     if (blen < 0) return;
 

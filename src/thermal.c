@@ -211,7 +211,7 @@ void scan_thermal_zones(void) {
         };
         for (int i = 0; st_paths[i]; i++) {
             if (access(st_paths[i], F_OK) == 0) {
-                strcpy(g_nodes.bat_status, st_paths[i]);
+                snprintf(g_nodes.bat_status, sizeof(g_nodes.bat_status), "%s", st_paths[i]);
                 break;
             }
         }

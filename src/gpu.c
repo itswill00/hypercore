@@ -1,4 +1,4 @@
-#include "gpu.hpp"
+#include "gpu.h"
 
 static const char *s_mali_gov_nodes[] = {
     "/sys/class/devfreq/13000000.mali/governor",
@@ -40,7 +40,7 @@ static const char *s_mali_power_policy_nodes[] = {
     NULL
 };
 
-#include "log.hpp"
+#include "log.h"
 
 static char s_max_gpu_freq_hz[32]  = "1003000000";
 static char s_max_gpu_freq_khz[32] = "1003000";

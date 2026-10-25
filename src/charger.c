@@ -1,8 +1,8 @@
 
-#include "charger.hpp"
-#include "sysfs.hpp"
-#include "thermal.hpp"
-#include "log.hpp"
+#include "charger.h"
+#include "sysfs.h"
+#include "thermal.h"
+#include "log.h"
 
 /* -------------------------------------------------------------------------
  * Charger sysfs nodes (HuaQin hq_chg_manager on MT6789 / Xiaomi HyperOS)

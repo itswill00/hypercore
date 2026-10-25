@@ -1,8 +1,8 @@
 
-#include "integrity.hpp"
-#include "sha256.hpp"
-#include "embedded_checksums.hpp"
-#include "log.hpp"
+#include "integrity.h"
+#include "sha256.h"
+#include "embedded_checksums.h"
+#include "log.h"
 #include <stdio.h>
 #include <string.h>
 

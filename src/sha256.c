@@ -1,5 +1,5 @@
 
-#include "sha256.hpp"
+#include "sha256.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
