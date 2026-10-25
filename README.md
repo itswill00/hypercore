@@ -5,7 +5,7 @@
 <h1 align="center">HyperCore</h1>
 
 <p align="center">
-  <strong>Universal Dual-Kernel performance & thermal optimizer for MediaTek MT6789 Family</strong><br>
+  <strong>Universal Dual-Kernel performance optimizer for MediaTek MT6789 Family</strong><br>
   <i>A lightweight native daemon + Material Design 3 WebUI for Helio G99 / G100 / G200 devices.</i><br>
   <i>Inspired by encore <a href="https://github.com/Rem01Gaming">@Rem01Gaming</a></i>
 </p>
@@ -24,7 +24,7 @@
 <p align="center">
   <a href="#-installation">Installation</a> •
   <a href="#-operational-profiles">Profiles</a> •
-  <a href="#-thermal--charging">Thermal</a> •
+  <a href="#-thermal-policy">Thermal</a> •
   <a href="#-hypermoon-hud">HUD</a> •
   <a href="#-webui">WebUI</a> •
   <a href="#-security-model">Security</a> •
@@ -38,7 +38,7 @@
 - [Overview](#-overview)
 - [Key Features](#-key-features)
 - [Operational Profiles](#-operational-profiles)
-- [Thermal & Charging](#-thermal--charging)
+- [Thermal Policy](#-thermal-policy)
 - [HyperMoon HUD](#-hypermoon-hud)
 - [WebUI](#-webui)
 - [Security Model](#-security-model)
@@ -58,13 +58,13 @@
 
 Android devices often suffer frame drops and scrolling stutters from conservative CPU/GPU scaling and governor delays. **HyperCore** runs a native C daemon (`libhypercore.so`) in the background that dynamically tunes — based on real-time workload state:
 
-> CPU governors • uclamp targets • Mali GPU devfreq scaling • MediaTek GED / FPSGO drivers • DVFSRC bandwidth • storage read-ahead • thermal limits • charging current
+> CPU governors • uclamp targets • Mali GPU devfreq scaling • MediaTek GED / FPSGO drivers • DVFSRC bandwidth • storage read-ahead
 
 | | |
 | :--- | :--- |
 | **What it does** | Kills stutter, stabilizes gaming FPS, cools sustained load, protects the battery — automatically, no manual toggling |
 | **How it decides** | Foreground-app scan + screen state + system load → one of 4 profiles, re-evaluated every tick |
-| **How it coexists** | Never replaces the kernel thermal stack — it works *alongside* `mi_thermald` / vendor drivers and defers to them when hot |
+| **How it coexists** | Never touches the kernel thermal stack — `mi_thermald` and the vendor drivers remain the sole thermal authority |
 
 ---
 
@@ -101,16 +101,12 @@ Android devices often suffer frame drops and scrolling stutters from conservativ
 </details>
 
 <details>
-<summary><b>Thermals & Battery</b></summary>
+<summary><b>Memory</b></summary>
 
 <br>
 
 | Feature | Description |
 | :--- | :--- |
-| **3-tier thermal guard** | Hysteresis-guarded CPU ceiling caps; defers to the vendor stack from Tier 1 up |
-| **Charging thermal ladder** | Selected mode is a *ceiling* — heat steps it down automatically to a Safe floor |
-| **7 charge modes + 16-level slider** | OEM Stock → Violent plus precision hardware slider, night / smart / 80% protection toggles |
-| **BMS cycle healing** | Rejects bogus auth-chip cycle counts, syncs the genuine fuel-gauge counter |
 | **ZRAM pool sizing** | Stock / 4 GB / 2 GB / Off compressed swap presets, applied once per boot with a low-memory guard |
 
 </details>
@@ -123,7 +119,7 @@ Android devices often suffer frame drops and scrolling stutters from conservativ
 | Feature | Description |
 | :--- | :--- |
 | **HyperMoon HUD** | Dual-engine overlay (C daemon + Java DEX): FPS, frametime, CPU/GPU, battery watts, network — pill or card, auto-shows in games |
-| **Material Design 3 WebUI** | Status, charger control, games, HUD designer, logs, RAM + ZRAM tools — single-file app, no server needed |
+| **Material Design 3 WebUI** | Status, games, HUD designer, logs, RAM + ZRAM tools — single-file app, no server needed |
 | **Zero footprint exit** | Uninstall / daemon stop restores ~60 factory nodes from the captured baseline |
 
 </details>
@@ -134,15 +130,14 @@ Android devices often suffer frame drops and scrolling stutters from conservativ
 
 The daemon re-evaluates state every tick and applies exactly one profile:
 
-| Profile | Target workload | Little 0–5 | Big 6–7 | GPU gov | GPU range | Touch | `sconfig` |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Sleep** | Screen off | 500 – 1000 MHz | 725 – 850 MHz | `simple_ondemand` | locked 390 MHz | off | `0` |
-| **Interactive** | Daily use | stock¹ | stock¹ | stock¹ | stock¹ | smoothing + noise filter | stock¹ |
-| **Gaming** | 3D / AAA | 500 – 2000 MHz | 725 – 2200 MHz | `performance` (20 ms) | 390 – 1003 MHz | game + edge | `10` |
-| **Gaming MOBA** | Low-latency MOBA | 500 – 2000 MHz | 725 – 2200 MHz² | `performance` (20 ms) | 390 – 1003 MHz | game, no edge | `10` |
+| Profile | Target workload | Little 0–5 | Big 6–7 | GPU gov | GPU range | Touch |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Sleep** | Screen off | 500 – 1000 MHz | 725 – 850 MHz | `simple_ondemand` | locked 390 MHz | off |
+| **Interactive** | Daily use | stock¹ | stock¹ | stock¹ | stock¹ | smoothing + noise filter |
+| **Gaming** | 3D / AAA | 500 – 2000 MHz | 725 – 2200 MHz | `performance` (20 ms) | 390 – 1003 MHz | game + edge |
+| **Gaming MOBA** | Low-latency MOBA | 500 – 2000 MHz | 725 – 2200 MHz | `performance` (20 ms) | 390 – 1003 MHz | game, no edge |
 
 > ¹ **Interactive = factory stock + touch.** Every CPU/GPU/GED/FPSGO/VM/cgroup node is restored to the captured `stock_state.conf` — the *only* enhancement is touchscreen smoothing + noise filtering for silky 90/120 Hz scrolling.
-> ² MOBA keeps Big at 2.0 GHz under Tier 1 for latency headroom.
 
 ```mermaid
 flowchart TD
@@ -157,45 +152,13 @@ flowchart TD
 
 ---
 
-## 🌡️ Thermal & Charging
+## 🌡️ Thermal Policy
 
-### 3-Tier Thermal Guard
-
-HyperCore caps frequency ceilings as heat rises — and from Tier 1 up it **stops fighting the vendor stack** (`mi_thermald`, FPSGO thermal, GPU devfreq cooler) and defers to it.
-
-| Tier | Enter when | Release when | Little cap | Big cap |
-| :--- | :--- | :--- | :--- | :--- |
-| **Tier 0** — Optimal | batt < 45 °C **and** CPU < 70 °C | — | 2.0 GHz | 2.2 GHz |
-| **Tier 1** — Warm | batt ≥ 45 °C **or** CPU ≥ 70 °C | batt ≤ 42 °C **and** CPU ≤ 64 °C | 1.8 GHz | 1.8 GHz |
-| **Tier 2** — Hot | batt ≥ 48 °C **or** CPU ≥ 75 °C | batt ≤ 44 °C **and** CPU ≤ 68 °C | 1.4 GHz | 1.5 GHz |
-
-> [!NOTE]
-> Hysteresis gaps between enter/release thresholds prevent frequency flutter. No core hotplug, no micro-stutter — only ceiling caps.
-
-### Charge Modes
-
-| # | Mode | Hardware behavior |
-| :-: | :--- | :--- |
-| 0 | **OEM Stock** | Hands-off — vendor stack owns everything, zero daemon writes |
-| 1 | **Fast Charge** | `limit=0` (~3.9 A) |
-| 2 | **Balanced** | `limit=10` (~2.3 A / ~9.3 W) — cool gaming/usage pick |
-| 3 | **Safe Mode** | `limit=14` (~0.73 A) — overnight / GPS pick |
-| 4 | **Bypass Mode** | `input_suspend=1` — true 0 mA passthrough, exempt from ladder |
-| 5 | **Violent Charge** | Full factory speed (19–33 W), thermal limits off — acknowledge the risk |
-| 6 | **Custom Slider** | 16 hardware levels (0–15) with live mA/W feedback |
-
-### Charging Thermal Ladder
-
-Your selected mode is a **ceiling, never a guarantee**:
-
-```mermaid
-flowchart LR
-    V[Violent] -->|batt ≥ 45°C| F[Fast]
-    F -->|hotter| B[Balanced]
-    B -->|hotter| S[Safe]
-    S -->|batt ≥ 50°C| S
-    S -->|≤ 41°C for 180s| UP[climb back up]
-```
+HyperCore does **not** manage thermal policy or charging. Frequency ceilings,
+throttling and battery safety are handled exclusively by the vendor thermal
+stack (`mi_thermald`, FPSGO thermal, GPU devfreq cooler) and the stock OEM
+hardware drivers. The daemon never writes to thermal policy nodes —
+`fpsgo_thrm_enable` and Xiaomi `sconfig` always keep their stock values in every profile.
 
 ### ZRAM Sizing
 
@@ -219,13 +182,6 @@ actually swap is not free — it raises the ceiling for compression work and kee
 >
 > Shrinking does not hand you free RAM instantly. What it buys is a smaller
 > worst-case compression ceiling and calmer swap latency under load.
-
-- One rung down at **≥ 45 °C** (`Violent → Fast → Balanced → Safe`)
-- Hard floor to **Safe at ≥ 50 °C**, climbs back only after **≤ 41 °C for 180 s** continuous
-- Dead-band 41–45 °C freezes position (no flapping)
-- `OEM Stock` and `Bypass` are **exempt**
-- Sleep boost: screen off raises the ceiling one rung (`Balanced → Fast`, `Safe → Balanced`, Custom slider drops 5 levels toward 0). Thermal ladder still applies after the boost, so heat can step it back down. `OEM` and `Bypass` stay exempt.
-- Extras: 80% cutoff with 77% release hysteresis • Bypass low-battery 10/12% hysteresis • TCPC pulse for USB-PD renegotiation (also on Custom limit change)
 
 ---
 
@@ -253,7 +209,6 @@ Single-file Vue 3 + Pinia app (`webroot/index.html`) served by your root manager
 | Tab | What you get |
 | :--- | :--- |
 | **Home** | Live daemon status, profile, temps, HUD toggle, ZRAM pool sizing, RAM purge |
-| **Charger** | 16-level slider, mode presets, protection toggles, live mA/V/W |
 | **Games** | Auto-detect scanner, per-title Gaming/MOBA mapping, 2-tap delete guard |
 | **HUD** | Full HyperMoon designer with live preview |
 | **Logs** | Daemon log viewer + one-tap bugreport export (`hypercore-bugreport`) |
@@ -287,13 +242,9 @@ echo SET_PROFILE:GAMING | nc -U /dev/hypercore.sock
 
 | Command | Effect |
 | :--- | :--- |
-| `GET_STATUS` / `STATUS` | Full JSON telemetry (profile, temps, loads, charge + thermal state) |
+| `GET_STATUS` / `STATUS` | JSON telemetry (profile, gpu load, temps, uptime, DDR clock) |
 | `SET_PROFILE:AUTO` | Back to autonomous profiling |
 | `SET_PROFILE:SLEEP` / `INTERACTIVE` / `GAMING` / `MOBA` | Manual lock (persists until `AUTO`) |
-| `SET_CHARGE_MODE:0-6` | Charge preset (see table above) |
-| `SET_CHARGE_LIMIT:0-15` | Custom slider level (activates mode 6) |
-| `GET_CHARGE_MODE` | Current + effective charge state |
-| `SET_NIGHT_CHARGING:0\|1` / `SET_SMART_CHG:0\|1` / `SET_PROTECT_80:0\|1` | Battery protection toggles |
 | `PURGE_RAM` / `CLEAR_CACHE` | `drop_caches` + memory compaction |
 | `PING` | → `PONG` (liveness) |
 
@@ -309,9 +260,9 @@ flowchart TD
     C --> S[service.sh<br/>wait boot_completed then graceful restart]
     S --> D[libhypercore.so<br/>flock then integrity then INIT to Interactive]
     D --> T5[tick 5/15/30<br/>boot settle re-apply + verify]
-    T5 --> L{profile change?<br/>thermal tier change?}
+    T5 --> L{profile change?}
     L -->|yes| A[apply_profile + status sync]
-    L -->|no| K[keep + charger enforce + telemetry]
+    L -->|no| K[keep + telemetry]
     A --> L
     K --> L
 ```
@@ -327,7 +278,6 @@ flowchart TD
 ```text
 src/
 ├── include/
-│   ├── charger.h  # 7 charge modes, ladder + hysteresis API
 │   ├── common.h  # hw_nodes / core_state / stock_baseline structs
 │   ├── cpu.h  # Profile matrix + governor/freq API
 │   ├── embedded_checksums.h  # GENERATED — SHA-256 table (do not hand-edit)
@@ -340,14 +290,11 @@ src/
 │   ├── memory.h  # Swappiness, VM, swap-pool awareness, purge
 │   ├── sha256.h  # SHA-256 implementation
 │   ├── sysfs.h  # Dual-kernel sysfs I/O + touch rediscovery
-│   └── thermal.h  # Zone scoring, 3-tier guard
 ├── hud/
 │   ├── hypermoon_daemon.c       # C telemetry collector (hypermoon_d)
 │   └── HyperMoonOverlay.java    # DEX overlay renderer
 ├── main.c                       # init, boot settle, adaptive main loop
 ├── cpu.c                        # build_profile_matrix() + apply_profile()
-├── charger.c                    # Ladder, 16-level slider, BMS healing
-├── thermal.c                    # Tier engine + gaming bypass (Tier 0 only)
 ├── gamelist.c                   # cgroup top-app scan, hourly pm fallback
 ├── ipc.c                        # SO_PEERCRED socket + atomic status.json
 ├── sysfs.c                      # Read-before-write, stock baseline save/load
@@ -463,9 +410,8 @@ grep -i "boot settle" /data/adb/hypercore/hypercore.log
 
 <br>
 
-- Tier 1/2 thermal guard caps ceilings by design — check `thermal_tier` in `status.json`.
-- From Tier 1 up the daemon defers to `mi_thermald`; vendor clamps are expected, not a bug.
-- If cool (Tier 0) and still capped, another module may be fighting over `scaling_max_freq`.
+- HyperCore never caps frequencies — throttling is entirely `mi_thermald`/vendor territory, and vendor clamps are expected under load.
+- If the device is cool and still capped, another module may be fighting over `scaling_max_freq`.
 
 </details>
 
