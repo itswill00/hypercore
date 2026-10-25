@@ -1,10 +1,10 @@
-#include "cpu.hpp"
-#include "gpu.hpp"
-#include "memory.hpp"
-#include "io.hpp"
-#include "thermal.hpp"
-#include "sysfs.hpp"
-#include "log.hpp"
+#include "cpu.h"
+#include "gpu.h"
+#include "memory.h"
+#include "io.h"
+#include "thermal.h"
+#include "sysfs.h"
+#include "log.h"
 
 /* Forward declaration — defined later in this file as a static function */
 static const char *get_best_governor(profile_t prof);
@@ -461,7 +461,9 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
     m->target_profile = prof;
     m->cpu_gov = get_best_governor(prof);
 
-    detect_max_gpu_freq();
+    /* The getters below already run detection on first use and cache the
+     * result, so calling detect_max_gpu_freq() here only re-ran the ~4 node
+     * probes on every single profile switch for nothing. */
     const char *max_gpu_hz  = get_max_gpu_freq_hz();
     const char *max_gpu_khz = get_max_gpu_freq_khz();
 
@@ -603,29 +605,26 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
 
-            /* Thermal ceilings. Every tier below 0 caps both clusters — the
-             * previous shape gated the tier-1 arm on PROFILE_Gaming_MOBA, so a
-             * plain Gaming title at 70°C fell through to the hardware ceiling
-             * and got zero mitigation. Only MOBA keeps the higher big-cluster
-             * allowance at tier 1, because its frametime budget is tighter.
+            /* Thermal ceilings.
+             *
+             * The table lives in thermal_ceiling_mhz() so this file and the
+             * documentation cannot drift apart again: the tier-1 and tier-2
+             * arms used to carry identical 1.8/1.8 numbers, which made Tier 2
+             * indistinguishable from Tier 1 no matter what the docs claimed.
+             * MOBA keeps the higher big-cluster allowance at tier 1 because its
+             * frametime budget is tighter.
              *
              * Ceilings are clamped down to whatever the hardware actually
              * reports, never up: on a part whose hw_max is already below the
              * nominal number, "capping" must not become "raising". */
-            int hw_lit_max = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000;
-            int hw_big_max = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000;
+            int hw_lit_max = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : FREQ_LITTLE_MAX;
+            int hw_big_max = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : FREQ_BIG_MAX;
 
-            if (tier >= 2) {
-                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
-                m->big_max_freq = hw_big_max < 1800000 ? hw_big_max : 1800000;
-            } else if (tier == 1) {
-                int big_ceiling = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
-                m->lit_max_freq = hw_lit_max < 1800000 ? hw_lit_max : 1800000;
-                m->big_max_freq = hw_big_max < big_ceiling ? hw_big_max : big_ceiling;
-            } else {
-                m->lit_max_freq = hw_lit_max;
-                m->big_max_freq = hw_big_max;
-            }
+            int lit_ceiling, big_ceiling;
+            thermal_ceiling_mhz(tier, prof, &lit_ceiling, &big_ceiling);
+
+            m->lit_max_freq = hw_lit_max < lit_ceiling ? hw_lit_max : lit_ceiling;
+            m->big_max_freq = hw_big_max < big_ceiling ? hw_big_max : big_ceiling;
 
             m->up_rate_limit = "0";
             m->down_rate_limit = "30000";

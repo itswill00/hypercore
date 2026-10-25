@@ -1,7 +1,7 @@
 
-#include "thermal.hpp"
-#include "sysfs.hpp"
-#include "log.hpp"
+#include "thermal.h"
+#include "sysfs.h"
+#include "log.h"
 
 /* Last-resort thermal zone picker, used only when score-based discovery found
  * nothing. Scans every thermal_zoneN (0..31) and accepts the first whose
@@ -424,6 +424,36 @@ static int s_thermal_tier = 0;
 
 int get_thermal_tier(void) {
     return s_thermal_tier;
+}
+
+/* Frequency ceilings per thermal tier, in kHz.
+ *
+ * Kept in one place because two divergent copies of this table is exactly how
+ * the guard rots: the copy in build_profile_matrix() had identical tier-1 and
+ * tier-2 numbers, so a device at 75°C was held to the same ceiling as one at
+ * 70°C while the documentation advertised 1.4/1.5 GHz for Tier 2. These are
+ * upper bounds — the caller clamps them down to the hardware maximum, so a part
+ * that reports less is never pushed up.
+ *
+ *   Tier 0  optimal : no cap (hardware maximum)
+ *   Tier 1  warm    : Little 1.8 GHz, Big 1.8 GHz (MOBA keeps 2.0 GHz for
+ *                     frametime headroom)
+ *   Tier 2  hot     : Little 1.4 GHz, Big 1.5 GHz
+ */
+void thermal_ceiling_mhz(int tier, profile_t prof, int *lit_khz, int *big_khz) {
+    int lit = FREQ_LITTLE_MAX;
+    int big = FREQ_BIG_MAX;
+
+    if (tier >= 2) {
+        lit = 1400000;
+        big = 1500000;
+    } else if (tier == 1) {
+        lit = 1800000;
+        big = (prof == PROFILE_Gaming_MOBA) ? 2000000 : 1800000;
+    }
+
+    if (lit_khz) *lit_khz = lit;
+    if (big_khz) *big_khz = big;
 }
 
 int update_thermal_guard(int cpu_temp, int bat_temp) {
