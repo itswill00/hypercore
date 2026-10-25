@@ -1,3 +1,43 @@
+# HyperCore v6.11.5 — Build Reproducibility & Thermal Correctness
+
+Refactor pass focused on making the tree build from a clean checkout and on
+correctness fixes found during a full-code audit. No tuning behavior changed
+except where explicitly noted.
+
+## Fixes
+
+### Thermal Guard
+- **Tier 2 ceilings restored** (`src/thermal.c`, `src/cpu.c`): the tier-1 and
+  tier-2 arms of the profile matrix carried identical 1.8/1.8 GHz numbers, so
+  the documented 1.4/1.5 GHz Tier 2 cap never took effect and a 75°C device was
+  held to the same ceiling as a 70°C one. `thermal_ceiling_mhz()` is now the
+  single table in `src/thermal.c`; ceilings remain upper bounds clamped to the
+  hardware maximum. MOBA keeps its 2.0 GHz big-cluster allowance at Tier 1.
+
+### Telemetry
+- **Single status serializer** (`src/ipc.c`): `GET_STATUS` reported
+  `uptime_sec`, `bat_health`, `bat_status` and `bat_tech` while the
+  `status.json` the WebUI polls first silently omitted all four. Both paths now
+  render through one `build_status_json()`; a truncated document is never
+  written.
+
+### Build System
+- **Clean-checkout builds** (`build.sh`): the script no longer requires
+  pre-existing gitignored artifacts and no longer rewrites README, docs or
+  `customize.sh` via `sed` on every run. Output goes to `./out/` (override with
+  `HYPERCORE_OUT`). The HUD dex is optional — built when a Java toolchain
+  exists, cleanly omitted otherwise, with the manifest and zip adapting.
+- **Manifest untracked** (`checksums.txt`, `src/include/embedded_checksums.h`):
+  both are now build artifacts, regenerated and `sha256sum -c` gated every run.
+
+### Code Health
+- **Headers renamed** `.hpp` → `.h` (pure C, no C++ constructs), include guards
+  updated.
+- **Bounded string copies**: every `strcpy` with a variable source now goes
+  through `snprintf`; zero warnings under
+  `-Wall -Wextra -Wconversion -Wsign-conversion -Wformat=2 -Wshadow`.
+- Redundant per-switch GPU re-detection removed from the profile matrix.
+
 # HyperCore v6.11.4 — Security Hardening & Thermal Correctness
 
 Full-audit hardening pass over the daemon, installer, service scripts and WebUI:
