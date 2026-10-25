@@ -28,7 +28,7 @@ static void ensure_log_open(void) {
     if (s_log_fd >= 0) fchmod(s_log_fd, 0600);
 }
 
-/* ponytail: ensure daemon never dies from SIGPIPE if log fd is broken pipe, ceiling is lost log line */
+/* Ignore SIGPIPE on writes to a broken log pipe: the daemon must never die over a lost log line. */
 void log_reopen(void) {
     if (s_log_fd >= 0) { close(s_log_fd); s_log_fd = -1; }
     ensure_log_open();

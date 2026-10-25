@@ -252,7 +252,7 @@ static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
     }
 }
 
-/* ponytail: table-driven baseline ser/de — atomic tmp+rename so power loss never leaves half-written stock_state */
+/* Table-driven baseline serialization, written atomically via tmp+rename so power loss never leaves a half-written stock_state. */
 void save_stock_baseline(void) {
     char path[300];
     snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
@@ -378,7 +378,7 @@ void init_stock_baseline(void) {
     log_info("Baseline", "No saved stock baseline found. Capturing untouched factory baseline...");
     memset(&g_stock_baseline, 0, sizeof(g_stock_baseline));
 
-    /* Helper: read-or-default for baseline capture — ponytail: dedup ~15 if(empty)strcpy blocks */
+    /* Read-or-default helper for baseline capture, deduplicating the if(empty)strcpy blocks. */
     #define BS_READ_OR_DEF(path, dst, def) do { sysfs_read_str((path), (dst), sizeof(dst)); if ((dst)[0]=='\0') strcpy((dst),(def)); } while(0)
     BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0, "sugov_ext");
     BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6, "sugov_ext");

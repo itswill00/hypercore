@@ -1,5 +1,6 @@
 # Build artifacts and compiled binaries
 build/
+out/
 hypercore
 libhypercore.so
 system/bin/libhypercore.so
@@ -12,10 +13,11 @@ system/bin/hypermoon.dex
 *.log
 .hypercore_lock
 checksums.sha256
+checksums.txt
 src/include/embedded_checksums.h
 
 # Generated frontend build artifacts
-webroot/index.html
+webroot/
 webui/dist/
 webui/node_modules/
 webui/.vite/
@@ -27,14 +29,3 @@ Thumbs.db
 *.bak
 .vscode/
 .idea/
-
-# AI Agent files and prompt configs
-.gemini/
-.agents/
-.claude/
-.rules
-GEMINI.md
-AGENTS.md
-.cursorrules
-
-checksums.txt

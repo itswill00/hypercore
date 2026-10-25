@@ -112,7 +112,7 @@ static int sleep_boosted_limit(int user_limit) {
  * Internal helpers
  * -------------------------------------------------------------------------- */
 
-/* ponytail: generic int conf helpers — 10 copy-paste save/load funcs collapsed into 2, ceiling is plain text ints, no schema needed */
+/* Generic int conf helpers: collapsed the ten copy-pasted save/load functions into two. Ceiling values are plain text ints, no schema needed. */
 static void save_int_conf(const char *fname, int val) {
     char path[300];
     snprintf(path, sizeof(path), "%s/%s", g_nodes.data_dir, fname);

@@ -151,7 +151,7 @@ export const useHyperStore = defineStore('hyper', () => {
 
   let chargerInterval = null
 
-  /* ponytail: pollCpuGpu/pollRamBat removed — dead code, refresh() already covers all KV in one syscall */
+  // pollCpuGpu/pollRamBat removed: dead code, refresh() already covers all keys in one syscall
 
   function startCardPolling() {
     if (!chargerInterval) {

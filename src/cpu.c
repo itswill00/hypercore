@@ -100,7 +100,7 @@ static const char *s_policy7_down_rate_nodes[] = {
     NULL
 };
 
-/* ponytail: one helper for chmod-guarded sysfs writes — rate nodes (0644) and sconfig lock (0666) were identical loops */
+/* One helper for the chmod-guarded sysfs writes: rate nodes (0644) and the sconfig lock (0666) were identical loops. */
 static void write_chmod_guarded(const char *paths[], const char *val, mode_t open_mode) {
     if (!paths || !val) return;
     for (int i = 0; paths[i]; i++) {

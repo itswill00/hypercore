@@ -147,7 +147,7 @@ static void get_cpu_gov_and_policy(char *gov_out, size_t gov_len, char *pol_out,
         }
         globfree(&g_min);
     }
-    /* ponytail: read hardware ceiling cpuinfo_max_freq, not throttled scaling_max_freq — fixes 2.0GHz cap on MT6789 where big cluster is 2.2GHz */
+    /* Read the hardware ceiling from cpuinfo_max_freq, not the throttled scaling_max_freq: on MT6789 the big cluster tops at 2.2 GHz while scaling reports a lower runtime cap. */
     if (glob("/sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq", 0, NULL, &g_max) == 0) {
         for (size_t i = 0; i < g_max.gl_pathc; i++) {
             char buf[64];

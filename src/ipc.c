@@ -48,7 +48,7 @@ static void read_extra_telemetry(int *dvfsrc_mhz, int *chg_limit_max) {
     *chg_limit_max = (lim > 0) ? lim : 0;
 }
 
-/* ponytail: one helper for the 6 copy-paste thermal→status sync blocks, ceiling is plain status.json refresh */
+/* One helper for the six copy-pasted thermal→status sync blocks. */
 static void ipc_sync_status(void) {
     int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
     int bat_temp = sysfs_read_int(g_nodes.bat_temp);
