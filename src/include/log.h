@@ -1,8 +1,8 @@
 
-#ifndef HYPERCORE_LOG_HPP
-#define HYPERCORE_LOG_HPP
+#ifndef HYPERCORE_LOG_H
+#define HYPERCORE_LOG_H
 
-#include "common.hpp"
+#include "common.h"
 
 typedef enum {
     LOG_LEVEL_Info,

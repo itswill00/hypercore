@@ -1,8 +1,8 @@
 
-#ifndef HYPERCORE_SYSFS_HPP
-#define HYPERCORE_SYSFS_HPP
+#ifndef HYPERCORE_SYSFS_H
+#define HYPERCORE_SYSFS_H
 
-#include "common.hpp"
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {

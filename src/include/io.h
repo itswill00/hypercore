@@ -1,9 +1,9 @@
 
-#ifndef HYPERCORE_IO_HPP
-#define HYPERCORE_IO_HPP
+#ifndef HYPERCORE_IO_H
+#define HYPERCORE_IO_H
 
-#include "common.hpp"
-#include "sysfs.hpp"
+#include "common.h"
+#include "sysfs.h"
 
 #ifdef __cplusplus
 extern "C" {

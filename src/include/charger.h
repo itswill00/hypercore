@@ -1,8 +1,8 @@
 
-#ifndef HYPERCORE_CHARGER_HPP
-#define HYPERCORE_CHARGER_HPP
+#ifndef HYPERCORE_CHARGER_H
+#define HYPERCORE_CHARGER_H
 
-#include "common.hpp"
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {

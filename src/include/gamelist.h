@@ -1,8 +1,8 @@
 
-#ifndef HYPERCORE_GAMELIST_HPP
-#define HYPERCORE_GAMELIST_HPP
+#ifndef HYPERCORE_GAMELIST_H
+#define HYPERCORE_GAMELIST_H
 
-#include "common.hpp"
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {

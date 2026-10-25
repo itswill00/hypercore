@@ -1,6 +1,6 @@
 
-#ifndef HYPERCORE_COMMON_HPP
-#define HYPERCORE_COMMON_HPP
+#ifndef HYPERCORE_COMMON_H
+#define HYPERCORE_COMMON_H
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,6 +1,6 @@
 
-#ifndef INTEGRITY_HPP
-#define INTEGRITY_HPP
+#ifndef INTEGRITY_H
+#define INTEGRITY_H
 
 #ifdef __cplusplus
 extern "C" {
