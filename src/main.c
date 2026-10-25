@@ -595,7 +595,7 @@ int main(int argc, char *argv[]) {
                 static time_t s_last_jitter_log = 0;
                 time_t now = time(NULL);
                 if (now - s_last_jitter_log >= 5) {
-                    log_warn("Jitter", "Frame-spike detected (GPU %d%%, ΔT %d°C) -> Ultra-Rescue Burst activated", gpu_load, temp_delta);
+                    log_warn("Jitter", "Frame-spike detected (GPU %d%%) -> Ultra-Rescue Burst activated", gpu_load);
                     s_last_jitter_log = now;
                 }
             }

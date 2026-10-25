@@ -3,11 +3,10 @@
 
 #include "ipc.h"
 #include "cpu.h"
+#include "common.h"
 #include "sysfs.h"
 #include "memory.h"
 #include "log.h"
-#include "thermal.h"
-#include "charger.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
@@ -17,50 +16,29 @@ static int  s_server_fd = -1;
 static char s_sock_path[256] = "";
 static time_t s_start_time = 0;
 
-static int read_gpu_temp(int cpu_fallback) {
-    if (g_nodes.gpu_temp[0] != '\0') {
-        int v = sysfs_read_int(g_nodes.gpu_temp);
-        if (v > 0) return (v > 1000) ? v / 1000 : v;
-    }
-    return cpu_fallback;
-}
-
-static int read_chg_temp(int bat_fallback) {
-    if (g_nodes.chg_temp[0] != '\0') {
-        int v = sysfs_read_int(g_nodes.chg_temp);
-        if (v > 0) return (v > 1000) ? v / 1000 : (v > 100) ? v / 10 : v;
-    }
-    return bat_fallback;
-}
-
 /* Read-only hardware telemetry for status/IPC (zero tuning, informational
  * only). Missing nodes yield 0 and the WebUI hides the corresponding rows.
  * NOTE: dvfsrc cur_freq is ~4.3 GHz, which overflows a 32-bit int, so it is
  * reported in MHz (fits) and the WebUI formats GHz. */
-static void read_extra_telemetry(int *dvfsrc_mhz, int *chg_limit_max) {
+static void read_extra_telemetry(int *dvfsrc_mhz) {
     char buf[32] = "";
     long hz = 0;
     if (sysfs_read_str("/sys/class/devfreq/mtk-dvfsrc-devfreq/cur_freq", buf, sizeof(buf))) {
         hz = strtol(buf, NULL, 10);
     }
     *dvfsrc_mhz = (hz > 0) ? (int)(hz / 1000000L) : 0;
-    int lim = sysfs_read_int("/sys/class/power_supply/battery/charge_control_limit_max");
-    *chg_limit_max = (lim > 0) ? lim : 0;
 }
 
-/* One helper for the six copy-pasted thermal→status sync blocks. */
+/* One helper for the status-refresh blocks after a state change. */
 static void ipc_sync_status(void) {
-    int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-    normalize_thermal_temps(&cpu_temp, &bat_temp);
-    update_status_json_file(cpu_temp, bat_temp);
+    update_status_json_file();
 }
 
 /* ---------------------------------------------------------------------------
  * Client authorisation
  *
- * The socket handles privileged actions (charge control, profile switching,
- * global page-cache purge), so "can connect" must not imply "may command".
+ * The socket handles privileged actions (profile switching, global
+ * page-cache purge), so "can connect" must not imply "may command".
  * /dev is world-traversable and the socket file mode cannot express
  * "root or shell", so the file stays connectable and the real gate is the
  * kernel-reported peer credential.
@@ -71,16 +49,14 @@ static void ipc_sync_status(void) {
  *   2000 — adb shell, for `echo GET_STATUS | nc -U /dev/hypercore.sock`.
  *
  * Adding a UID here is a privilege grant. Do not add 1000/1001 (system) or any
- * app UID: any app in those UIDs would gain charger and profile control.
+ * app UID: any app in those UIDs would gain profile control.
  *
  * Note on uid 2000: it is not read-only. Anyone holding an adb pairing token —
  * which on a device with wireless debugging enabled is anyone near it who has
- * paired once — can drive SET_CHARGE_MODE (including CHARGE_MODE_VIOLENT, which
- * drops the charge limit to 0 and runs the cell at its floor), PURGE_RAM, and
- * profile switching. This is deliberate, because the documented `adb shell`
- * workflow depends on it, but it is hardware control rather than telemetry
- * readback, so it is called out here rather than left implicit. Tighten it to
- * GET_* only if that tradeoff is ever revisited.
+ * paired once — can drive PURGE_RAM and profile switching. This is deliberate,
+ * because the documented `adb shell` workflow depends on it, but it is control
+ * rather than telemetry readback, so it is called out here rather than left
+ * implicit. Tighten it to GET_* only if that tradeoff is ever revisited.
  * ------------------------------------------------------------------------- */
 static int client_is_trusted(int client_fd) {
     struct ucred cred;
@@ -207,56 +183,34 @@ void close_ipc_socket(void) {
  * source the WebUI polls first — silently omitted all four. Two copies of a
  * 25-field format string is a contract nobody can keep in sync, so both paths
  * now render through here. */
-static int build_status_json(char *out, size_t cap, int cpu_temp, int bat_temp) {
+static int build_status_json(char *out, size_t cap) {
     int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
     const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4)
                            ? g_profile_names[g_state.current_profile] : "Interactive";
 
     long uptime_sec = (long)difftime(time(NULL), s_start_time);
-    int bat_cycles = get_true_battery_cycles();
 
-    char bat_health[32] = "Good";
-    if (!sysfs_read_str("/sys/class/power_supply/battery/health", bat_health, sizeof(bat_health))) {
-        sysfs_read_str("/sys/class/power_supply/bms/health", bat_health, sizeof(bat_health));
+    /* Informatif saja — tidak dipakai untuk keputusan tuning apa pun. */
+    int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
+    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
+    normalize_thermal_temps(&cpu_temp, &bat_temp);
+    int gpu_temp = 0;
+    if (g_nodes.gpu_temp[0] != '\0') {
+        gpu_temp = sysfs_read_int(g_nodes.gpu_temp);
+        if (gpu_temp > 1000) gpu_temp /= 1000;
     }
-
-    char bat_status[32] = "Discharging";
-    if (!sysfs_read_str("/sys/class/power_supply/battery/status", bat_status, sizeof(bat_status))) {
-        sysfs_read_str("/sys/class/power_supply/bms/status", bat_status, sizeof(bat_status));
-    }
-
-    char bat_tech[32] = "Li-poly";
-    if (!sysfs_read_str("/sys/class/power_supply/battery/technology", bat_tech, sizeof(bat_tech))) {
-        sysfs_read_str("/sys/class/power_supply/bms/technology", bat_tech, sizeof(bat_tech));
-    }
-
-    /* Read dedicated GPU and charger thermal zones with CPU/battery fallback */
-    int gpu_temp = read_gpu_temp(cpu_temp);
-    int chg_temp = read_chg_temp(bat_temp);
 
     /* Read-only hardware telemetry (zero tuning, informational only) */
-    int dvfsrc_mhz = 0, chg_limit_max = 0;
-    read_extra_telemetry(&dvfsrc_mhz, &chg_limit_max);
+    int dvfsrc_mhz = 0;
+    read_extra_telemetry(&dvfsrc_mhz);
 
     int jn = snprintf(out, cap,
         "{\"status\":\"ok\",\"pid\":%d,\"profile\":\"%s\","
-        "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,\"chg_temp\":%d,"
-        "\"is_charging\":%d,\"gpu_load\":%d,\"battery_cycles\":%d,\"uptime_sec\":%ld,"
-        "\"bat_health\":\"%s\",\"bat_status\":\"%s\",\"bat_tech\":\"%s\","
-        "\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"effective_charge_mode\":%d,"
-        "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-        "\"charge_thermal_override\":%d,\"charger_supported\":%d,\"thermal_tier\":%d,"
-        "\"sleep_boost_active\":%d,\"effective_custom_limit\":%d,"
-        "\"dvfsrc_mhz\":%d,\"chg_limit_max\":%d}\n",
-        getpid(), prof_str, cpu_temp, bat_temp, gpu_temp, chg_temp,
-        g_state.is_charging, gpu_load, bat_cycles, uptime_sec,
-        bat_health, bat_status, bat_tech,
-        g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-        g_state.charge_mode, g_state.custom_charge_limit,
-        g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-        g_state.charge_override, g_state.charger_supported, g_state.thermal_tier,
-        g_state.sleep_boost_active, g_state.effective_custom_limit,
-        dvfsrc_mhz, chg_limit_max);
+        "\"cpu_temp\":%d,\"bat_temp\":%d,\"gpu_temp\":%d,"
+        "\"gpu_load\":%d,\"uptime_sec\":%ld,"
+        "\"dvfsrc_mhz\":%d}\n",
+        getpid(), prof_str, cpu_temp, bat_temp, gpu_temp,
+        gpu_load, uptime_sec, dvfsrc_mhz);
 
     /* Truncation is a bug, not a condition to paper over: a partial document
      * parses as corrupt JSON in the WebUI. Report it as an empty reply instead
@@ -278,12 +232,8 @@ static void process_client(int client_fd) {
     }
 
     if (strncmp(req, "GET_STATUS", 10) == 0 || strncmp(req, "STATUS", 6) == 0) {
-        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(&cpu_temp, &bat_temp);
-
         char json[STATUS_JSON_MAX];
-        int jn = build_status_json(json, sizeof(json), cpu_temp, bat_temp);
+        int jn = build_status_json(json, sizeof(json));
         if (jn > 0) write(client_fd, json, (size_t)jn);
     } else if (strncmp(req, "SET_PROFILE:", 12) == 0) {
         const char *pname = req + 12;
@@ -330,87 +280,6 @@ static void process_client(int client_fd) {
     } else if (strncmp(req, "PING", 4) == 0) {
         const char *pong = "PONG\n";
         write(client_fd, pong, strlen(pong));
-    } else if (strncmp(req, "SET_CHARGE_MODE:", 16) == 0) {
-        int mode = atoi(req + 16);
-        if (mode < CHARGE_MODE_OEM || mode > CHARGE_MODE_CUSTOM) {
-            const char *err = "{\"status\":\"error\",\"message\":\"Invalid charge mode (0-6 only)\"}\n";
-            write(client_fd, err, strlen(err));
-        } else {
-            set_charge_mode(mode);
-            int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-            int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            normalize_thermal_temps(&cpu_temp, &bat_temp);
-            update_status_json_file(cpu_temp, bat_temp);
-
-            char res[256];
-            snprintf(res, sizeof(res),
-                "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\",\"custom_limit\":%d,\"charger_supported\":%d}\n",
-                mode, charge_mode_name(mode), g_state.custom_charge_limit, g_state.charger_supported);
-            write(client_fd, res, strlen(res));
-        }
-    } else if (strncmp(req, "SET_CHARGE_LIMIT:", 17) == 0) {
-        int limit = atoi(req + 17);
-        if (limit < 0 || limit > 15) {
-            const char *err = "{\"status\":\"error\",\"message\":\"Invalid limit level (0-15 only)\"}\n";
-            write(client_fd, err, strlen(err));
-        } else {
-            set_custom_charge_limit(limit);
-            int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-            int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-            normalize_thermal_temps(&cpu_temp, &bat_temp);
-            update_status_json_file(cpu_temp, bat_temp);
-
-            char res[256];
-            snprintf(res, sizeof(res),
-                "{\"status\":\"ok\",\"charge_mode\":6,\"charge_mode_name\":\"Custom Slider\","
-                "\"custom_limit\":%d,\"charger_supported\":%d}\n",
-                limit, g_state.charger_supported);
-            write(client_fd, res, strlen(res));
-        }
-    } else if (strncmp(req, "SET_NIGHT_CHARGING:", 19) == 0) {
-        int val = atoi(req + 19);
-        set_night_charging(val ? 1 : 0);
-        ipc_sync_status();
-
-        char res[256];
-        snprintf(res, sizeof(res),
-            "{\"status\":\"ok\",\"night_charging\":%d}\n",
-            g_state.night_charging);
-        write(client_fd, res, strlen(res));
-    } else if (strncmp(req, "SET_SMART_CHG:", 14) == 0) {
-        int val = atoi(req + 14);
-        set_smart_chg(val ? 1 : 0);
-        ipc_sync_status();
-
-        char res[256];
-        snprintf(res, sizeof(res),
-            "{\"status\":\"ok\",\"smart_chg\":%d}\n",
-            g_state.smart_chg);
-        write(client_fd, res, strlen(res));
-    } else if (strncmp(req, "SET_PROTECT_80:", 15) == 0) {
-        int val = atoi(req + 15);
-        set_protect_80(val ? 1 : 0);
-        ipc_sync_status();
-
-        char res[256];
-        snprintf(res, sizeof(res),
-            "{\"status\":\"ok\",\"protect_80\":%d}\n",
-            g_state.protect_80);
-        write(client_fd, res, strlen(res));
-    } else if (strncmp(req, "GET_CHARGE_MODE", 15) == 0) {
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(NULL, &bat_temp);
-        char res[380];
-        snprintf(res, sizeof(res),
-            "{\"status\":\"ok\",\"charge_mode\":%d,\"charge_mode_name\":\"%s\","
-            "\"custom_limit\":%d,\"night_charging\":%d,\"smart_chg\":%d,\"protect_80\":%d,"
-            "\"charger_supported\":%d,\"bat_temp\":%d,\"sleep_boost_active\":%d,\"effective_custom_limit\":%d}\n",
-            g_state.user_charge_mode, charge_mode_name(g_state.user_charge_mode),
-            g_state.custom_charge_limit,
-            g_state.night_charging, g_state.smart_chg, g_state.protect_80,
-            g_state.charger_supported, bat_temp,
-            g_state.sleep_boost_active, g_state.effective_custom_limit);
-        write(client_fd, res, strlen(res));
     } else {
         const char *err = "{\"status\":\"error\",\"message\":\"Unknown command\"}\n";
         write(client_fd, err, strlen(err));
@@ -513,10 +382,9 @@ void handle_ipc_events(int timeout_ms) {
     }
 }
 
-void update_status_json_file(int cpu_temp, int bat_temp) {
-    /* cpu_temp and bat_temp are pre-read by the main loop — no redundant sysfs open here */
+void update_status_json_file(void) {
     char json[STATUS_JSON_MAX];
-    if (build_status_json(json, sizeof(json), cpu_temp, bat_temp) <= 0) {
+    if (build_status_json(json, sizeof(json)) <= 0) {
         return;
     }
 
@@ -555,8 +423,8 @@ void update_status_json_file(int cpu_temp, int bat_temp) {
          *
          * The mode is pinned before the swap because fopen honours the inherited
          * umask. Left alone, the copy in /dev landed as 0644 and every app on
-         * the device could read battery health, cycle count, temperatures and
-         * charge mode — the opposite of the root-only telemetry path
+         * the device could read temperatures and profile state — the opposite of
+         * the root-only telemetry path
          * common.h documents, since /dev is not behind /data/adb's 0700. */
         if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0) {
             fclose(f);

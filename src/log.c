@@ -17,7 +17,7 @@ static int s_log_fd = -1;
 static void ensure_log_open(void) {
     if (s_log_fd >= 0) return;
     /* 0600: telemetry lives under /data/adb (root-only) — group-read would
-     * leak thermal/charging history to any gid with adb-group access. */
+     * leak usage history to any gid with adb-group access. */
     s_log_fd = open(LOG_PATH, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
     /* Fallback for the degraded path where /data/adb/hypercore does not exist
      * (init_hardware_nodes() fell back to /data/local/tmp). */

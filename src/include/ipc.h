@@ -11,7 +11,7 @@ extern "C" {
 int  init_ipc_socket(void);
 void close_ipc_socket(void);
 void handle_ipc_events(int timeout_ms);
-void update_status_json_file(int cpu_temp, int bat_temp);
+void update_status_json_file(void);
 
 /* Capacity of the status document buffer. The single serializer in ipc.c
  * refuses to emit a truncated object, so this is the hard ceiling on how much

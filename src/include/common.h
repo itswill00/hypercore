@@ -22,7 +22,7 @@
 #include <sys/file.h>
 
 /* Telemetry stays inside /data/adb (root-only, 0700-ish) rather than /sdcard,
- * where every app with storage access could read thermal and charging history. */
+ * where every app with storage access could read usage history. */
 #define LOG_PATH        "/data/adb/hypercore/hypercore.log"
 #define FREQ_LITTLE_MAX 2000000
 #define FREQ_BIG_MAX    2200000
@@ -35,6 +35,14 @@ typedef enum {
 } profile_t;
 
 extern const char *g_profile_names[];
+
+/* Normalize raw milli-degree thermal readings to degrees Celsius.
+ * Informatif saja (status.json), tidak dipakai untuk keputusan tuning. */
+static inline void normalize_thermal_temps(int *cpu_temp, int *bat_temp) {
+    if (cpu_temp && *cpu_temp > 1000) *cpu_temp /= 1000;
+    if (bat_temp) { if (*bat_temp > 1000) *bat_temp /= 1000; else if (*bat_temp > 100) *bat_temp /= 10; }
+}
+
 
 struct hw_nodes {
     char mod_dir[256];
