@@ -2,7 +2,6 @@
 #include "gpu.h"
 #include "memory.h"
 #include "io.h"
-#include "thermal.h"
 #include "sysfs.h"
 #include "log.h"
 
@@ -600,31 +599,17 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
 
         case PROFILE_Gaming_MOBA:
         case PROFILE_Gaming: {
-            int tier = get_thermal_tier();
             m->devfreq_gov = "performance";
             m->lit_min_freq = g_nodes.lit_hw_min_freq;
             m->big_min_freq = g_nodes.big_hw_min_freq;
 
-            /* Thermal ceilings.
-             *
-             * The table lives in thermal_ceiling_mhz() so this file and the
-             * documentation cannot drift apart again: the tier-1 and tier-2
-             * arms used to carry identical 1.8/1.8 numbers, which made Tier 2
-             * indistinguishable from Tier 1 no matter what the docs claimed.
-             * MOBA keeps the higher big-cluster allowance at tier 1 because its
-             * frametime budget is tighter.
-             *
-             * Ceilings are clamped down to whatever the hardware actually
-             * reports, never up: on a part whose hw_max is already below the
-             * nominal number, "capping" must not become "raising". */
-            int hw_lit_max = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : FREQ_LITTLE_MAX;
-            int hw_big_max = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : FREQ_BIG_MAX;
-
-            int lit_ceiling, big_ceiling;
-            thermal_ceiling_mhz(tier, prof, &lit_ceiling, &big_ceiling);
-
-            m->lit_max_freq = hw_lit_max < lit_ceiling ? hw_lit_max : lit_ceiling;
-            m->big_max_freq = hw_big_max < big_ceiling ? hw_big_max : big_ceiling;
+            /* Full hardware ceilings, clamped down to whatever the hardware
+             * actually reports, never up: on a part whose hw_max is already
+             * below the nominal number, "capping" must not become "raising".
+             * Thermal mitigation during gaming is left entirely to the vendor
+             * stack (mi_thermald / FPSGO thermal). */
+            m->lit_max_freq = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : FREQ_LITTLE_MAX;
+            m->big_max_freq = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : FREQ_BIG_MAX;
 
             m->up_rate_limit = "0";
             m->down_rate_limit = "30000";
@@ -639,7 +624,7 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->top_app_uclamp_min = "50";
             m->top_app_uclamp_max = "max";
 
-            /* Full GPU performance without thermal tier degradation */
+            /* Full GPU performance */
             m->devfreq_poll_ms = "20";
             m->devfreq_upthresh = "50";
             m->devfreq_downdiff = "20";
@@ -669,20 +654,12 @@ static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
             m->fpsgo_ultra_rescue = "1";
             m->fpsgo_light_loading = "0";
 
-            /* Suppressing the vendor thermal stack is only defensible while the
-             * SoC is genuinely cool. At tier >= 1 the module hands thermal
-             * control back to mi_thermald and FPSGO instead of pushing
-             * sconfig 10 (thermal-nolimits) against a hot device — enforce_gaming_
-             * thermal_bypass() already skips its bypass at those tiers, and this
-             * matrix used to undo that skip right after. */
-            if (tier >= 1) {
-                m->fpsgo_thrm_enable = g_stock_baseline.fpsgo_thrm_enable[0]
-                                           ? g_stock_baseline.fpsgo_thrm_enable : "1";
-                m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
-            } else {
-                m->fpsgo_thrm_enable = "0";
-                m->sconfig = "10";
-            }
+            /* Vendor thermal stack is left untouched: fpsgo_thrm_enable and
+             * sconfig keep their stock values in every profile. HyperCore
+             * does not fight mi_thermald. */
+            m->fpsgo_thrm_enable = g_stock_baseline.fpsgo_thrm_enable[0]
+                                       ? g_stock_baseline.fpsgo_thrm_enable : "1";
+            m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
 
             m->touch_thp_smooth = "1";
             m->touch_game_mode = "1";

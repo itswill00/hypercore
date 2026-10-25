@@ -292,8 +292,7 @@ void save_stock_baseline(void) {
         {"vm_page_cluster", g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead},
         {"io_nr_requests", g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats},
         {"sched_migration_cost", g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency},
-        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit},
-        {"chg_smart", g_stock_baseline.chg_smart}, {"chg_night", g_stock_baseline.chg_night},
+        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate},
     };
     struct { const char *k; int *v; } ints[] = {
         {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
@@ -343,8 +342,7 @@ int load_stock_baseline(void) {
         {"vm_page_cluster", g_stock_baseline.vm_page_cluster, sizeof g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction, sizeof g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead, sizeof g_stock_baseline.io_read_ahead},
         {"io_nr_requests", g_stock_baseline.io_nr_requests, sizeof g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats, sizeof g_stock_baseline.io_iostats},
         {"sched_migration_cost", g_stock_baseline.sched_migration_cost, sizeof g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency, sizeof g_stock_baseline.sched_latency},
-        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof g_stock_baseline.sched_nr_migrate}, {"charge_limit", g_stock_baseline.charge_limit, sizeof g_stock_baseline.charge_limit},
-        {"chg_smart", g_stock_baseline.chg_smart, sizeof g_stock_baseline.chg_smart}, {"chg_night", g_stock_baseline.chg_night, sizeof g_stock_baseline.chg_night},
+        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof g_stock_baseline.sched_nr_migrate},
     };
     struct { const char *k; int *v; } ints[] = {
         {"has_baseline", &g_stock_baseline.has_baseline},
@@ -567,13 +565,6 @@ void init_stock_baseline(void) {
     sysfs_read_str("/proc/sys/kernel/sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof(g_stock_baseline.sched_nr_migrate));
     if (g_stock_baseline.sched_nr_migrate[0]=='\0') strcpy(g_stock_baseline.sched_nr_migrate, "32");
 
-    /* Charger */
-    sysfs_read_str("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit, sizeof(g_stock_baseline.charge_limit));
-    sysfs_read_str("/sys/class/power_supply/battery/smart_chg", g_stock_baseline.chg_smart, sizeof(g_stock_baseline.chg_smart));
-    if (g_stock_baseline.chg_smart[0] == '\0') strcpy(g_stock_baseline.chg_smart, "0");
-    sysfs_read_str("/sys/class/power_supply/battery/night_charging", g_stock_baseline.chg_night, sizeof(g_stock_baseline.chg_night));
-    if (g_stock_baseline.chg_night[0] == '\0') strcpy(g_stock_baseline.chg_night, "0");
-
     g_stock_baseline.has_baseline = 1;
     save_stock_baseline();
     log_info("Baseline", "Untouched factory baseline captured and saved to %s/stock_state.conf", g_nodes.data_dir);
@@ -712,13 +703,6 @@ void restore_baseline_nodes(void) {
     if (g_stock_baseline.vm_page_cluster[0] != '\0') sysfs_write("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster);
     if (g_stock_baseline.vm_compaction[0] != '\0') sysfs_write("/proc/sys/vm/compaction_proactiveness", g_stock_baseline.vm_compaction);
     if (g_stock_baseline.sched_migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
-
-    /* Restore Charger */
-    if (g_stock_baseline.charge_limit[0] != '\0') sysfs_write("/sys/class/power_supply/battery/constant_charge_current_max", g_stock_baseline.charge_limit);
-    sysfs_write("/sys/class/power_supply/battery/input_suspend", "0");
-    sysfs_write("/sys/class/power_supply/battery/charge_control_limit", "0");
-    if (g_stock_baseline.chg_smart[0] != '\0') sysfs_write("/sys/class/power_supply/battery/smart_chg", g_stock_baseline.chg_smart);
-    if (g_stock_baseline.chg_night[0] != '\0') sysfs_write("/sys/class/power_supply/battery/night_charging", g_stock_baseline.chg_night);
 
     /* Clear runtime gaming properties without blocking daemon exit.
      * system() waits on sh+resetprop; during SIGTERM restore every millisecond

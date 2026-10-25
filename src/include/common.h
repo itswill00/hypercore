@@ -34,16 +34,6 @@ typedef enum {
     PROFILE_Gaming_MOBA
 } profile_t;
 
-typedef enum {
-    CHARGE_MODE_OEM      = 0,  /* Hands-off — 100% stock kernel/ROM driver control */
-    CHARGE_MODE_FAST     = 1,  /* charge_control_limit=0  (~3.9A / ~16W) */
-    CHARGE_MODE_BALANCED = 2,  /* charge_control_limit=10 (~2.3A / ~9.3W) */
-    CHARGE_MODE_SAFE     = 3,  /* charge_control_limit=14 (~0.73A / ~2.8W) */
-    CHARGE_MODE_BYPASS   = 4,  /* input_suspend=1 — cell disconnected (0 mA) */
-    CHARGE_MODE_VIOLENT  = 5,  /* limit=0 + smart_chg=0 + night_charging=0 (19-33W) */
-    CHARGE_MODE_CUSTOM   = 6,  /* Custom user-defined limit via slider (level 0-15) */
-} charge_mode_t;
-
 extern const char *g_profile_names[];
 
 struct hw_nodes {
@@ -85,18 +75,6 @@ struct core_state {
     int app_boost_ticks;
     int jitter_rescue_ticks;
     int prev_load;
-    int is_charging;
-    int user_charge_mode;             /* CHARGE_MODE_* selected by user (0=OEM 1=Fast 2=Balanced 3=Safe 4=Bypass 5=Violent 6=Custom) */
-    int charge_mode;                  /* CHARGE_MODE_* currently active on hardware (effective mode)                      */
-    int charger_supported;            /* 1 = hardware sysfs charger control nodes detected, 0 = unsupported               */
-    int custom_charge_limit;          /* Custom slider hardware limit level (0-15), default 10                            */
-    int night_charging;               /* 1 = night charging protection enabled (pauses at 80% overnight)                   */
-    int smart_chg;                    /* 1 = smart charging curve enabled                                                  */
-    int protect_80;                   /* 1 = stop charging at 80% capacity limit                                           */
-    int thermal_tier;                 /* 0 = Optimal, 1 = Warm mitigation, 2 = Hot safety protection                       */
-    int charge_override;              /* 1 = safety / low battery / thermal override currently active                     */
-    int sleep_boost_active;           /* 1 = screen-off sleep boost currently raising charge rate                          */
-    int effective_custom_limit;       /* active Custom slider level actually on hardware (sleep-boosted when active)       */
 };
 
 typedef struct {
@@ -183,10 +161,6 @@ typedef struct {
     char sched_latency[32];
     char sched_nr_migrate[32];
 
-    /* Charger */
-    char charge_limit[64];
-    char chg_smart[16];
-    char chg_night[16];
 } stock_baseline_t;
 
 extern volatile sig_atomic_t g_running;

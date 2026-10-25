@@ -6,10 +6,8 @@
 #include "gpu.h"
 #include "memory.h"
 #include "io.h"
-#include "thermal.h"
 #include "gamelist.h"
 #include "ipc.h"
-#include "charger.h"
 
 const char *g_profile_names[] = {
     "Sleep", "Interactive", "Gaming", "Gaming MOBA"
@@ -121,8 +119,6 @@ static void init_hardware_nodes(void) {
         snprintf(old_path, sizeof(old_path), "%s/status.json", g_nodes.mod_dir);
         unlink(old_path);
     }
-
-    scan_thermal_zones();
 
     const char *bl_paths[] = {
         "/sys/class/leds/lcd-backlight/brightness",
@@ -493,8 +489,6 @@ int main(int argc, char *argv[]) {
     g_state.current_profile = (profile_t)-1;
     g_state.manual_profile = -1;
 
-    init_charge_control();
-    sync_battery_cycle_count();
     load_gamelist();
     init_gamelist_watcher();
 
@@ -505,13 +499,6 @@ int main(int argc, char *argv[]) {
     update_module_prop_status("Interactive"); /* Fix: update status immediately on boot, not waiting for profile change */
 
     while (g_running) {
-        int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-        int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-        normalize_thermal_temps(&cpu_temp, &bat_temp);
-
-        int tier_changed = update_thermal_guard(cpu_temp, bat_temp);
-
-        g_state.is_charging = check_charging_status();
         int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
 
         char active_game[128] = "";
@@ -595,17 +582,11 @@ int main(int argc, char *argv[]) {
             next_profile = PROFILE_Interactive;
         }
 
-        static int s_prev_cpu_temp = 0;
-        int temp_delta = (s_prev_cpu_temp > 0) ? abs(cpu_temp - s_prev_cpu_temp) : 0;
-        s_prev_cpu_temp = cpu_temp;
-
-
-
         static int s_prev_gpu_load = 0;
         int gpu_spike = (gpu_load - s_prev_gpu_load >= 30);
         s_prev_gpu_load = gpu_load;
 
-        if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && (gpu_spike || temp_delta >= 4)) {
+        if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && gpu_spike) {
             if (g_state.jitter_rescue_ticks == 0) {
                 g_state.jitter_rescue_ticks = 2;
                 sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
@@ -627,36 +608,29 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (next_profile != g_state.current_profile || tier_changed) {
+        if (next_profile != g_state.current_profile) {
             const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
-            if (next_profile != g_state.current_profile) {
-                char status_buf[128];
-                if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && active_game[0] != '\0') {
-                    snprintf(status_buf, sizeof(status_buf), "%s (%s)", g_profile_names[next_profile], active_game);
-                    log_state("Profiler", "Profile: %s -> %s [%s] (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
-                              prev_name, g_profile_names[next_profile], active_game, cpu_temp, bat_temp,
-                              g_state.is_charging ? "[CHG]" : "", gpu_load);
-                } else {
-                    snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
-                    log_state("Profiler", "Profile: %s -> %s (CPU: %d°C, Bat: %d°C %s, GPU: %d%%)",
-                              prev_name, g_profile_names[next_profile], cpu_temp, bat_temp,
-                              g_state.is_charging ? "[CHG]" : "", gpu_load);
-                }
-                update_module_prop_status(status_buf);
-            } else if (tier_changed) {
-                log_info("Thermal", "Thermal Guard adjustment applied to %s (Tier %d)",
-                         g_profile_names[next_profile], g_state.thermal_tier);
+            char status_buf[128];
+            if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && active_game[0] != '\0') {
+                snprintf(status_buf, sizeof(status_buf), "%s (%s)", g_profile_names[next_profile], active_game);
+                log_state("Profiler", "Profile: %s -> %s [%s] (GPU: %d%%)",
+                          prev_name, g_profile_names[next_profile], active_game, gpu_load);
+            } else {
+                snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
+                log_state("Profiler", "Profile: %s -> %s (GPU: %d%%)",
+                          prev_name, g_profile_names[next_profile], gpu_load);
             }
+            update_module_prop_status(status_buf);
             apply_profile(next_profile, gpu_load);
             g_state.current_profile = next_profile;
         }
 
         /* Boot settle: the one-shot Interactive apply at startup can silently
          * miss nodes that probe late (touch IC sysfs) or get overwritten by
-         * vendor init / mi_thermald seconds after boot_completed — while the
+         * vendor init seconds after boot_completed — while the
          * status already reports Interactive, so the loop above would never
          * re-apply. Force a re-apply at a few early ticks (~+10s/+30s/+60s in
-         * Interactive), same pattern as the charger enforce loop below.
+         * Interactive), same pattern as other periodic enforcement loops.
          * Skipped while a game is active or the profile is manually locked. */
         static int s_boot_settle_tick = 0;
         s_boot_settle_tick++;
@@ -672,31 +646,9 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        /* Active thermal bypass guard during gaming:
-         * Prevents mi_thermald & FPSGO from prematurely capping frequencies or dropping frames */
-        if (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA) {
-            enforce_gaming_thermal_bypass(g_state.current_profile, g_state.thermal_tier);
-        }
-
         tune_memory_pressure();
 
-        /* Enforce user-selected charge mode every 2 ticks (~2-4s).
-         * This re-writes charge_control_limit/input_suspend if mi_thermald
-         * or ROM charger driver overwrote them since the last tick. */
-        static int s_charge_enforce_counter = 0;
-        if (++s_charge_enforce_counter >= 2) {
-            s_charge_enforce_counter = 0;
-            enforce_charge_mode();
-        }
-
-        update_status_json_file(cpu_temp, bat_temp);
-
-        /* Auto-correct and synchronize true battery cycle count every 5 ticks (~10s) */
-        static int s_cycle_sync_counter = 0;
-        if (++s_cycle_sync_counter >= 5) {
-            s_cycle_sync_counter = 0;
-            sync_battery_cycle_count();
-        }
+        update_status_json_file();
 
         static int s_rotate_counter = 0;
         if (++s_rotate_counter >= 30) {
@@ -707,11 +659,9 @@ int main(int argc, char *argv[]) {
 
         int poll_timeout_ms = 2000;
         if (next_profile == PROFILE_Sleep) {
-            poll_timeout_ms = (bat_temp >= 45) ? 3000 : 8000;
+            poll_timeout_ms = 8000;
         } else if (next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) {
-            poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 500 : 1000;
-        } else if (next_profile == PROFILE_Interactive) {
-            poll_timeout_ms = (temp_delta >= 3 || cpu_temp >= 65) ? 1000 : 2000;
+            poll_timeout_ms = gpu_load >= 90 ? 500 : 1000;
         }
 
         handle_ipc_events(poll_timeout_ms);
