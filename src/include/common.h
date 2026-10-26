@@ -28,21 +28,26 @@
 #define FREQ_BIG_MAX    2200000
 
 typedef enum {
-    PROFILE_Sleep,
-    PROFILE_Interactive,
-    PROFILE_Gaming,
-    PROFILE_Gaming_MOBA
+    PROFILE_NONE = -1,
+    PROFILE_Sleep = 0,
+    PROFILE_Interactive = 1,
+    PROFILE_Gaming = 2,
+    PROFILE_Gaming_MOBA = 3
 } profile_t;
+
+#define PROFILE_COUNT 4
 
 extern const char *g_profile_names[];
 
-/* Normalize raw milli-degree thermal readings to degrees Celsius.
- * Informatif saja (status.json), tidak dipakai untuk keputusan tuning. */
-static inline void normalize_thermal_temps(int *cpu_temp, int *bat_temp) {
-    if (cpu_temp && *cpu_temp > 1000) *cpu_temp /= 1000;
-    if (bat_temp) { if (*bat_temp > 1000) *bat_temp /= 1000; else if (*bat_temp > 100) *bat_temp /= 10; }
+/* Thermal readings are exported in Celsius but the raw unit differs per vendor
+ * (millidegrees, tenths of a degree, or degrees). Pick the unit from the
+ * magnitude; the ranges do not overlap for any temperature a phone can reach.
+ * Telemetry only — never used for a tuning decision. */
+static inline int normalize_temp(int raw) {
+    if (raw >= 1000) return raw / 1000;
+    if (raw >= 100)  return raw / 10;
+    return raw;
 }
-
 
 struct hw_nodes {
     char mod_dir[256];
@@ -52,10 +57,7 @@ struct hw_nodes {
     char cpu_temp[256];
     char bat_temp[256];
     char gpu_temp[256];
-    char chg_temp[256];
-    char bat_status[256];
     char backlight[256];
-    char devfreq_cooler[256];
     char touch_thp_smooth[256];
     char touch_thp_noisefilter[256];
     char touch_edge[256];
@@ -77,12 +79,9 @@ struct hw_nodes {
 struct core_state {
     profile_t current_profile;
     int manual_profile;               /* -1 = auto (autonomous profiler), 0=Sleep, 1=Interactive, 2=Gaming, 3=Gaming_MOBA */
-    int touch_boost_ticks;
-    int gaming_hold_ticks;
     int launch_boost_ticks;
     int app_boost_ticks;
     int jitter_rescue_ticks;
-    int prev_load;
 };
 
 typedef struct {
@@ -162,7 +161,6 @@ typedef struct {
     /* Storage I/O */
     char io_read_ahead[32];
     char io_nr_requests[32];
-    char io_iostats[16];
 
     /* Scheduler */
     char sched_migration_cost[32];

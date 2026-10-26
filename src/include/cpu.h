@@ -1,26 +1,25 @@
-
 #ifndef HYPERCORE_CPU_H
 #define HYPERCORE_CPU_H
 
 #include "common.h"
-#include "sysfs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void detect_cpu_hardware_limits(void);
-void set_rate_limits(const char *lit_up, const char *lit_down,
-                     const char *big_up, const char *big_down);
-void set_cpu_governor(const char *lit_gov, const char *big_gov);
-void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big,
-                   const char *lit_up, const char *lit_down,
-                   const char *big_up, const char *big_down);
-void apply_profile(profile_t prof, int gpu_load);
-void reset_to_interactive_baseline(void);
+
+/* Apply a complete profile: CPU, cgroups, GPU devfreq, GED/FPSGO, touch and
+ * VM policy. Idempotent and safe to call on every transition. */
+void apply_profile(profile_t prof);
+
+/* Steady-state read-ahead for a profile. The launch/app boost window owns the
+ * transient 512 KB value; this is what the boost code re-applies when the
+ * window closes, so two subsystems no longer disagree about the node. */
+const char *profile_read_ahead(profile_t prof);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif 
+#endif

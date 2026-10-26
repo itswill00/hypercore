@@ -1,4 +1,3 @@
-
 #ifndef HYPERCORE_GPU_H
 #define HYPERCORE_GPU_H
 
@@ -9,9 +8,6 @@
 extern "C" {
 #endif
 
-void apply_gpu_tuning(void);
-int read_mali_power_policy(char *out_buf, size_t max_len);
-int read_mali_governor(char *out_buf, size_t max_len);
 void detect_max_gpu_freq(void);
 const char *get_max_gpu_freq_hz(void);
 const char *get_max_gpu_freq_khz(void);
@@ -22,4 +18,4 @@ void set_mali_downdifferential(const char *val);
 }
 #endif
 
-#endif 
+#endif

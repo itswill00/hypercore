@@ -4,6 +4,8 @@
 #include "ipc.h"
 #include "cpu.h"
 #include "common.h"
+#include "nodes.h"
+#include "module.h"
 #include "sysfs.h"
 #include "memory.h"
 #include "log.h"
@@ -178,11 +180,10 @@ void close_ipc_socket(void) {
 /* One serializer for the whole status document.
  *
  * GET_STATUS and the periodic status.json writer used to carry two separate
- * snprintf format strings that had already drifted: the socket reply reported
- * uptime_sec, bat_health, bat_status and bat_tech, while status.json — the
- * source the WebUI polls first — silently omitted all four. Two copies of a
- * 25-field format string is a contract nobody can keep in sync, so both paths
- * now render through here. */
+ * snprintf format strings that had already drifted, and both advertised
+ * telemetry (battery health/status/tech) that no consumer read. Two copies of
+ * a 25-field format string is a contract nobody can keep in sync, so both
+ * paths now render through here and only live fields are emitted. */
 static int build_status_json(char *out, size_t cap) {
     int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
     const char *prof_str = (g_state.current_profile >= 0 && g_state.current_profile < 4)
@@ -190,15 +191,10 @@ static int build_status_json(char *out, size_t cap) {
 
     long uptime_sec = (long)difftime(time(NULL), s_start_time);
 
-    /* Informatif saja — tidak dipakai untuk keputusan tuning apa pun. */
-    int cpu_temp = sysfs_read_int(g_nodes.cpu_temp);
-    int bat_temp = sysfs_read_int(g_nodes.bat_temp);
-    normalize_thermal_temps(&cpu_temp, &bat_temp);
-    int gpu_temp = 0;
-    if (g_nodes.gpu_temp[0] != '\0') {
-        gpu_temp = sysfs_read_int(g_nodes.gpu_temp);
-        if (gpu_temp > 1000) gpu_temp /= 1000;
-    }
+    /* Telemetry only - never feeds a tuning decision. */
+    int cpu_temp = normalize_temp(sysfs_read_int(g_nodes.cpu_temp));
+    int bat_temp = normalize_temp(sysfs_read_int(g_nodes.bat_temp));
+    int gpu_temp = normalize_temp(sysfs_read_int(g_nodes.gpu_temp));
 
     /* Read-only hardware telemetry (zero tuning, informational only) */
     int dvfsrc_mhz = 0;
@@ -262,7 +258,7 @@ static void process_client(int client_fd) {
             }
 
             g_state.manual_profile = (int)new_prof;
-            apply_profile(new_prof, 0);
+            apply_profile(new_prof);
             g_state.current_profile = new_prof;
             update_module_prop_status(g_profile_names[new_prof]);
             ipc_sync_status();
@@ -383,6 +379,15 @@ void handle_ipc_events(int timeout_ms) {
 }
 
 void update_status_json_file(void) {
+    /* The WebUI polls every 3 s and IPC is the primary path, so a 1 Hz
+     * snapshot is plenty. This used to rewrite two JSON files on every loop
+     * tick (0.5 s in Gaming), i.e. thousands of write+rename pairs per hour on
+     * f2fs for a document that had not changed. */
+    static time_t s_last_write = 0;
+    time_t now = time(NULL);
+    if (now == s_last_write) return;
+    s_last_write = now;
+
     char json[STATUS_JSON_MAX];
     if (build_status_json(json, sizeof(json)) <= 0) {
         return;

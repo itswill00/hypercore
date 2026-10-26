@@ -287,6 +287,10 @@ else
         src/ipc.c \
         src/log.c \
         src/sysfs.c \
+        src/nodes.c \
+        src/baseline.c \
+        src/module.c \
+        src/util.c \
         src/integrity.c \
         src/sha256.c \
         -o system/bin/libhypercore.so
@@ -300,20 +304,14 @@ fi
 sed -i '/system\/bin\/libhypercore.so$/d' checksums.txt
 sha256sum system/bin/libhypercore.so >> checksums.txt
 
-# module.prop, gamelist.txt, and customize.sh ship in the zip but must stay OUT of the
-# embedded table: the daemon rewrites module.prop's description on every
-# profile switch, gamelist.txt is user data deleted at install time, and customize.sh
-# is deleted by Magisk/KernelSU root managers upon flash completion.
-# Appending here covers them under the install-time manifest only.
-for _extra in module.prop gamelist.txt customize.sh; do
-    if [ ! -f "$_extra" ]; then
-        echo "error: expected payload missing, cannot build a trustworthy manifest: $_extra"
-        exit 1
-    fi
-    sed -i "/[[:space:]]${_extra}\$/d" checksums.txt
-    sha256sum "$_extra" >> checksums.txt
-done
-
+# module.prop, gamelist.txt, and customize.sh stay out of the manifest too.
+# They ship in the zip but cannot be verified later: the daemon rewrites
+# module.prop's description on every profile switch, gamelist.txt is user data
+# that customize.sh moves out of the module, and the root manager deletes
+# customize.sh after flashing. Including them would make the README's
+# `sha256sum -c checksums.txt` fail on every running install while adding no
+# security value (none of the three is executed as module code).
+#
 # Fail loudly rather than shipping a manifest that does not match the payload.
 if ! sha256sum -c checksums.txt >/dev/null 2>&1; then
     echo "error: checksums.txt does not match the built payload"
@@ -333,7 +331,6 @@ uninstall.sh banner.jpg"
 [ "$HAVE_HMOON_D" -eq 1 ] && ZIP_ENTRIES="$ZIP_ENTRIES system/bin/hypermoon_d"
 [ "$HAVE_DEX" -eq 1 ] && ZIP_ENTRIES="$ZIP_ENTRIES system/bin/hypermoon.dex"
 
-echo "packaging zip package..."
 if ! zip -r "$OUTPUT_DIR/$ZIP_OUT" $ZIP_ENTRIES >/dev/null; then
     echo "error: packaging failed"
     exit 1

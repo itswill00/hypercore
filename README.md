@@ -224,7 +224,7 @@ Single-file Vue 3 + Pinia app (`webroot/index.html`) served by your root manager
 > [!WARNING]
 > A kernel module runs as root. HyperCore treats every install like hostile input:
 
-1. **Two-layer integrity** — `customize.sh` runs `sha256sum -c checksums.txt` over the *entire* payload **before sourcing or executing anything**, then the daemon re-verifies from an embedded checksum table (`--verify-integrity`). `libhypercore.so` can't embed its own hash, so it's covered by the shipped manifest.
+1. **Two-layer integrity** — `customize.sh` runs `sha256sum -c checksums.txt` over the *executable* payload **before sourcing or executing anything**, then the daemon re-verifies from an embedded checksum table (`--verify-integrity`). `libhypercore.so` can't embed its own hash, so it's covered by the shipped manifest. Runtime-mutated files (`module.prop`, `gamelist.txt`) and `customize.sh` are excluded so the manifest stays valid on a running install.
 2. **IPC authorization** — `/dev/hypercore.sock` checks every peer with `SO_PEERCRED`: only **uid 0** (root bridges, bugreport) and **uid 2000** (adb shell). Strangers are dropped *before* the daemon reads a byte.
 3. **Single instance** — advisory `flock` on `<data_dir>/.hypercore_lock`; the kernel releases it even on `SIGKILL`.
 4. **Hygiene** — logs/telemetry live in `/data/adb/hypercore/` (never world-readable `/sdcard`), shell calls are quoted against injection, socket reads loop to newline under a 25 ms timeout.
@@ -279,6 +279,7 @@ flowchart TD
 src/
 ├── include/
 │   ├── common.h  # hw_nodes / core_state / stock_baseline structs
+│   ├── baseline.h  # Stock capture / restore API
 │   ├── cpu.h  # Profile matrix + governor/freq API
 │   ├── embedded_checksums.h  # GENERATED — SHA-256 table (do not hand-edit)
 │   ├── gamelist.h  # Foreground game detector + PID cache
@@ -288,16 +289,22 @@ src/
 │   ├── ipc.h  # UNIX socket protocol
 │   ├── log.h  # Leveled logging + rotation
 │   ├── memory.h  # Swappiness, VM, swap-pool awareness, purge
+│   ├── module.h  # module.prop status writer
+│   ├── nodes.h  # Device path registry + thermal-zone candidates
 │   ├── sha256.h  # SHA-256 implementation
-│   ├── sysfs.h  # Dual-kernel sysfs I/O + touch rediscovery
+│   ├── sysfs.h  # Sysfs/procfs I/O primitives
+│   └── util.h  # Async resetprop / command helpers
 ├── hud/
 │   ├── hypermoon_daemon.c       # C telemetry collector (hypermoon_d)
 │   └── HyperMoonOverlay.java    # DEX overlay renderer
 ├── main.c                       # init, boot settle, adaptive main loop
+├── nodes.c                      # Path discovery + thermal-zone resolution
+├── baseline.c                   # One-table stock capture / save / load / restore
 ├── cpu.c                        # build_profile_matrix() + apply_profile()
 ├── gamelist.c                   # cgroup top-app scan, hourly pm fallback
 ├── ipc.c                        # SO_PEERCRED socket + atomic status.json
-├── sysfs.c                      # Read-before-write, stock baseline save/load
+├── sysfs.c                      # Read-before-write primitives + fallback arrays
+├── module.c / util.c            # module.prop status + async helpers
 ├── integrity.c / sha256.c       # Manifest verification primitives
 ├── io.c / memory.c / gpu.c      # Storage, VM and GPU tuning
 └── log.c                        # Persistent FD, 512 KB / 250-line rotation
@@ -311,7 +318,7 @@ webui/  →  Vue 3 + Pinia SPA  →  webroot/index.html (single file)
 1. Download **`HyperCore-v6.12.0-b6120-Unified.zip`** from the [Releases page](https://github.com/itswill00/hypercore/releases)
 2. Flash it in **KernelSU / APatch / Magisk**
 3. **Reboot** — the daemon starts automatically and settles into Interactive
-4. Open the manager's **WebUI** to monitor, add games, tune charging and design your HUD
+4. Open the manager's **WebUI** to monitor, add games, tune per-app profiles and design your HUD
 
 Verify a running install any time (uid 0 / adb shell):
 

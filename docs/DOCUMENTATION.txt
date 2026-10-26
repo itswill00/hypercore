@@ -17,14 +17,16 @@ TABLE OF CONTENTS
 2. REPOSITORY & DIRECTORY STRUCTURE
 3. NATIVE C DAEMON ARCHITECTURE (libhypercore.so)
    3.1. Main Loop & Daemon Lifecycle (src/main.c)
-   3.2. Universal Dual-Kernel Sysfs I/O (src/sysfs.c)
-   3.3. CPU Cluster, Governor & Uclamp Management (src/cpu.c)
-   3.4. Mali GPU & MediaTek GED Driver Optimization (src/gpu.c)
+   3.2. Path Registry & Sysfs I/O (src/nodes.c, src/sysfs.c)
+   3.3. Stock Baseline Engine (src/baseline.c)
+   3.4. Profile Matrix, Frequency & GPU Policy (src/cpu.c, src/gpu.c)
    3.5. Thermal Policy (vendor stack untouched)
    3.6. Auto Game Detector & Foreground Process Scanner (src/gamelist.c)
    3.7. UNIX Domain Socket IPC & Atomic Telemetry Storage (src/ipc.c)
    3.8. Storage I/O & Memory / VM Optimization (src/io.c & src/memory.c)
    3.9. SHA-256 Binary Integrity Verification (src/integrity.c & src/sha256.c)
+   3.10. Single-Instance Lock (src/main.c)
+   3.11. System Logging Infrastructure (src/log.c)
 
 ================================================================================
 2. REPOSITORY & DIRECTORY STRUCTURE
@@ -33,7 +35,7 @@ TABLE OF CONTENTS
 hypercore/
 ├── customize.sh                 # Root installer script for Magisk/KernelSU/APatch
 ├── service.sh                   # Boot completion daemon and HUD launcher
-├── post-fs-data.sh              # Early boot virtual memory optimization
+├── post-fs-data.sh              # Early runtime state directory bootstrap
 ├── uninstall.sh                 # Complete cleanup and sysfs node restoration
 ├── module.prop                  # Magisk/KernelSU module metadata
 ├── system.prop                  # Low-overhead Android system properties
@@ -47,14 +49,18 @@ hypercore/
 ├── docs/                        # Architecture and technical documentation
 │   └── DOCUMENTATION.txt        # Comprehensive technical specification
 ├── src/                         # Native C daemon source code
-│   ├── main.c                   # Entry point, event loop, and signal handling
-│   ├── sysfs.c                  # Universal Dual-Kernel sysfs/procfs I/O driver
+│   ├── main.c                   # Entry point, loop orchestration, signal handling
+│   ├── nodes.c                  # Device path registry + thermal-zone resolution
+│   ├── baseline.c               # Single-table stock capture / save / load / restore
+│   ├── sysfs.c                  # Read/write primitives with fallback arrays
 │   ├── cpu.c                    # CPU cluster frequencies, governor & uclamp
 │   ├── gpu.c                    # Mali GPU devfreq & MediaTek GED manager
 │   ├── gamelist.c               # Foreground package scanner and game detector
 │   ├── ipc.c                    # UNIX domain socket IPC & atomic JSON exporter
 │   ├── io.c                     # Block storage read-ahead and queue tuning
 │   ├── memory.c                 # Virtual memory and ZRAM compaction tuning
+│   ├── module.c                 # module.prop status writer
+│   ├── util.c                   # Async resetprop / command helpers
 │   ├── integrity.c              # Checksum calculation and binary verification
 │   ├── sha256.c                 # Self-contained native SHA-256 implementation
 │   ├── log.c                    # Rotating filesystem logger
@@ -69,11 +75,74 @@ hypercore/
 └── webui/                       # Material Design 3 WebUI Dashboard (Vue 3 + Vite)
     ├── src/
     │   ├── App.vue              # Root application shell and view container
-    │   ├── views/               # Page views (Home, Charger, Games, Logs, Hud, About)
+    │   ├── views/               # Page views (Home, Games, Logs, Hud, About)
     │   ├── components/          # MD3 UI components (ActionButtons, AppPicker, Modals)
     │   ├── stores/              # Pinia telemetry stores (hyper.js, hypermoon.js)
     │   └── helpers/shell.js     # Native shell bridge (KernelSU, APatch, execCommand)
     └── vite.config.js           # Singlefile inlining build configuration
+
+================================================================================
+3.1. Main Loop & Daemon Lifecycle (src/main.c)
+- Startup order: hardware validation → `daemon()` → signal handlers → path
+  discovery (`nodes_init`) → single-instance `flock` → payload integrity check
+  → CPU/GPU limit detection → IRQ discovery → baseline load/capture → PID file
+  → IPC socket → initial Interactive apply. A failure at any gate exits before
+  the tuning loop can touch sysfs.
+- Hardware validation runs before daemonization and requires all of
+  `/sys/module/ged`, `cpufreq/policy0`, `cpufreq/policy6` and
+  `/sys/kernel/fpsgo`. A refusal is written to the module log because
+  `service.sh` discards stderr.
+- The loop is event-driven, not a fixed sleep. `poll()` wakes early on screen
+  and uevent events; the timeout is 8 s in Sleep, 1 s in Gaming (500 ms when
+  GPU load is at least 90 %), and 2 s in Interactive.
+- Boot settle re-applies the active profile at ticks 5, 15 and 30 to win any
+  late vendor-init writes, then stops.
+- SIGTERM/SIGINT sets `g_running = 0`; the loop exits, calls `baseline_restore()`
+  and removes the PID/socket before the process ends.
+
+3.2. Path Registry & Sysfs I/O (src/nodes.c, src/sysfs.c)
+- `nodes.c` is the only place that knows device paths. `nodes_init()` resolves
+  bi-cluster cpufreq, cgroup v1/v2, GED/FPSGO, Mali devfreq, touch and VM nodes
+  once, with GKI fallback arrays for nodes that moved between kernels.
+- Thermal zones are resolved by scanning `type` (CPU, battery, GPU), never by a
+  hardcoded zone index; backlight and touch nodes are re-probed when a uevent
+  suggests they appeared late.
+- `sysfs.c` provides the primitives: `sysfs_read_int`, `sysfs_write`,
+  `sysfs_read_str_fallback`, `sysfs_write_fallback` and a temporary-mode write
+  for root-only nodes. A failed write falls through to the next candidate path;
+  repeated failures are throttled instead of flooding the log.
+
+3.3. Stock Baseline Engine (src/baseline.c)
+- One `bl_entry_t` table drives capture, serialization, load and restore.
+  Adding a node is a one-line edit; capture and restore consume the same path
+  list, so "apply wrote cgroup v2 but restore wrote cgroup v1" cannot happen.
+- Captured values are written atomically to `<data_dir>/stock_state.conf`
+  (0600). Existing files are loaded at boot; a missing file triggers a fresh
+  capture before any profile is applied.
+- Vendor ROMs that report `sconfig=10` or `-1` are normalized to `0` at capture
+  time. CPU min/max pairs are restored in an order that never lets the kernel
+  see `min > max`. Block-device read-ahead and `nr_requests` are restored
+  through `io.c` because they apply to every device, not one node.
+- Shutdown restore also clears the two runtime properties
+  (`debug.sf.latch_unsignaled`, `persist.sys.wifi.low_latency`).
+
+3.4. Profile Matrix & Frequency Policy (src/cpu.c)
+- Profiles are sparse `static const k_profiles[PROFILE_COUNT]` tables. Fields
+  left NULL mean "use the captured stock value"; the stock fallback is resolved
+  once in `build_profile_matrix()`, not copied into every profile.
+- Governor selection is a class (`GOV_STOCK`, `GOV_PERF`, `GOV_BALANCED`)
+  resolved against the governors the kernel actually exposes. Interactive uses
+  the captured stock governor.
+- Frequency modes are `FREQ_STOCK` (restore captured min/max) and `FREQ_HW`
+  (vendor hardware limits with optional per-cluster caps). No profile writes a
+  fixed frequency; governors remain free to scale inside the limits.
+- `profile_read_ahead()` exposes the steady I/O value so the transient launch
+  boost has exactly one owner in `main.c`.
+- GPU policy comes from the same matrix (`devfreq_gov`, polling interval,
+  upthreshold/downdiff, min/max, `power_policy`) plus MediaTek GED/FPSGO knobs.
+  Sleep caps the GPU at its minimum; Interactive restores stock; Gaming and
+  MOBA use `performance`, a 390 MHz floor, the detected hardware ceiling and
+  `gx_game_mode=1`. Thermal nodes are never written (see 3.5).
 
 ================================================================================
 3.5. THERMAL POLICY
@@ -91,7 +160,10 @@ remains the sole authority for stepping them down under heat.
 - Lines are `package.name:PROFILE` (`GAMING`, `GAMING_MOBA`, `INTERACTIVE`,
   `SLEEP`); surrounding whitespace is ignored and profiles match
   case-insensitively, so hand edits with stray spaces still work.
-- Evaluates foreground window focus using non-blocking window manager checks.
+- Evaluates foreground focus from the `top-app` cpuset (v1 and v2 paths) and
+  matches each PID's `/proc/<pid>/cmdline` against the gamelist. A rate-limited
+  `dumpsys window` fallback (at most once per 10 s) covers OEM game spaces that
+  keep the game out of `top-app`.
 - If a foreground package matches a gamelist entry, the daemon transitions
   the system profile to `Gaming` or `Gaming MOBA`.
 - When the application is dismissed or minimized, the daemon restores `Interactive`.
@@ -124,19 +196,33 @@ remains the sole authority for stepping them down under heat.
   files (`.tmp`) and `rename()`, preventing corrupt reads by the WebUI.
 
 3.8. Storage I/O Queue & Memory / VM Optimization (src/io.c & src/memory.c)
-- Storage I/O Optimization:
-  Sets `read_ahead_kb=256`, `rq_affinity=2`, and `iostats=0` on UFS/eMMC devices
-  to minimize CPU interrupt overhead during file operations.
-- Virtual Memory Subsystem:
-  Tunes `vm.swappiness=60`, `vm.dirty_ratio=15`, `vm.dirty_background_ratio=5`,
-  `vm.vfs_cache_pressure=100`, and `vm.page-cluster=0` for optimal ZRAM utilization.
+- Storage I/O:
+  `read_ahead_kb` and `nr_requests` are applied to every supported block device
+  (`sd*`, `mmcblk*`, `dm-*`, `ufs*`, `nvme*`) using the profile matrix:
+  Sleep 128 KB / 32 requests, Gaming and Gaming MOBA 256 KB / 256 requests,
+  Interactive the captured stock value. A 3-tick launch boost temporarily
+  raises read-ahead to 512 KB (384 KB for app switches), then restores the
+  steady profile value. `rq_affinity` and `iostats` are never written.
+- Virtual Memory:
+  Only Gaming and Gaming MOBA tune VM knobs (`vm.swappiness=60`,
+  `dirty_ratio=15`, `dirty_background_ratio=5`, `vfs_cache_pressure=100`,
+  `stat_interval=20`, `dirty_writeback_centisecs=1500`). Sleep adjusts only
+  `stat_interval=60` and `dirty_writeback_centisecs=3000`. Interactive restores
+  every captured stock value. Memory-pressure tuning runs in Gaming only.
+- IRQ affinity:
+  GPU/display/touch IRQs are resolved once from `/proc/interrupts` at startup
+  (not by scanning `/proc/irq/*`). Gaming pins them to the big cluster; other
+  profiles allow all online CPUs.
 
 3.9. SHA-256 Payload Integrity Verification (src/integrity.c & src/sha256.c)
 - Layer 1 (install): `customize.sh` runs `sha256sum -c checksums.txt` over the
-  whole extracted payload *before* sourcing or executing any of it. The manifest
+  executable payload *before* sourcing or executing any of it. The manifest
   covers the shipped scripts, `scripts/stock_baseline.sh`, and the
   `hypermoon_d` / `hypermoon.dex` / `hypercore-bugreport` binaries, plus
-  `libhypercore.so` itself.
+  `libhypercore.so` itself. `module.prop` (rewritten at runtime),
+  `gamelist.txt` (user data moved out of the module) and `customize.sh`
+  (deleted by the root manager) are intentionally excluded so the manifest
+  stays verifiable on a running install.
 - Layer 2 (runtime): the daemon re-verifies the same set via a table compiled
   into the binary (`--verify-integrity`), minus `libhypercore.so` — a binary
   cannot contain its own hash, which is why layer 1 exists.
@@ -144,7 +230,7 @@ remains the sole authority for stepping them down under heat.
 3.10. Single-Instance Lock (src/main.c)
 - An advisory `flock(LOCK_EX | LOCK_NB)` on `<data_dir>/.hypercore_lock`,
   acquired after `daemon()` and released on exit. Two live daemons would fight
-  over the same sysfs nodes and the loser's `restore_baseline_nodes()` would
+  over the same sysfs nodes and the loser's `baseline_restore()` would
   stomp the survivor's tuning, so a second instance refuses to start.
 
 3.11. System Logging Infrastructure (src/log.c)
@@ -192,27 +278,32 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
 
 1. SLEEP (SCREEN OFF / IDLE):
    - Engaged automatically when the display turns off.
-   - CPU scaling governor switched to powersave or conservative schedutil limits.
+   - CPU governor resolved from the balanced class; CPU ceilings capped at
+     1000 MHz (little) / 850 MHz (big) without pinning a frequency.
    - uclamp min reduced to 0; uclamp max clamped to suppress idle wakeups.
-   - Mali GPU throttled to minimum hardware frequency (130 MHz / 260 MHz).
+   - Mali GPU held at the 390 MHz minimum with `simple_ondemand`; touch
+     acceleration disabled; read-ahead 128 KB / 32 queue requests.
 
 2. INTERACTIVE (DEFAULT / DAILY USE):
-   - Active profile for daily navigation, browsing, and messaging.
-   - GPU devfreq ceiling uncapped up to ~1003 MHz with responsive 65% upthreshold
-     to eliminate UI frame drops.
-   - Balanced uclamp min (10–20%) ensuring instant app launches.
+   - Every CPU, GPU, GED, FPSGO, VM and cgroup node is restored from
+     `stock_state.conf`; the governor and frequency limits are stock.
+   - The only intentional change is touch smoothing + noise filtering for
+     90/120 Hz scrolling.
 
 3. GAMING (HIGH PERFORMANCE):
    - Triggered automatically when a standard 3D game launches.
-   - CPU uclamp min raised to 30–50% to prevent frame drops.
-   - cpufreq up_rate_limit accelerated to 1000 µs.
-   - GPU floor elevated (390 MHz / 520 MHz) with `gx_game_mode=1`.
+   - Performance-class governor, 0 µs up-rate limit and 30 ms down-rate limit.
+   - top-app `cpu.shares=2048`, uclamp min 50 % / max unlimited; background
+     shares lowered to 256.
+   - GPU `performance` governor at 20 ms polling, 390 MHz floor and the
+     detected hardware ceiling; GED and FPSGO boost enabled; DVFSRC QoS on.
+   - read-ahead 256 KB / 256 queue requests; touch game + edge enabled.
 
 4. GAMING MOBA (ULTRA LOW-LATENCY):
    - Reserved for competitive titles (e.g., Mobile Legends, Wild Rift, PUBG).
-   - Maximum safe CPU uclamp min (60–80%) for instant touch-to-frame rendering.
-   - GPU floor elevated to 650 MHz / 800 MHz.
-   - Helio DVFSRC QoS engaged for lowest memory bus interconnect latency.
+   - Same CPU/GPU/GED/FPSGO matrix as Gaming, with a tighter GED frame-buffer
+     margin (30 vs 50) for steadier frame pacing.
+   - Touch game mode without edge suppression.
 
 ================================================================================
 6. MATERIAL DESIGN 3 WEBUI DASHBOARD (VUE 3 + PINIA SPA)
@@ -244,8 +335,9 @@ HyperMoon is an integrated, low-latency on-screen performance monitor:
 - Hardware Validation: Verifies MediaTek MT6789 Family nodes (GED & Mali GPU).
 - Daemon Upgrade Guard: Terminates running instances and purges old sockets
   before extracting new archives.
-- User Data Preservation: Merges existing user `gamelist.txt` and hardware
-  charging configurations from `/data/adb/hypercore/`.
+- User Data Preservation: Merges existing user `gamelist.txt` and baseline
+  configuration files (`stock_state.conf`, `zram.conf`, `stock_zram.conf`)
+  from `/data/adb/hypercore/`.
 - Automatic Game Detection: Scans installed non-system packages (`pm list packages -3`)
   and registers detected games automatically.
 - Integrity Check: Verifies the entire extracted payload with
@@ -303,6 +395,8 @@ Notes:
 3. GKI Sysfs Fallback: Always use fallback arrays for Cgroup and kernel nodes.
 4. Zero Storage Pollution: Build release ZIPs exclusively in `./out/` inside the
    repository (gitignored; override the destination with `HYPERCORE_OUT`).
-5. Git Branch Workflow: Active development on `experimental`, fast-forward merged to `main`.
+5. Git Branch Workflow: Feature work happens on a dedicated branch (for example
+   `refactor/v7`) and reaches `main` only after review and a clean build. `main`
+   is the release branch; `experimental` is retired.
 6. Language Standard: 100% natural, clean English across all code, UI, and documentation.
 ================================================================================

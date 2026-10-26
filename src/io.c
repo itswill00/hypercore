@@ -1,5 +1,13 @@
-
 #include "io.h"
+#include "log.h"
+
+static int block_is_interesting(const char *name) {
+    return strncmp(name, "sd", 2) == 0 ||
+           strncmp(name, "mmcblk", 6) == 0 ||
+           strncmp(name, "dm-", 3) == 0 ||
+           strncmp(name, "ufs", 3) == 0 ||
+           strncmp(name, "nvme", 4) == 0;
+}
 
 void set_read_ahead(const char *kb_val) {
     DIR *d = opendir("/sys/block");
@@ -7,15 +15,10 @@ void set_read_ahead(const char *kb_val) {
 
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, "sd", 2) == 0 ||
-            strncmp(ent->d_name, "mmcblk", 6) == 0 ||
-            strncmp(ent->d_name, "dm-", 3) == 0 ||
-            strncmp(ent->d_name, "ufs", 3) == 0 ||
-            strncmp(ent->d_name, "nvme", 4) == 0) {
-            char p[256];
-            snprintf(p, sizeof(p), "/sys/block/%s/queue/read_ahead_kb", ent->d_name);
-            sysfs_write(p, kb_val);
-        }
+        if (!block_is_interesting(ent->d_name)) continue;
+        char p[256];
+        snprintf(p, sizeof(p), "/sys/block/%s/queue/read_ahead_kb", ent->d_name);
+        sysfs_write(p, kb_val);
     }
     closedir(d);
 }
@@ -26,58 +29,88 @@ void set_io_nr_requests(const char *nr_str) {
 
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, "sd", 2) == 0 ||
-            strncmp(ent->d_name, "mmcblk", 6) == 0 ||
-            strncmp(ent->d_name, "dm-", 3) == 0 ||
-            strncmp(ent->d_name, "ufs", 3) == 0 ||
-            strncmp(ent->d_name, "nvme", 4) == 0) {
-            char p[256];
-            snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
-            sysfs_write(p, nr_str);
-        }
+        if (!block_is_interesting(ent->d_name)) continue;
+        char p[256];
+        snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
+        sysfs_write(p, nr_str);
     }
     closedir(d);
 }
 
-void apply_irq_tuning(profile_t prof) {
-    /* Gaming: pin GPU/touch IRQs to big cores (CPU 6-7, mask 0xc0) for lowest latency.
-     * Other profiles: allow all cores (mask 0xff) to avoid IRQ starvation on little cores. */
-    const char *affinity_mask = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA)
-                                ? "c0" : "ff";
+/* --- IRQ affinity -------------------------------------------------------- */
 
-    DIR *dir = opendir("/proc/irq");
-    if (!dir) return;
+#define MAX_TARGET_IRQS 24
 
-    struct dirent *ent;
-    while ((ent = readdir(dir)) != NULL) {
-        int irq = atoi(ent->d_name);
-        if (irq <= 0) continue;
+static int s_irqs[MAX_TARGET_IRQS];
+static int s_irq_count = -1; /* -1 = not probed yet */
 
-        char irq_dir_path[256];
-        snprintf(irq_dir_path, sizeof(irq_dir_path), "/proc/irq/%d", irq);
-        DIR *subdir = opendir(irq_dir_path);
-        if (!subdir) continue;
-
-        struct dirent *subent;
-        int matched = 0;
-        while ((subent = readdir(subdir)) != NULL) {
-            if (subent->d_name[0] != '.') {
-                const char *name = subent->d_name;
-                if (strstr(name, "mali") || strstr(name, "ged") || strstr(name, "kgsl") ||
-                    strstr(name, "dsi") || strstr(name, "touch") || strstr(name, "tpd") ||
-                    strstr(name, "fts") || strstr(name, "GPU") || strstr(name, "gpu")) {
-                    matched = 1;
-                    break;
-                }
-            }
-        }
-        closedir(subdir);
-
-        if (matched) {
-            char aff_path[256];
-            snprintf(aff_path, sizeof(aff_path), "/proc/irq/%d/smp_affinity", irq);
-            sysfs_write(aff_path, affinity_mask);
-        }
+static int irq_name_is_relevant(const char *line) {
+    static const char *const keys[] = {
+        "mali", "ged", "kgsl", "gpu", "dsi", "touch", "tpd", "fts",
+        NULL
+    };
+    for (int i = 0; keys[i]; i++) {
+        if (strstr(line, keys[i])) return 1;
     }
-    closedir(dir);
+    return 0;
+}
+
+void init_irq_targets(void) {
+    if (s_irq_count >= 0) return;
+    s_irq_count = 0;
+
+    FILE *f = fopen("/proc/interrupts", "r");
+    if (!f) {
+        log_info("Irq", "Cannot read /proc/interrupts - IRQ affinity tuning disabled");
+        return;
+    }
+
+    char line[512];
+    while (fgets(line, sizeof(line), f) && s_irq_count < MAX_TARGET_IRQS) {
+        int irq = atoi(line);
+        if (irq <= 0) continue;
+        if (!irq_name_is_relevant(line)) continue;
+
+        int duplicate = 0;
+        for (int i = 0; i < s_irq_count; i++) {
+            if (s_irqs[i] == irq) { duplicate = 1; break; }
+        }
+        if (!duplicate) s_irqs[s_irq_count++] = irq;
+    }
+    fclose(f);
+
+    if (s_irq_count > 0) {
+        log_info("Irq", "Resolved %d GPU/display/touch IRQs for affinity tuning", s_irq_count);
+    } else {
+        log_info("Irq", "No matching IRQs in /proc/interrupts - affinity tuning disabled");
+    }
+}
+
+static unsigned long cpu_mask_all(void) {
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    if (n <= 0 || n >= 63) return ~0UL;
+    return (1UL << n) - 1;
+}
+
+static unsigned long cpu_mask_big(void) {
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    if (n >= 8) return 0xC0UL;       /* CPUs 6-7 on MT6789 */
+    if (n >= 6) return 0x30UL;       /* CPUs 4-5 fallback */
+    return cpu_mask_all();
+}
+
+void apply_irq_tuning(profile_t prof) {
+    if (s_irq_count <= 0) return;
+
+    int gaming = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
+    unsigned long mask = gaming ? cpu_mask_big() : cpu_mask_all();
+
+    char hex[32];
+    snprintf(hex, sizeof(hex), "%lx", mask);
+
+    for (int i = 0; i < s_irq_count; i++) {
+        char path[64];
+        snprintf(path, sizeof(path), "/proc/irq/%d/smp_affinity", s_irqs[i]);
+        sysfs_write(path, hex);
+    }
 }

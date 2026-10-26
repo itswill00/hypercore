@@ -81,12 +81,9 @@ vm_page_cluster=$(read_stock_node /proc/sys/vm/page-cluster 3)
 vm_compaction=$(read_stock_node /proc/sys/vm/compaction_proactiveness 20)
 io_read_ahead=$(cat /sys/block/mmcblk0/queue/read_ahead_kb 2>/dev/null || cat /sys/block/sda/queue/read_ahead_kb 2>/dev/null || cat /sys/block/dm-0/queue/read_ahead_kb 2>/dev/null || echo 1024)
 io_nr_requests=$(cat /sys/block/mmcblk0/queue/nr_requests 2>/dev/null || cat /sys/block/sda/queue/nr_requests 2>/dev/null || cat /sys/block/dm-0/queue/nr_requests 2>/dev/null || echo 128)
-io_iostats=$(cat /sys/block/mmcblk0/queue/iostats 2>/dev/null || cat /sys/block/sda/queue/iostats 2>/dev/null || echo 1)
 sched_migration_cost=$(read_stock_node /proc/sys/kernel/sched_migration_cost_ns 200000)
 sched_latency=$(read_stock_node /proc/sys/kernel/sched_latency_ns 10000000)
 sched_nr_migrate=$(read_stock_node /proc/sys/kernel/sched_nr_migrate 32)
-chg_smart=$(read_stock_node /sys/class/power_supply/battery/smart_chg 0)
-chg_night=$(read_stock_node /sys/class/power_supply/battery/night_charging 0)
 EOF
     chmod 600 /data/adb/hypercore/stock_state.conf 2>/dev/null || true
 

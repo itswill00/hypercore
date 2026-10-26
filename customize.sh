@@ -66,9 +66,9 @@ else
     exit 1
 fi
 
-# Graceful stop before upgrade: SIGTERM lets the old daemon run
-# restore_baseline_nodes() (~60 sysfs nodes) before it exits. SIGKILL here
-# used to leave the device stranded on tuned nodes until the next reboot.
+# Graceful stop before upgrade: SIGTERM lets the old daemon run its baseline
+# restore (~60 sysfs nodes) before it exits. SIGKILL here used to leave the
+# device stranded on tuned nodes until the next reboot.
 ui_print "- Stopping any active daemon instances before upgrade..."
 pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
 for _i in 1 2 3 4 5 6 7 8 9 10; do

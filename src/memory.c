@@ -1,110 +1,88 @@
-
 #include "memory.h"
+#include "nodes.h"
 #include "log.h"
 
 static int s_total_ram_kb = 0;
+static int s_swap_total_kb = -1;
 
-static void detect_total_ram(void) {
-    if (s_total_ram_kb > 0) return;
+static int s_last_swap = -1;
+static int s_last_compact = -1;
+
+/* One pass over /proc/meminfo for all three values. The previous version
+ * opened and parsed the file twice per tick, and a third time to detect swap. */
+static void read_meminfo(int *mem_total, int *mem_avail, int *swap_total) {
+    *mem_total = 0;
+    *mem_avail = 0;
+    *swap_total = -1;
+
     FILE *f = fopen("/proc/meminfo", "r");
     if (!f) return;
+
     char line[128];
     while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "MemTotal:", 9) == 0) {
-            char *p = line + 9;
-            while (*p && (*p < '0' || *p > '9')) p++;
-            if (*p) {
-                s_total_ram_kb = atoi(p);
-                break;
-            }
-        }
+        char *p = strchr(line, ':');
+        if (!p) continue;
+        *p = '\0';
+        char *v = p + 1;
+        while (*v && (*v < '0' || *v > '9')) v++;
+        if (*v == '\0') continue;
+        int val = atoi(v);
+
+        if (strcmp(line, "MemTotal") == 0) *mem_total = val;
+        else if (strcmp(line, "MemAvailable") == 0) *mem_avail = val;
+        else if (strcmp(line, "SwapTotal") == 0) *swap_total = val;
     }
     fclose(f);
-}
-
-static int read_swap_total_kb(void) {
-    FILE *f = fopen("/proc/meminfo", "r");
-    if (!f) return -1;
-    char line[128];
-    int total = -1;
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "SwapTotal:", 10) == 0) {
-            char *p = line + 10;
-            while (*p && (*p < '0' || *p > '9')) p++;
-            if (*p) total = atoi(p);
-            break;
-        }
-    }
-    fclose(f);
-    return total;
-}
-
-void set_memory_sleep_mode(int enable) {
-    if (enable) {
-        /* Relax VM stats calculation to 60s when screen is off to maximize CPU C-state Deep Sleep */
-        sysfs_write("/proc/sys/vm/stat_interval", "60");
-        sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", "3000");
-    } else {
-        sysfs_write("/proc/sys/vm/stat_interval", "20");
-        sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", "1500");
-    }
 }
 
 void tune_memory_pressure(void) {
-    detect_total_ram();
-    FILE *f = fopen("/proc/meminfo", "r");
-    if (!f) return;
-
-    /* Use MemAvailable only — it reflects realistic usable RAM including reclaimable caches. */
-    int mem_avail_kb = 0;
-    char line[128];
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "MemAvailable:", 13) == 0) {
-            char *p = line + 13;
-            while (*p && (*p < '0' || *p > '9')) p++;
-            if (*p) {
-                mem_avail_kb = atoi(p);
-                break;
-            }
-        }
-    }
-    fclose(f);
-
-    /* Adapt threshold based on total physical RAM:
-     * Devices with < 6GB RAM (e.g. 4GB) trigger pressure relief earlier (< 450MB),
-     * while 6GB+ devices trigger at < 350MB. */
-    int pressure_threshold = (s_total_ram_kb > 0 && s_total_ram_kb < 6291456) ? 460800 : 358400;
-    int is_gaming = (g_state.current_profile == PROFILE_Gaming || g_state.current_profile == PROFILE_Gaming_MOBA);
-    int under_pressure = (mem_avail_kb > 0 && mem_avail_kb < pressure_threshold);
-
-    const char *target_swap;
-    const char *target_compact = under_pressure ? "50" : "20";
-
-    /* With no swap pool at all a high swappiness just makes kswapd scan
-     * anonymous pages it can never reclaim, so stay calm instead. */
-    int no_swap = (read_swap_total_kb() == 0);
-
-    if (no_swap) {
-        target_swap = "20";
-        target_compact = under_pressure ? "50" : "20";
-    } else if (is_gaming) {
-        target_swap = under_pressure ? "80" : "60";
-    } else {
-        const char *stock_swap = g_stock_baseline.vm_swappiness[0] ? g_stock_baseline.vm_swappiness : "100";
-        target_swap = (under_pressure && atoi(stock_swap) < 100) ? "100" : stock_swap;
+    int gaming = (g_state.current_profile == PROFILE_Gaming ||
+                  g_state.current_profile == PROFILE_Gaming_MOBA);
+    if (!gaming) {
+        /* The profile matrix owns the VM knobs outside Gaming; invalidate the
+         * cache so re-entering Gaming always writes its own values. */
+        s_last_swap = -1;
+        s_last_compact = -1;
+        return;
     }
 
-    sysfs_write("/proc/sys/vm/swappiness", target_swap);
-    sysfs_write("/proc/sys/vm/compaction_proactiveness", target_compact);
+    int total = 0, avail = 0, swap = -1;
+    read_meminfo(&total, &avail, &swap);
+
+    if (s_total_ram_kb <= 0 && total > 0) s_total_ram_kb = total;
+    if (s_swap_total_kb < 0 && swap >= 0) s_swap_total_kb = swap;
+
+    /* Sub-6 GB devices need relief a bit earlier. */
+    int threshold = (s_total_ram_kb > 0 && s_total_ram_kb < 6291456) ? 460800 : 358400;
+    int under_pressure = (avail > 0 && avail < threshold);
+    int no_swap = (s_swap_total_kb == 0);
+
+    /* With no swap pool, a high swappiness just makes kswapd scan anonymous
+     * pages it can never reclaim. */
+    int target_swap = no_swap ? 20 : (under_pressure ? 80 : 60);
+    int target_compact = under_pressure ? 50 : 20;
+
+    if (target_swap != s_last_swap) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%d", target_swap);
+        sysfs_write_fallback(N_VM_SWAPPINESS, buf);
+        s_last_swap = target_swap;
+    }
+    if (target_compact != s_last_compact) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%d", target_compact);
+        sysfs_write_fallback(N_VM_COMPACTION, buf);
+        s_last_compact = target_compact;
+    }
 }
 
 int trigger_purge_ram_cache(void) {
     sync();
+    sysfs_write_fallback(N_VM_COMPACTION, "60");
+
+    /* Raise compaction_proactiveness instead of writing compact_memory
+     * directly; the latter stalls the caller on mmap_lock. */
+    log_info("Memory", "RAM/cache purge: drop_caches(3), async compaction requested");
     sysfs_write("/proc/sys/vm/drop_caches", "3");
-
-    /* Raise compaction_proactiveness instead of writing compact_memory directly to avoid synchronous mmap_lock stalls */
-    sysfs_write("/proc/sys/vm/compaction_proactiveness", "60");
-
-    log_info("Memory", "RAM & Cache deep purge executed: drop_caches(3), async kcompactd triggered (compaction_proactiveness=60).");
     return 1;
 }

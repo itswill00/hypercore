@@ -1,6 +1,5 @@
-
 #include "sysfs.h"
-#include "io.h"
+#include "log.h"
 
 int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
     if (!path || path[0] == '\0' || !out_buf || max_len == 0) return 0;
@@ -20,22 +19,25 @@ int sysfs_read_str(const char *path, char *out_buf, size_t max_len) {
     return 1;
 }
 
-int sysfs_read_str_fallback(const char *paths[], char *out_buf, size_t max_len) {
+int sysfs_read_str_fallback(const char *const paths[], char *out_buf, size_t max_len) {
     if (!paths || !out_buf || max_len == 0) return 0;
     for (int i = 0; paths[i]; i++) {
-        if (paths[i][0] != '\0' && sysfs_read_str(paths[i], out_buf, max_len)) {
-            return 1;
-        }
+        if (paths[i][0] != '\0' && sysfs_read_str(paths[i], out_buf, max_len)) return 1;
     }
     return 0;
 }
 
-#include "log.h"
+int sysfs_read_int(const char *path) {
+    char buf[32];
+    if (!sysfs_read_str(path, buf, sizeof(buf))) return 0;
+    return (int)strtol(buf, NULL, 10);
+}
 
-/* Per-path error log throttling table with static storage to prevent dangling pointers */
+/* Per-path error log throttling. A tuning daemon that writes ~60 nodes on every
+ * transition must not flood the log when a ROM lacks half of them. */
 #define SYSFS_ERR_SLOTS 16
 static struct {
-    char path[128];
+    char path[160];
     time_t last_err;
 } s_err_tbl[SYSFS_ERR_SLOTS];
 
@@ -48,38 +50,43 @@ static int sysfs_should_log_err(const char *path) {
 
     if (s_err_tbl[slot].path[0] != '\0' &&
         strcmp(s_err_tbl[slot].path, path) == 0 &&
-        now - s_err_tbl[slot].last_err < 60) return 0;
+        now - s_err_tbl[slot].last_err < 60) {
+        return 0;
+    }
 
-    strncpy(s_err_tbl[slot].path, path, sizeof(s_err_tbl[slot].path) - 1);
-    s_err_tbl[slot].path[sizeof(s_err_tbl[slot].path) - 1] = '\0';
+    snprintf(s_err_tbl[slot].path, sizeof(s_err_tbl[slot].path), "%s", path);
     s_err_tbl[slot].last_err = now;
     return 1;
 }
 
-void sysfs_write(const char *path, const char *val) {
-    if (!path || path[0] == '\0' || !val) return;
-
-    /* Trim trailing newlines and whitespace from input value copy */
-    char clean_val[64];
-    strncpy(clean_val, val, sizeof(clean_val) - 1);
-    clean_val[sizeof(clean_val) - 1] = '\0';
-    size_t vlen = strlen(clean_val);
-    while (vlen > 0 && (clean_val[vlen - 1] == '\r' || clean_val[vlen - 1] == '\n' || clean_val[vlen - 1] == ' ')) {
-        clean_val[--vlen] = '\0';
+static void trim_value(char *dst, size_t cap, const char *val) {
+    snprintf(dst, cap, "%s", val);
+    size_t len = strlen(dst);
+    while (len > 0 && (dst[len - 1] == '\r' || dst[len - 1] == '\n' || dst[len - 1] == ' ')) {
+        dst[--len] = '\0';
     }
+}
 
-    /* Skip write if node value already matches target value */
-    char current_val[64];
-    if (sysfs_read_str(path, current_val, sizeof(current_val))) {
-        if (strcmp(current_val, clean_val) == 0) {
-            return;
-        }
+/* Write one node. Returns 1 when the value is already set, the write landed,
+ * or the node does not exist (nothing to do); 0 when the node exists but the
+ * write failed. Callers that walk candidate lists use 0 to try the next path,
+ * which is what makes a v1 path that exists-but-read-only fall through to the
+ * v2 path instead of silently leaving the old value behind. */
+static int write_one(const char *path, const char *val) {
+    if (!path || path[0] == '\0') return 0;
+
+    char clean[64];
+    trim_value(clean, sizeof(clean), val);
+
+    char current[64];
+    if (sysfs_read_str(path, current, sizeof(current)) && strcmp(current, clean) == 0) {
+        return 1;
     }
 
     int fd = open(path, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
     if (fd < 0 && errno == EACCES) {
-        /* Widen briefly, then put the original mode straight back while the
-         * fd is already held — the world-writable window is one open call. */
+        /* Widen briefly, then put the original mode straight back while the fd
+         * is already held — the writable window is one open() call. */
         struct stat st;
         int have_saved = (stat(path, &st) == 0);
         chmod(path, 0666);
@@ -87,754 +94,48 @@ void sysfs_write(const char *path, const char *val) {
         if (have_saved) chmod(path, st.st_mode & 0777);
     }
     if (fd < 0) {
-        if (errno != ENOENT && sysfs_should_log_err(path)) {
-            log_info("Kernel", "Vendor sysfs node access error (errno=%d, target: '%s')", errno, path);
+        if (errno == ENOENT) return 1; /* node absent: not an error for this target */
+        if (sysfs_should_log_err(path)) {
+            log_info("Kernel", "Cannot open sysfs node (errno=%d): %s", errno, path);
         }
-        return;
+        return 0;
     }
-    write(fd, clean_val, strlen(clean_val));
+
+    ssize_t written = write(fd, clean, strlen(clean));
+    int saved_errno = errno;
     close(fd);
+
+    if (written < 0) {
+        if (sysfs_should_log_err(path)) {
+            log_info("Kernel", "Write rejected by kernel (errno=%d, value='%s'): %s",
+                     saved_errno, clean, path);
+        }
+        return 0;
+    }
+    return 1;
 }
 
-/* chmod-guarded write that restores the node's previous mode afterwards.
- * The old code left sysfs nodes world-writable (or forced 0444 regardless of
- * what the ROM shipped), so any app could rewrite thermal policy until the
- * next reboot. The widened mode now lasts only for the write itself. */
+void sysfs_write(const char *path, const char *val) {
+    if (!val) return;
+    (void)write_one(path, val);
+}
+
+void sysfs_write_fallback(const char *const paths[], const char *val) {
+    if (!paths || !val) return;
+    for (int i = 0; paths[i]; i++) {
+        if (paths[i][0] == '\0') continue;
+        if (write_one(paths[i], val)) return;
+    }
+}
+
 void sysfs_write_temp_mode(const char *path, const char *val, mode_t temp_mode) {
     if (!path || path[0] == '\0' || !val) return;
     struct stat st;
     int have_saved = (stat(path, &st) == 0);
-    mode_t saved = have_saved ? (st.st_mode & 0777) : 0;
-    if (chmod(path, temp_mode) != 0 && errno != ENOENT) {
-        /* Still attempt the write with whatever mode the node already has. */
-    }
+    if (!have_saved) return; /* nothing to widen; write_one would just fail */
+
+    mode_t saved = st.st_mode & 0777;
+    if (chmod(path, temp_mode) != 0) return;
     sysfs_write(path, val);
-    if (have_saved) chmod(path, saved);
-}
-
-void sysfs_write_fallback(const char *paths[], const char *val) {
-    if (!paths || !val) return;
-
-    /* Trim value once here to avoid repeated trimming inside sysfs_write */
-    char clean_val[64];
-    strncpy(clean_val, val, sizeof(clean_val) - 1);
-    clean_val[sizeof(clean_val) - 1] = '\0';
-    size_t vlen = strlen(clean_val);
-    while (vlen > 0 && (clean_val[vlen - 1] == '\r' || clean_val[vlen - 1] == '\n' || clean_val[vlen - 1] == ' '))
-        clean_val[--vlen] = '\0';
-
-    for (int i = 0; paths[i]; i++) {
-        if (!paths[i] || paths[i][0] == '\0') continue;
-
-        /* Try reading current value first to skip redundant writes.
-         * If read fails, the node may be write-only — still attempt the write.
-         * Do NOT skip (continue) on read failure; that silently loses writes to
-         * write-only sysfs nodes which are common in kernel devfreq/thermal tuning. */
-        char current_val[64];
-        if (sysfs_read_str(paths[i], current_val, sizeof(current_val))) {
-            if (strcmp(current_val, clean_val) == 0) return; /* node exists, value already set */
-        }
-
-        int fd = open(paths[i], O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-        if (fd >= 0) {
-            write(fd, clean_val, vlen);
-            close(fd);
-            return;
-        }
-    }
-}
-
-int sysfs_read_int(const char *path) {
-    if (!path || path[0] == '\0') return 0;
-    int fd = open(path, O_RDONLY | O_CLOEXEC);
-    if (fd < 0) return 0;
-    char buf[32];
-    ssize_t n = read(fd, buf, sizeof(buf) - 1);
-    close(fd);
-    if (n <= 0) return 0;
-    buf[n] = '\0';
-    return atoi(buf);
-}
-
-#include "log.h"
-#include "gpu.h"
-
-stock_baseline_t g_stock_baseline;
-
-/* Late-probe rediscovery for touch IC sysfs nodes.
- * init_hardware_nodes() resolves these once at startup via access(); on many
- * MT6789 ROMs the touch driver probes after boot_completed, so cached paths
- * stay empty and the Interactive touch enhancement silently never lands.
- * Only fills slots that are still empty — safe to call on every profile
- * transition (a handful of access() calls, same lazy pattern as the
- * backlight re-resolve in is_screen_on()). */
-void rediscover_touch_nodes(void) {
-    /* Fast path: all slots already resolved — skip ~25 access() calls.
-     * apply_profile() invokes this on every transition, so without the guard
-     * a steady Gaming<->Interactive flap becomes a needless syscall storm. */
-    if (g_nodes.touch_thp_smooth[0] != '\0' &&
-        g_nodes.touch_thp_noisefilter[0] != '\0' &&
-        g_nodes.touch_edge[0] != '\0' &&
-        g_nodes.touch_game_mode[0] != '\0' &&
-        g_nodes.touch_sensitivity[0] != '\0') {
-        return;
-    }
-    const char *thp_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_smooth",
-        "/sys/devices/virtual/touch/touch_dev/touch_thp_smooth",
-        "/sys/class/touch/touch_dev/thp_smooth",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_thp_smooth",
-        NULL
-    };
-    const char *noise_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_noisefilter",
-        "/sys/devices/virtual/touch/touch_dev/touch_thp_noisefilter",
-        "/sys/class/touch/touch_dev/thp_noisefilter",
-        "/sys/devices/platform/goodix_ts.0/touch_thp_noisefilter",
-        NULL
-    };
-    const char *edge_paths[] = {
-        "/sys/class/touch/touch_dev/touch_edge",
-        "/sys/class/touch/touch_dev/edge_mode",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_edge_mode",
-        NULL
-    };
-    const char *gm_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_game",
-        "/sys/class/touch/touch_dev/game_mode",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_game_mode",
-        NULL
-    };
-    const char *sens_paths[] = {
-        "/sys/class/touch/touch_dev/sensitivity",
-        "/sys/class/touch/touch_dev/touch_sensitivity",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_sensitivity",
-        NULL
-    };
-    struct { char *slot; size_t cap; const char **cands; const char *name; } maps[] = {
-        { g_nodes.touch_thp_smooth, sizeof(g_nodes.touch_thp_smooth), thp_paths, "touch_thp_smooth" },
-        { g_nodes.touch_thp_noisefilter, sizeof(g_nodes.touch_thp_noisefilter), noise_paths, "touch_thp_noisefilter" },
-        { g_nodes.touch_edge, sizeof(g_nodes.touch_edge), edge_paths, "touch_edge" },
-        { g_nodes.touch_game_mode, sizeof(g_nodes.touch_game_mode), gm_paths, "touch_game_mode" },
-        { g_nodes.touch_sensitivity, sizeof(g_nodes.touch_sensitivity), sens_paths, "touch_sensitivity" },
-    };
-    for (size_t m = 0; m < sizeof(maps) / sizeof(maps[0]); m++) {
-        if (maps[m].slot[0] != '\0') continue;
-        for (int i = 0; maps[m].cands[i]; i++) {
-            if (access(maps[m].cands[i], F_OK) == 0) {
-                strncpy(maps[m].slot, maps[m].cands[i], maps[m].cap - 1);
-                maps[m].slot[maps[m].cap - 1] = '\0';
-                log_info("Hardware", "Late touch node discovered: %s -> %s", maps[m].name, maps[m].slot);
-                break;
-            }
-        }
-    }
-}
-
-static void restore_policy_freqs(const char *pol_path, int min_f, int max_f) {
-    if (min_f <= 0 || max_f <= 0) return;
-    char path[256], buf[32];
-    snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
-    int cur_min = sysfs_read_int(path);
-    if (cur_min > max_f) {
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-    } else {
-        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-    }
-}
-
-/* Table-driven baseline serialization, written atomically via tmp+rename so power loss never leaves a half-written stock_state. */
-void save_stock_baseline(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
-    char tmp[310];
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "w");
-    if (!f) return;
-    fprintf(f, "# HyperCore Stock Factory Baseline\n# Captured on first installation\n");
-    fprintf(f, "has_baseline=1\n");
-    struct { const char *k; char *v; } strs[] = {
-        {"gov0", g_stock_baseline.gov0}, {"gov6", g_stock_baseline.gov6},
-        {"pol0_up_rate", g_stock_baseline.pol0_up_rate}, {"pol0_down_rate", g_stock_baseline.pol0_down_rate},
-        {"pol6_up_rate", g_stock_baseline.pol6_up_rate}, {"pol6_down_rate", g_stock_baseline.pol6_down_rate},
-        {"bg_cpus", g_stock_baseline.bg_cpus}, {"sys_bg_cpus", g_stock_baseline.sys_bg_cpus},
-        {"top_app_cpus", g_stock_baseline.top_app_cpus}, {"bg_shares", g_stock_baseline.bg_shares},
-        {"bg_uclamp_min", g_stock_baseline.bg_uclamp_min}, {"bg_uclamp_max", g_stock_baseline.bg_uclamp_max},
-        {"sys_bg_uclamp_max", g_stock_baseline.sys_bg_uclamp_max}, {"top_app_shares", g_stock_baseline.top_app_shares},
-        {"top_app_uclamp_min", g_stock_baseline.top_app_uclamp_min}, {"top_app_uclamp_max", g_stock_baseline.top_app_uclamp_max},
-        {"mali_policy", g_stock_baseline.mali_policy}, {"mali_gpu_gov", g_stock_baseline.mali_gpu_gov},
-        {"mali_poll_int", g_stock_baseline.mali_poll_int}, {"mali_upthresh", g_stock_baseline.mali_upthresh},
-        {"mali_downdiff", g_stock_baseline.mali_downdiff}, {"mali_min_freq", g_stock_baseline.mali_min_freq},
-        {"mali_max_freq", g_stock_baseline.mali_max_freq}, {"boost_gpu_enable", g_stock_baseline.boost_gpu_enable},
-        {"ged_smart_boost", g_stock_baseline.ged_smart_boost}, {"ged_boost_enable", g_stock_baseline.ged_boost_enable},
-        {"enable_gpu_boost", g_stock_baseline.enable_gpu_boost}, {"gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq},
-        {"gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq}, {"gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq},
-        {"g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold}, {"gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin},
-        {"gx_game_mode", g_stock_baseline.gx_game_mode}, {"fpsgo_force_onoff", g_stock_baseline.fpsgo_force_onoff},
-        {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue},
-        {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer},
-        {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig},
-        {"touch_smooth", g_stock_baseline.touch_smooth}, {"touch_noise", g_stock_baseline.touch_noise},
-        {"touch_game", g_stock_baseline.touch_game}, {"touch_sens", g_stock_baseline.touch_sens},
-        {"touch_edge", g_stock_baseline.touch_edge},
-        {"vm_swappiness", g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio},
-        {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure},
-        {"vm_stat_interval", g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback},
-        {"vm_page_cluster", g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead},
-        {"io_nr_requests", g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats},
-        {"sched_migration_cost", g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency},
-        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate},
-    };
-    struct { const char *k; int *v; } ints[] = {
-        {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
-        {"big_min_freq", &g_stock_baseline.big_min_freq}, {"big_max_freq", &g_stock_baseline.big_max_freq},
-    };
-    for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) fprintf(f, "%s=%d\n", ints[i].k, *ints[i].v);
-    for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) fprintf(f, "%s=%s\n", strs[i].k, strs[i].v);
-    fclose(f); rename(tmp, path); chmod(path, 0600);
-}
-
-int load_stock_baseline(void) {
-    char path[300];
-    snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.data_dir);
-    FILE *f = fopen(path, "r");
-    if (!f && g_nodes.mod_dir[0] && strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        snprintf(path, sizeof(path), "%s/stock_state.conf", g_nodes.mod_dir);
-        f = fopen(path, "r");
-    }
-    if (!f) return 0;
-    struct { const char *k; char *v; size_t cap; } strs[] = {
-        {"gov0", g_stock_baseline.gov0, sizeof g_stock_baseline.gov0}, {"gov6", g_stock_baseline.gov6, sizeof g_stock_baseline.gov6},
-        {"pol0_up_rate", g_stock_baseline.pol0_up_rate, sizeof g_stock_baseline.pol0_up_rate}, {"pol0_down_rate", g_stock_baseline.pol0_down_rate, sizeof g_stock_baseline.pol0_down_rate},
-        {"pol6_up_rate", g_stock_baseline.pol6_up_rate, sizeof g_stock_baseline.pol6_up_rate}, {"pol6_down_rate", g_stock_baseline.pol6_down_rate, sizeof g_stock_baseline.pol6_down_rate},
-        {"bg_cpus", g_stock_baseline.bg_cpus, sizeof g_stock_baseline.bg_cpus}, {"sys_bg_cpus", g_stock_baseline.sys_bg_cpus, sizeof g_stock_baseline.sys_bg_cpus},
-        {"top_app_cpus", g_stock_baseline.top_app_cpus, sizeof g_stock_baseline.top_app_cpus}, {"bg_shares", g_stock_baseline.bg_shares, sizeof g_stock_baseline.bg_shares},
-        {"bg_uclamp_min", g_stock_baseline.bg_uclamp_min, sizeof g_stock_baseline.bg_uclamp_min}, {"bg_uclamp_max", g_stock_baseline.bg_uclamp_max, sizeof g_stock_baseline.bg_uclamp_max},
-        {"sys_bg_uclamp_max", g_stock_baseline.sys_bg_uclamp_max, sizeof g_stock_baseline.sys_bg_uclamp_max}, {"top_app_shares", g_stock_baseline.top_app_shares, sizeof g_stock_baseline.top_app_shares},
-        {"top_app_uclamp_min", g_stock_baseline.top_app_uclamp_min, sizeof g_stock_baseline.top_app_uclamp_min}, {"top_app_uclamp_max", g_stock_baseline.top_app_uclamp_max, sizeof g_stock_baseline.top_app_uclamp_max},
-        {"mali_policy", g_stock_baseline.mali_policy, sizeof g_stock_baseline.mali_policy}, {"mali_gpu_gov", g_stock_baseline.mali_gpu_gov, sizeof g_stock_baseline.mali_gpu_gov},
-        {"mali_poll_int", g_stock_baseline.mali_poll_int, sizeof g_stock_baseline.mali_poll_int}, {"mali_upthresh", g_stock_baseline.mali_upthresh, sizeof g_stock_baseline.mali_upthresh},
-        {"mali_downdiff", g_stock_baseline.mali_downdiff, sizeof g_stock_baseline.mali_downdiff}, {"mali_min_freq", g_stock_baseline.mali_min_freq, sizeof g_stock_baseline.mali_min_freq},
-        {"mali_max_freq", g_stock_baseline.mali_max_freq, sizeof g_stock_baseline.mali_max_freq}, {"boost_gpu_enable", g_stock_baseline.boost_gpu_enable, sizeof g_stock_baseline.boost_gpu_enable},
-        {"ged_smart_boost", g_stock_baseline.ged_smart_boost, sizeof g_stock_baseline.ged_smart_boost}, {"ged_boost_enable", g_stock_baseline.ged_boost_enable, sizeof g_stock_baseline.ged_boost_enable},
-        {"enable_gpu_boost", g_stock_baseline.enable_gpu_boost, sizeof g_stock_baseline.enable_gpu_boost}, {"gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq, sizeof g_stock_baseline.gpu_cust_boost_freq},
-        {"gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq, sizeof g_stock_baseline.gpu_cust_upbound_freq}, {"gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq, sizeof g_stock_baseline.gpu_bottom_freq},
-        {"g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold, sizeof g_stock_baseline.g_fb_dvfs_threshold}, {"gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin, sizeof g_stock_baseline.gx_fb_dvfs_margin},
-        {"gx_game_mode", g_stock_baseline.gx_game_mode, sizeof g_stock_baseline.gx_game_mode}, {"fpsgo_force_onoff", g_stock_baseline.fpsgo_force_onoff, sizeof g_stock_baseline.fpsgo_force_onoff},
-        {"fpsgo_boost_ta", g_stock_baseline.fpsgo_boost_ta, sizeof g_stock_baseline.fpsgo_boost_ta}, {"fpsgo_ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue, sizeof g_stock_baseline.fpsgo_ultra_rescue},
-        {"fpsgo_light_loading", g_stock_baseline.fpsgo_light_loading, sizeof g_stock_baseline.fpsgo_light_loading}, {"fpsgo_idleprefer", g_stock_baseline.fpsgo_idleprefer, sizeof g_stock_baseline.fpsgo_idleprefer},
-        {"fpsgo_thrm_enable", g_stock_baseline.fpsgo_thrm_enable, sizeof g_stock_baseline.fpsgo_thrm_enable}, {"sconfig", g_stock_baseline.sconfig, sizeof g_stock_baseline.sconfig},
-        {"touch_smooth", g_stock_baseline.touch_smooth, sizeof g_stock_baseline.touch_smooth}, {"touch_noise", g_stock_baseline.touch_noise, sizeof g_stock_baseline.touch_noise},
-        {"touch_game", g_stock_baseline.touch_game, sizeof g_stock_baseline.touch_game}, {"touch_sens", g_stock_baseline.touch_sens, sizeof g_stock_baseline.touch_sens},
-        {"touch_edge", g_stock_baseline.touch_edge, sizeof g_stock_baseline.touch_edge},
-        {"vm_swappiness", g_stock_baseline.vm_swappiness, sizeof g_stock_baseline.vm_swappiness}, {"vm_dirty_ratio", g_stock_baseline.vm_dirty_ratio, sizeof g_stock_baseline.vm_dirty_ratio},
-        {"vm_dirty_bg_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof g_stock_baseline.vm_dirty_bg_ratio}, {"vm_vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure, sizeof g_stock_baseline.vm_vfs_cache_pressure},
-        {"vm_stat_interval", g_stock_baseline.vm_stat_interval, sizeof g_stock_baseline.vm_stat_interval}, {"vm_dirty_writeback", g_stock_baseline.vm_dirty_writeback, sizeof g_stock_baseline.vm_dirty_writeback},
-        {"vm_page_cluster", g_stock_baseline.vm_page_cluster, sizeof g_stock_baseline.vm_page_cluster}, {"vm_compaction", g_stock_baseline.vm_compaction, sizeof g_stock_baseline.vm_compaction}, {"io_read_ahead", g_stock_baseline.io_read_ahead, sizeof g_stock_baseline.io_read_ahead},
-        {"io_nr_requests", g_stock_baseline.io_nr_requests, sizeof g_stock_baseline.io_nr_requests}, {"io_iostats", g_stock_baseline.io_iostats, sizeof g_stock_baseline.io_iostats},
-        {"sched_migration_cost", g_stock_baseline.sched_migration_cost, sizeof g_stock_baseline.sched_migration_cost}, {"sched_latency", g_stock_baseline.sched_latency, sizeof g_stock_baseline.sched_latency},
-        {"sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof g_stock_baseline.sched_nr_migrate},
-    };
-    struct { const char *k; int *v; } ints[] = {
-        {"has_baseline", &g_stock_baseline.has_baseline},
-        {"lit_min_freq", &g_stock_baseline.lit_min_freq}, {"lit_max_freq", &g_stock_baseline.lit_max_freq},
-        {"big_min_freq", &g_stock_baseline.big_min_freq}, {"big_max_freq", &g_stock_baseline.big_max_freq},
-    };
-    char line[256];
-    while (fgets(line, sizeof(line), f)) {
-        char *eq = strchr(line, '=');
-        if (!eq) continue;
-        *eq = '\0'; char *key = line; char *val = eq + 1;
-        char *nl = strpbrk(val, "\r\n"); if (nl) *nl = '\0';
-        int handled = 0;
-        for (size_t i = 0; i < sizeof(ints)/sizeof(ints[0]); i++) if (strcmp(key, ints[i].k)==0) { *ints[i].v = atoi(val); handled=1; break; }
-        if (handled) continue;
-        for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) if (strcmp(key, strs[i].k)==0) {
-            snprintf(strs[i].v, strs[i].cap, "%s", val); break;
-        }
-    }
-    fclose(f); g_stock_baseline.has_baseline = 1; return 1;
-}
-
-void init_stock_baseline(void) {
-    if (g_stock_baseline.has_baseline) return;
-
-    if (load_stock_baseline()) {
-        log_info("Baseline", "Loaded existing factory stock baseline from stock_state.conf");
-        return;
-    }
-
-    log_info("Baseline", "No saved stock baseline found. Capturing untouched factory baseline...");
-    memset(&g_stock_baseline, 0, sizeof(g_stock_baseline));
-
-    /* Read-or-default helper for baseline capture, deduplicating the if(empty)strcpy blocks. */
-    #define BS_READ_OR_DEF(path, dst, def) do { sysfs_read_str((path), (dst), sizeof(dst)); if ((dst)[0]=='\0') strcpy((dst),(def)); } while(0)
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0, "sugov_ext");
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6, "sugov_ext");
-
-    /* Frequencies */
-    int l_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq");
-    int l_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq");
-    if (l_max <= 0) l_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq");
-    int b_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq");
-    int b_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
-    if (b_max <= 0) b_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq");
-
-    g_stock_baseline.lit_min_freq = (l_min > 0) ? l_min : (g_nodes.lit_hw_min_freq > 0 ? g_nodes.lit_hw_min_freq : 500000);
-    g_stock_baseline.lit_max_freq = (l_max > 0) ? l_max : (g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : 2000000);
-    g_stock_baseline.big_min_freq = (b_min > 0) ? b_min : (g_nodes.big_hw_min_freq > 0 ? g_nodes.big_hw_min_freq : 725000);
-    g_stock_baseline.big_max_freq = (b_max > 0) ? b_max : (g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : 2200000);
-
-    /* Rate limits */
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate, "1000");
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate, "1000");
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate, "1000");
-    BS_READ_OR_DEF("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate, "1000");
-
-    /* Cgroups & UCLAMP */
-    BS_READ_OR_DEF("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus, "0-3");
-    BS_READ_OR_DEF("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus, "0-5");
-    BS_READ_OR_DEF("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus, "0-7");
-    /* Cgroups shares & UCLAMP — read live, never assumed (restore uses these) */
-    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.shares", g_stock_baseline.bg_shares, "1024");
-    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.uclamp.min", g_stock_baseline.bg_uclamp_min, "0");
-    BS_READ_OR_DEF("/dev/cpuctl/background/cpu.uclamp.max", g_stock_baseline.bg_uclamp_max, "max");
-    BS_READ_OR_DEF("/dev/cpuctl/system-background/cpu.uclamp.max", g_stock_baseline.sys_bg_uclamp_max, "max");
-    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.shares", g_stock_baseline.top_app_shares, "1024");
-    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.uclamp.min", g_stock_baseline.top_app_uclamp_min, "0");
-    BS_READ_OR_DEF("/dev/cpuctl/top-app/cpu.uclamp.max", g_stock_baseline.top_app_uclamp_max, "max");
-    #undef BS_READ_OR_DEF
-
-    /* GPU Devfreq */
-    const char *power_policy_nodes[] = {
-        "/sys/devices/platform/soc/13000000.mali/power_policy",
-        "/sys/devices/platform/soc/soc:mali/power_policy",
-        "/sys/class/devfreq/13000000.mali/power_policy",
-        "/sys/class/devfreq/soc:mali/power_policy",
-        NULL
-    };
-    for (int i = 0; power_policy_nodes[i]; i++) {
-        if (sysfs_read_str(power_policy_nodes[i], g_stock_baseline.mali_policy, sizeof(g_stock_baseline.mali_policy))) break;
-    }
-    if (g_stock_baseline.mali_policy[0] == '\0') strcpy(g_stock_baseline.mali_policy, "coarse_demand");
-
-    const char *devfreq_gov_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/governor",
-        "/sys/class/devfreq/soc:mali/governor",
-        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
-        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
-        NULL
-    };
-    for (int i = 0; devfreq_gov_nodes[i]; i++) {
-        if (sysfs_read_str(devfreq_gov_nodes[i], g_stock_baseline.mali_gpu_gov, sizeof(g_stock_baseline.mali_gpu_gov))) break;
-    }
-    /* No "dummy" fallback: restore skips empty, writing a fake governor would be worse than skipping. */
-
-    const char *devfreq_poll_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/polling_interval",
-        "/sys/class/devfreq/soc:mali/polling_interval",
-        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
-        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
-        NULL
-    };
-    for (int i = 0; devfreq_poll_nodes[i]; i++) {
-        if (sysfs_read_str(devfreq_poll_nodes[i], g_stock_baseline.mali_poll_int, sizeof(g_stock_baseline.mali_poll_int))) break;
-    }
-    if (g_stock_baseline.mali_poll_int[0] == '\0') strcpy(g_stock_baseline.mali_poll_int, "0");
-
-    const char *upthresh_nodes[] = {"/sys/class/devfreq/13000000.mali/simple_ondemand/upthreshold","/sys/class/devfreq/soc:mali/simple_ondemand/upthreshold",NULL};
-    if (!sysfs_read_str_fallback(upthresh_nodes, g_stock_baseline.mali_upthresh, sizeof(g_stock_baseline.mali_upthresh))) strcpy(g_stock_baseline.mali_upthresh, "80");
-    const char *downdiff_nodes[] = {"/sys/class/devfreq/13000000.mali/simple_ondemand/downdifferential","/sys/class/devfreq/soc:mali/simple_ondemand/downdifferential",NULL};
-    if (!sysfs_read_str_fallback(downdiff_nodes, g_stock_baseline.mali_downdiff, sizeof(g_stock_baseline.mali_downdiff))) strcpy(g_stock_baseline.mali_downdiff, "20");
-    const char *mali_min_nodes[] = {"/sys/class/devfreq/13000000.mali/min_freq","/sys/class/devfreq/soc:mali/min_freq",NULL};
-    if (!sysfs_read_str_fallback(mali_min_nodes, g_stock_baseline.mali_min_freq, sizeof(g_stock_baseline.mali_min_freq))) strcpy(g_stock_baseline.mali_min_freq, "390000000");
-    snprintf(g_stock_baseline.mali_max_freq, sizeof(g_stock_baseline.mali_max_freq), "%s", get_max_gpu_freq_hz());
-
-    /* MediaTek GED & FPSGO */
-    sysfs_read_str("/sys/module/ged/parameters/boost_gpu_enable", g_stock_baseline.boost_gpu_enable, sizeof(g_stock_baseline.boost_gpu_enable));
-    if (g_stock_baseline.boost_gpu_enable[0] == '\0') strcpy(g_stock_baseline.boost_gpu_enable, "0");
-
-    sysfs_read_str("/sys/module/ged/parameters/ged_smart_boost", g_stock_baseline.ged_smart_boost, sizeof(g_stock_baseline.ged_smart_boost));
-    if (g_stock_baseline.ged_smart_boost[0] == '\0') strcpy(g_stock_baseline.ged_smart_boost, "0");
-
-    sysfs_read_str("/sys/module/ged/parameters/ged_boost_enable", g_stock_baseline.ged_boost_enable, sizeof(g_stock_baseline.ged_boost_enable));
-    if (g_stock_baseline.ged_boost_enable[0] == '\0') strcpy(g_stock_baseline.ged_boost_enable, "1");
-
-    sysfs_read_str("/sys/module/ged/parameters/enable_gpu_boost", g_stock_baseline.enable_gpu_boost, sizeof(g_stock_baseline.enable_gpu_boost));
-    if (g_stock_baseline.enable_gpu_boost[0] == '\0') strcpy(g_stock_baseline.enable_gpu_boost, "1");
-
-    sysfs_read_str("/sys/module/ged/parameters/gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq, sizeof(g_stock_baseline.gpu_cust_boost_freq));
-    if (g_stock_baseline.gpu_cust_boost_freq[0] == '\0') strcpy(g_stock_baseline.gpu_cust_boost_freq, "390000");
-
-    sysfs_read_str("/sys/module/ged/parameters/gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq, sizeof(g_stock_baseline.gpu_cust_upbound_freq));
-    if (g_stock_baseline.gpu_cust_upbound_freq[0] == '\0') strcpy(g_stock_baseline.gpu_cust_upbound_freq, "1003000");
-
-    sysfs_read_str("/sys/module/ged/parameters/gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq, sizeof(g_stock_baseline.gpu_bottom_freq));
-    if (g_stock_baseline.gpu_bottom_freq[0] == '\0') strcpy(g_stock_baseline.gpu_bottom_freq, "390000");
-
-    sysfs_read_str("/sys/module/ged/parameters/g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold, sizeof(g_stock_baseline.g_fb_dvfs_threshold));
-    if (g_stock_baseline.g_fb_dvfs_threshold[0] == '\0') strcpy(g_stock_baseline.g_fb_dvfs_threshold, "80");
-
-    sysfs_read_str("/sys/module/ged/parameters/gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin, sizeof(g_stock_baseline.gx_fb_dvfs_margin));
-    if (g_stock_baseline.gx_fb_dvfs_margin[0] == '\0') strcpy(g_stock_baseline.gx_fb_dvfs_margin, "40");
-
-    /* GX game mode + FPSGO — read live with safe defaults (previously assumed). */
-    sysfs_read_str("/sys/module/ged/parameters/gx_game_mode", g_stock_baseline.gx_game_mode, sizeof(g_stock_baseline.gx_game_mode));
-    if (g_stock_baseline.gx_game_mode[0] == '\0') strcpy(g_stock_baseline.gx_game_mode, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/common/force_onoff", g_stock_baseline.fpsgo_force_onoff, sizeof(g_stock_baseline.fpsgo_force_onoff));
-    if (g_stock_baseline.fpsgo_force_onoff[0] == '\0') strcpy(g_stock_baseline.fpsgo_force_onoff, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/fbt/boost_ta", g_stock_baseline.fpsgo_boost_ta, sizeof(g_stock_baseline.fpsgo_boost_ta));
-    if (g_stock_baseline.fpsgo_boost_ta[0] == '\0') strcpy(g_stock_baseline.fpsgo_boost_ta, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/fbt/ultra_rescue", g_stock_baseline.fpsgo_ultra_rescue, sizeof(g_stock_baseline.fpsgo_ultra_rescue));
-    if (g_stock_baseline.fpsgo_ultra_rescue[0] == '\0') strcpy(g_stock_baseline.fpsgo_ultra_rescue, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/fbt/light_loading_policy", g_stock_baseline.fpsgo_light_loading, sizeof(g_stock_baseline.fpsgo_light_loading));
-    if (g_stock_baseline.fpsgo_light_loading[0] == '\0') strcpy(g_stock_baseline.fpsgo_light_loading, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/fbt/switch_idleprefer", g_stock_baseline.fpsgo_idleprefer, sizeof(g_stock_baseline.fpsgo_idleprefer));
-    if (g_stock_baseline.fpsgo_idleprefer[0] == '\0') strcpy(g_stock_baseline.fpsgo_idleprefer, "0");
-    sysfs_read_str("/sys/kernel/fpsgo/fbt/thrm_enable", g_stock_baseline.fpsgo_thrm_enable, sizeof(g_stock_baseline.fpsgo_thrm_enable));
-    if (g_stock_baseline.fpsgo_thrm_enable[0] == '\0') strcpy(g_stock_baseline.fpsgo_thrm_enable, "1");
-
-    /* Xiaomi Thermal / sconfig */
-    sysfs_read_str("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig, sizeof(g_stock_baseline.sconfig));
-    /* Touchscreen stock — read live (previously assumed 0 on restore).
-     * g_nodes paths may still be empty on late touch probe; fall back to the
-     * well-known class path, then to "0" (factory default on MTK panels). */
-    {
-        const char *smooth = g_nodes.touch_thp_smooth[0] ? g_nodes.touch_thp_smooth : "/sys/class/touch/touch_dev/touch_thp_smooth";
-        const char *noise = g_nodes.touch_thp_noisefilter[0] ? g_nodes.touch_thp_noisefilter : "/sys/class/touch/touch_dev/touch_thp_noisefilter";
-        const char *game = g_nodes.touch_game_mode[0] ? g_nodes.touch_game_mode : "/sys/class/touch/touch_dev/touch_thp_game";
-        const char *sens = g_nodes.touch_sensitivity[0] ? g_nodes.touch_sensitivity : "/sys/class/touch/touch_dev/touch_sensitivity";
-        const char *edge = g_nodes.touch_edge[0] ? g_nodes.touch_edge : "/sys/class/touch/touch_dev/touch_edge";
-        sysfs_read_str(smooth, g_stock_baseline.touch_smooth, sizeof(g_stock_baseline.touch_smooth));
-        if (g_stock_baseline.touch_smooth[0] == '\0') strcpy(g_stock_baseline.touch_smooth, "0");
-        sysfs_read_str(noise, g_stock_baseline.touch_noise, sizeof(g_stock_baseline.touch_noise));
-        if (g_stock_baseline.touch_noise[0] == '\0') strcpy(g_stock_baseline.touch_noise, "0");
-        sysfs_read_str(game, g_stock_baseline.touch_game, sizeof(g_stock_baseline.touch_game));
-        if (g_stock_baseline.touch_game[0] == '\0') strcpy(g_stock_baseline.touch_game, "0");
-        sysfs_read_str(sens, g_stock_baseline.touch_sens, sizeof(g_stock_baseline.touch_sens));
-        if (g_stock_baseline.touch_sens[0] == '\0') strcpy(g_stock_baseline.touch_sens, "0");
-        sysfs_read_str(edge, g_stock_baseline.touch_edge, sizeof(g_stock_baseline.touch_edge));
-        if (g_stock_baseline.touch_edge[0] == '\0') strcpy(g_stock_baseline.touch_edge, "0");
-    }
-    if (g_stock_baseline.sconfig[0] == '\0' || strcmp(g_stock_baseline.sconfig, "10") == 0 || strcmp(g_stock_baseline.sconfig, "-1") == 0) {
-        strcpy(g_stock_baseline.sconfig, "0");
-    }
-
-    /* Memory VM */
-    sysfs_read_str("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness, sizeof(g_stock_baseline.vm_swappiness));
-    if (g_stock_baseline.vm_swappiness[0] == '\0') strcpy(g_stock_baseline.vm_swappiness, "100");
-    sysfs_read_str("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio, sizeof(g_stock_baseline.vm_dirty_ratio));
-    if (g_stock_baseline.vm_dirty_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_ratio, "20");
-    sysfs_read_str("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio, sizeof(g_stock_baseline.vm_dirty_bg_ratio));
-    if (g_stock_baseline.vm_dirty_bg_ratio[0] == '\0') strcpy(g_stock_baseline.vm_dirty_bg_ratio, "10");
-    sysfs_read_str("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure, sizeof(g_stock_baseline.vm_vfs_cache_pressure));
-    if (g_stock_baseline.vm_vfs_cache_pressure[0]=='\0') strcpy(g_stock_baseline.vm_vfs_cache_pressure, "100");
-    sysfs_read_str("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval, sizeof(g_stock_baseline.vm_stat_interval));
-    if (g_stock_baseline.vm_stat_interval[0]=='\0') strcpy(g_stock_baseline.vm_stat_interval, "1");
-    sysfs_read_str("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback, sizeof(g_stock_baseline.vm_dirty_writeback));
-    if (g_stock_baseline.vm_dirty_writeback[0]=='\0') strcpy(g_stock_baseline.vm_dirty_writeback, "500");
-
-    sysfs_read_str("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster, sizeof(g_stock_baseline.vm_page_cluster));
-    if (g_stock_baseline.vm_page_cluster[0] == '\0') strcpy(g_stock_baseline.vm_page_cluster, "3");
-
-    sysfs_read_str("/proc/sys/vm/compaction_proactiveness", g_stock_baseline.vm_compaction, sizeof(g_stock_baseline.vm_compaction));
-    if (g_stock_baseline.vm_compaction[0] == '\0') strcpy(g_stock_baseline.vm_compaction, "20");
-
-    /* Storage I/O */
-    const char *ra_nodes[] = {"/sys/block/mmcblk0/queue/read_ahead_kb","/sys/block/sda/queue/read_ahead_kb","/sys/block/dm-0/queue/read_ahead_kb",NULL};
-    if (!sysfs_read_str_fallback(ra_nodes, g_stock_baseline.io_read_ahead, sizeof(g_stock_baseline.io_read_ahead))) strcpy(g_stock_baseline.io_read_ahead, "1024");
-    const char *nr_nodes[] = {"/sys/block/mmcblk0/queue/nr_requests","/sys/block/sda/queue/nr_requests","/sys/block/dm-0/queue/nr_requests",NULL};
-    if (!sysfs_read_str_fallback(nr_nodes, g_stock_baseline.io_nr_requests, sizeof(g_stock_baseline.io_nr_requests))) strcpy(g_stock_baseline.io_nr_requests, "128");
-    const char *iostat_nodes[] = {"/sys/block/mmcblk0/queue/iostats","/sys/block/sda/queue/iostats",NULL};
-    if (!sysfs_read_str_fallback(iostat_nodes, g_stock_baseline.io_iostats, sizeof(g_stock_baseline.io_iostats))) strcpy(g_stock_baseline.io_iostats, "1");
-
-    /* Scheduler */
-    sysfs_read_str("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost, sizeof(g_stock_baseline.sched_migration_cost));
-    if (g_stock_baseline.sched_migration_cost[0] == '\0') strcpy(g_stock_baseline.sched_migration_cost, "200000");
-    sysfs_read_str("/proc/sys/kernel/sched_latency_ns", g_stock_baseline.sched_latency, sizeof(g_stock_baseline.sched_latency));
-    if (g_stock_baseline.sched_latency[0]=='\0') strcpy(g_stock_baseline.sched_latency, "10000000");
-    sysfs_read_str("/proc/sys/kernel/sched_nr_migrate", g_stock_baseline.sched_nr_migrate, sizeof(g_stock_baseline.sched_nr_migrate));
-    if (g_stock_baseline.sched_nr_migrate[0]=='\0') strcpy(g_stock_baseline.sched_nr_migrate, "32");
-
-    g_stock_baseline.has_baseline = 1;
-    save_stock_baseline();
-    log_info("Baseline", "Untouched factory baseline captured and saved to %s/stock_state.conf", g_nodes.data_dir);
-}
-
-void save_baseline_nodes(void) {
-    init_stock_baseline();
-}
-
-void restore_baseline_nodes(void) {
-    if (!g_stock_baseline.has_baseline) return;
-
-    /* Restore CPU Governors */
-    if (g_stock_baseline.gov0[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_stock_baseline.gov0);
-    if (g_stock_baseline.gov6[0] != '\0') sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", g_stock_baseline.gov6);
-
-    /* Restore CPU Frequencies */
-    restore_policy_freqs("/sys/devices/system/cpu/cpufreq/policy0", g_stock_baseline.lit_min_freq, g_stock_baseline.lit_max_freq);
-    restore_policy_freqs("/sys/devices/system/cpu/cpufreq/policy6", g_stock_baseline.big_min_freq, g_stock_baseline.big_max_freq);
-
-    /* Restore CPU rate limits */
-    if (g_stock_baseline.pol0_up_rate[0] != '\0') {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us", g_stock_baseline.pol0_up_rate);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us", g_stock_baseline.pol0_up_rate);
-    }
-    if (g_stock_baseline.pol0_down_rate[0] != '\0') {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us", g_stock_baseline.pol0_down_rate);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us", g_stock_baseline.pol0_down_rate);
-    }
-    if (g_stock_baseline.pol6_up_rate[0] != '\0') {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us", g_stock_baseline.pol6_up_rate);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us", g_stock_baseline.pol6_up_rate);
-    }
-    if (g_stock_baseline.pol6_down_rate[0] != '\0') {
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us", g_stock_baseline.pol6_down_rate);
-        sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us", g_stock_baseline.pol6_down_rate);
-    }
-
-    /* Restore Cgroups & UCLAMP */
-    if (g_stock_baseline.bg_cpus[0] != '\0') sysfs_write("/dev/cpuset/background/cpus", g_stock_baseline.bg_cpus);
-    if (g_stock_baseline.sys_bg_cpus[0] != '\0') sysfs_write("/dev/cpuset/system-background/cpus", g_stock_baseline.sys_bg_cpus);
-    if (g_stock_baseline.top_app_cpus[0] != '\0') sysfs_write("/dev/cpuset/top-app/cpus", g_stock_baseline.top_app_cpus);
-
-    sysfs_write("/dev/cpuctl/background/cpu.shares", g_stock_baseline.bg_shares[0] ? g_stock_baseline.bg_shares : "1024");
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.min", g_stock_baseline.bg_uclamp_min[0] ? g_stock_baseline.bg_uclamp_min : "0");
-    sysfs_write("/dev/cpuctl/background/cpu.uclamp.max", g_stock_baseline.bg_uclamp_max[0] ? g_stock_baseline.bg_uclamp_max : "max");
-    sysfs_write("/dev/cpuctl/system-background/cpu.uclamp.max", g_stock_baseline.sys_bg_uclamp_max[0] ? g_stock_baseline.sys_bg_uclamp_max : "max");
-    sysfs_write("/dev/cpuctl/top-app/cpu.shares", g_stock_baseline.top_app_shares[0] ? g_stock_baseline.top_app_shares : "1024");
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.min", g_stock_baseline.top_app_uclamp_min[0] ? g_stock_baseline.top_app_uclamp_min : "0");
-    sysfs_write("/dev/cpuctl/top-app/cpu.uclamp.max", g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max");
-
-    /* Restore GPU Devfreq */
-    const char *power_policy_nodes[] = {
-        "/sys/devices/platform/soc/13000000.mali/power_policy",
-        "/sys/devices/platform/soc/soc:mali/power_policy",
-        "/sys/class/devfreq/13000000.mali/power_policy",
-        "/sys/class/devfreq/soc:mali/power_policy",
-        NULL
-    };
-    if (g_stock_baseline.mali_policy[0] != '\0') sysfs_write_fallback(power_policy_nodes, g_stock_baseline.mali_policy);
-
-    const char *devfreq_gov_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/governor",
-        "/sys/class/devfreq/soc:mali/governor",
-        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
-        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
-        NULL
-    };
-    if (g_stock_baseline.mali_gpu_gov[0] != '\0') sysfs_write_fallback(devfreq_gov_nodes, g_stock_baseline.mali_gpu_gov);
-
-    const char *devfreq_poll_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/polling_interval",
-        "/sys/class/devfreq/soc:mali/polling_interval",
-        "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
-        "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
-        NULL
-    };
-    if (g_stock_baseline.mali_poll_int[0] != '\0') {
-        sysfs_write_fallback(devfreq_poll_nodes, g_stock_baseline.mali_poll_int);
-    }
-
-    const char *devfreq_min_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/min_freq",
-        "/sys/class/devfreq/soc:mali/min_freq",
-        NULL
-    };
-    if (g_stock_baseline.mali_min_freq[0] != '\0') sysfs_write_fallback(devfreq_min_nodes, g_stock_baseline.mali_min_freq);
-
-    const char *devfreq_max_nodes[] = {
-        "/sys/class/devfreq/13000000.mali/max_freq",
-        "/sys/class/devfreq/soc:mali/max_freq",
-        NULL
-    };
-    if (g_stock_baseline.mali_max_freq[0] != '\0') sysfs_write_fallback(devfreq_max_nodes, g_stock_baseline.mali_max_freq);
-
-    /* Restore MediaTek GED & FPSGO */
-    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", g_stock_baseline.boost_gpu_enable[0] ? g_stock_baseline.boost_gpu_enable : "0");
-    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", g_stock_baseline.ged_smart_boost[0] ? g_stock_baseline.ged_smart_boost : "0");
-    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", g_stock_baseline.ged_boost_enable[0] ? g_stock_baseline.ged_boost_enable : "1");
-    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", g_stock_baseline.enable_gpu_boost[0] ? g_stock_baseline.enable_gpu_boost : "1");
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", g_stock_baseline.gpu_cust_boost_freq[0] ? g_stock_baseline.gpu_cust_boost_freq : "390000");
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", g_stock_baseline.gpu_cust_upbound_freq[0] ? g_stock_baseline.gpu_cust_upbound_freq : "1003000");
-    sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", g_stock_baseline.gpu_bottom_freq[0] ? g_stock_baseline.gpu_bottom_freq : "390000");
-    sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", g_stock_baseline.g_fb_dvfs_threshold[0] ? g_stock_baseline.g_fb_dvfs_threshold : "80");
-    sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", g_stock_baseline.gx_fb_dvfs_margin[0] ? g_stock_baseline.gx_fb_dvfs_margin : "40");
-    sysfs_write("/sys/module/ged/parameters/gx_game_mode", g_stock_baseline.gx_game_mode[0] ? g_stock_baseline.gx_game_mode : "0");
-    sysfs_write("/sys/kernel/fpsgo/common/force_onoff", "0");
-    sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "0");
-    sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
-    sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", "0");
-    sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", "0");
-    sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", "1");
-
-    /* Restore Xiaomi Thermal / sconfig */
-    chmod("/sys/class/thermal/thermal_message/sconfig", 0664);
-    chmod("/sys/devices/virtual/thermal/thermal_message/sconfig", 0664);
-    sysfs_write("/sys/class/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
-    sysfs_write("/sys/devices/virtual/thermal/thermal_message/sconfig", g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0");
-
-    /* Restore Touchscreen nodes from captured stock (previously assumed 0) */
-    if (g_nodes.touch_thp_smooth[0]) sysfs_write(g_nodes.touch_thp_smooth, g_stock_baseline.touch_smooth[0] ? g_stock_baseline.touch_smooth : "0");
-    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_smooth", g_stock_baseline.touch_smooth[0] ? g_stock_baseline.touch_smooth : "0");
-    if (g_nodes.touch_thp_noisefilter[0]) sysfs_write(g_nodes.touch_thp_noisefilter, g_stock_baseline.touch_noise[0] ? g_stock_baseline.touch_noise : "0");
-    else sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", g_stock_baseline.touch_noise[0] ? g_stock_baseline.touch_noise : "0");
-    sysfs_write(g_nodes.touch_game_mode, g_stock_baseline.touch_game[0] ? g_stock_baseline.touch_game : "0");
-    sysfs_write(g_nodes.touch_sensitivity, g_stock_baseline.touch_sens[0] ? g_stock_baseline.touch_sens : "0");
-    sysfs_write(g_nodes.touch_edge, g_stock_baseline.touch_edge[0] ? g_stock_baseline.touch_edge : "0");
-
-    /* Restore Memory VM */
-    if (g_stock_baseline.vm_swappiness[0] != '\0') sysfs_write("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness);
-    if (g_stock_baseline.vm_dirty_ratio[0] != '\0') sysfs_write("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio);
-    if (g_stock_baseline.vm_dirty_bg_ratio[0] != '\0') sysfs_write("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio);
-    if (g_stock_baseline.vm_vfs_cache_pressure[0] != '\0') sysfs_write("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure);
-    if (g_stock_baseline.vm_stat_interval[0] != '\0') sysfs_write("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval);
-    if (g_stock_baseline.vm_dirty_writeback[0] != '\0') sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback);
-    if (g_stock_baseline.vm_page_cluster[0] != '\0') sysfs_write("/proc/sys/vm/page-cluster", g_stock_baseline.vm_page_cluster);
-    if (g_stock_baseline.vm_compaction[0] != '\0') sysfs_write("/proc/sys/vm/compaction_proactiveness", g_stock_baseline.vm_compaction);
-    if (g_stock_baseline.sched_migration_cost[0] != '\0') sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
-
-    /* Clear runtime gaming properties without blocking daemon exit.
-     * system() waits on sh+resetprop; during SIGTERM restore every millisecond
-     * counts toward the 10 s grace in service.sh/uninstall.sh. Double-fork
-     * detached so restore_baseline_nodes() returns immediately. */
-    {
-        pid_t _pid = fork();
-        if (_pid == 0) {
-            long _max = sysconf(_SC_OPEN_MAX);
-            if (_max < 0 || _max > 1024) _max = 256;
-            for (long _fd = STDERR_FILENO + 1; _fd < _max; _fd++) close((int)_fd);
-            pid_t _g = fork();
-            if (_g == 0) {
-                setsid();
-                int _null = open("/dev/null", O_RDWR | O_CLOEXEC);
-                if (_null >= 0) {
-                    dup2(_null, STDIN_FILENO);
-                    dup2(_null, STDOUT_FILENO);
-                    dup2(_null, STDERR_FILENO);
-                    if (_null > STDERR_FILENO) close(_null);
-                }
-                setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
-                execlp("resetprop", "resetprop", "debug.sf.latch_unsignaled", "0", (char *)NULL);
-                _exit(127);
-            }
-            _exit((_g < 0) ? 1 : 0);
-        } else if (_pid > 0) {
-            int _st = 0;
-            waitpid(_pid, &_st, 0);
-            _pid = fork();
-            if (_pid == 0) {
-                long _max2 = sysconf(_SC_OPEN_MAX);
-                if (_max2 < 0 || _max2 > 1024) _max2 = 256;
-                for (long _fd = STDERR_FILENO + 1; _fd < _max2; _fd++) close((int)_fd);
-                pid_t _g2 = fork();
-                if (_g2 == 0) {
-                    setsid();
-                    int _null2 = open("/dev/null", O_RDWR | O_CLOEXEC);
-                    if (_null2 >= 0) {
-                        dup2(_null2, STDIN_FILENO);
-                        dup2(_null2, STDOUT_FILENO);
-                        dup2(_null2, STDERR_FILENO);
-                        if (_null2 > STDERR_FILENO) close(_null2);
-                    }
-                    setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
-                    execlp("resetprop", "resetprop", "--delete", "persist.sys.wifi.low_latency", (char *)NULL);
-                    _exit(127);
-                }
-                _exit((_g2 < 0) ? 1 : 0);
-            } else if (_pid > 0) {
-                int _st2 = 0;
-                waitpid(_pid, &_st2, 0);
-            }
-        }
-    }
-
-    /* Restore rate limit node permissions */
-    const char *rate_limit_restore_paths[] = {
-        "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us",
-        "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
-        NULL
-    };
-    for (int i = 0; rate_limit_restore_paths[i]; i++) {
-        if (access(rate_limit_restore_paths[i], F_OK) == 0) {
-            chmod(rate_limit_restore_paths[i], 0644);
-        }
-    }
-
-    /* Restore IRQ affinity to the non-gaming mask (all cores), matching the
-     * state apply_irq_tuning() leaves outside Gaming/MOBA. */
-    apply_irq_tuning(PROFILE_Interactive);
-}
-
-void update_module_prop_status(const char *status) {
-    static char s_last_status[128] = "";
-    static time_t s_last_write_time = 0;
-    time_t now = time(NULL);
-
-    if (status && strcmp(s_last_status, status) == 0 && (now - s_last_write_time) < 30) {
-        return;
-    }
-
-    if (status) {
-        strncpy(s_last_status, status, sizeof(s_last_status) - 1);
-        s_last_status[sizeof(s_last_status) - 1] = '\0';
-    }
-    s_last_write_time = now;
-
-    char prop_path[256];
-    snprintf(prop_path, sizeof(prop_path), "%s/module.prop", g_nodes.mod_dir);
-
-    char tmp_path[270];
-    snprintf(tmp_path, sizeof(tmp_path), "%s/module.prop.tmp", g_nodes.mod_dir);
-
-    FILE *fin = fopen(prop_path, "r");
-    if (!fin) {
-        s_last_status[0] = '\0';
-        return;
-    }
-
-    /* Stream line-by-line: no fixed-size array, no truncation risk regardless of
-     * how many lines module.prop contains. */
-    FILE *fout = fopen(tmp_path, "w");
-    if (!fout) {
-        fclose(fin);
-        return;
-    }
-
-    char line[512];
-    int write_ok = 1;
-    while (fgets(line, sizeof(line), fin)) {
-        if (strncmp(line, "description=", 12) == 0) {
-            if (fprintf(fout, "description=[Active: %s] Smart kernel optimizer & gaming daemon for MT6789 Family.\n", status) < 0)
-                write_ok = 0;
-        } else {
-            if (fputs(line, fout) == EOF) write_ok = 0;
-        }
-    }
-    fclose(fin);
-    fclose(fout);
-
-    if (write_ok) {
-        rename(tmp_path, prop_path);
-    } else {
-        unlink(tmp_path);
-    }
+    chmod(path, saved);
 }

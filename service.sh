@@ -78,8 +78,8 @@ apply_zram_config() {
 apply_zram_config
 
 # Graceful stop old daemon so it restores baseline nodes before new one takes over.
-# Give restore_baseline_nodes() (it rewrites ~60 sysfs nodes) room to finish
-# before escalating to SIGKILL, otherwise a killed daemon leaves nodes stranded.
+# Give the daemon's baseline restore (it rewrites ~60 sysfs nodes) room to
+# finish before escalating to SIGKILL, otherwise a killed daemon leaves nodes stranded.
 pkill -15 -x libhypercore.so >/dev/null 2>&1 || true
 for _i in 1 2 3 4 5 6 7 8 9 10; do
     pidof libhypercore.so >/dev/null 2>&1 || break

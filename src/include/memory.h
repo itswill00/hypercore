@@ -1,4 +1,3 @@
-
 #ifndef HYPERCORE_MEMORY_H
 #define HYPERCORE_MEMORY_H
 
@@ -9,7 +8,8 @@
 extern "C" {
 #endif
 
-void set_memory_sleep_mode(int enable);
+/* Gaming-only adaptive pressure relief. Interactive and Sleep are
+ * stock-restoring profiles, so this must not touch VM knobs there. */
 void tune_memory_pressure(void);
 int trigger_purge_ram_cache(void);
 
@@ -17,4 +17,4 @@ int trigger_purge_ram_cache(void);
 }
 #endif
 
-#endif 
+#endif

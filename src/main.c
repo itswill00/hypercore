@@ -1,6 +1,9 @@
-
 #include "common.h"
+#include "nodes.h"
 #include "sysfs.h"
+#include "baseline.h"
+#include "module.h"
+#include "util.h"
 #include "log.h"
 #include "cpu.h"
 #include "gpu.h"
@@ -8,228 +11,76 @@
 #include "io.h"
 #include "gamelist.h"
 #include "ipc.h"
+#include "integrity.h"
 
-const char *g_profile_names[] = {
-    "Sleep", "Interactive", "Gaming", "Gaming MOBA"
-};
+const char *g_profile_names[] = { "Sleep", "Interactive", "Gaming", "Gaming MOBA" };
 
 volatile sig_atomic_t g_running = 1;
 struct hw_nodes g_nodes;
 struct core_state g_state;
+
+/* Fixed grace after a game leaves the foreground. Previously this was two
+ * loop ticks, so the real duration depended on the gaming poll interval
+ * (1-2 s) instead of being a defined window. */
+#define GAMING_HOLD_SEC 3
+
+static int s_lock_fd = -1;
+
+typedef struct {
+    int prev_top_pid;
+    int game_absent_ticks;
+    int prev_game_active;
+    int last_game_pid;
+    profile_t last_game_profile;
+    time_t gaming_hold_until;
+    time_t last_jitter_log;
+    int prev_gpu_load;
+    int boot_settle_tick;
+    int rotate_counter;
+} loop_state_t;
+
+static loop_state_t s_loop = {
+    .prev_top_pid = 0,
+    .game_absent_ticks = 0,
+    .prev_game_active = 0,
+    .last_game_pid = 0,
+    .last_game_profile = PROFILE_Interactive,
+    .gaming_hold_until = 0,
+    .last_jitter_log = 0,
+    .prev_gpu_load = 0,
+    .boot_settle_tick = 0,
+    .rotate_counter = 0,
+};
 
 static void on_signal(int sig) {
     (void)sig;
     g_running = 0;
 }
 
-static void async_system_cmd(const char *cmd) {
-    if (!cmd || cmd[0] == '\0') return;
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        log_warn("Async", "fork() failed: %s (cmd skipped: %.48s)", strerror(errno), cmd);
-        return;
-    }
-
-    if (pid == 0) {
-        /* Close inherited FDs before second fork to prevent socket leaks to grandchild */
-        long max_fd = sysconf(_SC_OPEN_MAX);
-        if (max_fd < 0 || max_fd > 1024) max_fd = 256;
-        for (long fd = STDERR_FILENO + 1; fd < max_fd; fd++) close((int)fd);
-
-        pid_t grandchild = fork();
-        if (grandchild == 0) {
-            setsid();
-
-            int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
-            if (null_fd >= 0) {
-                dup2(null_fd, STDIN_FILENO);
-                dup2(null_fd, STDOUT_FILENO);
-                dup2(null_fd, STDERR_FILENO);
-                if (null_fd > STDERR_FILENO) close(null_fd);
-            }
-            execl("/system/bin/sh", "sh", "-c", cmd, (char *)NULL);
-            _exit(127);
-        }
-        /* Double-fork: middle child exits so grandchild is adopted by init */
-        _exit((grandchild < 0) ? 1 : 0);
-    }
-
-    waitpid(pid, NULL, 0);
-}
-
 static void send_game_toast(const char *game_name, profile_t prof) {
     if (!game_name || game_name[0] == '\0') return;
-    const char *prof_label = (prof >= 0 && prof < 4) ? g_profile_names[prof] : "Unknown";
+    const char *label = (prof >= 0 && prof < PROFILE_COUNT) ? g_profile_names[prof] : "Unknown";
 
-    /* Escape single quotes to prevent injection in shell notification command */
-    char safe_name[256];
+    /* Escape single quotes so the name cannot break out of the shell string. */
+    char safe[256];
     int si = 0;
-    for (int gi = 0; game_name[gi] && si < (int)sizeof(safe_name) - 5; gi++) {
-        if (game_name[gi] == '\'') {
-            if (si + 4 < (int)sizeof(safe_name)) {
-                safe_name[si++] = '\'';
-                safe_name[si++] = '\\';
-                safe_name[si++] = '\'';
-                safe_name[si++] = '\'';
-            }
+    for (int i = 0; game_name[i] && si < (int)sizeof(safe) - 5; i++) {
+        if (game_name[i] == '\'') {
+            safe[si++] = '\'';
+            safe[si++] = '\\';
+            safe[si++] = '\'';
+            safe[si++] = '\'';
         } else {
-            safe_name[si++] = game_name[gi];
+            safe[si++] = game_name[i];
         }
     }
-    safe_name[si] = '\0';
+    safe[si] = '\0';
 
     char cmd[512];
     snprintf(cmd, sizeof(cmd),
-        "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' '%s Profile Active [%s]'",
-        prof_label, safe_name);
+             "cmd notification post -t 'HyperCore' -S bigtext 'HyperCore' 'hypercore_game' '%s Profile Active [%s]'",
+             label, safe);
     async_system_cmd(cmd);
-}
-
-static void init_hardware_nodes(void) {
-    memset(&g_nodes, 0, sizeof(g_nodes));
-
-    if (access("/data/adb/modules/hypercore", F_OK) == 0) {
-        strcpy(g_nodes.mod_dir, "/data/adb/modules/hypercore");
-    } else if (access("/data/adb", F_OK) == 0) {
-        strcpy(g_nodes.mod_dir, "/data/adb/hypercore");
-    } else {
-        strcpy(g_nodes.mod_dir, "/data/local/tmp");
-    }
-
-    if (access("/data/adb", F_OK) == 0) {
-        mkdir("/data/adb/hypercore", 0700);
-        chmod("/data/adb/hypercore", 0700);
-        strcpy(g_nodes.data_dir, "/data/adb/hypercore");
-    } else {
-        mkdir("/data/local/tmp/hypercore", 0700);
-        chmod("/data/local/tmp/hypercore", 0700);
-        strcpy(g_nodes.data_dir, "/data/local/tmp/hypercore");
-    }
-
-    snprintf(g_nodes.pid_file, sizeof(g_nodes.pid_file), "%s/hypercore.pid", g_nodes.data_dir);
-
-    /* Clean up legacy misplaced runtime files from mod_dir */
-    if (strcmp(g_nodes.mod_dir, g_nodes.data_dir) != 0) {
-        char old_path[300];
-        snprintf(old_path, sizeof(old_path), "%s/hypercore.sock", g_nodes.mod_dir);
-        unlink(old_path);
-        snprintf(old_path, sizeof(old_path), "%s/hypercore.pid", g_nodes.mod_dir);
-        unlink(old_path);
-        snprintf(old_path, sizeof(old_path), "%s/status.json", g_nodes.mod_dir);
-        unlink(old_path);
-    }
-
-    const char *bl_paths[] = {
-        "/sys/class/leds/lcd-backlight/brightness",
-        "/sys/class/backlight/panel0-backlight/brightness",
-        "/sys/class/backlight/lcd-backlight/brightness",
-        "/sys/class/backlight/panel/brightness",
-        "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
-        "/sys/devices/platform/leds-mt65xx/leds/lcd-backlight/brightness",
-        "/sys/class/leds/mtk_leds/brightness",
-        "/sys/class/backlight/sprd_backlight/brightness",
-        "/sys/class/backlight/panel0-backlight/actual_brightness",
-        "/sys/class/leds/lcd-backlight/actual_brightness",
-        NULL
-    };
-    for (int i = 0; bl_paths[i]; i++) {
-        if (access(bl_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.backlight, sizeof(g_nodes.backlight), "%s", bl_paths[i]);
-            break;
-        }
-    }
-
-    const char *thp_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_smooth",
-        "/sys/devices/virtual/touch/touch_dev/touch_thp_smooth",
-        "/sys/class/touch/touch_dev/thp_smooth",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_thp_smooth",
-        NULL
-    };
-    for (int i = 0; thp_paths[i]; i++) {
-        if (access(thp_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.touch_thp_smooth, sizeof(g_nodes.touch_thp_smooth), "%s", thp_paths[i]);
-            break;
-        }
-    }
-
-    const char *noise_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_noisefilter",
-        "/sys/devices/virtual/touch/touch_dev/touch_thp_noisefilter",
-        "/sys/class/touch/touch_dev/thp_noisefilter",
-        "/sys/devices/platform/goodix_ts.0/touch_thp_noisefilter",
-        NULL
-    };
-    for (int i = 0; noise_paths[i]; i++) {
-        if (access(noise_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.touch_thp_noisefilter, sizeof(g_nodes.touch_thp_noisefilter), "%s", noise_paths[i]);
-            break;
-        }
-    }
-
-    const char *edge_paths[] = {
-        "/sys/class/touch/touch_dev/touch_edge",
-        "/sys/class/touch/touch_dev/edge_mode",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_edge_mode",
-        NULL
-    };
-    for (int i = 0; edge_paths[i]; i++) {
-        if (access(edge_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.touch_edge, sizeof(g_nodes.touch_edge), "%s", edge_paths[i]);
-            break;
-        }
-    }
-
-    const char *gm_paths[] = {
-        "/sys/class/touch/touch_dev/touch_thp_game",
-        "/sys/class/touch/touch_dev/game_mode",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_game_mode",
-        NULL
-    };
-    for (int i = 0; gm_paths[i]; i++) {
-        if (access(gm_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.touch_game_mode, sizeof(g_nodes.touch_game_mode), "%s", gm_paths[i]);
-            break;
-        }
-    }
-
-    const char *sens_paths[] = {
-        "/sys/class/touch/touch_dev/sensitivity",
-        "/sys/class/touch/touch_dev/touch_sensitivity",
-        "/sys/devices/platform/11007000.i2c/i2c-0/0-0038/fts_sensitivity",
-        NULL
-    };
-    for (int i = 0; sens_paths[i]; i++) {
-        if (access(sens_paths[i], F_OK) == 0) {
-            snprintf(g_nodes.touch_sensitivity, sizeof(g_nodes.touch_sensitivity), "%s", sens_paths[i]);
-            break;
-        }
-    }
-
-
-
-    g_nodes.has_sugov_ext = (access("/sys/devices/system/cpu/cpu0/cpufreq/sugov_ext", F_OK) == 0);
-    g_nodes.has_schedutil = (access("/sys/devices/system/cpu/cpufreq/policy0/schedutil", F_OK) == 0);
-
-    g_nodes.inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
-    if (g_nodes.inotify_fd >= 0 && g_nodes.backlight[0] != '\0') {
-        inotify_add_watch(g_nodes.inotify_fd, g_nodes.backlight, IN_MODIFY | IN_ATTRIB);
-    }
-
-    g_nodes.netlink_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_KOBJECT_UEVENT);
-    if (g_nodes.netlink_fd >= 0) {
-        struct sockaddr_nl nladdr;
-        memset(&nladdr, 0, sizeof(nladdr));
-        nladdr.nl_family = AF_NETLINK;
-        nladdr.nl_pid = (unsigned int)getpid();
-        nladdr.nl_groups = 1;
-        bind(g_nodes.netlink_fd, (struct sockaddr *)&nladdr, sizeof(nladdr));
-        int flags = fcntl(g_nodes.netlink_fd, F_GETFL, 0);
-        if (flags != -1) {
-            fcntl(g_nodes.netlink_fd, F_SETFL, flags | O_NONBLOCK);
-        }
-    }
 }
 
 static void write_pid_file(void) {
@@ -244,29 +95,17 @@ static void remove_pid_file(void) {
     unlink(g_nodes.pid_file);
 }
 
-/* Single-instance guard.
- *
- * service.sh kills the old daemon by name before starting a new one, but that
- * leaves a race window, and build.sh --deploy can overlap. Two live daemons
- * fight over the same sysfs nodes — one applying Gaming while the other applies
- * Sleep — and whichever exits last runs restore_baseline_nodes(), stomping the
- * survivor's tuning. An advisory flock closes the window properly.
- *
- * The lock is taken after daemon() so it belongs to the final process, and the
- * fd is >= 3 so daemon()'s close of stdin/stdout/stderr does not drop it. The
- * kernel releases it when the process exits, including on SIGKILL. */
-static int s_lock_fd = -1;
-
+/* Single-instance guard. Two daemons fighting over the same sysfs nodes is
+ * unrecoverable: whichever exits last restores the baseline over the
+ * survivor's tuning. flock() closes the start-up race that killing by name
+ * leaves open, and the kernel drops it on SIGKILL too. */
 static int acquire_single_instance_lock(void) {
-    snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file),
-             "%s/.hypercore_lock", g_nodes.data_dir);
+    snprintf(g_nodes.lock_file, sizeof(g_nodes.lock_file), "%s/.hypercore_lock", g_nodes.data_dir);
 
     s_lock_fd = open(g_nodes.lock_file, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
     if (s_lock_fd >= 0) fchmod(s_lock_fd, 0600);
     if (s_lock_fd < 0) {
-        /* Refusing to start over an unwritable data dir would be worse than
-         * running unprotected, so degrade with a loud warning instead. */
-        log_warn("Lock", "Cannot open lock file '%s' (errno=%d) — running WITHOUT single-instance guard",
+        log_warn("Lock", "Cannot open lock file '%s' (errno=%d) - running WITHOUT single-instance guard",
                  g_nodes.lock_file, errno);
         return 0;
     }
@@ -276,57 +115,43 @@ static int acquire_single_instance_lock(void) {
         close(s_lock_fd);
         s_lock_fd = -1;
         if (err == EWOULDBLOCK) {
-            log_error("Lock", "Another HyperCore daemon already holds %s — refusing to start a second instance.",
+            log_error("Lock", "Another HyperCore daemon holds %s - refusing to start a second instance.",
                       g_nodes.lock_file);
         } else {
-            log_error("Lock", "flock() failed on %s (errno=%d) — refusing to start.", g_nodes.lock_file, err);
+            log_error("Lock", "flock() failed on %s (errno=%d) - refusing to start.", g_nodes.lock_file, err);
         }
         return -1;
     }
 
-    /* Record the owning pid so `pidof`-free debugging is possible. */
     if (ftruncate(s_lock_fd, 0) == 0) {
         char pidbuf[16];
         int n = snprintf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
-        if (n > 0) { ssize_t w = pwrite(s_lock_fd, pidbuf, (size_t)n, 0); (void)w; }
+        if (n > 0) {
+            ssize_t w = pwrite(s_lock_fd, pidbuf, (size_t)n, 0);
+            (void)w;
+        }
     }
     return 0;
 }
 
 static int is_screen_on(void) {
+    if (g_nodes.backlight[0] == '\0') nodes_resolve_backlight();
+
     int bl_val = -1;
     if (g_nodes.backlight[0] != '\0' && access(g_nodes.backlight, F_OK) == 0) {
         bl_val = sysfs_read_int(g_nodes.backlight);
-    } else {
-        const char *bl_paths[] = {
-            "/sys/class/leds/lcd-backlight/brightness",
-            "/sys/class/backlight/panel0-backlight/brightness",
-            "/sys/class/backlight/lcd-backlight/brightness",
-            "/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/brightness",
-            NULL
-        };
-        for (int i = 0; bl_paths[i]; i++) {
-            if (access(bl_paths[i], F_OK) == 0) {
-                snprintf(g_nodes.backlight, sizeof(g_nodes.backlight), "%s", bl_paths[i]);
-                bl_val = sysfs_read_int(bl_paths[i]);
-                break;
-            }
-        }
     }
 
-    /* If hardware backlight node exists, its value is authoritative:
-     * bl_val > 0 -> screen ON; bl_val == 0 -> screen OFF.
-     * Do NOT fall through to fb0/DRM when backlight is 0, which could misdetect screen-off. */
+    /* A present backlight node is authoritative: 0 means the panel is off and
+     * falling through to fb0/DRM would misread a dark screen as awake. */
     if (bl_val >= 0) return (bl_val > 0);
 
-    /* Secondary fallback only when no backlight sysfs node exists on the device: */
     if (access("/sys/class/graphics/fb0/blank", F_OK) == 0) {
         int blank_val = sysfs_read_int("/sys/class/graphics/fb0/blank");
-        if (blank_val == 0) return 1; /* FB_BLANK_UNBLANK = 0 -> screen ON */
-        if (blank_val >  0) return 0; /* FB_BLANK_POWERDOWN etc -> screen OFF */
+        if (blank_val == 0) return 1;
+        if (blank_val > 0) return 0;
     }
 
-    // Read DRM DPMS as string since string nodes return 0 for sysfs_read_int
     {
         const char *dpms_paths[] = {
             "/sys/class/drm/card0-DSI-1/dpms",
@@ -335,35 +160,26 @@ static int is_screen_on(void) {
             NULL
         };
         for (int d = 0; dpms_paths[d]; d++) {
-            if (access(dpms_paths[d], F_OK) == 0) {
-                char dpms_buf[16] = "";
-                if (sysfs_read_str(dpms_paths[d], dpms_buf, sizeof(dpms_buf))) {
-                    return (strcmp(dpms_buf, "On") == 0);
-                }
+            if (access(dpms_paths[d], F_OK) != 0) continue;
+            char dpms_buf[16] = "";
+            if (sysfs_read_str(dpms_paths[d], dpms_buf, sizeof(dpms_buf))) {
+                return (strcmp(dpms_buf, "On") == 0);
             }
         }
     }
 
-    /* Nothing readable on this ROM. Assuming "off" pins the device to the Sleep
-     * profile (850 MHz Big) with no recovery path, because every profile
-     * decision downstream reads this as a screen that never comes back. A live
-     * device whose backlight node is simply unrecognised is far likelier to be
-     * awake than asleep, and the safe default is the one that still lets the
-     * tuning loop run. */
-    log_warn("Profiler", "Screen state undetectable — assuming screen ON; sleep profile will not latch");
+    /* Assuming "off" would pin the device to Sleep with no recovery path.
+     * An unrecognised node on a live device is far more likely awake. */
+    log_warn("Profiler", "Screen state undetectable - assuming screen ON");
     return 1;
 }
 
-/* Read back the nodes that prove Interactive really landed after boot settle:
- * touch smoothing (the sole Interactive enhancement) plus the Little-cluster
- * governor against the stock baseline. Warn-only — the next profile
- * transition still re-applies unconditionally. */
 static void verify_boot_apply(void) {
     char val[64] = "";
     if (g_nodes.touch_thp_smooth[0] != '\0' &&
         sysfs_read_str(g_nodes.touch_thp_smooth, val, sizeof(val))) {
         if (strcmp(val, "1") != 0) {
-            log_warn("Profiler", "Boot settle: touch smoothing is '%s', expected '1' — will retry on next profile transition", val);
+            log_warn("Profiler", "Boot settle: touch smoothing is '%s', expected '1' - will retry on next transition", val);
         } else {
             log_info("Profiler", "Boot settle verified: Interactive fully applied (touch smoothing on)");
         }
@@ -371,55 +187,11 @@ static void verify_boot_apply(void) {
         log_warn("Profiler", "Boot settle: touch smoothing node still missing (late touch probe?)");
     }
     if (g_stock_baseline.gov0[0] != '\0' &&
-        sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", val, sizeof(val))) {
+        sysfs_read_str(N_CPU_GOV0[0], val, sizeof(val))) {
         if (strcmp(val, g_stock_baseline.gov0) != 0) {
-            log_warn("Profiler", "Boot settle: policy0 governor is '%s', stock is '%s' (vendor init may have overwritten)", val, g_stock_baseline.gov0);
+            log_warn("Profiler", "Boot settle: policy0 governor is '%s', stock is '%s'", val, g_stock_baseline.gov0);
         }
     }
-}
-
-static int get_top_app_pid(void) {
-    /* Prefer cgroup.procs over tasks to filter out system_server thread workers */
-    const char *sources[] = {
-        "/dev/cpuset/top-app/cgroup.procs",
-        "/sys/fs/cgroup/top-app/cgroup.procs",
-        NULL
-    };
-    pid_t self_pid = getpid();
-    for (int s = 0; sources[s]; s++) {
-        FILE *f = fopen(sources[s], "r");
-        if (!f) continue;
-        char line[32];
-        int pid = 0;
-        while (fgets(line, sizeof(line), f)) {
-            int candidate = atoi(line);
-            if (candidate <= 100 || candidate == self_pid) continue;
-            char cpath[64];
-            snprintf(cpath, sizeof(cpath), "/proc/%d/cmdline", candidate);
-            int cfd = open(cpath, O_RDONLY | O_CLOEXEC);
-            if (cfd >= 0) {
-                char cmd[128];
-                ssize_t n = read(cfd, cmd, sizeof(cmd) - 1);
-                close(cfd);
-                if (n > 0) {
-                    cmd[n] = '\0';
-                    /* Skip Android system services and input methods */
-                    if (strncmp(cmd, "system_server", 13) == 0 ||
-                        strncmp(cmd, "/system/", 8) == 0 ||
-                        strncmp(cmd, "/vendor/", 8) == 0 ||
-                        strstr(cmd, "inputmethod") != NULL ||
-                        strstr(cmd, "libhypercore") != NULL) {
-                        continue;
-                    }
-                    pid = candidate;
-                    break;
-                }
-            }
-        }
-        fclose(f);
-        if (pid > 0) return pid;
-    }
-    return 0;
 }
 
 static int is_process_alive(int pid) {
@@ -430,22 +202,184 @@ static int is_process_alive(int pid) {
     return (access(cpath, F_OK) == 0);
 }
 
-
-
-#include "integrity.h"
-
 static int validate_hardware_target(void) {
-    /* Verify MT6789 bi-cluster topology (policy0 + policy6) and GED/FPSGO stack */
-    if (access("/sys/module/ged", F_OK) != 0 ||
-        access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) != 0 ||
-        access("/sys/devices/system/cpu/cpufreq/policy6", F_OK) != 0 ||
-        access("/sys/kernel/fpsgo", F_OK) != 0) {
-        fprintf(stderr, "ERROR: Incompatible hardware target detected. "
-                "HyperCore is strictly designed for MediaTek MT6789 Family "
-                "(bi-cluster policy0+policy6, GED+FPSGO, Kernel 5.10.x).\n");
-        return 0;
+    /* MT6789 bi-cluster topology + the GED/FPSGO stack HyperCore drives. */
+    if (access("/sys/module/ged", F_OK) == 0 &&
+        access("/sys/devices/system/cpu/cpufreq/policy0", F_OK) == 0 &&
+        access("/sys/devices/system/cpu/cpufreq/policy6", F_OK) == 0 &&
+        access("/sys/kernel/fpsgo", F_OK) == 0) {
+        return 1;
     }
-    return 1;
+
+    const char *msg = "FATAL: incompatible hardware target. HyperCore requires a "
+                      "MediaTek MT6789-family device (policy0+policy6, GED+FPSGO, kernel 5.10-6.12).";
+    fprintf(stderr, "%s\n", msg);
+
+    /* service.sh redirects stderr to /dev/null, so a silent refusal used to be
+     * invisible. Append to the module log directly when the dir already exists. */
+    int fd = open(LOG_PATH, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0600);
+    if (fd >= 0) {
+        char line[320];
+        int n = snprintf(line, sizeof(line), "[HYPERCORE] [ERROR] [Hardware] %s\n", msg);
+        if (n > 0) {
+            ssize_t w = write(fd, line, (size_t)n);
+            (void)w;
+        }
+        close(fd);
+    }
+    return 0;
+}
+
+/* Transient read-ahead: launch boost outranks app-switch boost, which outranks
+ * the profile's steady value. One owner (this function), one writer. */
+static void refresh_read_ahead(profile_t prof) {
+    if (g_state.launch_boost_ticks > 0) set_read_ahead("512");
+    else if (g_state.app_boost_ticks > 0) set_read_ahead("384");
+    else set_read_ahead(profile_read_ahead(prof));
+}
+
+static void clear_transient_boosts(void) {
+    g_state.launch_boost_ticks = 0;
+    g_state.app_boost_ticks = 0;
+    if (g_state.jitter_rescue_ticks > 0) {
+        sysfs_write_fallback(N_FPSGO_ULTRA, "0");
+        g_state.jitter_rescue_ticks = 0;
+    }
+}
+
+/* Game start / death edges. Called once per tick with the single foreground
+ * scan result. */
+static void tick_game_edges(const foreground_t *fg, time_t now) {
+    if (fg->is_game) {
+        if (fg->game_pid > 0) s_loop.last_game_pid = fg->game_pid;
+        s_loop.game_absent_ticks = 0;
+        if (!s_loop.prev_game_active) {
+            g_state.launch_boost_ticks = 3;
+            s_loop.prev_game_active = 1;
+            send_game_toast(fg->game_name, fg->game_profile);
+            log_info("Game", "Game launch boost: 512 KB read-ahead [%s] profile: %s",
+                     fg->game_name, g_profile_names[fg->game_profile]);
+        }
+        return;
+    }
+
+    if (s_loop.prev_game_active && s_loop.last_game_pid > 0 &&
+        !is_process_alive(s_loop.last_game_pid)) {
+        /* Real death, not an alt-tab: roll back immediately instead of waiting
+         * out the anti-flap hold. */
+        s_loop.game_absent_ticks = 3;
+        s_loop.gaming_hold_until = 0;
+        s_loop.prev_game_active = 0;
+        log_info("Game", "Foreground game process death detected - immediate rollback to Interactive");
+        return;
+    }
+
+    s_loop.game_absent_ticks++;
+    if (s_loop.game_absent_ticks >= 3) {
+        if (s_loop.prev_game_active) {
+            s_loop.gaming_hold_until = now + GAMING_HOLD_SEC;
+        }
+        s_loop.prev_game_active = 0;
+    }
+}
+
+static profile_t decide_profile(const foreground_t *fg, int screen_on, time_t now) {
+    if (!screen_on) {
+        clear_transient_boosts();
+        s_loop.gaming_hold_until = 0;
+        return PROFILE_Sleep;
+    }
+    if (fg->is_game) {
+        s_loop.last_game_profile = fg->game_profile;
+        return fg->game_profile;
+    }
+    if (s_loop.gaming_hold_until > now) {
+        return s_loop.last_game_profile;
+    }
+    if (g_state.manual_profile >= 0 && g_state.manual_profile < PROFILE_COUNT) {
+        return (profile_t)g_state.manual_profile;
+    }
+    return PROFILE_Interactive;
+}
+
+static const char *profile_name_or_init(profile_t p) {
+    return (p >= 0 && p < PROFILE_COUNT) ? g_profile_names[p] : "INIT";
+}
+
+static void apply_transition(profile_t next, const foreground_t *fg, int gpu_load) {
+    const char *prev_name = profile_name_or_init(g_state.current_profile);
+
+    char status[128];
+    if ((next == PROFILE_Gaming || next == PROFILE_Gaming_MOBA) && fg->game_name[0] != '\0') {
+        snprintf(status, sizeof(status), "%s (%s)", g_profile_names[next], fg->game_name);
+        log_state("Profiler", "Profile: %s -> %s [%s] (GPU: %d%%)",
+                  prev_name, g_profile_names[next], fg->game_name, gpu_load);
+    } else {
+        snprintf(status, sizeof(status), "%s", g_profile_names[next]);
+        log_state("Profiler", "Profile: %s -> %s (GPU: %d%%)",
+                  prev_name, g_profile_names[next], gpu_load);
+    }
+
+    update_module_prop_status(status);
+    apply_profile(next);
+    g_state.current_profile = next;
+}
+
+static void tick_jitter(profile_t next, int gpu_load) {
+    int gpu_spike = (gpu_load - s_loop.prev_gpu_load >= 30);
+    s_loop.prev_gpu_load = gpu_load;
+
+    if ((next == PROFILE_Gaming || next == PROFILE_Gaming_MOBA) && gpu_spike &&
+        g_state.jitter_rescue_ticks == 0) {
+        g_state.jitter_rescue_ticks = 2;
+        sysfs_write_fallback(N_FPSGO_ULTRA, "1");
+        sysfs_write_fallback(N_FPSGO_BOOST_TA, "1");
+
+        time_t now = time(NULL);
+        if (now - s_loop.last_jitter_log >= 5) {
+            log_warn("Jitter", "Frame-spike detected (GPU %d%%) - ultra-rescue burst", gpu_load);
+            s_loop.last_jitter_log = now;
+        }
+    }
+
+    if (g_state.jitter_rescue_ticks > 0) {
+        g_state.jitter_rescue_ticks--;
+        if (g_state.jitter_rescue_ticks == 0) {
+            sysfs_write_fallback(N_FPSGO_ULTRA, "0");
+        }
+    }
+}
+
+/* Early boot: vendor init can overwrite nodes seconds after boot_completed and
+ * touch ICs probe late, while the status already says Interactive. Re-apply a
+ * few times instead of trusting the one-shot startup apply. */
+static void tick_boot_settle(profile_t next, const foreground_t *fg, int gpu_load) {
+    s_loop.boot_settle_tick++;
+    if (s_loop.boot_settle_tick != 5 && s_loop.boot_settle_tick != 15 && s_loop.boot_settle_tick != 30) return;
+    if (next != PROFILE_Interactive || g_state.current_profile != PROFILE_Interactive) return;
+    if (fg->is_game || g_state.manual_profile >= 0) return;
+
+    nodes_rediscover_touch();
+    apply_profile(PROFILE_Interactive);
+    if (s_loop.boot_settle_tick == 30) {
+        verify_boot_apply();
+    } else {
+        log_info("Profiler", "Boot settle re-apply Interactive (%d/3)",
+                 s_loop.boot_settle_tick == 5 ? 1 : 2);
+    }
+    (void)gpu_load;
+}
+
+static int poll_timeout_for(profile_t prof, int gpu_load) {
+    if (prof == PROFILE_Sleep) return 8000;
+    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) return gpu_load >= 90 ? 500 : 1000;
+    return 2000;
+}
+
+static void tick_log_rotation(void) {
+    if (++s_loop.rotate_counter < 30) return;
+    rotate_log();
+    s_loop.rotate_counter = 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -453,244 +387,121 @@ int main(int argc, char *argv[]) {
         return verify_module_integrity(argv[2]);
     }
 
-    if (!validate_hardware_target()) {
-        return 1;
-    }
+    if (!validate_hardware_target()) return 1;
 
     if (daemon(0, 0) != 0) {
         perror("daemonization failed");
         return 1;
     }
 
-    { struct sigaction sa; memset(&sa, 0, sizeof(sa)); sa.sa_handler = on_signal; sigemptyset(&sa.sa_mask); sa.sa_flags = 0; sigaction(SIGTERM, &sa, NULL); sigaction(SIGINT, &sa, NULL); }
+    {
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = on_signal;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+        sigaction(SIGTERM, &sa, NULL);
+        sigaction(SIGINT, &sa, NULL);
+    }
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
-    init_hardware_nodes();
-    if (acquire_single_instance_lock() != 0) {
-        return 1;
-    }
-    /* Fail closed: a tampered payload must never run the tuning loop. The
-     * installer enforces the same gate, so reaching here with a mismatch
-     * means the module tree changed after install. */
+    nodes_init();
+    if (acquire_single_instance_lock() != 0) return 1;
+
+    /* Fail closed: a tampered payload must never run the tuning loop. */
     if (verify_module_integrity(g_nodes.mod_dir) != 0) {
-        log_error("Security", "Payload integrity check failed — refusing to start.");
+        log_error("Security", "Payload integrity check failed - refusing to start.");
         return 1;
     }
+
     detect_cpu_hardware_limits();
     detect_max_gpu_freq();
-    init_stock_baseline();
+    init_irq_targets();
+    baseline_init();
     write_pid_file();
     init_ipc_socket();
 
     log_info("Daemon", "HyperCore " VERSION " started.");
 
     memset(&g_state, 0, sizeof(g_state));
-    g_state.current_profile = (profile_t)-1;
+    g_state.current_profile = PROFILE_NONE;
     g_state.manual_profile = -1;
 
     load_gamelist();
     init_gamelist_watcher();
 
-    /* Apply initial Interactive profile (factory stock + touch smoothing) */
-    apply_profile(PROFILE_Interactive, 0);
+    apply_profile(PROFILE_Interactive);
     g_state.current_profile = PROFILE_Interactive;
     log_state("Profiler", "Profile: INIT -> Interactive (boot)");
-    update_module_prop_status("Interactive"); /* Fix: update status immediately on boot, not waiting for profile change */
+    update_module_prop_status("Interactive");
 
     while (g_running) {
-        int gpu_load = sysfs_read_int("/sys/module/ged/parameters/gpu_loading");
+        time_t now = time(NULL);
+        int gpu_load = node_read_int(N_GED_GPU_LOAD);
 
-        char active_game[128] = "";
-        profile_t custom_profile = PROFILE_Gaming;
-        int game_pid = 0;
-        int game_active = is_game_in_foreground(active_game, sizeof(active_game), &custom_profile, &game_pid);
+        foreground_t fg;
+        foreground_scan(&fg);
 
-        int current_top_pid = get_top_app_pid();
-        static int s_prev_top_pid = 0;
-        if (current_top_pid > 0 && s_prev_top_pid > 0 && current_top_pid != s_prev_top_pid && !game_active) {
+        int screen_on = is_screen_on();
+
+        /* App-switch boost: a new top-app process without a game is usually a
+         * launcher/hot-app cold start. */
+        if (fg.pid > 0 && s_loop.prev_top_pid > 0 &&
+            fg.pid != s_loop.prev_top_pid && !fg.is_game) {
             g_state.app_boost_ticks = 3;
-            set_read_ahead("384");
         }
-        s_prev_top_pid = current_top_pid;
+        s_loop.prev_top_pid = fg.pid;
 
-        if (g_state.app_boost_ticks > 0) {
-            g_state.app_boost_ticks--;
-            if (g_state.app_boost_ticks == 0 && g_state.launch_boost_ticks == 0) {
-                const char *ra = (g_state.current_profile == PROFILE_Sleep) ? "128" : (g_state.current_profile == PROFILE_Interactive) ? (g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024") : "256";
-                set_read_ahead(ra);
-            }
+        tick_game_edges(&fg, now);
+        profile_t next = decide_profile(&fg, screen_on, now);
+
+        if (next != g_state.current_profile) {
+            apply_transition(next, &fg, gpu_load);
+            /* Launch boost must survive the profile apply: the matrix writes
+             * the steady 256 KB value for Gaming/MOBA. */
+            refresh_read_ahead(next);
         }
 
-        static int       s_game_absent_ticks = 0;
-        static int       s_prev_game_active  = 0;
-        static int       s_last_game_pid     = 0;
-        static profile_t s_last_game_profile = PROFILE_Interactive;
-
-        if (game_active) {
-            if (game_pid > 0) s_last_game_pid = game_pid;
-            s_game_absent_ticks = 0;
-            if (!s_prev_game_active) {
-                set_read_ahead("512");
-                g_state.launch_boost_ticks = 3;
-                send_game_toast(active_game, custom_profile);
-                log_info("Game", "Game Launch Boost: 512KB Read-Ahead [%s] Profile: %s",
-                         active_game, g_profile_names[custom_profile]);
-                s_prev_game_active = 1;
-            }
-        } else {
-            /* Process death detection: if game PID terminated, immediately force return to Interactive */
-            if (s_prev_game_active && s_last_game_pid > 0 && !is_process_alive(s_last_game_pid)) {
-                s_game_absent_ticks = 3;
-                g_state.gaming_hold_ticks = 0;
-                s_prev_game_active = 0;
-                log_info("Game", "Foreground game process death detected -> Immediate atomic rollback to Interactive");
-            } else {
-                s_game_absent_ticks++;
-                if (s_game_absent_ticks >= 3) {
-                    s_prev_game_active = 0;
-                }
-            }
-        }
+        tick_jitter(next, gpu_load);
 
         if (g_state.launch_boost_ticks > 0) {
             g_state.launch_boost_ticks--;
-            if (g_state.launch_boost_ticks == 0 && g_state.app_boost_ticks == 0) {
-                const char *ra = (g_state.current_profile == PROFILE_Sleep) ? "128" : (g_state.current_profile == PROFILE_Interactive) ? (g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024") : "256";
-                set_read_ahead(ra);
+            if (g_state.launch_boost_ticks == 0) refresh_read_ahead(next);
+        }
+        if (g_state.app_boost_ticks > 0) {
+            g_state.app_boost_ticks--;
+            if (g_state.app_boost_ticks == 0 && g_state.launch_boost_ticks == 0) {
+                refresh_read_ahead(next);
             }
         }
 
-        profile_t next_profile = PROFILE_Interactive;
-
-        if (!is_screen_on()) {
-            next_profile = PROFILE_Sleep;
-            g_state.gaming_hold_ticks = 0;
-            g_state.jitter_rescue_ticks = 0;
-            g_state.launch_boost_ticks = 0;
-            g_state.app_boost_ticks = 0;
-        } else if (game_active) {
-            next_profile = custom_profile;
-            s_last_game_profile = custom_profile;
-            g_state.gaming_hold_ticks = (custom_profile == PROFILE_Gaming || custom_profile == PROFILE_Gaming_MOBA) ? 2 : 0;
-        } else if (g_state.gaming_hold_ticks > 0) {
-            g_state.gaming_hold_ticks--;
-            next_profile = s_last_game_profile;
-        } else if (g_state.manual_profile >= 0 && g_state.manual_profile < 4) {
-            next_profile = (profile_t)g_state.manual_profile;
-        } else {
-            next_profile = PROFILE_Interactive;
-        }
-
-        static int s_prev_gpu_load = 0;
-        int gpu_spike = (gpu_load - s_prev_gpu_load >= 30);
-        s_prev_gpu_load = gpu_load;
-
-        if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && gpu_spike) {
-            if (g_state.jitter_rescue_ticks == 0) {
-                g_state.jitter_rescue_ticks = 2;
-                sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "1");
-                sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", "1");
-
-                static time_t s_last_jitter_log = 0;
-                time_t now = time(NULL);
-                if (now - s_last_jitter_log >= 5) {
-                    log_warn("Jitter", "Frame-spike detected (GPU %d%%) -> Ultra-Rescue Burst activated", gpu_load);
-                    s_last_jitter_log = now;
-                }
-            }
-        }
-
-        if (g_state.jitter_rescue_ticks > 0) {
-            g_state.jitter_rescue_ticks--;
-            if (g_state.jitter_rescue_ticks == 0) {
-                sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", "0");
-            }
-        }
-
-        if (next_profile != g_state.current_profile) {
-            const char *prev_name = (g_state.current_profile >= 0 && g_state.current_profile < 4) ? g_profile_names[g_state.current_profile] : "INIT";
-            char status_buf[128];
-            if ((next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) && active_game[0] != '\0') {
-                snprintf(status_buf, sizeof(status_buf), "%s (%s)", g_profile_names[next_profile], active_game);
-                log_state("Profiler", "Profile: %s -> %s [%s] (GPU: %d%%)",
-                          prev_name, g_profile_names[next_profile], active_game, gpu_load);
-            } else {
-                snprintf(status_buf, sizeof(status_buf), "%s", g_profile_names[next_profile]);
-                log_state("Profiler", "Profile: %s -> %s (GPU: %d%%)",
-                          prev_name, g_profile_names[next_profile], gpu_load);
-            }
-            update_module_prop_status(status_buf);
-            apply_profile(next_profile, gpu_load);
-            g_state.current_profile = next_profile;
-        }
-
-        /* Boot settle: the one-shot Interactive apply at startup can silently
-         * miss nodes that probe late (touch IC sysfs) or get overwritten by
-         * vendor init seconds after boot_completed — while the
-         * status already reports Interactive, so the loop above would never
-         * re-apply. Force a re-apply at a few early ticks (~+10s/+30s/+60s in
-         * Interactive), same pattern as other periodic enforcement loops.
-         * Skipped while a game is active or the profile is manually locked. */
-        static int s_boot_settle_tick = 0;
-        s_boot_settle_tick++;
-        if ((s_boot_settle_tick == 5 || s_boot_settle_tick == 15 || s_boot_settle_tick == 30) &&
-            next_profile == PROFILE_Interactive && g_state.current_profile == PROFILE_Interactive &&
-            !game_active && g_state.manual_profile < 0) {
-            rediscover_touch_nodes();
-            apply_profile(PROFILE_Interactive, gpu_load);
-            if (s_boot_settle_tick == 30) {
-                verify_boot_apply();
-            } else {
-                log_info("Profiler", "Boot settle re-apply Interactive (%d/3)", s_boot_settle_tick == 5 ? 1 : 2);
-            }
-        }
+        tick_boot_settle(next, &fg, gpu_load);
 
         tune_memory_pressure();
 
         update_status_json_file();
+        tick_log_rotation();
 
-        static int s_rotate_counter = 0;
-        if (++s_rotate_counter >= 30) {
-            rotate_log();
-            log_reopen();
-            s_rotate_counter = 0;
-        }
+        handle_ipc_events(poll_timeout_for(next, gpu_load));
 
-        int poll_timeout_ms = 2000;
-        if (next_profile == PROFILE_Sleep) {
-            poll_timeout_ms = 8000;
-        } else if (next_profile == PROFILE_Gaming || next_profile == PROFILE_Gaming_MOBA) {
-            poll_timeout_ms = gpu_load >= 90 ? 500 : 1000;
-        }
-
-        handle_ipc_events(poll_timeout_ms);
-
-        /* g_screen_changed / g_uevent_received are edge triggers used to pull
-         * the poll() forward; the loop re-evaluates every tick regardless, so
-         * there is nothing left to do but clear them. */
+        /* Edge flags only pull the poll() forward; the loop re-evaluates every
+         * tick regardless. */
         g_screen_changed = 0;
         g_uevent_received = 0;
     }
 
     log_info("Daemon", "HyperCore daemon stopped. Restoring ROM baseline nodes...");
-    restore_baseline_nodes();
+    baseline_restore();
     update_module_prop_status("Stopped");
     close_ipc_socket();
 
-    if (g_nodes.inotify_fd >= 0) {
-        close(g_nodes.inotify_fd);
-        g_nodes.inotify_fd = -1;
-    }
-    if (g_nodes.netlink_fd >= 0) {
-        close(g_nodes.netlink_fd);
-        g_nodes.netlink_fd = -1;
-    }
+    if (g_nodes.inotify_fd >= 0) close(g_nodes.inotify_fd);
+    if (g_nodes.netlink_fd >= 0) close(g_nodes.netlink_fd);
+
     if (s_lock_fd >= 0) {
-        /* The lock file itself is never unlinked here. Unlink-after-close can
-         * delete a successor's fresh lock file and break the single-instance
-         * guard; the path is reused on the next start and the kernel drops
-         * the flock when this process exits. */
+        /* Never unlink the lock file: a successor may already hold a fresh
+         * flock on it, and the kernel releases ours on exit anyway. */
         close(s_lock_fd);
         s_lock_fd = -1;
     }

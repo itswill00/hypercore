@@ -81,8 +81,8 @@ for _node in "/sys/module/ged/parameters/boost_gpu_enable:0" "/sys/module/ged/pa
 done
 [ -z "$STOCK_SCONFIG" ] && STOCK_SCONFIG="0"
 chmod 664 /sys/class/thermal/thermal_message/sconfig /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null || true
-# cpu_limits got the same 0666 treatment at runtime (service.sh + thermal
-# bypass), so its mode is restored too instead of staying world-writable.
+# Earlier releases temporarily relaxed cpu_limits to 0666 when writing it.
+# Restore a sane mode so the node is never left world-writable.
 chmod 664 /sys/class/thermal/thermal_message/cpu_limits /sys/devices/virtual/thermal/thermal_message/cpu_limits 2>/dev/null || true
 [ -f "/sys/class/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/class/thermal/thermal_message/sconfig 2>/dev/null
 [ -f "/sys/devices/virtual/thermal/thermal_message/sconfig" ] && echo "$STOCK_SCONFIG" > /sys/devices/virtual/thermal/thermal_message/sconfig 2>/dev/null
@@ -120,9 +120,6 @@ if [ -f "/data/adb/hypercore/stock_zram.conf" ] && [ -f /sys/block/zram0/disksiz
     fi
   fi
 fi
-
-# Reset charging control
-[ -f "/sys/class/power_supply/battery/input_suspend" ] && echo 0 > /sys/class/power_supply/battery/input_suspend 2>/dev/null
 
 # Clean up symlinks, lock files & runtime state
 rm -f /data/adb/ap/bin/libhypercore.so /data/adb/ksu/bin/libhypercore.so /data/adb/modules/bin/libhypercore.so 2>/dev/null

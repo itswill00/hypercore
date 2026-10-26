@@ -72,7 +72,7 @@ static void autodetect_stamp_path(char *out, size_t cap) {
 
 
 /* Auto-detection shells out to `pm list packages`, which spawns app_process and
- * costs a few hundred milliseconds. is_game_in_foreground() re-enters
+ * costs a few hundred milliseconds. foreground_scan() re-enters
  * load_gamelist() on every main-loop tick while the list is empty, so without a
  * rate limit a device with no recognisable games would fork a Java process up
  * to twice a second, forever. */
@@ -320,19 +320,40 @@ static int dump_contains_pkg(const char *dump, const char *pkg) {
     return 0;
 }
 
-int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_profile, int *out_game_pid) {
-    if (out_game_name && max_len > 0) out_game_name[0] = '\0';
-    if (out_profile) *out_profile = PROFILE_Gaming;
-    if (out_game_pid) *out_game_pid = 0;
+/* System processes that sit in the top-app cgroup during boot or IME focus but
+ * are never "the app the user is looking at". */
+static int is_system_process(const char *cmdline) {
+    return strncmp(cmdline, "system_server", 13) == 0 ||
+           strncmp(cmdline, "/system/", 8) == 0 ||
+           strncmp(cmdline, "/vendor/", 8) == 0 ||
+           strstr(cmdline, "inputmethod") != NULL ||
+           strstr(cmdline, "libhypercore") != NULL;
+}
+
+static int gamelist_match(const char *cmdline, size_t *pkg_index) {
+    for (int i = 0; i < s_game_count; i++) {
+        size_t pkg_len = s_pkg_lens[i];
+        if (pkg_len == 0) continue;
+        if (strncasecmp(cmdline, s_games[i], pkg_len) == 0 &&
+            (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':' || cmdline[pkg_len] == ' ')) {
+            if (pkg_index) *pkg_index = (size_t)i;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void foreground_scan(foreground_t *out) {
+    memset(out, 0, sizeof(*out));
+    out->game_profile = PROFILE_Gaming;
 
     check_gamelist_inotify();
+    if (s_game_count == 0) load_gamelist();
 
-    if (s_game_count == 0) {
-        load_gamelist();
-    }
-
-    if (s_game_count == 0) {
-        return 0;
+    /* Pre-compute package name lengths once instead of inside the N*M loop. */
+    if (!s_lens_cached) {
+        for (int i = 0; i < s_game_count; i++) s_pkg_lens[i] = strlen(s_games[i]);
+        s_lens_cached = 1;
     }
 
     const char *procs_paths[] = {
@@ -344,21 +365,13 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
 
     pid_t self_pid = getpid();
 
-    for (int p = 0; procs_paths[p]; p++) {
+    for (int p = 0; procs_paths[p] && !out->pid; p++) {
         FILE *fp = fopen(procs_paths[p], "r");
         if (!fp) continue;
 
         char line_str[32];
         int pid_scanned = 0;
 
-        /* Pre-compute package name lengths once — avoids strlen() inside the hot N*M loop */
-        if (!s_lens_cached) {
-            for (int i = 0; i < s_game_count; i++)
-                s_pkg_lens[i] = strlen(s_games[i]);
-            s_lens_cached = 1;
-        }
-
-        /* Scan up to 64 PIDs: the active foreground app PID appears in top-app cgroup */
         while (fgets(line_str, sizeof(line_str), fp) && pid_scanned < 64) {
             int pid = atoi(line_str);
             if (pid <= 100 || pid == self_pid) continue;
@@ -372,70 +385,57 @@ int is_game_in_foreground(char *out_game_name, size_t max_len, profile_t *out_pr
             char cmdline[256];
             ssize_t n = read(fd, cmdline, sizeof(cmdline) - 1);
             close(fd);
-
             if (n <= 0) continue;
             cmdline[n] = '\0';
 
-            for (int i = 0; i < s_game_count; i++) {
-                size_t pkg_len = s_pkg_lens[i];
-                if (pkg_len == 0) continue;
+            if (!out->pid && !is_system_process(cmdline)) {
+                out->pid = pid;
+                snprintf(out->package, sizeof(out->package), "%s", cmdline);
+            }
 
-                if (strncasecmp(cmdline, s_games[i], pkg_len) == 0 &&
-                    (cmdline[pkg_len] == '\0' || cmdline[pkg_len] == ':' || cmdline[pkg_len] == ' ')) {
-                    fclose(fp);
-
-                    if (out_game_name && max_len > 0) {
-                        strncpy(out_game_name, s_games[i], max_len - 1);
-                        out_game_name[max_len - 1] = '\0';
-                    }
-                    if (out_profile) {
-                        *out_profile = s_profiles[i];
-                    }
-                    if (out_game_pid) {
-                        *out_game_pid = pid;
-                    }
-                    return 1;
+            if (s_game_count > 0 && !out->is_game) {
+                size_t idx = 0;
+                if (gamelist_match(cmdline, &idx)) {
+                    out->is_game = 1;
+                    out->game_pid = pid;
+                    out->game_profile = s_profiles[idx];
+                    snprintf(out->game_name, sizeof(out->game_name), "%s", s_games[idx]);
                 }
             }
         }
         fclose(fp);
     }
 
-    /* Rate-limited dumpsys window fallback for OEM game spaces (e.g. Game Turbo)
-     * that do not place the game in the top-app cgroup. `dumpsys window` dumps
-     * the whole WindowManager state and costs ~100ms, so it only runs while the
-     * screen is on and never more than once per DUMPSYS_INTERVAL. */
+    if (out->is_game) return;
+
+    /* Rate-limited `dumpsys window` fallback for OEM game spaces (Game Turbo)
+     * that keep the game out of top-app. It costs ~100 ms, so never more than
+     * once per DUMPSYS_INTERVAL and only while the panel is on. */
     static time_t s_last_dumpsys = 0;
     time_t now_ds = time(NULL);
     int screen_on = (g_nodes.backlight[0] != '\0') ? (sysfs_read_int(g_nodes.backlight) > 0) : 1;
 
-    if (screen_on && g_state.current_profile != PROFILE_Sleep &&
-        now_ds - s_last_dumpsys >= DUMPSYS_INTERVAL) {
-        s_last_dumpsys = now_ds;
-        FILE *pp = popen("dumpsys window 2>/dev/null | grep -m1 -E 'mCurrentFocus|mFocusedApp'", "r");
-        if (pp) {
-            char dump_buf[512];
-            while (fgets(dump_buf, sizeof(dump_buf), pp)) {
-                for (int i = 0; i < s_game_count; i++) {
-                    if (s_games[i][0] != '\0' && dump_contains_pkg(dump_buf, s_games[i])) {
-                        pclose(pp);
-                        if (out_game_name && max_len > 0) {
-                            strncpy(out_game_name, s_games[i], max_len - 1);
-                            out_game_name[max_len - 1] = '\0';
-                        }
-                        if (out_profile) {
-                            *out_profile = s_profiles[i];
-                        }
-                        if (out_game_pid) {
-                            *out_game_pid = find_pid_by_pkg(s_games[i]);
-                        }
-                        return 1;
-                    }
-                }
-            }
-            pclose(pp);
-        }
+    if (s_game_count == 0 || !screen_on ||
+        g_state.current_profile == PROFILE_Sleep ||
+        now_ds - s_last_dumpsys < DUMPSYS_INTERVAL) {
+        return;
     }
 
-    return 0;
+    s_last_dumpsys = now_ds;
+    FILE *pp = popen("dumpsys window 2>/dev/null | grep -m1 -E 'mCurrentFocus|mFocusedApp'", "r");
+    if (!pp) return;
+
+    char dump_buf[512];
+    while (fgets(dump_buf, sizeof(dump_buf), pp)) {
+        for (int i = 0; i < s_game_count; i++) {
+            if (s_games[i][0] == '\0' || !dump_contains_pkg(dump_buf, s_games[i])) continue;
+            pclose(pp);
+            out->is_game = 1;
+            out->game_profile = s_profiles[i];
+            snprintf(out->game_name, sizeof(out->game_name), "%s", s_games[i]);
+            out->game_pid = find_pid_by_pkg(s_games[i]);
+            return;
+        }
+    }
+    pclose(pp);
 }

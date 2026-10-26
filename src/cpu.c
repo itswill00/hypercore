@@ -2,304 +2,24 @@
 #include "gpu.h"
 #include "memory.h"
 #include "io.h"
+#include "nodes.h"
 #include "sysfs.h"
+#include "util.h"
 #include "log.h"
 
-/* Forward declaration — defined later in this file as a static function */
-static const char *get_best_governor(profile_t prof);
-
-void detect_cpu_hardware_limits(void) {
-    if (g_nodes.boot_cpu_gov[0] == '\0') {
-        if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
-            strcpy(g_nodes.boot_cpu_gov, "schedutil");
-        }
-        log_info("Hardware", "Boot CPU Scaling Governor captured: '%s'", g_nodes.boot_cpu_gov);
-    }
-
-    int lit_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq");
-    int lit_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq");
-    g_nodes.lit_hw_min_freq = (lit_min > 0) ? lit_min : 500000;
-    g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
-
-    int big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq");
-    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_min_freq");
-    if (big_min <= 0) big_min = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_min_freq");
-
-    int big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_max_freq");
-    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_max_freq");
-    if (big_max <= 0) big_max = sysfs_read_int("/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_max_freq");
-
-    g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
-    g_nodes.big_hw_max_freq = (big_max > 0) ? big_max : FREQ_BIG_MAX;
-
-    log_info("Hardware", "CPU Freq Bounds - Little: [%d - %d kHz], Big: [%d - %d kHz]",
-             g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq,
-             g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq);
-
-    /* Pre-cache best governor strings for each profile class so get_best_governor()
-     * doesn't re-read scaling_available_governors on every profile transition. */
-    if (g_nodes.cached_gov_perf[0] == '\0') {
-        const char *gp = get_best_governor(PROFILE_Gaming);
-        strncpy(g_nodes.cached_gov_perf, gp, sizeof(g_nodes.cached_gov_perf) - 1);
-        g_nodes.cached_gov_perf[sizeof(g_nodes.cached_gov_perf) - 1] = '\0';
-        const char *gb = get_best_governor(PROFILE_Interactive);
-        strncpy(g_nodes.cached_gov_balanced, gb, sizeof(g_nodes.cached_gov_balanced) - 1);
-        g_nodes.cached_gov_balanced[sizeof(g_nodes.cached_gov_balanced) - 1] = '\0';
-        log_info("Hardware", "CPU Governor cache: perf='%s' balanced='%s'",
-                 g_nodes.cached_gov_perf, g_nodes.cached_gov_balanced);
-    }
-}
-
-static const char *s_policy0_up_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
-    NULL
-};
-static const char *s_policy0_down_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy0/sugov_ext/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy0/rate_limit_us",
-    NULL
-};
-static const char *s_policy4_up_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
-    NULL
-};
-static const char *s_policy4_down_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy4/sugov_ext/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy4/rate_limit_us",
-    NULL
-};
-static const char *s_policy6_up_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy6/schedutil/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
-    NULL
-};
-static const char *s_policy6_down_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy6/sugov_ext/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy6/schedutil/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy6/rate_limit_us",
-    NULL
-};
-static const char *s_policy7_up_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
-    NULL
-};
-static const char *s_policy7_down_rate_nodes[] = {
-    "/sys/devices/system/cpu/cpufreq/policy7/sugov_ext/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us",
-    "/sys/devices/system/cpu/cpufreq/policy7/rate_limit_us",
-    NULL
-};
-
-/* One helper for the chmod-guarded sysfs writes: rate nodes (0644) and the sconfig lock (0666) were identical loops. */
-static void write_chmod_guarded(const char *paths[], const char *val, mode_t open_mode) {
-    if (!paths || !val) return;
-    for (int i = 0; paths[i]; i++) {
-        if (!paths[i] || paths[i][0] == '\0') continue;
-        if (access(paths[i], F_OK) != 0) continue;
-        sysfs_write_temp_mode(paths[i], val, open_mode);
-    }
-}
-static void write_rate_limit_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0644); }
-static void write_locked_node_fallback(const char *paths[], const char *val) { write_chmod_guarded(paths, val, 0666); }
-
-/* Rate limits are captured per cluster in the stock baseline, so they have to be
- * applied per cluster too. A single pair written to policy0/4/6/7 meant the
- * profiles meant to restore stock handed the Big cluster the Little cluster's
- * governor response, which is not what the device booted with. */
-void set_rate_limits(const char *lit_up, const char *lit_down,
-                     const char *big_up, const char *big_down) {
-    write_rate_limit_fallback(s_policy0_up_rate_nodes, lit_up);
-    write_rate_limit_fallback(s_policy0_down_rate_nodes, lit_down);
-    write_rate_limit_fallback(s_policy4_up_rate_nodes, lit_up);
-    write_rate_limit_fallback(s_policy4_down_rate_nodes, lit_down);
-    write_rate_limit_fallback(s_policy6_up_rate_nodes, big_up);
-    write_rate_limit_fallback(s_policy6_down_rate_nodes, big_down);
-    write_rate_limit_fallback(s_policy7_up_rate_nodes, big_up);
-    write_rate_limit_fallback(s_policy7_down_rate_nodes, big_down);
-}
-
-static const char *s_cpuset_bg_cpus_nodes[] = {
-    "/dev/cpuset/background/cpus",
-    "/sys/fs/cgroup/background/cpuset.cpus",
-    "/sys/fs/cgroup/background/cpus",
-    "/sys/fs/cgroup/system/background/cpuset.cpus",
-    "/sys/fs/cgroup/system/background/cpus",
-    NULL
-};
-
-static const char *s_cpuset_sys_bg_cpus_nodes[] = {
-    "/dev/cpuset/system-background/cpus",
-    "/sys/fs/cgroup/system-background/cpuset.cpus",
-    "/sys/fs/cgroup/system-background/cpus",
-    "/sys/fs/cgroup/system/sys-background/cpuset.cpus",
-    "/sys/fs/cgroup/system/sys-background/cpus",
-    NULL
-};
-
-static const char *s_cpuset_top_app_cpus_nodes[] = {
-    "/dev/cpuset/top-app/cpus",
-    "/sys/fs/cgroup/top-app/cpuset.cpus",
-    "/sys/fs/cgroup/top-app/cpus",
-    "/sys/fs/cgroup/top-app.slice/cpuset.cpus",
-    "/sys/fs/cgroup/top-app.slice/cpus",
-    NULL
-};
-
-static const char *s_cpuctl_bg_shares_nodes[] = {
-    "/dev/cpuctl/background/cpu.shares",
-    "/sys/fs/cgroup/background/cpu.shares",
-    "/sys/fs/cgroup/background/cpu.weight",
-    "/sys/fs/cgroup/system/background/cpu.weight",
-    "/sys/fs/cgroup/system/background/cpu.shares",
-    NULL
-};
-
-static const char *s_cpuctl_bg_uclamp_min_nodes[] = {
-    "/dev/cpuctl/background/cpu.uclamp.min",
-    "/sys/fs/cgroup/background/cpu.uclamp.min",
-    "/sys/fs/cgroup/system/background/cpu.uclamp.min",
-    NULL
-};
-
-static const char *s_cpuctl_bg_uclamp_max_nodes[] = {
-    "/dev/cpuctl/background/cpu.uclamp.max",
-    "/sys/fs/cgroup/background/cpu.uclamp.max",
-    "/sys/fs/cgroup/system/background/cpu.uclamp.max",
-    NULL
-};
-
-static const char *s_cpuctl_sys_bg_uclamp_max_nodes[] = {
-    "/dev/cpuctl/system-background/cpu.uclamp.max",
-    "/sys/fs/cgroup/system-background/cpu.uclamp.max",
-    "/sys/fs/cgroup/system/sys-background/cpu.uclamp.max",
-    NULL
-};
-
-static const char *s_cpuctl_top_app_shares_nodes[] = {
-    "/dev/cpuctl/top-app/cpu.shares",
-    "/sys/fs/cgroup/top-app/cpu.shares",
-    "/sys/fs/cgroup/top-app/cpu.weight",
-    "/sys/fs/cgroup/top-app.slice/cpu.weight",
-    "/sys/fs/cgroup/top-app.slice/cpu.shares",
-    NULL
-};
-
-static const char *s_cpuctl_top_app_uclamp_min_nodes[] = {
-    "/dev/cpuctl/top-app/cpu.uclamp.min",
-    "/sys/fs/cgroup/top-app/cpu.uclamp.min",
-    "/sys/fs/cgroup/top-app.slice/cpu.uclamp.min",
-    NULL
-};
-
-static const char *s_cpuctl_top_app_uclamp_max_nodes[] = {
-    "/dev/cpuctl/top-app/cpu.uclamp.max",
-    "/sys/fs/cgroup/top-app/cpu.uclamp.max",
-    "/sys/fs/cgroup/top-app.slice/cpu.uclamp.max",
-    NULL
-};
-
-static void write_policy_freqs(const char *pol_path, int min_f, int max_f) {
-    char path[256], buf[32];
-    snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
-    int cur_min = sysfs_read_int(path);
-
-    /* If current min is higher than target max, lower min first to avoid kernel -EINVAL */
-    if (cur_min > max_f) {
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-    } else {
-        snprintf(path, sizeof(path), "%s/scaling_max_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "%s/scaling_min_freq", pol_path);
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-    }
-}
-
-static void write_cpu_freqs(int cpu, int min_f, int max_f) {
-    char path[256], buf[32];
-    snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", cpu);
-    int cur_min = sysfs_read_int(path);
-
-    if (cur_min > max_f) {
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-    } else {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq", cpu);
-        snprintf(buf, sizeof(buf), "%d", max_f);
-        sysfs_write(path, buf);
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", cpu);
-        snprintf(buf, sizeof(buf), "%d", min_f);
-        sysfs_write(path, buf);
-    }
-}
-
-void set_cpu_freqs(int min_lit, int max_lit, int min_big, int max_big,
-                    const char *lit_up, const char *lit_down,
-                    const char *big_up, const char *big_down) {
-    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy0", min_lit, max_lit);
-    for (int i = 0; i <= 5; i++) {
-        write_cpu_freqs(i, min_lit, max_lit);
-    }
-
-    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy4", min_big, max_big);
-    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy6", min_big, max_big);
-    write_policy_freqs("/sys/devices/system/cpu/cpufreq/policy7", min_big, max_big);
-    for (int i = 6; i <= 7; i++) {
-        write_cpu_freqs(i, min_big, max_big);
-    }
-
-    set_rate_limits(lit_up, lit_down, big_up, big_down);
-}
-
-/* Stock captures the Big cluster's governor separately (gov6), because MTK parts
- * routinely boot the two clusters on different governors. Applying one governor
- * to every policy silently overwrote the Big cluster's stock choice whenever the
- * profile was supposed to be restoring it. */
-void set_cpu_governor(const char *lit_gov, const char *big_gov) {
-    char path[256];
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy0/scaling_governor", lit_gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy4/scaling_governor", lit_gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy6/scaling_governor", big_gov);
-    sysfs_write("/sys/devices/system/cpu/cpufreq/policy7/scaling_governor", big_gov);
-
-    for (int i = 0; i <= 5; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
-        sysfs_write(path, lit_gov);
-    }
-    for (int i = 6; i <= 7; i++) {
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
-        sysfs_write(path, big_gov);
-    }
-}
+/* -------------------------------------------------------------------------
+ * Hardware detection
+ * ---------------------------------------------------------------------- */
 
 static const char *get_best_governor(profile_t prof) {
-    /* Use cached value if available (populated at startup by detect_cpu_hardware_limits) */
     if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
         if (g_nodes.cached_gov_perf[0] != '\0') return g_nodes.cached_gov_perf;
     } else {
         if (g_nodes.cached_gov_balanced[0] != '\0') return g_nodes.cached_gov_balanced;
     }
 
-    /* Fallback: read sysfs (only happens before detect_cpu_hardware_limits completes) */
     char avail[256] = "";
-    if (!sysfs_read_str("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors", avail, sizeof(avail))) {
+    if (!sysfs_read_str(N_CPUAVAIL_GOV[0], avail, sizeof(avail))) {
         return (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) ? "performance" : "schedutil";
     }
 
@@ -324,88 +44,127 @@ static const char *get_best_governor(profile_t prof) {
     return "schedutil";
 }
 
-static const char *s_devfreq_gov_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/governor",
-    "/sys/class/devfreq/soc:mali/governor",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/governor",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/governor",
-    "/sys/devices/platform/13000000.mali/devfreq/13000000.mali/governor",
-    "/sys/devices/platform/soc/13fbf000.gpufreq/governor",
-    NULL
-};
+void detect_cpu_hardware_limits(void) {
+    if (g_nodes.boot_cpu_gov[0] == '\0') {
+        if (!sysfs_read_str(N_CPU_GOV0[0], g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov))) {
+            snprintf(g_nodes.boot_cpu_gov, sizeof(g_nodes.boot_cpu_gov), "%s", "schedutil");
+        }
+        log_info("Hardware", "Boot CPU scaling governor captured: '%s'", g_nodes.boot_cpu_gov);
+    }
 
-static const char *s_devfreq_min_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/min_freq",
-    "/sys/class/devfreq/soc:mali/min_freq",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/min_freq",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/min_freq",
-    "/sys/devices/platform/soc/13fbf000.gpufreq/min_freq",
-    NULL
-};
+    int lit_min = node_read_int(N_CPU_POL0_MIN);
+    int lit_max = node_read_int(N_CPU_POL0_MAX);
+    g_nodes.lit_hw_min_freq = (lit_min > 0) ? lit_min : 500000;
+    g_nodes.lit_hw_max_freq = (lit_max > 0) ? lit_max : FREQ_LITTLE_MAX;
 
-static const char *s_devfreq_max_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/max_freq",
-    "/sys/class/devfreq/soc:mali/max_freq",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/max_freq",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/max_freq",
-    "/sys/devices/platform/soc/13fbf000.gpufreq/max_freq",
-    NULL
-};
+    int big_min = node_read_int(N_CPU_POL6_MIN);
+    int big_max = node_read_int(N_CPU_POL6_MAX);
+    g_nodes.big_hw_min_freq = (big_min > 0) ? big_min : 725000;
+    g_nodes.big_hw_max_freq = (big_max > 0) ? big_max : FREQ_BIG_MAX;
 
-static const char *s_devfreq_poll_nodes[] = {
-    "/sys/class/devfreq/13000000.mali/polling_interval",
-    "/sys/class/devfreq/soc:mali/polling_interval",
-    "/sys/devices/platform/soc/13000000.mali/devfreq/13000000.mali/polling_interval",
-    "/sys/devices/platform/soc/soc:mali/devfreq/soc:mali/polling_interval",
-    "/sys/devices/platform/soc/13fbf000.gpufreq/polling_interval",
-    NULL
-};
+    log_info("Hardware", "CPU freq bounds - Little: [%d - %d kHz], Big: [%d - %d kHz]",
+             g_nodes.lit_hw_min_freq, g_nodes.lit_hw_max_freq,
+             g_nodes.big_hw_min_freq, g_nodes.big_hw_max_freq);
 
-static const char *s_power_policy_nodes[] = {
-    "/sys/devices/platform/soc/13000000.mali/power_policy",
-    "/sys/devices/platform/soc/soc:mali/power_policy",
-    "/sys/class/devfreq/13000000.mali/power_policy",
-    "/sys/class/devfreq/soc:mali/power_policy",
-    "/sys/devices/platform/13000000.mali/power_policy",
-    "/sys/devices/platform/soc/13fbf000.gpufreq/power_policy",
-    NULL
-};
+    if (g_nodes.cached_gov_perf[0] == '\0') {
+        snprintf(g_nodes.cached_gov_perf, sizeof(g_nodes.cached_gov_perf), "%s",
+                 get_best_governor(PROFILE_Gaming));
+        snprintf(g_nodes.cached_gov_balanced, sizeof(g_nodes.cached_gov_balanced), "%s",
+                 get_best_governor(PROFILE_Interactive));
+        log_info("Hardware", "CPU governor cache: perf='%s' balanced='%s'",
+                 g_nodes.cached_gov_perf, g_nodes.cached_gov_balanced);
+    }
+}
 
-static const char *s_sconfig_nodes[] = {
-    "/sys/class/thermal/thermal_message/sconfig",
-    "/sys/devices/virtual/thermal/thermal_message/sconfig",
-    "/sys/class/thermal/thermal_message/sport_mode",
-    NULL
-};
+/* -------------------------------------------------------------------------
+ * CPU writers
+ *
+ * MT6789 is a strict bi-cluster part. Per-CPU scaling_* nodes are symlinks to
+ * their policy node on this kernel, so writing policy0/policy6 once applies to
+ * every core in the cluster; the old per-CPU loops issued the same write six
+ * to eight times per transition for no effect.
+ * ---------------------------------------------------------------------- */
 
-static const char *s_dvfsrc_nodes[] = {
-    "/sys/kernel/helio-dvfsrc/dvfsrc_qos_mode",
-    "/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
-    "/sys/module/dvfsrc/parameters/dvfsrc_qos_mode",
-    "/sys/devices/platform/soc/10012000.dvfsrc/helio-dvfsrc/dvfsrc_qos_mode",
-    NULL
-};
+static void write_policy_pair(const char *policy_dir, int min_f, int max_f) {
+    if (min_f <= 0 || max_f <= 0) return;
+    if (min_f > max_f) max_f = min_f;
 
-static const char *s_game_mode_nodes[] = {
-    "/sys/module/ged/parameters/gx_game_mode",
-    "/sys/module/ged/parameters/gx_boost_on",
-    NULL
-};
+    char min_path[256], max_path[256], buf[32];
+    snprintf(min_path, sizeof(min_path), "%s/scaling_min_freq", policy_dir);
+    snprintf(max_path, sizeof(max_path), "%s/scaling_max_freq", policy_dir);
+
+    int cur_min = sysfs_read_int(min_path);
+    if (cur_min > max_f) {
+        /* Lower the floor before raising the ceiling, or the kernel rejects it. */
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(min_path, buf);
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(max_path, buf);
+    } else {
+        snprintf(buf, sizeof(buf), "%d", max_f);
+        sysfs_write(max_path, buf);
+        snprintf(buf, sizeof(buf), "%d", min_f);
+        sysfs_write(min_path, buf);
+    }
+}
+
+static void set_cpu_governor(const char *lit_gov, const char *big_gov) {
+    sysfs_write_fallback(N_CPU_GOV0, lit_gov);
+    sysfs_write_fallback(N_CPU_GOV6, big_gov);
+}
+
+/* Rate-limit nodes are 0644 on a stock ROM but some vendor kernels ship them
+ * 0444; widen only for the duration of the write. */
+static void write_rate_nodes(const char *const paths[], const char *val) {
+    if (!val || val[0] == '\0') return;
+    for (int i = 0; paths[i]; i++) {
+        if (access(paths[i], F_OK) != 0) continue;
+        sysfs_write_temp_mode(paths[i], val, 0644);
+    }
+}
+
+static void set_rate_limits(const char *lit_up, const char *lit_down,
+                            const char *big_up, const char *big_down) {
+    write_rate_nodes(N_RATE_P0_UP, lit_up);
+    write_rate_nodes(N_RATE_P0_DOWN, lit_down);
+    write_rate_nodes(N_RATE_P6_UP, big_up);
+    write_rate_nodes(N_RATE_P6_DOWN, big_down);
+}
+
+/* -------------------------------------------------------------------------
+ * Profile matrix
+ *
+ * A profile is a sparse override of the captured stock baseline. NULL means
+ * "restore what the device shipped", which is exactly what Interactive is.
+ * This replaces the 230-line switch that repeated all 50 fields per profile
+ * and silently let one profile inherit another's leftovers (Gaming's
+ * swappiness=60 used to survive into Sleep).
+ * ---------------------------------------------------------------------- */
+
+typedef enum {
+    GOV_STOCK,      /* profile0 <- stock gov0, profile6 <- stock gov6 */
+    GOV_BALANCED,   /* best balanced governor on both clusters */
+    GOV_PERF        /* best performance governor on both clusters */
+} gov_class_t;
+
+typedef enum {
+    FREQ_STOCK,     /* captured factory min/max */
+    FREQ_HW         /* hardware bounds, with optional per-cluster ceiling */
+} freq_mode_t;
 
 typedef struct {
-    profile_t target_profile;
+    gov_class_t gov;
+    freq_mode_t freq_mode;
+    int lit_max_override;   /* 0 = hardware maximum */
+    int big_max_override;   /* 0 = hardware maximum */
+    int use_hw_gpu_max;     /* devfreq ceiling and cust upbound = detected max */
 
-    const char *cpu_gov;
-    const char *cpu_gov_big;
-    int lit_min_freq;
-    int lit_max_freq;
-    int big_min_freq;
-    int big_max_freq;
-    const char *up_rate_limit;
-    const char *down_rate_limit;
-    const char *up_rate_limit_big;
-    const char *down_rate_limit_big;
+    /* Resolved at build time from gov_class_t; never NULL after build. */
+    const char *cpu_gov_lit;
+    const char *cpu_gov_big_hint;
 
+    const char *up_rate;
+    const char *down_rate;
     const char *nr_requests;
     const char *read_ahead;
 
@@ -427,7 +186,6 @@ typedef struct {
     const char *devfreq_min_freq;
     const char *devfreq_max_freq;
     const char *power_policy;
-
     const char *dvfsrc_qos;
 
     const char *boost_gpu_enable;
@@ -443,390 +201,411 @@ typedef struct {
 
     const char *fpsgo_force_onoff;
     const char *fpsgo_boost_ta;
-    const char *fpsgo_ultra_rescue;
     const char *fpsgo_light_loading;
     const char *fpsgo_idleprefer;
     const char *fpsgo_thrm_enable;
 
     const char *sconfig;
-    const char *touch_thp_smooth;
-    const char *touch_game_mode;
-    const char *touch_sensitivity;
+
+    const char *touch_smooth;
+    const char *touch_noise;
+    const char *touch_game;
+    const char *touch_sens;
     const char *touch_edge;
+
+    const char *vm_swappiness;
+    const char *vm_dirty_ratio;
+    const char *vm_dirty_bg_ratio;
+    const char *vm_vfs_cache_pressure;
+    const char *vm_stat_interval;
+    const char *vm_dirty_writeback;
+    const char *vm_compaction;
 } profile_matrix_t;
 
+static const profile_matrix_t k_profiles[PROFILE_COUNT] = {
+    [PROFILE_Sleep] = {
+        .gov = GOV_BALANCED,
+        .freq_mode = FREQ_HW,
+        .lit_max_override = 1000000,
+        .big_max_override = 850000,
+        .up_rate = "20000",
+        .down_rate = "50000",
+        .nr_requests = "32",
+        .read_ahead = "128",
+        .bg_cpus = "0-3",
+        .sys_bg_cpus = "0-3",
+        .top_app_cpus = "0-7",
+        .bg_shares = "1024",
+        .bg_uclamp_min = "0",
+        .bg_uclamp_max = "30",
+        .sys_bg_uclamp_max = "max",
+        .top_app_shares = "1024",
+        .top_app_uclamp_min = "0",
+        .top_app_uclamp_max = "40",
+        .devfreq_gov = "simple_ondemand",
+        .devfreq_poll_ms = "100",
+        .devfreq_upthresh = "75",
+        .devfreq_downdiff = "15",
+        .devfreq_min_freq = "390000000",
+        .devfreq_max_freq = "390000000",
+        .power_policy = "coarse_demand",
+        .dvfsrc_qos = "0",
+        .boost_gpu_enable = "0",
+        .ged_smart_boost = "0",
+        .ged_boost_enable = "0",
+        .enable_gpu_boost = "0",
+        .gpu_cust_boost_freq = "0",
+        .gpu_cust_upbound_freq = "390000",
+        .gpu_bottom_freq = "390000",
+        .g_fb_dvfs_threshold = "15",
+        .gx_fb_dvfs_margin = "0",
+        .gx_game_mode = "0",
+        .fpsgo_force_onoff = "2",
+        .fpsgo_boost_ta = "0",
+        .fpsgo_light_loading = "50",
+        .fpsgo_idleprefer = "1",
+        .fpsgo_thrm_enable = "1",
+        .touch_smooth = "0",
+        .touch_noise = "0",
+        .touch_game = "0",
+        .touch_sens = "0",
+        .touch_edge = "0",
+        .vm_stat_interval = "60",
+        .vm_dirty_writeback = "3000",
+    },
+
+    [PROFILE_Interactive] = {
+        /* Factory stock is the whole profile; the only intentional change is
+         * touch smoothing. Everything else resolves from stock_state.conf. */
+        .gov = GOV_STOCK,
+        .freq_mode = FREQ_STOCK,
+        .dvfsrc_qos = "0",
+        .touch_smooth = "1",
+        .touch_noise = "1",
+        .touch_game = "0",
+        .touch_sens = "0",
+        .touch_edge = "0",
+    },
+
+    [PROFILE_Gaming] = {
+        .gov = GOV_PERF,
+        .freq_mode = FREQ_HW,
+        .use_hw_gpu_max = 1,
+        .up_rate = "0",
+        .down_rate = "30000",
+        .nr_requests = "256",
+        .read_ahead = "256",
+        .bg_cpus = "0-3",
+        .sys_bg_cpus = "0-3",
+        .top_app_cpus = "0-7",
+        .bg_shares = "256",
+        .bg_uclamp_min = "0",
+        .bg_uclamp_max = "40",
+        .sys_bg_uclamp_max = "max",
+        .top_app_shares = "2048",
+        .top_app_uclamp_min = "50",
+        .top_app_uclamp_max = "max",
+        .devfreq_gov = "performance",
+        .devfreq_poll_ms = "20",
+        .devfreq_upthresh = "50",
+        .devfreq_downdiff = "20",
+        .devfreq_min_freq = "390000000",
+        .power_policy = "coarse_demand",
+        .dvfsrc_qos = "1",
+        .boost_gpu_enable = "1",
+        .ged_smart_boost = "1",
+        .ged_boost_enable = "1",
+        .enable_gpu_boost = "1",
+        .gpu_cust_boost_freq = "0",
+        .gpu_bottom_freq = "390000",
+        .g_fb_dvfs_threshold = "25",
+        .gx_fb_dvfs_margin = "50",
+        .gx_game_mode = "1",
+        .fpsgo_force_onoff = "2",
+        .fpsgo_boost_ta = "1",
+        .fpsgo_light_loading = "0",
+        .fpsgo_idleprefer = "1",
+        .touch_smooth = "1",
+        .touch_noise = "1",
+        .touch_game = "1",
+        .touch_sens = "1",
+        .touch_edge = "1",
+        .vm_swappiness = "60",
+        .vm_dirty_ratio = "15",
+        .vm_dirty_bg_ratio = "5",
+        .vm_vfs_cache_pressure = "100",
+        .vm_stat_interval = "20",
+        .vm_dirty_writeback = "1500",
+    },
+
+    [PROFILE_Gaming_MOBA] = {
+        .gov = GOV_PERF,
+        .freq_mode = FREQ_HW,
+        .use_hw_gpu_max = 1,
+        .up_rate = "0",
+        .down_rate = "30000",
+        .nr_requests = "256",
+        .read_ahead = "256",
+        .bg_cpus = "0-3",
+        .sys_bg_cpus = "0-3",
+        .top_app_cpus = "0-7",
+        .bg_shares = "256",
+        .bg_uclamp_min = "0",
+        .bg_uclamp_max = "40",
+        .sys_bg_uclamp_max = "max",
+        .top_app_shares = "2048",
+        .top_app_uclamp_min = "50",
+        .top_app_uclamp_max = "max",
+        .devfreq_gov = "performance",
+        .devfreq_poll_ms = "20",
+        .devfreq_upthresh = "50",
+        .devfreq_downdiff = "20",
+        .devfreq_min_freq = "390000000",
+        .power_policy = "coarse_demand",
+        .dvfsrc_qos = "1",
+        .boost_gpu_enable = "1",
+        .ged_smart_boost = "1",
+        .ged_boost_enable = "1",
+        .enable_gpu_boost = "1",
+        .gpu_cust_boost_freq = "0",
+        .gpu_bottom_freq = "390000",
+        .g_fb_dvfs_threshold = "25",
+        .gx_fb_dvfs_margin = "30",
+        .gx_game_mode = "1",
+        .fpsgo_force_onoff = "2",
+        .fpsgo_boost_ta = "1",
+        .fpsgo_light_loading = "0",
+        .fpsgo_idleprefer = "1",
+        .touch_smooth = "1",
+        .touch_noise = "1",
+        .touch_game = "1",
+        .touch_sens = "1",
+        .touch_edge = "0",
+        .vm_swappiness = "60",
+        .vm_dirty_ratio = "15",
+        .vm_dirty_bg_ratio = "5",
+        .vm_vfs_cache_pressure = "100",
+        .vm_stat_interval = "20",
+        .vm_dirty_writeback = "1500",
+    },
+};
+
+/* Fields whose NULL value means "what the device shipped". */
+#define STOCK_FALLBACK_FIELDS(X) \
+    X(nr_requests, io_nr_requests) \
+    X(read_ahead, io_read_ahead) \
+    X(bg_cpus, bg_cpus) \
+    X(sys_bg_cpus, sys_bg_cpus) \
+    X(top_app_cpus, top_app_cpus) \
+    X(bg_shares, bg_shares) \
+    X(bg_uclamp_min, bg_uclamp_min) \
+    X(bg_uclamp_max, bg_uclamp_max) \
+    X(sys_bg_uclamp_max, sys_bg_uclamp_max) \
+    X(top_app_shares, top_app_shares) \
+    X(top_app_uclamp_min, top_app_uclamp_min) \
+    X(top_app_uclamp_max, top_app_uclamp_max) \
+    X(devfreq_gov, mali_gpu_gov) \
+    X(devfreq_poll_ms, mali_poll_int) \
+    X(devfreq_upthresh, mali_upthresh) \
+    X(devfreq_downdiff, mali_downdiff) \
+    X(devfreq_min_freq, mali_min_freq) \
+    X(devfreq_max_freq, mali_max_freq) \
+    X(power_policy, mali_policy) \
+    X(boost_gpu_enable, boost_gpu_enable) \
+    X(ged_smart_boost, ged_smart_boost) \
+    X(ged_boost_enable, ged_boost_enable) \
+    X(enable_gpu_boost, enable_gpu_boost) \
+    X(gpu_cust_boost_freq, gpu_cust_boost_freq) \
+    X(gpu_cust_upbound_freq, gpu_cust_upbound_freq) \
+    X(gpu_bottom_freq, gpu_bottom_freq) \
+    X(g_fb_dvfs_threshold, g_fb_dvfs_threshold) \
+    X(gx_fb_dvfs_margin, gx_fb_dvfs_margin) \
+    X(gx_game_mode, gx_game_mode) \
+    X(fpsgo_force_onoff, fpsgo_force_onoff) \
+    X(fpsgo_boost_ta, fpsgo_boost_ta) \
+    X(fpsgo_light_loading, fpsgo_light_loading) \
+    X(fpsgo_idleprefer, fpsgo_idleprefer) \
+    X(fpsgo_thrm_enable, fpsgo_thrm_enable) \
+    X(sconfig, sconfig) \
+    X(vm_swappiness, vm_swappiness) \
+    X(vm_dirty_ratio, vm_dirty_ratio) \
+    X(vm_dirty_bg_ratio, vm_dirty_bg_ratio) \
+    X(vm_vfs_cache_pressure, vm_vfs_cache_pressure) \
+    X(vm_stat_interval, vm_stat_interval) \
+    X(vm_dirty_writeback, vm_dirty_writeback) \
+    X(vm_compaction, vm_compaction)
+
 static void build_profile_matrix(profile_t prof, profile_matrix_t *m) {
-    memset(m, 0, sizeof(*m));
-    m->target_profile = prof;
-    m->cpu_gov = get_best_governor(prof);
+    *m = k_profiles[prof];
 
-    /* The getters below already run detection on first use and cache the
-     * result, so calling detect_max_gpu_freq() here only re-ran the ~4 node
-     * probes on every single profile switch for nothing. */
-    const char *max_gpu_hz  = get_max_gpu_freq_hz();
-    const char *max_gpu_khz = get_max_gpu_freq_khz();
-
-    m->bg_cpus = "0-3";
-    m->sys_bg_cpus = "0-3";
-    m->top_app_cpus = "0-7";
-    m->sys_bg_uclamp_max = "max";
-    m->devfreq_gov = "simple_ondemand";
-    m->power_policy = "coarse_demand";
-    m->gpu_cust_boost_freq = "0";
-    m->fpsgo_force_onoff = "2";
-    m->fpsgo_idleprefer = "1";
-
-    switch (prof) {
-        case PROFILE_Sleep:
-            m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = 1000000;
-            m->big_min_freq = g_nodes.big_hw_min_freq;
-            m->big_max_freq = 850000;
-            m->up_rate_limit = "20000";
-            m->down_rate_limit = "50000";
-
-            m->nr_requests = "32";
-            m->read_ahead = "128";
-
-            m->bg_shares = "1024";
-            m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "30";
-            m->top_app_shares = "1024";
-            m->top_app_uclamp_min = "0";
-            m->top_app_uclamp_max = "40";
-
-            m->devfreq_poll_ms = "100";
-            m->devfreq_upthresh = "75";
-            m->devfreq_downdiff = "15";
-            m->devfreq_min_freq = "390000000";
-            m->devfreq_max_freq = "390000000";
-            m->power_policy = "coarse_demand";
-
-            m->dvfsrc_qos = "0";
-
-            m->boost_gpu_enable = "0";
-            m->ged_smart_boost = "0";
-            m->ged_boost_enable = "0";
-            m->enable_gpu_boost = "0";
-            m->gpu_cust_upbound_freq = "390000";
-            m->gpu_bottom_freq = "390000";
-            m->g_fb_dvfs_threshold = "15";
-            m->gx_fb_dvfs_margin = "0";
-            m->gx_game_mode = "0";
-
-            m->fpsgo_boost_ta = "0";
-            m->fpsgo_ultra_rescue = "0";
-            m->fpsgo_light_loading = "50";
-            m->fpsgo_thrm_enable = "1";
-
-            m->sconfig = "0";
-            m->touch_thp_smooth = "0";
-            m->touch_game_mode = "0";
-            m->touch_sensitivity = "0";
-            m->touch_edge = "0";
-            break;
-
-        case PROFILE_Interactive: {
-            m->cpu_gov = g_stock_baseline.gov0[0] ? g_stock_baseline.gov0 : get_best_governor(prof);
-            m->lit_min_freq = g_stock_baseline.lit_min_freq > 0 ? g_stock_baseline.lit_min_freq : g_nodes.lit_hw_min_freq;
-            m->lit_max_freq = g_stock_baseline.lit_max_freq > 0 ? g_stock_baseline.lit_max_freq : g_nodes.lit_hw_max_freq;
-            m->big_min_freq = g_stock_baseline.big_min_freq > 0 ? g_stock_baseline.big_min_freq : g_nodes.big_hw_min_freq;
-            m->big_max_freq = g_stock_baseline.big_max_freq > 0 ? g_stock_baseline.big_max_freq : g_nodes.big_hw_max_freq;
-
-            m->up_rate_limit   = g_stock_baseline.pol0_up_rate[0] ? g_stock_baseline.pol0_up_rate : "1000";
-            m->down_rate_limit = g_stock_baseline.pol0_down_rate[0] ? g_stock_baseline.pol0_down_rate : "1000";
-
-            /* Interactive and Sleep are stock-restoring profiles, so the Big
-             * cluster gets its own captured values instead of inheriting the
-             * Little cluster's. Without this the baseline's gov6/pol6_* entries
-             * were only ever used on uninstall, never while the module ran. */
-            m->cpu_gov_big       = g_stock_baseline.gov6[0] ? g_stock_baseline.gov6 : m->cpu_gov;
-            m->up_rate_limit_big = g_stock_baseline.pol6_up_rate[0] ? g_stock_baseline.pol6_up_rate : m->up_rate_limit;
-            m->down_rate_limit_big = g_stock_baseline.pol6_down_rate[0] ? g_stock_baseline.pol6_down_rate : m->down_rate_limit;
-
-            m->nr_requests = g_stock_baseline.io_nr_requests[0] ? g_stock_baseline.io_nr_requests : "128";
-            m->read_ahead  = g_stock_baseline.io_read_ahead[0] ? g_stock_baseline.io_read_ahead : "1024";
-
-            m->bg_cpus     = g_stock_baseline.bg_cpus[0] ? g_stock_baseline.bg_cpus : "0-3";
-            m->sys_bg_cpus = g_stock_baseline.sys_bg_cpus[0] ? g_stock_baseline.sys_bg_cpus : "0-5";
-            m->top_app_cpus= g_stock_baseline.top_app_cpus[0] ? g_stock_baseline.top_app_cpus : "0-7";
-
-            m->bg_shares         = g_stock_baseline.bg_shares[0] ? g_stock_baseline.bg_shares : "1024";
-            m->bg_uclamp_min     = g_stock_baseline.bg_uclamp_min[0] ? g_stock_baseline.bg_uclamp_min : "0";
-            m->bg_uclamp_max     = g_stock_baseline.bg_uclamp_max[0] ? g_stock_baseline.bg_uclamp_max : "max";
-            m->sys_bg_uclamp_max = g_stock_baseline.sys_bg_uclamp_max[0] ? g_stock_baseline.sys_bg_uclamp_max : "max";
-            m->top_app_shares    = g_stock_baseline.top_app_shares[0] ? g_stock_baseline.top_app_shares : "1024";
-            m->top_app_uclamp_min= g_stock_baseline.top_app_uclamp_min[0] ? g_stock_baseline.top_app_uclamp_min : "0";
-            m->top_app_uclamp_max= g_stock_baseline.top_app_uclamp_max[0] ? g_stock_baseline.top_app_uclamp_max : "max";
-
-            m->devfreq_gov      = g_stock_baseline.mali_gpu_gov[0] ? g_stock_baseline.mali_gpu_gov : "simple_ondemand";
-            m->power_policy     = g_stock_baseline.mali_policy[0] ? g_stock_baseline.mali_policy : "coarse_demand";
-            m->devfreq_min_freq = g_stock_baseline.mali_min_freq[0] ? g_stock_baseline.mali_min_freq : "390000000";
-            m->devfreq_max_freq = g_stock_baseline.mali_max_freq[0] ? g_stock_baseline.mali_max_freq : max_gpu_hz;
-            m->devfreq_upthresh = g_stock_baseline.mali_upthresh[0] ? g_stock_baseline.mali_upthresh : "80";
-            m->devfreq_downdiff = g_stock_baseline.mali_downdiff[0] ? g_stock_baseline.mali_downdiff : "20";
-            m->devfreq_poll_ms  = ""; /* GPU polling interval left completely free to fluctuate up/down */
-
-            m->dvfsrc_qos = "0";
-
-            m->boost_gpu_enable      = g_stock_baseline.boost_gpu_enable[0] ? g_stock_baseline.boost_gpu_enable : "0";
-            m->ged_smart_boost       = g_stock_baseline.ged_smart_boost[0] ? g_stock_baseline.ged_smart_boost : "0";
-            m->ged_boost_enable      = g_stock_baseline.ged_boost_enable[0] ? g_stock_baseline.ged_boost_enable : "1";
-            m->enable_gpu_boost      = g_stock_baseline.enable_gpu_boost[0] ? g_stock_baseline.enable_gpu_boost : "1";
-            m->gpu_cust_upbound_freq = g_stock_baseline.gpu_cust_upbound_freq[0] ? g_stock_baseline.gpu_cust_upbound_freq : "1003000";
-            m->gpu_cust_boost_freq   = g_stock_baseline.gpu_cust_boost_freq[0] ? g_stock_baseline.gpu_cust_boost_freq : "390000";
-            m->gpu_bottom_freq       = g_stock_baseline.gpu_bottom_freq[0] ? g_stock_baseline.gpu_bottom_freq : "390000";
-            m->g_fb_dvfs_threshold   = g_stock_baseline.g_fb_dvfs_threshold[0] ? g_stock_baseline.g_fb_dvfs_threshold : "80";
-            m->gx_fb_dvfs_margin     = g_stock_baseline.gx_fb_dvfs_margin[0] ? g_stock_baseline.gx_fb_dvfs_margin : "40";
-            m->gx_game_mode          = g_stock_baseline.gx_game_mode[0] ? g_stock_baseline.gx_game_mode : "0";
-
-            m->fpsgo_force_onoff   = g_stock_baseline.fpsgo_force_onoff[0] ? g_stock_baseline.fpsgo_force_onoff : "0";
-            m->fpsgo_boost_ta      = g_stock_baseline.fpsgo_boost_ta[0] ? g_stock_baseline.fpsgo_boost_ta : "0";
-            m->fpsgo_ultra_rescue  = g_stock_baseline.fpsgo_ultra_rescue[0] ? g_stock_baseline.fpsgo_ultra_rescue : "0";
-            m->fpsgo_light_loading = g_stock_baseline.fpsgo_light_loading[0] ? g_stock_baseline.fpsgo_light_loading : "0";
-            m->fpsgo_idleprefer    = g_stock_baseline.fpsgo_idleprefer[0] ? g_stock_baseline.fpsgo_idleprefer : "0";
-            m->fpsgo_thrm_enable   = g_stock_baseline.fpsgo_thrm_enable[0] ? g_stock_baseline.fpsgo_thrm_enable : "1";
-
-            m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
-
-            /* Touchscreen nodes: The sole enhancement for Interactive profile! */
-            m->touch_thp_smooth  = "1"; /* Screen smoothing enabled for silky touch response */
-            m->touch_game_mode   = "0";
-            m->touch_sensitivity = "0";
-            m->touch_edge        = "0";
-            break;
-        }
-
-        case PROFILE_Gaming_MOBA:
-        case PROFILE_Gaming: {
-            m->devfreq_gov = "performance";
-            m->lit_min_freq = g_nodes.lit_hw_min_freq;
-            m->big_min_freq = g_nodes.big_hw_min_freq;
-
-            /* Full hardware ceilings, clamped down to whatever the hardware
-             * actually reports, never up: on a part whose hw_max is already
-             * below the nominal number, "capping" must not become "raising".
-             * Thermal mitigation during gaming is left entirely to the vendor
-             * stack (mi_thermald / FPSGO thermal). */
-            m->lit_max_freq = g_nodes.lit_hw_max_freq > 0 ? g_nodes.lit_hw_max_freq : FREQ_LITTLE_MAX;
-            m->big_max_freq = g_nodes.big_hw_max_freq > 0 ? g_nodes.big_hw_max_freq : FREQ_BIG_MAX;
-
-            m->up_rate_limit = "0";
-            m->down_rate_limit = "30000";
-
-            m->nr_requests = "256";
-            m->read_ahead = (g_state.launch_boost_ticks > 0) ? "512" : "256";
-
-            m->bg_shares = "256";
-            m->bg_uclamp_min = "0";
-            m->bg_uclamp_max = "40";
-            m->top_app_shares = "2048";
-            m->top_app_uclamp_min = "50";
-            m->top_app_uclamp_max = "max";
-
-            /* Full GPU performance */
-            m->devfreq_poll_ms = "20";
-            m->devfreq_upthresh = "50";
-            m->devfreq_downdiff = "20";
-            m->devfreq_min_freq = "390000000";
-            m->devfreq_max_freq = max_gpu_hz;
-
-            m->dvfsrc_qos = "1";
-
-            m->boost_gpu_enable = "1";
-            m->ged_smart_boost = "1";
-            m->ged_boost_enable = "1";
-            m->enable_gpu_boost = "1";
-            m->gpu_cust_upbound_freq = max_gpu_khz;
-            m->gpu_bottom_freq = "390000";
-
-            if (prof == PROFILE_Gaming_MOBA) {
-                m->g_fb_dvfs_threshold = "25";
-                m->gx_fb_dvfs_margin    = "30";
-            } else {
-                m->g_fb_dvfs_threshold = "25";
-                m->gx_fb_dvfs_margin    = "50";
-            }
-
-            m->gx_game_mode = "1";
-
-            m->fpsgo_boost_ta = "1";
-            m->fpsgo_ultra_rescue = "1";
-            m->fpsgo_light_loading = "0";
-
-            /* Vendor thermal stack is left untouched: fpsgo_thrm_enable and
-             * sconfig keep their stock values in every profile. HyperCore
-             * does not fight mi_thermald. */
-            m->fpsgo_thrm_enable = g_stock_baseline.fpsgo_thrm_enable[0]
-                                       ? g_stock_baseline.fpsgo_thrm_enable : "1";
-            m->sconfig = g_stock_baseline.sconfig[0] ? g_stock_baseline.sconfig : "0";
-
-            m->touch_thp_smooth = "1";
-            m->touch_game_mode = "1";
-            m->touch_sensitivity = "1";
-            m->touch_edge = (prof == PROFILE_Gaming_MOBA) ? "0" : "1";
-
-            break;
-        }
+    if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
+        if (!m->devfreq_max_freq) m->devfreq_max_freq = get_max_gpu_freq_hz();
+        if (!m->gpu_cust_upbound_freq) m->gpu_cust_upbound_freq = get_max_gpu_freq_khz();
     }
 
-    /* The tuning profiles deliberately drive both clusters as one, so they leave
-     * the Big-cluster fields unset. Mirror the Little values in that case, which
-     * is exactly the pre-existing behaviour, and guarantees nothing downstream
-     * ever hands a NULL pointer to sysfs_write. */
-    if (!m->cpu_gov_big)       m->cpu_gov_big = m->cpu_gov;
-    if (!m->up_rate_limit_big) m->up_rate_limit_big = m->up_rate_limit;
-    if (!m->down_rate_limit_big) m->down_rate_limit_big = m->down_rate_limit;
+#define FILL_STOCK(field, stock_field) \
+    if (!m->field) { \
+        if (g_stock_baseline.stock_field[0]) m->field = g_stock_baseline.stock_field; \
+    }
+    STOCK_FALLBACK_FIELDS(FILL_STOCK)
+#undef FILL_STOCK
 
-    /* Boundary sanitization: guarantee min_freq <= max_freq to prevent kernel EINVAL */
-    if (m->lit_max_freq < m->lit_min_freq) m->lit_max_freq = m->lit_min_freq;
-    if (m->big_max_freq < m->big_min_freq) m->big_max_freq = m->big_min_freq;
+    /* Governor class is resolved here, not baked into the table, so the
+     * "best available governor" probe stays in one place. */
+    switch (m->gov) {
+        case GOV_STOCK:
+            m->cpu_gov_lit = g_stock_baseline.gov0[0] ? g_stock_baseline.gov0 : get_best_governor(PROFILE_Interactive);
+            m->cpu_gov_big_hint = g_stock_baseline.gov6[0] ? g_stock_baseline.gov6 : m->cpu_gov_lit;
+            break;
+        case GOV_PERF:
+            m->cpu_gov_lit = get_best_governor(PROFILE_Gaming);
+            m->cpu_gov_big_hint = m->cpu_gov_lit;
+            break;
+        case GOV_BALANCED:
+        default:
+            m->cpu_gov_lit = get_best_governor(PROFILE_Interactive);
+            m->cpu_gov_big_hint = m->cpu_gov_lit;
+            break;
+    }
 }
 
-/* Async resetprop without blocking the tuning loop.
- * system() forks + execs sh and waits — in apply_profile() that stalls every
- * Gaming<->Interactive transition if resetprop or sh ever blocks. Double-fork
- * here instead: the middle child is reaped immediately, the grandchild is
- * adopted by init and runs detached. No shell, no format string, argv only. */
-static void async_resetprop(const char *key, const char *val, int is_delete) {
-    if (!key || !key[0]) return;
-    pid_t pid = fork();
-    if (pid < 0) return;
-    if (pid != 0) {
-        int st = 0;
-        waitpid(pid, &st, 0);
-        return;
+/* -------------------------------------------------------------------------
+ * Apply
+ * ---------------------------------------------------------------------- */
+
+static void apply_cpu_freqs(const profile_matrix_t *m) {
+    int lit_min, lit_max, big_min, big_max;
+
+    if (m->freq_mode == FREQ_STOCK) {
+        lit_min = g_stock_baseline.lit_min_freq > 0 ? g_stock_baseline.lit_min_freq : g_nodes.lit_hw_min_freq;
+        lit_max = g_stock_baseline.lit_max_freq > 0 ? g_stock_baseline.lit_max_freq : g_nodes.lit_hw_max_freq;
+        big_min = g_stock_baseline.big_min_freq > 0 ? g_stock_baseline.big_min_freq : g_nodes.big_hw_min_freq;
+        big_max = g_stock_baseline.big_max_freq > 0 ? g_stock_baseline.big_max_freq : g_nodes.big_hw_max_freq;
+    } else {
+        lit_min = g_nodes.lit_hw_min_freq;
+        lit_max = m->lit_max_override > 0 ? m->lit_max_override : g_nodes.lit_hw_max_freq;
+        big_min = g_nodes.big_hw_min_freq;
+        big_max = m->big_max_override > 0 ? m->big_max_override : g_nodes.big_hw_max_freq;
     }
-    /* Middle child: silence FDs, detach, second fork. */
-    long max_fd = sysconf(_SC_OPEN_MAX);
-    if (max_fd < 0 || max_fd > 1024) max_fd = 256;
-    for (long fd = STDERR_FILENO + 1; fd < max_fd; fd++) close((int)fd);
-    pid_t g = fork();
-    if (g == 0) {
-        setsid();
-        int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
-        if (null_fd >= 0) {
-            dup2(null_fd, STDIN_FILENO);
-            dup2(null_fd, STDOUT_FILENO);
-            dup2(null_fd, STDERR_FILENO);
-            if (null_fd > STDERR_FILENO) close(null_fd);
-        }
-        /* Prefer resetprop from root-manager PATH, fall back to plain PATH. */
-        setenv("PATH", "/data/adb/ap/bin:/data/adb/ksu/bin:/data/adb/magisk:/system/bin:/vendor/bin", 1);
-        if (is_delete) {
-            execlp("resetprop", "resetprop", "--delete", key, (char *)NULL);
-        } else {
-            execlp("resetprop", "resetprop", key, val ? val : "", (char *)NULL);
-        }
-        _exit(127);
-    }
-    _exit((g < 0) ? 1 : 0);
+
+    write_policy_pair("/sys/devices/system/cpu/cpufreq/policy0", lit_min, lit_max);
+    write_policy_pair("/sys/devices/system/cpu/cpufreq/policy6", big_min, big_max);
 }
 
-void apply_profile(profile_t prof, int gpu_load) {
-    (void)gpu_load;
+static void apply_rates(const profile_matrix_t *m) {
+    const char *lit_up = m->up_rate ? m->up_rate
+                        : (g_stock_baseline.pol0_up_rate[0] ? g_stock_baseline.pol0_up_rate : "1000");
+    const char *lit_down = m->down_rate ? m->down_rate
+                          : (g_stock_baseline.pol0_down_rate[0] ? g_stock_baseline.pol0_down_rate : "1000");
+    const char *big_up = m->up_rate ? m->up_rate
+                        : (g_stock_baseline.pol6_up_rate[0] ? g_stock_baseline.pol6_up_rate : "1000");
+    const char *big_down = m->down_rate ? m->down_rate
+                          : (g_stock_baseline.pol6_down_rate[0] ? g_stock_baseline.pol6_down_rate : "1000");
+    set_rate_limits(lit_up, lit_down, big_up, big_down);
+}
+
+static void apply_cgroups(const profile_matrix_t *m) {
+    sysfs_write_fallback(N_CPUSET_BG, m->bg_cpus);
+    sysfs_write_fallback(N_CPUSET_SYS_BG, m->sys_bg_cpus);
+    sysfs_write_fallback(N_CPUSET_TOP_APP, m->top_app_cpus);
+
+    sysfs_write_fallback(N_CPUCTL_BG_SHARES, m->bg_shares);
+    sysfs_write_fallback(N_CPUCTL_BG_MIN, m->bg_uclamp_min);
+    sysfs_write_fallback(N_CPUCTL_BG_MAX, m->bg_uclamp_max);
+    sysfs_write_fallback(N_CPUCTL_SYS_BG_MAX, m->sys_bg_uclamp_max);
+    sysfs_write_fallback(N_CPUCTL_TOP_SHARES, m->top_app_shares);
+    sysfs_write_fallback(N_CPUCTL_TOP_MIN, m->top_app_uclamp_min);
+    sysfs_write_fallback(N_CPUCTL_TOP_MAX, m->top_app_uclamp_max);
+}
+
+static void apply_gpu(const profile_matrix_t *m) {
+    sysfs_write_fallback(N_MALI_GOV, m->devfreq_gov);
+
+    /* polling_interval only exists for simple_ondemand; with performance
+     * selected the node may be absent, and writing an empty value would
+     * clobber the stock interval. */
+    if (m->devfreq_poll_ms && m->devfreq_poll_ms[0]) {
+        sysfs_write_fallback(N_MALI_POLL, m->devfreq_poll_ms);
+    }
+
+    /* Devfreq rejects min > max with -EINVAL: ceiling first, then floor. */
+    sysfs_write_fallback(N_MALI_MAX, m->devfreq_max_freq);
+    sysfs_write_fallback(N_MALI_MIN, m->devfreq_min_freq);
+    sysfs_write_fallback(N_MALI_POLICY, m->power_policy);
+    set_mali_upthreshold(m->devfreq_upthresh);
+    set_mali_downdifferential(m->devfreq_downdiff);
+    sysfs_write_fallback(N_DVFSRC_QOS, m->dvfsrc_qos);
+}
+
+static void apply_ged(const profile_matrix_t *m) {
+    sysfs_write_fallback(N_GED_BOOST_GPU, m->boost_gpu_enable);
+    sysfs_write_fallback(N_GED_SMART_BOOST, m->ged_smart_boost);
+    sysfs_write_fallback(N_GED_BOOST_ENABLE, m->ged_boost_enable);
+    sysfs_write_fallback(N_GED_ENABLE_GPU_BOOST, m->enable_gpu_boost);
+    sysfs_write_fallback(N_GED_CUST_BOOST_FREQ, m->gpu_cust_boost_freq);
+    sysfs_write_fallback(N_GED_CUST_UPBOUND, m->gpu_cust_upbound_freq);
+    sysfs_write_fallback(N_GED_GPU_BOTTOM, m->gpu_bottom_freq);
+    sysfs_write_fallback(N_GED_FB_DVFS_THRESHOLD, m->g_fb_dvfs_threshold);
+    sysfs_write_fallback(N_GED_GX_MARGIN, m->gx_fb_dvfs_margin);
+    sysfs_write_fallback(N_GED_GX_GAME_MODE, m->gx_game_mode);
+}
+
+static void apply_fpsgo(const profile_matrix_t *m) {
+    /* ultra_rescue is deliberately absent: it is a transient burst owned by the
+     * jitter-rescue path in main.c. The profile used to pin it to 1 and the
+     * burst code then wrote 0, leaving the two fighting over one node. */
+    sysfs_write_fallback(N_FPSGO_FORCE, m->fpsgo_force_onoff);
+    sysfs_write_fallback(N_FPSGO_BOOST_TA, m->fpsgo_boost_ta);
+    sysfs_write_fallback(N_FPSGO_LIGHT, m->fpsgo_light_loading);
+    sysfs_write_fallback(N_FPSGO_IDLEPREFER, m->fpsgo_idleprefer);
+    sysfs_write_fallback(N_FPSGO_THRM, m->fpsgo_thrm_enable);
+}
+
+static void apply_touch(const profile_matrix_t *m) {
+    sysfs_write_fallback(N_TOUCH_SMOOTH, m->touch_smooth);
+    sysfs_write_fallback(N_TOUCH_NOISE, m->touch_noise);
+    sysfs_write_fallback(N_TOUCH_GAME, m->touch_game);
+    sysfs_write_fallback(N_TOUCH_SENS, m->touch_sens);
+    sysfs_write_fallback(N_TOUCH_EDGE, m->touch_edge);
+}
+
+static void apply_vm(const profile_matrix_t *m) {
+    sysfs_write_fallback(N_VM_SWAPPINESS, m->vm_swappiness);
+    sysfs_write_fallback(N_VM_DIRTY_RATIO, m->vm_dirty_ratio);
+    sysfs_write_fallback(N_VM_DIRTY_BG_RATIO, m->vm_dirty_bg_ratio);
+    sysfs_write_fallback(N_VM_VFS_CACHE, m->vm_vfs_cache_pressure);
+    sysfs_write_fallback(N_VM_STAT_INTERVAL, m->vm_stat_interval);
+    sysfs_write_fallback(N_VM_DIRTY_WRITEBACK, m->vm_dirty_writeback);
+    sysfs_write_fallback(N_VM_COMPACTION, m->vm_compaction);
+}
+
+void apply_profile(profile_t prof) {
+    if (prof < 0 || prof >= PROFILE_COUNT) return;
+
     profile_matrix_t m;
     build_profile_matrix(prof, &m);
 
-    /* Touch IC often probes after daemon start; re-resolve any paths that
-     * were still missing so the touch enhancement is not silently skipped. */
-    rediscover_touch_nodes();
+    /* Touch IC often probes after daemon start. */
+    nodes_rediscover_touch();
 
-    set_cpu_governor(m.cpu_gov, m.cpu_gov_big);
-    set_cpu_freqs(m.lit_min_freq, m.lit_max_freq, m.big_min_freq, m.big_max_freq,
-                  m.up_rate_limit, m.down_rate_limit,
-                  m.up_rate_limit_big, m.down_rate_limit_big);
+    set_cpu_governor(m.cpu_gov_lit, m.cpu_gov_big_hint);
+    apply_cpu_freqs(&m);
+    apply_rates(&m);
 
     set_io_nr_requests(m.nr_requests);
     set_read_ahead(m.read_ahead);
 
-    sysfs_write_fallback(s_cpuset_bg_cpus_nodes, m.bg_cpus);
-    sysfs_write_fallback(s_cpuset_sys_bg_cpus_nodes, m.sys_bg_cpus);
-    sysfs_write_fallback(s_cpuset_top_app_cpus_nodes, m.top_app_cpus);
+    apply_cgroups(&m);
+    apply_gpu(&m);
+    apply_ged(&m);
+    apply_fpsgo(&m);
+    apply_touch(&m);
+    apply_vm(&m);
 
-    sysfs_write_fallback(s_cpuctl_bg_shares_nodes, m.bg_shares);
-    sysfs_write_fallback(s_cpuctl_bg_uclamp_min_nodes, m.bg_uclamp_min);
-    sysfs_write_fallback(s_cpuctl_bg_uclamp_max_nodes, m.bg_uclamp_max);
-    sysfs_write_fallback(s_cpuctl_sys_bg_uclamp_max_nodes, m.sys_bg_uclamp_max);
-    sysfs_write_fallback(s_cpuctl_top_app_shares_nodes, m.top_app_shares);
-    sysfs_write_fallback(s_cpuctl_top_app_uclamp_min_nodes, m.top_app_uclamp_min);
-    sysfs_write_fallback(s_cpuctl_top_app_uclamp_max_nodes, m.top_app_uclamp_max);
+    sysfs_write_temp_mode(N_SCONFIG[0], m.sconfig, 0666);
 
-    sysfs_write_fallback(s_devfreq_gov_nodes, m.devfreq_gov);
-    if (m.devfreq_poll_ms && m.devfreq_poll_ms[0] != '\0') {
-        sysfs_write_fallback(s_devfreq_poll_nodes, m.devfreq_poll_ms);
-    }
-    /* Devfreq rejects a min above max with -EINVAL, so raise the ceiling before
-     * lifting the floor. Every profile currently pins min to the same constant
-     * and the two writes cannot conflict — but that is a coincidence of the
-     * current table, and the failure would be silent, since sysfs_write_fallback
-     * logs nothing. Same ordering rule write_policy_freqs() already follows. */
-    if (m.devfreq_max_freq && m.devfreq_max_freq[0] != '\0')
-        sysfs_write_fallback(s_devfreq_max_nodes, m.devfreq_max_freq);
-    sysfs_write_fallback(s_devfreq_min_nodes, m.devfreq_min_freq);
-    sysfs_write_fallback(s_power_policy_nodes, m.power_policy);
-    set_mali_upthreshold(m.devfreq_upthresh);
-    set_mali_downdifferential(m.devfreq_downdiff);
-
-    sysfs_write_fallback(s_dvfsrc_nodes, m.dvfsrc_qos);
-
-    sysfs_write("/sys/module/ged/parameters/boost_gpu_enable", m.boost_gpu_enable);
-    sysfs_write("/sys/module/ged/parameters/ged_smart_boost", m.ged_smart_boost);
-    sysfs_write("/sys/module/ged/parameters/ged_boost_enable", m.ged_boost_enable);
-    sysfs_write("/sys/module/ged/parameters/enable_gpu_boost", m.enable_gpu_boost);
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_boost_freq", m.gpu_cust_boost_freq);
-    sysfs_write("/sys/module/ged/parameters/gpu_cust_upbound_freq", m.gpu_cust_upbound_freq);
-    sysfs_write("/sys/module/ged/parameters/gpu_bottom_freq", m.gpu_bottom_freq);
-    sysfs_write("/sys/module/ged/parameters/g_fb_dvfs_threshold", m.g_fb_dvfs_threshold);
-    sysfs_write("/sys/module/ged/parameters/gx_fb_dvfs_margin", m.gx_fb_dvfs_margin);
-    sysfs_write_fallback(s_game_mode_nodes, m.gx_game_mode);
-
-    sysfs_write("/sys/kernel/fpsgo/common/force_onoff", m.fpsgo_force_onoff);
-    sysfs_write("/sys/kernel/fpsgo/fbt/boost_ta", m.fpsgo_boost_ta);
-    sysfs_write("/sys/kernel/fpsgo/fbt/ultra_rescue", m.fpsgo_ultra_rescue);
-    sysfs_write("/sys/kernel/fpsgo/fbt/light_loading_policy", m.fpsgo_light_loading);
-    sysfs_write("/sys/kernel/fpsgo/fbt/switch_idleprefer", m.fpsgo_idleprefer);
-    write_locked_node_fallback(s_sconfig_nodes, m.sconfig);
-    sysfs_write("/sys/kernel/fpsgo/fbt/thrm_enable", m.fpsgo_thrm_enable);
-
-    sysfs_write(g_nodes.touch_thp_smooth, m.touch_thp_smooth);
-    sysfs_write(g_nodes.touch_game_mode, m.touch_game_mode);
-    sysfs_write(g_nodes.touch_sensitivity, m.touch_sensitivity);
-    sysfs_write(g_nodes.touch_edge, m.touch_edge);
-    if (g_nodes.touch_thp_noisefilter[0]) {
-        sysfs_write(g_nodes.touch_thp_noisefilter, (prof == PROFILE_Sleep) ? "0" : "1");
-    } else {
-        sysfs_write("/sys/class/touch/touch_dev/touch_thp_noisefilter", (prof == PROFILE_Sleep) ? "0" : "1");
-    }
-
-    /* VM & Sched restoration for Interactive, optimization for Gaming */
-    if (prof == PROFILE_Interactive) {
-        if (g_stock_baseline.vm_swappiness[0]) sysfs_write("/proc/sys/vm/swappiness", g_stock_baseline.vm_swappiness);
-        if (g_stock_baseline.vm_dirty_ratio[0]) sysfs_write("/proc/sys/vm/dirty_ratio", g_stock_baseline.vm_dirty_ratio);
-        if (g_stock_baseline.vm_dirty_bg_ratio[0]) sysfs_write("/proc/sys/vm/dirty_background_ratio", g_stock_baseline.vm_dirty_bg_ratio);
-        if (g_stock_baseline.vm_vfs_cache_pressure[0]) sysfs_write("/proc/sys/vm/vfs_cache_pressure", g_stock_baseline.vm_vfs_cache_pressure);
-        if (g_stock_baseline.vm_stat_interval[0]) sysfs_write("/proc/sys/vm/stat_interval", g_stock_baseline.vm_stat_interval);
-        if (g_stock_baseline.vm_dirty_writeback[0]) sysfs_write("/proc/sys/vm/dirty_writeback_centisecs", g_stock_baseline.vm_dirty_writeback);
-        if (g_stock_baseline.sched_migration_cost[0]) sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", g_stock_baseline.sched_migration_cost);
-    } else if (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA) {
-        sysfs_write("/proc/sys/vm/swappiness", "60");
-        sysfs_write("/proc/sys/vm/dirty_ratio", "15");
-        sysfs_write("/proc/sys/vm/dirty_background_ratio", "5");
-        sysfs_write("/proc/sys/vm/vfs_cache_pressure", "100");
-        sysfs_write("/proc/sys/kernel/sched_migration_cost_ns", "200000");
-    }
-
-    /* Re-apply IRQ affinity on every profile transition:
-     * Gaming/MOBA -> big cores only (0xc0), others -> all cores (0xff) */
     apply_irq_tuning(prof);
 
-    /* Toggle VM stat calculation frequency & dirty writeback interval for Sleep profile */
-    set_memory_sleep_mode(prof == PROFILE_Sleep);
-
-    /* Apply SurfaceFlinger latch_unsignaled at runtime via resetprop so it is NOT
-     * persistent in system.prop (which triggers mBanking integrity scanners).
-     * Enabled only during Gaming/MOBA for smoother frame delivery; disabled on exit.
-     * Async double-fork: never blocks the tuning loop waiting on sh/resetprop. */
     static int s_prev_gaming_state = -1;
     int is_gaming = (prof == PROFILE_Gaming || prof == PROFILE_Gaming_MOBA);
     if (is_gaming != s_prev_gaming_state) {
@@ -841,7 +620,10 @@ void apply_profile(profile_t prof, int gpu_load) {
     }
 }
 
-void reset_to_interactive_baseline(void) {
-    apply_profile(PROFILE_Interactive, 0);
+const char *profile_read_ahead(profile_t prof) {
+    if (prof < 0 || prof >= PROFILE_COUNT) return "256";
+    const char *ra = k_profiles[prof].read_ahead;
+    if (ra) return ra;
+    if (g_stock_baseline.io_read_ahead[0]) return g_stock_baseline.io_read_ahead;
+    return "1024";
 }
-
