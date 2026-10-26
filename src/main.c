@@ -2,6 +2,7 @@
 #include "nodes.h"
 #include "sysfs.h"
 #include "baseline.h"
+#include "battery.h"
 #include "module.h"
 #include "util.h"
 #include "log.h"
@@ -355,6 +356,7 @@ static void tick_jitter(profile_t next, int gpu_load) {
  * few times instead of trusting the one-shot startup apply. */
 static void tick_boot_settle(profile_t next, const foreground_t *fg, int gpu_load) {
     s_loop.boot_settle_tick++;
+    if (s_loop.boot_settle_tick == 30) battery_sync_cycle();
     if (s_loop.boot_settle_tick != 5 && s_loop.boot_settle_tick != 15 && s_loop.boot_settle_tick != 30) return;
     if (next != PROFILE_Interactive || g_state.current_profile != PROFILE_Interactive) return;
     if (fg->is_game || g_state.manual_profile >= 0) return;
@@ -419,6 +421,7 @@ int main(int argc, char *argv[]) {
     detect_max_gpu_freq();
     init_irq_targets();
     baseline_init();
+    battery_sync_cycle();
     write_pid_file();
     init_ipc_socket();
 

@@ -321,6 +321,14 @@ const char *const N_NET_NR_REQUESTS[] = {
     "/sys/block/dm-0/queue/nr_requests",
     NULL
 };
+const char *const N_BATT_CYCLE[] = {
+    "/sys/class/power_supply/battery/cycle_count",
+    NULL
+};
+const char *const N_BMS_CYCLE[] = {
+    "/sys/class/power_supply/bms/cycle_count",
+    NULL
+};
 const char *const N_SCHED_MIGRATION[] = { "/proc/sys/kernel/sched_migration_cost_ns", NULL };
 const char *const N_SCHED_LATENCY[] = { "/proc/sys/kernel/sched_latency_ns", NULL };
 const char *const N_SCHED_NR_MIGRATE[] = { "/proc/sys/kernel/sched_nr_migrate", NULL };

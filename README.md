@@ -159,6 +159,9 @@ throttling and battery safety are handled exclusively by the vendor thermal
 stack (`mi_thermald`, FPSGO thermal, GPU devfreq cooler) and the stock OEM
 hardware drivers. The daemon never writes to thermal policy nodes —
 `fpsgo_thrm_enable` and Xiaomi `sconfig` always keep their stock values in every profile.
+The only exception outside thermal/charging control is a boot-time battery-data
+sanity sync: when the vendor auth-chip counter is clearly impossible, the daemon
+copies the BMS gauge value into `battery/cycle_count` (see `src/battery.c`).
 
 ### ZRAM Sizing
 
@@ -280,6 +283,7 @@ src/
 ├── include/
 │   ├── common.h  # hw_nodes / core_state / stock_baseline structs
 │   ├── baseline.h  # Stock capture / restore API
+│   ├── battery.h  # Battery cycle sanity-sync API
 │   ├── cpu.h  # Profile matrix + governor/freq API
 │   ├── embedded_checksums.h  # GENERATED — SHA-256 table (do not hand-edit)
 │   ├── gamelist.h  # Foreground game detector + PID cache
@@ -300,6 +304,7 @@ src/
 ├── main.c                       # init, boot settle, adaptive main loop
 ├── nodes.c                      # Path discovery + thermal-zone resolution
 ├── baseline.c                   # One-table stock capture / save / load / restore
+├── battery.c                    # Battery cycle sanity sync against BMS gauge
 ├── cpu.c                        # build_profile_matrix() + apply_profile()
 ├── gamelist.c                   # cgroup top-app scan, hourly pm fallback
 ├── ipc.c                        # SO_PEERCRED socket + atomic status.json

@@ -4,6 +4,17 @@ Feature removal release: the charger-control and thermal-guard subsystems
 are gone. HyperCore is now a pure performance tuner — CPU, GPU, storage,
 memory, game detection and the HyperMoon HUD. Nothing else.
 
+## Post-release fixes
+
+- **Battery cycle sanity sync** (`src/battery.c`): some MT6789 vendor drivers
+  expose the battery auth chip's unscaled or stale counter as
+  `battery/cycle_count` (for example 5707 while the MTK gauge reports 180),
+  and Android healthd trusts it. At boot and boot settle, the daemon copies
+  the BMS gauge value into `battery/cycle_count` only when the battery value
+  is more than 5x the gauge and at least 1000 cycles apart. It never writes
+  `auth_dev_batt_cycle`, `fg1_cycle`, or `reset_battery_cycle`, and stops
+  after two attempts per boot to avoid EEPROM wear.
+
 ## Removed
 
 - **Charger control** (`src/charger.c`): the 7 charge modes, 16-level

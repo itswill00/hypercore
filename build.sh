@@ -289,6 +289,7 @@ else
         src/sysfs.c \
         src/nodes.c \
         src/baseline.c \
+        src/battery.c \
         src/module.c \
         src/util.c \
         src/integrity.c \

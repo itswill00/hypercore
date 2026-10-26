@@ -20,6 +20,10 @@ extern "C" {
 /* Display */
 extern const char *const N_BACKLIGHT[];
 
+/* Battery cycle counters: the Android-facing counter and the MTK gauge. */
+extern const char *const N_BATT_CYCLE[];
+extern const char *const N_BMS_CYCLE[];
+
 /* CPU policy nodes. MT6789 is a strict bi-cluster part (policy0 + policy6),
  * so policy4/policy7 are not probed: writing them was always a no-op. */
 extern const char *const N_CPU_GOV0[];

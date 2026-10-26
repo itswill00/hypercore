@@ -27,6 +27,7 @@ TABLE OF CONTENTS
    3.9. SHA-256 Binary Integrity Verification (src/integrity.c & src/sha256.c)
    3.10. Single-Instance Lock (src/main.c)
    3.11. System Logging Infrastructure (src/log.c)
+   3.12. Battery Cycle Sanity Sync (src/battery.c)
 
 ================================================================================
 2. REPOSITORY & DIRECTORY STRUCTURE
@@ -237,6 +238,19 @@ remains the sole authority for stepping them down under heat.
 - Appends operational records, thermal events, and profile switches to
   `/data/adb/hypercore/hypercore.log` (root-only; deliberately not `/sdcard`).
 - Features automated log rotation at 512 KB to keep file sizes lightweight.
+
+3.12. Battery Cycle Sanity Sync (src/battery.c)
+- Android's `battery/cycle_count` is the value healthd and the Xiaomi charge
+  HAL trust. On some MT6789 units the vendor driver sources it from the
+  battery authentication chip, which can expose an unscaled or stale register
+  (for example 5707) while the MTK gauge reports a credible 180.
+- At daemon start and once at boot settle, HyperCore compares
+  `battery/cycle_count` with `bms/cycle_count`. It writes the BMS value only
+  when the battery value is more than 5x the gauge and at least 1000 cycles
+  apart; normal drift and a momentarily lagging gauge are left untouched.
+- The sync touches only `battery/cycle_count` - never `auth_dev_batt_cycle`,
+  `fg1_cycle`, or `reset_battery_cycle`. It gives up after two attempts per
+  boot even if the driver reverts, to avoid EEPROM wear.
 
 ================================================================================
 4. HYPERMOON IN-GAME PERFORMANCE HUD SUBSYSTEM
