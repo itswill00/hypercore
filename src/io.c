@@ -30,6 +30,10 @@ void set_io_nr_requests(const char *nr_str) {
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
         if (!block_is_interesting(ent->d_name)) continue;
+        /* Device-mapper queues reject nr_requests with EINVAL on MT6789; the
+         * write can never take effect, so do not spam the log on every
+         * profile transition. Read-ahead is still applied to them. */
+        if (strncmp(ent->d_name, "dm-", 3) == 0) continue;
         char p[256];
         snprintf(p, sizeof(p), "/sys/block/%s/queue/nr_requests", ent->d_name);
         sysfs_write(p, nr_str);

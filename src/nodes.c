@@ -26,9 +26,14 @@ const char *const N_CPU_GOV6[] = {
     "/sys/devices/system/cpu/cpufreq/policy6/scaling_governor",
     NULL
 };
+/* Hardware min must come from cpuinfo_min_freq. scaling_min_freq is a policy
+ * value: the vendor thermal/perfmgr stack raises it transiently during boosts
+ * (1.8 GHz on MT6789), so reading it here would turn that transient floor into
+ * the Gaming floor and effectively pin the cluster. Baseline capture and
+ * FREQ_HW both consume these arrays. */
 const char *const N_CPU_POL0_MIN[] = {
-    "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq",
     "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq",
+    "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq",
     NULL
 };
 const char *const N_CPU_POL0_MAX[] = {
@@ -37,8 +42,8 @@ const char *const N_CPU_POL0_MAX[] = {
     NULL
 };
 const char *const N_CPU_POL6_MIN[] = {
-    "/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq",
     "/sys/devices/system/cpu/cpufreq/policy6/cpuinfo_min_freq",
+    "/sys/devices/system/cpu/cpufreq/policy6/scaling_min_freq",
     "/sys/devices/system/cpu/cpufreq/policy4/cpuinfo_min_freq",
     NULL
 };
